@@ -40,7 +40,7 @@ type httpxServer struct {
 	webServer_[*httpxGate]
 	// States
 	forceScheme  int8 // scheme (http/https) that must be used
-	adjustScheme bool // use https scheme for TLS and http scheme for TCP?
+	adjustScheme bool // use https scheme for TLS and http scheme for others?
 	enableHTTP2  bool // enable HTTP/2 support?
 	http2Only    bool // if true, server runs HTTP/2 *only*. requires enableHTTP2 to be true, otherwise ignored
 }
@@ -174,13 +174,13 @@ func (g *httpxGate) _openInet() error {
 }
 func (g *httpxGate) Shut() error {
 	g.MarkShut()
-	return g.listener.Close()
+	return g.listener.Close() // breaks serve()
 }
 
 func (g *httpxGate) serveUDS() { // runner
-	getHTTPConn := getHTTP1Conn
+	getServerConn := getServer1Conn
 	if g.server.(*httpxServer).http2Only {
-		getHTTPConn = getHTTP2Conn
+		getServerConn = getServer2Conn
 	}
 	listener := g.listener.(*net.UnixListener)
 	connID := int64(0)
@@ -204,8 +204,8 @@ func (g *httpxGate) serveUDS() { // runner
 				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
 				continue
 			}
-			httpConn := getHTTPConn(connID, g, unixConn, rawConn)
-			go httpConn.serve() // httpConn is put to pool in serve()
+			serverConn := getServerConn(connID, g, unixConn, rawConn)
+			go serverConn.serve() // serverConn is put to pool in serve()
 			connID++
 		}
 	}
@@ -238,12 +238,12 @@ func (g *httpxGate) serveTLS() { // runner
 				continue
 			}
 			connState := tlsConn.ConnectionState()
-			getHTTPConn := getHTTP1Conn
+			getServerConn := getServer1Conn
 			if connState.NegotiatedProtocol == "h2" {
-				getHTTPConn = getHTTP2Conn
+				getServerConn = getServer2Conn
 			}
-			httpConn := getHTTPConn(connID, g, tlsConn, nil)
-			go httpConn.serve() // httpConn is put to pool in serve()
+			serverConn := getServerConn(connID, g, tlsConn, nil)
+			go serverConn.serve() // serverConn is put to pool in serve()
 			connID++
 		}
 	}
@@ -254,9 +254,9 @@ func (g *httpxGate) serveTLS() { // runner
 	g.server.DecSub()
 }
 func (g *httpxGate) serveTCP() { // runner
-	getHTTPConn := getHTTP1Conn
+	getServerConn := getServer1Conn
 	if g.server.(*httpxServer).http2Only {
-		getHTTPConn = getHTTP2Conn
+		getServerConn = getServer2Conn
 	}
 	listener := g.listener.(*net.TCPListener)
 	connID := int64(0)
@@ -280,8 +280,8 @@ func (g *httpxGate) serveTCP() { // runner
 				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
 				continue
 			}
-			httpConn := getHTTPConn(connID, g, tcpConn, rawConn)
-			go httpConn.serve() // httpConn is put to pool in serve()
+			serverConn := getServerConn(connID, g, tcpConn, rawConn)
+			go serverConn.serve() // serverConn is put to pool in serve()
 			connID++
 		}
 	}
@@ -298,18 +298,18 @@ func (g *httpxGate) justClose(netConn net.Conn) {
 }
 
 // httpxConn is the server-side HTTP/1 and HTTP/2 conn.
-type httpxConn interface { // for *http[1-2]Conn
+type httpxConn interface { // for *server[1-2]Conn
 	serve() // runner
 }
 
-// poolHTTP1Conn is the server-side HTTP/1 connection pool.
-var poolHTTP1Conn sync.Pool
+// poolServer1Conn is the server-side HTTP/1 connection pool.
+var poolServer1Conn sync.Pool
 
-func getHTTP1Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) httpxConn {
-	var httpConn *http1Conn
-	if x := poolHTTP1Conn.Get(); x == nil {
-		httpConn = new(http1Conn)
-		stream := httpConn
+func getServer1Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) httpxConn {
+	var serverConn *server1Conn
+	if x := poolServer1Conn.Get(); x == nil {
+		serverConn = new(server1Conn)
+		stream := serverConn
 		req, resp := &stream.request, &stream.response
 		req.shell = req
 		req.stream = stream
@@ -317,18 +317,18 @@ func getHTTP1Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.R
 		resp.stream = stream
 		resp.request = req
 	} else {
-		httpConn = x.(*http1Conn)
+		serverConn = x.(*server1Conn)
 	}
-	httpConn.onGet(id, gate, netConn, rawConn)
-	return httpConn
+	serverConn.onGet(id, gate, netConn, rawConn)
+	return serverConn
 }
-func putHTTP1Conn(httpConn *http1Conn) {
-	httpConn.onPut()
-	poolHTTP1Conn.Put(httpConn)
+func putServer1Conn(serverConn *server1Conn) {
+	serverConn.onPut()
+	poolServer1Conn.Put(serverConn)
 }
 
-// http1Conn is the server-side HTTP/1 connection.
-type http1Conn struct {
+// server1Conn is the server-side HTTP/1 connection.
+type server1Conn struct {
 	// Parent
 	ServerConn_
 	// Mixins
@@ -344,16 +344,16 @@ type http1Conn struct {
 	// Mixins
 	_webStream_
 	// Assocs
-	request  http1Request  // the server-side http/1 request.
-	response http1Response // the server-side http/1 response.
-	socket   *http1Socket  // the server-side http/1 socket.
+	request  server1Request  // the server-side http/1 request.
+	response server1Response // the server-side http/1 response.
+	socket   *server1Socket  // the server-side http/1 socket.
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (c *http1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
+func (c *server1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
 	c.ServerConn_.OnGet(id, gate)
 	c._webConn_.onGet()
 
@@ -363,7 +363,7 @@ func (c *http1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn s
 	c.rawConn = rawConn
 	c.closeSafe = true
 }
-func (c *http1Conn) onPut() {
+func (c *server1Conn) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
 	req := &c.request
@@ -378,10 +378,10 @@ func (c *http1Conn) onPut() {
 	c.ServerConn_.OnPut()
 }
 
-func (c *http1Conn) WebServer() WebServer { return c.Server().(WebServer) }
+func (c *server1Conn) WebServer() WebServer { return c.Server().(WebServer) }
 
-func (c *http1Conn) serve() { // runner
-	defer putHTTP1Conn(c)
+func (c *server1Conn) serve() { // runner
+	defer putServer1Conn(c)
 
 	stream := c
 	for c.persistent { // each queued stream
@@ -425,15 +425,15 @@ func (c *http1Conn) serve() { // runner
 	c.gate.OnConnClosed()
 }
 
-// http1Stream is the server-side HTTP/1 stream.
-type http1Stream = http1Conn
+// server1Stream is the server-side HTTP/1 stream.
+type server1Stream = server1Conn
 
-func (s *http1Stream) onUse() { // for non-zeros
+func (s *server1Stream) onUse() { // for non-zeros
 	s._webStream_.onUse()
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
 }
-func (s *http1Stream) onEnd() { // for zeros
+func (s *server1Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
 	if s.socket != nil {
@@ -443,7 +443,7 @@ func (s *http1Stream) onEnd() { // for zeros
 	s._webStream_.onEnd()
 }
 
-func (s *http1Stream) execute() {
+func (s *server1Stream) execute() {
 	req, resp := &s.request, &s.response
 
 	req.recvHead()
@@ -546,7 +546,7 @@ func (s *http1Stream) execute() {
 	}
 }
 
-func (s *http1Stream) writeContinue() bool { // 100 continue
+func (s *server1Stream) writeContinue() bool { // 100 continue
 	conn := s
 	// This is an interim response, write directly.
 	if s.setWriteDeadline(time.Now().Add(conn.Server().WriteTimeout())) == nil {
@@ -559,7 +559,7 @@ func (s *http1Stream) writeContinue() bool { // 100 continue
 	return false
 }
 
-func (s *http1Stream) executeExchan(webapp *Webapp, req *http1Request, resp *http1Response) { // request & response
+func (s *server1Stream) executeExchan(webapp *Webapp, req *server1Request, resp *server1Response) { // request & response
 	webapp.dispatchExchan(req, resp)
 
 	if !resp.isSent { // only happens on sized contents because for vague contents the response must be sent on echo()
@@ -572,7 +572,7 @@ func (s *http1Stream) executeExchan(webapp *Webapp, req *http1Request, resp *htt
 		req.dropContent()
 	}
 }
-func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { // 4xx & 5xx
+func (s *server1Stream) serveAbnormal(req *server1Request, resp *server1Response) { // 4xx & 5xx
 	conn := s
 	if DebugLevel() >= 2 {
 		Printf("server=%s gate=%d conn=%d headResult=%d\n", conn.Server().Name(), conn.gate.ID(), conn.id, s.request.headResult)
@@ -620,13 +620,13 @@ func (s *http1Stream) serveAbnormal(req *http1Request, resp *http1Response) { //
 	}
 }
 
-func (s *http1Stream) executeSocket() { // upgrade: websocket
+func (s *server1Stream) executeSocket() { // upgrade: websocket
 	// TODO(diogin): implementation (RFC 6455).
 	// NOTICE: use idle timeout or clear read timeout otherwise?
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nConnection: close\r\n\r\n"))
 }
 
-func (s *http1Stream) setReadDeadline(deadline time.Time) error {
+func (s *server1Stream) setReadDeadline(deadline time.Time) error {
 	conn := s
 	if deadline.Sub(conn.lastRead) >= time.Second {
 		if err := conn.netConn.SetReadDeadline(deadline); err != nil {
@@ -636,7 +636,7 @@ func (s *http1Stream) setReadDeadline(deadline time.Time) error {
 	}
 	return nil
 }
-func (s *http1Stream) setWriteDeadline(deadline time.Time) error {
+func (s *server1Stream) setWriteDeadline(deadline time.Time) error {
 	conn := s
 	if deadline.Sub(conn.lastWrite) >= time.Second {
 		if err := conn.netConn.SetWriteDeadline(deadline); err != nil {
@@ -647,28 +647,28 @@ func (s *http1Stream) setWriteDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (c *http1Stream) webKeeper() webKeeper { return c.WebServer() }
-func (c *http1Stream) webConn() webConn     { return c }
-func (c *http1Stream) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
+func (c *server1Stream) webKeeper() webKeeper { return c.WebServer() }
+func (c *server1Stream) webConn() webConn     { return c }
+func (c *server1Stream) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
 
-func (c *http1Stream) read(p []byte) (int, error)     { return c.netConn.Read(p) }
-func (c *http1Stream) readFull(p []byte) (int, error) { return io.ReadFull(c.netConn, p) }
-func (c *http1Stream) write(p []byte) (int, error)    { return c.netConn.Write(p) }
-func (c *http1Stream) writev(vector *net.Buffers) (int64, error) {
+func (c *server1Stream) read(p []byte) (int, error)     { return c.netConn.Read(p) }
+func (c *server1Stream) readFull(p []byte) (int, error) { return io.ReadFull(c.netConn, p) }
+func (c *server1Stream) write(p []byte) (int, error)    { return c.netConn.Write(p) }
+func (c *server1Stream) writev(vector *net.Buffers) (int64, error) {
 	return vector.WriteTo(c.netConn)
 }
 
-// http1Request is the server-side HTTP/1 request.
-type http1Request struct { // incoming. needs parsing
+// server1Request is the server-side HTTP/1 request.
+type server1Request struct { // incoming. needs parsing
 	// Parent
-	httpRequest_
+	serverRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (r *http1Request) recvHead() { // control + headers
+func (r *server1Request) recvHead() { // control + headers
 	// The entire request head must be received in one timeout
 	if err := r._beforeRead(&r.recvTime); err != nil {
 		r.headResult = -1
@@ -684,10 +684,10 @@ func (r *http1Request) recvHead() { // control + headers
 	}
 	r.cleanInput()
 	if DebugLevel() >= 2 {
-		Printf("[http1Stream=%d]<------- [%s]\n", r.stream.webConn().ID(), r.input[r.head.from:r.head.edge])
+		Printf("[server1Stream=%d]<------- [%s]\n", r.stream.webConn().ID(), r.input[r.head.from:r.head.edge])
 	}
 }
-func (r *http1Request) _recvControl() bool { // method SP request-target SP HTTP-version CRLF
+func (r *server1Request) _recvControl() bool { // method SP request-target SP HTTP-version CRLF
 	r.pBack, r.pFore = 0, 0
 
 	// method = token
@@ -1066,7 +1066,7 @@ beforeVersion: // r.pFore is at ' '.
 
 	return true
 }
-func (r *http1Request) cleanInput() {
+func (r *server1Request) cleanInput() {
 	// r.pFore is at the beginning of content (if exists) or next request (if exists and is pipelined).
 	if r.contentSize == -1 { // no content
 		r.contentReceived = true   // we treat it as "received"
@@ -1104,19 +1104,19 @@ func (r *http1Request) cleanInput() {
 	}
 }
 
-func (r *http1Request) readContent() (p []byte, err error) { return r.readContent1() }
+func (r *server1Request) readContent() (p []byte, err error) { return r.readContent1() }
 
-// http1Response is the server-side HTTP/1 response.
-type http1Response struct { // outgoing. needs building
+// server1Response is the server-side HTTP/1 response.
+type server1Response struct { // outgoing. needs building
 	// Parent
-	httpResponse_
+	serverResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (r *http1Response) control() []byte { // HTTP/1.1 xxx ?
+func (r *server1Response) control() []byte { // HTTP/1.1 xxx ?
 	var start []byte
 	if r.status >= int16(len(http1Controls)) || http1Controls[r.status] == nil {
 		r.start = http1Template
@@ -1130,13 +1130,13 @@ func (r *http1Response) control() []byte { // HTTP/1.1 xxx ?
 	return start
 }
 
-func (r *http1Response) addHeader(name []byte, value []byte) bool   { return r.addHeader1(name, value) }
-func (r *http1Response) header(name []byte) (value []byte, ok bool) { return r.header1(name) }
-func (r *http1Response) hasHeader(name []byte) bool                 { return r.hasHeader1(name) }
-func (r *http1Response) delHeader(name []byte) (deleted bool)       { return r.delHeader1(name) }
-func (r *http1Response) delHeaderAt(i uint8)                        { r.delHeaderAt1(i) }
+func (r *server1Response) addHeader(name []byte, value []byte) bool   { return r.addHeader1(name, value) }
+func (r *server1Response) header(name []byte) (value []byte, ok bool) { return r.header1(name) }
+func (r *server1Response) hasHeader(name []byte) bool                 { return r.hasHeader1(name) }
+func (r *server1Response) delHeader(name []byte) (deleted bool)       { return r.delHeader1(name) }
+func (r *server1Response) delHeaderAt(i uint8)                        { r.delHeaderAt1(i) }
 
-func (r *http1Response) AddHTTPSRedirection(authority string) bool {
+func (r *server1Response) AddHTTPSRedirection(authority string) bool {
 	headerSize := len(http1BytesLocationHTTPS)
 	if authority == "" {
 		headerSize += len(r.request.UnsafeAuthority())
@@ -1158,7 +1158,7 @@ func (r *http1Response) AddHTTPSRedirection(authority string) bool {
 		return false
 	}
 }
-func (r *http1Response) AddHostnameRedirection(hostname string) bool {
+func (r *server1Response) AddHostnameRedirection(hostname string) bool {
 	var prefix []byte
 	if r.request.IsHTTPS() {
 		prefix = http1BytesLocationHTTPS
@@ -1180,7 +1180,7 @@ func (r *http1Response) AddHostnameRedirection(hostname string) bool {
 		return false
 	}
 }
-func (r *http1Response) AddDirectoryRedirection() bool {
+func (r *server1Response) AddDirectoryRedirection() bool {
 	var prefix []byte
 	if r.request.IsHTTPS() {
 		prefix = http1BytesLocationHTTPS
@@ -1205,9 +1205,9 @@ func (r *http1Response) AddDirectoryRedirection() bool {
 		return false
 	}
 }
-func (r *http1Response) setConnectionClose() { r.stream.webConn().setPersistent(false) }
+func (r *server1Response) setConnectionClose() { r.stream.webConn().setPersistent(false) }
 
-func (r *http1Response) AddCookie(cookie *Cookie) bool {
+func (r *server1Response) AddCookie(cookie *Cookie) bool {
 	if cookie.name == "" || cookie.invalid {
 		return false
 	}
@@ -1225,20 +1225,20 @@ func (r *http1Response) AddCookie(cookie *Cookie) bool {
 	}
 }
 
-func (r *http1Response) sendChain() error { return r.sendChain1() }
+func (r *server1Response) sendChain() error { return r.sendChain1() }
 
-func (r *http1Response) echoHeaders() error { return r.writeHeaders1() }
-func (r *http1Response) echoChain() error   { return r.echoChain1(r.request.IsHTTP1_1()) } // chunked only for HTTP/1.1
+func (r *server1Response) echoHeaders() error { return r.writeHeaders1() }
+func (r *server1Response) echoChain() error   { return r.echoChain1(r.request.IsHTTP1_1()) } // chunked only for HTTP/1.1
 
-func (r *http1Response) addTrailer(name []byte, value []byte) bool {
+func (r *server1Response) addTrailer(name []byte, value []byte) bool {
 	if r.request.VersionCode() == Version1_1 {
 		return r.addTrailer1(name, value)
 	}
 	return true // HTTP/1.0 doesn't support trailer.
 }
-func (r *http1Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }
+func (r *server1Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }
 
-func (r *http1Response) proxyPass1xx(resp HResponse) bool {
+func (r *server1Response) proxyPass1xx(resp BackendResponse) bool {
 	resp.delHopHeaders()
 	r.status = resp.Status()
 	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
@@ -1259,10 +1259,10 @@ func (r *http1Response) proxyPass1xx(resp HResponse) bool {
 	r.onUse(Version1_1)
 	return true
 }
-func (r *http1Response) passHeaders() error       { return r.writeHeaders1() }
-func (r *http1Response) passBytes(p []byte) error { return r.passBytes1(p) }
+func (r *server1Response) passHeaders() error       { return r.writeHeaders1() }
+func (r *server1Response) passBytes(p []byte) error { return r.passBytes1(p) }
 
-func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
+func (r *server1Response) finalizeHeaders() { // add at most 256 bytes
 	// date: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.iDate == 0 {
 		r.fieldsEdge += uint16(r.stream.webKeeper().Stage().Clock().writeDate1(r.fields[r.fieldsEdge:]))
@@ -1302,62 +1302,62 @@ func (r *http1Response) finalizeHeaders() { // add at most 256 bytes
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionClose))
 	}
 }
-func (r *http1Response) finalizeVague() error {
+func (r *server1Response) finalizeVague() error {
 	if r.request.VersionCode() == Version1_1 {
 		return r.finalizeVague1()
 	}
 	return nil // HTTP/1.0 does nothing.
 }
 
-func (r *http1Response) addedHeaders() []byte { return r.fields[0:r.fieldsEdge] }
-func (r *http1Response) fixedHeaders() []byte { return http1BytesFixedResponseHeaders }
+func (r *server1Response) addedHeaders() []byte { return r.fields[0:r.fieldsEdge] }
+func (r *server1Response) fixedHeaders() []byte { return http1BytesFixedResponseHeaders }
 
-// poolHTTP1Socket
-var poolHTTP1Socket sync.Pool
+// poolServer1Socket
+var poolServer1Socket sync.Pool
 
-func getHTTP1Socket(stream *http1Stream) *http1Socket {
+func getServer1Socket(stream *server1Stream) *server1Socket {
 	return nil
 }
-func putHTTP1Socket(socket *http1Socket) {
+func putServer1Socket(socket *server1Socket) {
 }
 
-// http1Socket is the server-side HTTP/1 websocket.
-type http1Socket struct {
+// server1Socket is the server-side HTTP/1 websocket.
+type server1Socket struct {
 	// Parent
-	httpSocket_
+	serverSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (s *http1Socket) onUse() {
-	s.httpSocket_.onUse()
+func (s *server1Socket) onUse() {
+	s.serverSocket_.onUse()
 }
-func (s *http1Socket) onEnd() {
-	s.httpSocket_.onEnd()
+func (s *server1Socket) onEnd() {
+	s.serverSocket_.onEnd()
 }
 
-// poolHTTP2Conn is the server-side HTTP/2 connection pool.
-var poolHTTP2Conn sync.Pool
+// poolServer2Conn is the server-side HTTP/2 connection pool.
+var poolServer2Conn sync.Pool
 
-func getHTTP2Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) httpxConn {
-	var httpConn *http2Conn
-	if x := poolHTTP2Conn.Get(); x == nil {
-		httpConn = new(http2Conn)
+func getServer2Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) httpxConn {
+	var serverConn *server2Conn
+	if x := poolServer2Conn.Get(); x == nil {
+		serverConn = new(server2Conn)
 	} else {
-		httpConn = x.(*http2Conn)
+		serverConn = x.(*server2Conn)
 	}
-	httpConn.onGet(id, gate, netConn, rawConn)
-	return httpConn
+	serverConn.onGet(id, gate, netConn, rawConn)
+	return serverConn
 }
-func putHTTP2Conn(httpConn *http2Conn) {
-	httpConn.onPut()
-	poolHTTP2Conn.Put(httpConn)
+func putServer2Conn(serverConn *server2Conn) {
+	serverConn.onPut()
+	poolServer2Conn.Put(serverConn)
 }
 
-// http2Conn is the server-side HTTP/2 connection.
-type http2Conn struct {
+// server2Conn is the server-side HTTP/2 connection.
+type server2Conn struct {
 	// Parent
 	ServerConn_
 	// Mixins
@@ -1376,15 +1376,15 @@ type http2Conn struct {
 	outWindow      int32               // connection-level window size for outgoing DATA frames
 	outgoingChan   chan *http2OutFrame // frames generated by streams and waiting for c.serve() to send
 	// Conn states (zeros)
-	inFrame0    http2InFrame                        // incoming frame, http2Conn controlled
-	inFrame1    http2InFrame                        // incoming frame, http2Conn controlled
-	inFrame     *http2InFrame                       // current incoming frame, used by recvFrame(). refers to c.inFrame0 or c.inFrame1 in turn
-	streams     [http2MaxActiveStreams]*http2Stream // active (open, remoteClosed, localClosed) streams
-	vector      net.Buffers                         // used by writev in c.serve()
-	fixedVector [2][]byte                           // used by writev in c.serve()
-	http2Conn0                                      // all values must be zero by default in this struct!
+	inFrame0     http2InFrame                          // incoming frame, server2Conn controlled
+	inFrame1     http2InFrame                          // incoming frame, server2Conn controlled
+	inFrame      *http2InFrame                         // current incoming frame, used by recvFrame(). refers to c.inFrame0 or c.inFrame1 in turn
+	streams      [http2MaxActiveStreams]*server2Stream // active (open, remoteClosed, localClosed) streams
+	vector       net.Buffers                           // used by writev in c.serve()
+	fixedVector  [2][]byte                             // used by writev in c.serve()
+	server2Conn0                                       // all values must be zero by default in this struct!
 }
-type http2Conn0 struct { // for fast reset, entirely
+type server2Conn0 struct { // for fast reset, entirely
 	bufferEdge   uint32                            // incoming data ends at c.buffer.buf[c.bufferEdge]
 	pBack        uint32                            // incoming frame part (header or payload) begins from c.buffer.buf[c.pBack]
 	pFore        uint32                            // incoming frame part (header or payload) ends at c.buffer.buf[c.pFore]
@@ -1400,7 +1400,7 @@ type http2Conn0 struct { // for fast reset, entirely
 	//queuedControlFrames?
 }
 
-func (c *http2Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
+func (c *server2Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
 	c.ServerConn_.OnGet(id, gate)
 	c._webConn_.onGet()
 	c.netConn = netConn
@@ -1420,7 +1420,7 @@ func (c *http2Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn s
 		c.outgoingChan = make(chan *http2OutFrame)
 	}
 }
-func (c *http2Conn) onPut() {
+func (c *server2Conn) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
 	// c.buffer is reserved
@@ -1430,21 +1430,21 @@ func (c *http2Conn) onPut() {
 	c.inFrame0.zero()
 	c.inFrame1.zero()
 	c.inFrame = nil
-	c.streams = [http2MaxActiveStreams]*http2Stream{}
+	c.streams = [http2MaxActiveStreams]*server2Stream{}
 	c.vector = nil
 	c.fixedVector = [2][]byte{}
-	c.http2Conn0 = http2Conn0{}
+	c.server2Conn0 = server2Conn0{}
 	c._webConn_.onPut()
 	c.ServerConn_.OnPut()
 }
 
-func (c *http2Conn) WebServer() WebServer { return c.Server().(WebServer) }
+func (c *server2Conn) WebServer() WebServer { return c.Server().(WebServer) }
 
-func (c *http2Conn) serve() { // runner
+func (c *server2Conn) serve() { // runner
 	Printf("========================== conn=%d start =========================\n", c.id)
 	defer func() {
 		Printf("========================== conn=%d exit =========================\n", c.id)
-		putHTTP2Conn(c)
+		putServer2Conn(c)
 	}()
 	if err := c.handshake(); err != nil {
 		c.closeConn()
@@ -1461,7 +1461,7 @@ serve:
 					// Ignore unknown frames.
 					continue
 				}
-				if err := http2FrameProcessors[inFrame.kind](c, inFrame); err == nil {
+				if err := server2FrameProcessors[inFrame.kind](c, inFrame); err == nil {
 					// Successfully processed. Next one.
 					continue
 				} else if h2e, ok := err.(http2Error); ok {
@@ -1516,7 +1516,7 @@ serve:
 	Printf("conn=%d c.serve() quit\n", c.id)
 }
 
-func (c *http2Conn) handshake() error {
+func (c *server2Conn) handshake() error {
 	// Set deadline for the first request headers
 	if err := c.setReadDeadline(time.Now().Add(c.Server().ReadTimeout())); err != nil {
 		return err
@@ -1538,15 +1538,15 @@ func (c *http2Conn) handshake() error {
 		return err
 	}
 	// TODO: write deadline
-	n, err := c.write(http2ServerPrefaceAndMore)
+	n, err := c.write(server2PrefaceAndMore)
 	Printf("--------------------- conn=%d CALL WRITE=%d -----------------------\n", c.id, n)
-	Printf("conn=%d ---> %v\n", c.id, http2ServerPrefaceAndMore)
+	Printf("conn=%d ---> %v\n", c.id, server2PrefaceAndMore)
 	if err != nil {
 		Printf("conn=%d error=%s\n", c.id, err.Error())
 	}
 	return err
 }
-func (c *http2Conn) receive() { // runner
+func (c *server2Conn) receive() { // runner
 	if DebugLevel() >= 1 {
 		defer Printf("conn=%d c.receive() quit\n", c.id)
 	}
@@ -1564,7 +1564,7 @@ func (c *http2Conn) receive() { // runner
 	}
 }
 
-var http2ServerPrefaceAndMore = []byte{
+var server2PrefaceAndMore = []byte{
 	// server preface settings
 	0, 0, 30, // length=30
 	4,          // kind=http2FrameSettings
@@ -1590,7 +1590,7 @@ var http2ServerPrefaceAndMore = []byte{
 	0x7f, 0xff, 0x00, 0x00, // windowSize=2G1-64K1
 }
 
-func (c *http2Conn) goawayCloseConn(h2e http2Error) {
+func (c *server2Conn) goawayCloseConn(h2e http2Error) {
 	goaway := &c.outFrame
 	goaway.length = 8
 	goaway.streamID = 0
@@ -1604,23 +1604,23 @@ func (c *http2Conn) goawayCloseConn(h2e http2Error) {
 	c.closeConn()
 }
 
-var http2FrameProcessors = [...]func(*http2Conn, *http2InFrame) error{
-	(*http2Conn).processDataFrame,
-	(*http2Conn).processHeadersFrame,
-	(*http2Conn).processPriorityFrame,
-	(*http2Conn).processRSTStreamFrame,
-	(*http2Conn).processSettingsFrame,
+var server2FrameProcessors = [...]func(*server2Conn, *http2InFrame) error{
+	(*server2Conn).processDataFrame,
+	(*server2Conn).processHeadersFrame,
+	(*server2Conn).processPriorityFrame,
+	(*server2Conn).processRSTStreamFrame,
+	(*server2Conn).processSettingsFrame,
 	nil, // pushPromise frames are rejected in c.recvFrame()
-	(*http2Conn).processPingFrame,
+	(*server2Conn).processPingFrame,
 	nil, // goaway frames are hijacked by c.receive()
-	(*http2Conn).processWindowUpdateFrame,
+	(*server2Conn).processWindowUpdateFrame,
 	nil, // discrete continuation frames are rejected in c.recvFrame()
 }
 
-func (c *http2Conn) processHeadersFrame(inFrame *http2InFrame) error {
+func (c *server2Conn) processHeadersFrame(inFrame *http2InFrame) error {
 	var (
-		stream *http2Stream
-		req    *http2Request
+		stream *server2Stream
+		req    *server2Request
 	)
 	streamID := inFrame.streamID
 	if streamID > c.lastStreamID { // new stream
@@ -1629,10 +1629,10 @@ func (c *http2Conn) processHeadersFrame(inFrame *http2InFrame) error {
 		}
 		c.lastStreamID = streamID
 		c.usedStreams.Add(1)
-		stream = getHTTP2Stream(c, streamID, c.clientSettings.initialWindowSize)
+		stream = getServer2Stream(c, streamID, c.clientSettings.initialWindowSize)
 		req = &stream.request
 		if !c._decodeFields(inFrame.effective(), req.joinHeaders) {
-			putHTTP2Stream(stream)
+			putServer2Stream(stream)
 			return http2ErrorCompression
 		}
 		if inFrame.endStream {
@@ -1662,7 +1662,7 @@ func (c *http2Conn) processHeadersFrame(inFrame *http2InFrame) error {
 	}
 	return nil
 }
-func (c *http2Conn) _decodeFields(fields []byte, join func(p []byte) bool) bool {
+func (c *server2Conn) _decodeFields(fields []byte, join func(p []byte) bool) bool {
 	var (
 		I  uint32
 		j  int
@@ -1759,7 +1759,7 @@ func (c *http2Conn) _decodeFields(fields []byte, join func(p []byte) bool) bool 
 	}
 	return true
 }
-func (c *http2Conn) _decodeString(src []byte, req *http2Request) (int, bool) {
+func (c *server2Conn) _decodeString(src []byte, req *server2Request) (int, bool) {
 	I, j, ok := http2DecodeInteger(src, 7, _16K)
 	if !ok {
 		return 0, false
@@ -1778,10 +1778,10 @@ func (c *http2Conn) _decodeString(src []byte, req *http2Request) (int, bool) {
 		return j, true
 	}
 }
-func (c *http2Conn) processDataFrame(inFrame *http2InFrame) error {
+func (c *server2Conn) processDataFrame(inFrame *http2InFrame) error {
 	return nil
 }
-func (c *http2Conn) processWindowUpdateFrame(inFrame *http2InFrame) error {
+func (c *server2Conn) processWindowUpdateFrame(inFrame *http2InFrame) error {
 	windowSize := binary.BigEndian.Uint32(inFrame.effective())
 	if windowSize == 0 || windowSize > _2G1 {
 		return http2ErrorProtocol
@@ -1791,7 +1791,7 @@ func (c *http2Conn) processWindowUpdateFrame(inFrame *http2InFrame) error {
 	Printf("conn=%d stream=%d windowUpdate=%d\n", c.id, inFrame.streamID, windowSize)
 	return nil
 }
-func (c *http2Conn) processSettingsFrame(inFrame *http2InFrame) error {
+func (c *server2Conn) processSettingsFrame(inFrame *http2InFrame) error {
 	if inFrame.ack {
 		c.acknowledged = true
 		return nil
@@ -1799,7 +1799,7 @@ func (c *http2Conn) processSettingsFrame(inFrame *http2InFrame) error {
 	// TODO: client sent a new settings
 	return nil
 }
-func (c *http2Conn) _updateClientSettings(inFrame *http2InFrame) error {
+func (c *server2Conn) _updateClientSettings(inFrame *http2InFrame) error {
 	settings := inFrame.effective()
 	windowDelta, j := int32(0), uint32(0)
 	for i, n := uint32(0), inFrame.length/6; i < n; i++ {
@@ -1839,17 +1839,17 @@ func (c *http2Conn) _updateClientSettings(inFrame *http2InFrame) error {
 	Printf("conn=%d clientSettings=%+v\n", c.id, c.clientSettings)
 	return nil
 }
-func (c *http2Conn) _adjustStreamWindows(delta int32) {
+func (c *server2Conn) _adjustStreamWindows(delta int32) {
 }
-func (c *http2Conn) processRSTStreamFrame(inFrame *http2InFrame) error {
+func (c *server2Conn) processRSTStreamFrame(inFrame *http2InFrame) error {
 	// TODO
 	return nil
 }
-func (c *http2Conn) processPriorityFrame(inFrame *http2InFrame) error {
+func (c *server2Conn) processPriorityFrame(inFrame *http2InFrame) error {
 	// TODO
 	return nil
 }
-func (c *http2Conn) processPingFrame(inFrame *http2InFrame) error {
+func (c *server2Conn) processPingFrame(inFrame *http2InFrame) error {
 	pong := &c.outFrame
 	pong.length = 8
 	pong.streamID = 0
@@ -1861,7 +1861,7 @@ func (c *http2Conn) processPingFrame(inFrame *http2InFrame) error {
 	return err
 }
 
-func (c *http2Conn) findStream(streamID uint32) *http2Stream {
+func (c *server2Conn) findStream(streamID uint32) *server2Stream {
 	c.streamIDs[http2MaxActiveStreams] = streamID
 	index := uint8(0)
 	for c.streamIDs[index] != streamID { // searching stream id
@@ -1875,7 +1875,7 @@ func (c *http2Conn) findStream(streamID uint32) *http2Stream {
 	}
 	return c.streams[index]
 }
-func (c *http2Conn) joinStream(stream *http2Stream) {
+func (c *server2Conn) joinStream(stream *server2Stream) {
 	c.streamIDs[http2MaxActiveStreams] = 0
 	index := uint8(0)
 	for c.streamIDs[index] != 0 { // searching a free slot
@@ -1891,7 +1891,7 @@ func (c *http2Conn) joinStream(stream *http2Stream) {
 	c.streams[index] = stream
 	c.streamIDs[index] = stream.id
 }
-func (c *http2Conn) quitStream(streamID uint32) {
+func (c *server2Conn) quitStream(streamID uint32) {
 	stream := c.findStream(streamID)
 	if stream == nil {
 		BugExitln("quitStream cannot find the stream")
@@ -1903,7 +1903,7 @@ func (c *http2Conn) quitStream(streamID uint32) {
 	c.streamIDs[stream.index] = 0
 }
 
-func (c *http2Conn) recvFrame() (*http2InFrame, error) {
+func (c *server2Conn) recvFrame() (*http2InFrame, error) {
 	// Receive frame header, 9 bytes
 	c.pBack = c.pFore
 	if err := c._growFrame(9); err != nil {
@@ -1955,7 +1955,7 @@ func (c *http2Conn) recvFrame() (*http2InFrame, error) {
 	}
 	return inFrame, nil
 }
-func (c *http2Conn) _growFrame(size uint32) error {
+func (c *server2Conn) _growFrame(size uint32) error {
 	c.pFore += size // size is limited, so won't overflow
 	if c.pFore <= c.bufferEdge {
 		return nil
@@ -1976,7 +1976,7 @@ func (c *http2Conn) _growFrame(size uint32) error {
 	}
 	return c._fillBuffer(c.pFore - c.bufferEdge)
 }
-func (c *http2Conn) _fillBuffer(size uint32) error {
+func (c *server2Conn) _fillBuffer(size uint32) error {
 	n, err := c.readAtLeast(c.buffer.buf[c.bufferEdge:], int(size))
 	if DebugLevel() >= 2 {
 		Printf("--------------------- conn=%d CALL READ=%d -----------------------\n", c.id, n)
@@ -1987,7 +1987,7 @@ func (c *http2Conn) _fillBuffer(size uint32) error {
 	c.bufferEdge += uint32(n)
 	return err
 }
-func (c *http2Conn) _joinContinuations(headers *http2InFrame) error { // into a single headers frame
+func (c *server2Conn) _joinContinuations(headers *http2InFrame) error { // into a single headers frame
 	headers.buffer = nil // will be restored at the end of continuations
 	var continuation http2InFrame
 	c.cBack, c.cFore = c.pFore, c.pFore
@@ -2030,7 +2030,7 @@ func (c *http2Conn) _joinContinuations(headers *http2InFrame) error { // into a 
 	}
 	return nil
 }
-func (c *http2Conn) _growContinuation(size uint32, headers *http2InFrame) error {
+func (c *server2Conn) _growContinuation(size uint32, headers *http2InFrame) error {
 	c.cFore += size // won't overflow
 	if c.cFore <= c.bufferEdge {
 		return nil
@@ -2065,7 +2065,7 @@ func (c *http2Conn) _growContinuation(size uint32, headers *http2InFrame) error 
 	return c._fillBuffer(c.cFore - c.bufferEdge)
 }
 
-func (c *http2Conn) sendFrame(outFrame *http2OutFrame) error {
+func (c *server2Conn) sendFrame(outFrame *http2OutFrame) error {
 	header := outFrame.encodeHeader()
 	if len(outFrame.payload) > 0 {
 		c.vector = c.fixedVector[0:2]
@@ -2082,7 +2082,7 @@ func (c *http2Conn) sendFrame(outFrame *http2OutFrame) error {
 	return err
 }
 
-func (c *http2Conn) setReadDeadline(deadline time.Time) error {
+func (c *server2Conn) setReadDeadline(deadline time.Time) error {
 	if deadline.Sub(c.lastRead) >= time.Second {
 		if err := c.netConn.SetReadDeadline(deadline); err != nil {
 			return err
@@ -2091,7 +2091,7 @@ func (c *http2Conn) setReadDeadline(deadline time.Time) error {
 	}
 	return nil
 }
-func (c *http2Conn) setWriteDeadline(deadline time.Time) error {
+func (c *server2Conn) setWriteDeadline(deadline time.Time) error {
 	if deadline.Sub(c.lastWrite) >= time.Second {
 		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
@@ -2101,16 +2101,16 @@ func (c *http2Conn) setWriteDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (c *http2Conn) readAtLeast(p []byte, n int) (int, error) {
+func (c *server2Conn) readAtLeast(p []byte, n int) (int, error) {
 	return io.ReadAtLeast(c.netConn, p, n)
 }
-func (c *http2Conn) write(p []byte) (int, error) { return c.netConn.Write(p) }
-func (c *http2Conn) writev(vector *net.Buffers) (int64, error) {
+func (c *server2Conn) write(p []byte) (int, error) { return c.netConn.Write(p) }
+func (c *server2Conn) writev(vector *net.Buffers) (int64, error) {
 	// Will consume vector automatically
 	return vector.WriteTo(c.netConn)
 }
 
-func (c *http2Conn) closeConn() {
+func (c *server2Conn) closeConn() {
 	if DebugLevel() >= 2 {
 		Printf("conn=%d connClosed by serve()\n", c.id)
 	}
@@ -2118,13 +2118,13 @@ func (c *http2Conn) closeConn() {
 	c.gate.OnConnClosed()
 }
 
-// poolHTTP2Stream is the server-side HTTP/2 stream pool.
-var poolHTTP2Stream sync.Pool
+// poolServer2Stream is the server-side HTTP/2 stream pool.
+var poolServer2Stream sync.Pool
 
-func getHTTP2Stream(conn *http2Conn, id uint32, outWindow int32) *http2Stream {
-	var stream *http2Stream
-	if x := poolHTTP2Stream.Get(); x == nil {
-		stream = new(http2Stream)
+func getServer2Stream(conn *server2Conn, id uint32, outWindow int32) *server2Stream {
+	var stream *server2Stream
+	if x := poolServer2Stream.Get(); x == nil {
+		stream = new(server2Stream)
 		req, resp := &stream.request, &stream.response
 		req.shell = req
 		req.stream = stream
@@ -2132,41 +2132,41 @@ func getHTTP2Stream(conn *http2Conn, id uint32, outWindow int32) *http2Stream {
 		resp.stream = stream
 		resp.request = req
 	} else {
-		stream = x.(*http2Stream)
+		stream = x.(*server2Stream)
 	}
 	stream.onUse(conn, id, outWindow)
 	return stream
 }
-func putHTTP2Stream(stream *http2Stream) {
+func putServer2Stream(stream *server2Stream) {
 	stream.onEnd()
-	poolHTTP2Stream.Put(stream)
+	poolServer2Stream.Put(stream)
 }
 
-// http2Stream is the server-side HTTP/2 stream.
-type http2Stream struct {
+// server2Stream is the server-side HTTP/2 stream.
+type server2Stream struct {
 	// Mixins
 	_webStream_
 	// Assocs
-	request  http2Request  // the http/2 request.
-	response http2Response // the http/2 response.
-	socket   *http2Socket  // ...
+	request  server2Request  // the http/2 request.
+	response server2Response // the http/2 response.
+	socket   *server2Socket  // ...
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	conn      *http2Conn
+	conn      *server2Conn
 	id        uint32 // stream id
 	inWindow  int32  // stream-level window size for incoming DATA frames
 	outWindow int32  // stream-level window size for outgoing DATA frames
 	// Stream states (zeros)
-	http2Stream0 // all values must be zero by default in this struct!
+	server2Stream0 // all values must be zero by default in this struct!
 }
-type http2Stream0 struct { // for fast reset, entirely
+type server2Stream0 struct { // for fast reset, entirely
 	index uint8 // index in s.conn.streams
 	state uint8 // http2StateOpen, http2StateRemoteClosed, ...
 	reset bool  // received a RST_STREAM?
 }
 
-func (s *http2Stream) onUse(conn *http2Conn, id uint32, outWindow int32) { // for non-zeros
+func (s *server2Stream) onUse(conn *server2Conn, id uint32, outWindow int32) { // for non-zeros
 	s._webStream_.onUse()
 	s.conn = conn
 	s.id = id
@@ -2175,7 +2175,7 @@ func (s *http2Stream) onUse(conn *http2Conn, id uint32, outWindow int32) { // fo
 	s.request.onUse(Version2)
 	s.response.onUse(Version2)
 }
-func (s *http2Stream) onEnd() { // for zeros
+func (s *server2Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
 	if s.socket != nil {
@@ -2183,77 +2183,77 @@ func (s *http2Stream) onEnd() { // for zeros
 		s.socket = nil
 	}
 	s.conn = nil
-	s.http2Stream0 = http2Stream0{}
+	s.server2Stream0 = server2Stream0{}
 	s._webStream_.onEnd()
 }
 
-func (s *http2Stream) execute() { // runner
-	defer putHTTP2Stream(s)
+func (s *server2Stream) execute() { // runner
+	defer putServer2Stream(s)
 	// TODO ...
 	if DebugLevel() >= 2 {
 		Println("stream processing...")
 	}
 }
 
-func (s *http2Stream) writeContinue() bool { // 100 continue
+func (s *server2Stream) writeContinue() bool { // 100 continue
 	// TODO
 	return false
 }
 
-func (s *http2Stream) executeExchan(webapp *Webapp, req *http2Request, resp *http2Response) { // request & response
+func (s *server2Stream) executeExchan(webapp *Webapp, req *server2Request, resp *server2Response) { // request & response
 	// TODO
 	webapp.dispatchExchan(req, resp)
 }
-func (s *http2Stream) serveAbnormal(req *http2Request, resp *http2Response) { // 4xx & 5xx
+func (s *server2Stream) serveAbnormal(req *server2Request, resp *server2Response) { // 4xx & 5xx
 	// TODO
 }
 
-func (s *http2Stream) executeSocket() { // see RFC 8441: https://datatracker.ietf.org/doc/html/rfc8441
+func (s *server2Stream) executeSocket() { // see RFC 8441: https://datatracker.ietf.org/doc/html/rfc8441
 	// TODO
 }
 
-func (s *http2Stream) setReadDeadline(deadline time.Time) error { // for content i/o only
+func (s *server2Stream) setReadDeadline(deadline time.Time) error { // for content i/o only
 	return nil
 }
-func (s *http2Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only
+func (s *server2Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only
 	return nil
 }
 
-func (s *http2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
-func (s *http2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
+func (s *server2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
+func (s *server2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
-func (s *http2Stream) webKeeper() webKeeper { return s.conn.WebServer() }
-func (s *http2Stream) webConn() webConn     { return s.conn }
-func (s *http2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
+func (s *server2Stream) webKeeper() webKeeper { return s.conn.WebServer() }
+func (s *server2Stream) webConn() webConn     { return s.conn }
+func (s *server2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
-func (s *http2Stream) read(p []byte) (int, error) { // for content i/o only
+func (s *server2Stream) read(p []byte) (int, error) { // for content i/o only
 	// TODO
 	return 0, nil
 }
-func (s *http2Stream) readFull(p []byte) (int, error) { // for content i/o only
+func (s *server2Stream) readFull(p []byte) (int, error) { // for content i/o only
 	// TODO
 	return 0, nil
 }
-func (s *http2Stream) write(p []byte) (int, error) { // for content i/o only
+func (s *server2Stream) write(p []byte) (int, error) { // for content i/o only
 	// TODO
 	return 0, nil
 }
-func (s *http2Stream) writev(vector *net.Buffers) (int64, error) { // for content i/o only
+func (s *server2Stream) writev(vector *net.Buffers) (int64, error) { // for content i/o only
 	// TODO
 	return 0, nil
 }
 
-// http2Request is the server-side HTTP/2 request.
-type http2Request struct { // incoming. needs parsing
+// server2Request is the server-side HTTP/2 request.
+type server2Request struct { // incoming. needs parsing
 	// Parent
-	httpRequest_
+	serverRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (r *http2Request) joinHeaders(p []byte) bool {
+func (r *server2Request) joinHeaders(p []byte) bool {
 	if len(p) > 0 {
 		if !r._growHeaders2(int32(len(p))) {
 			return false
@@ -2262,23 +2262,23 @@ func (r *http2Request) joinHeaders(p []byte) bool {
 	}
 	return true
 }
-func (r *http2Request) readContent() (p []byte, err error) { return r.readContent2() }
-func (r *http2Request) joinTrailers(p []byte) bool {
+func (r *server2Request) readContent() (p []byte, err error) { return r.readContent2() }
+func (r *server2Request) joinTrailers(p []byte) bool {
 	// TODO: to r.array
 	return false
 }
 
-// http2Response is the server-side HTTP/2 response.
-type http2Response struct { // outgoing. needs building
+// server2Response is the server-side HTTP/2 response.
+type server2Response struct { // outgoing. needs building
 	// Parent
-	httpResponse_
+	serverResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (r *http2Response) control() []byte { // :status xxx
+func (r *server2Response) control() []byte { // :status xxx
 	var start []byte
 	if r.status >= int16(len(http2Controls)) || http2Controls[r.status] == nil {
 		copy(r.start[:], http2Template[:])
@@ -2292,41 +2292,41 @@ func (r *http2Response) control() []byte { // :status xxx
 	return start
 }
 
-func (r *http2Response) addHeader(name []byte, value []byte) bool   { return r.addHeader2(name, value) }
-func (r *http2Response) header(name []byte) (value []byte, ok bool) { return r.header2(name) }
-func (r *http2Response) hasHeader(name []byte) bool                 { return r.hasHeader2(name) }
-func (r *http2Response) delHeader(name []byte) (deleted bool)       { return r.delHeader2(name) }
-func (r *http2Response) delHeaderAt(i uint8)                        { r.delHeaderAt2(i) }
+func (r *server2Response) addHeader(name []byte, value []byte) bool   { return r.addHeader2(name, value) }
+func (r *server2Response) header(name []byte) (value []byte, ok bool) { return r.header2(name) }
+func (r *server2Response) hasHeader(name []byte) bool                 { return r.hasHeader2(name) }
+func (r *server2Response) delHeader(name []byte) (deleted bool)       { return r.delHeader2(name) }
+func (r *server2Response) delHeaderAt(i uint8)                        { r.delHeaderAt2(i) }
 
-func (r *http2Response) AddHTTPSRedirection(authority string) bool {
+func (r *server2Response) AddHTTPSRedirection(authority string) bool {
 	// TODO
 	return false
 }
-func (r *http2Response) AddHostnameRedirection(hostname string) bool {
+func (r *server2Response) AddHostnameRedirection(hostname string) bool {
 	// TODO
 	return false
 }
-func (r *http2Response) AddDirectoryRedirection() bool {
-	// TODO
-	return false
-}
-
-func (r *http2Response) AddCookie(cookie *Cookie) bool {
+func (r *server2Response) AddDirectoryRedirection() bool {
 	// TODO
 	return false
 }
 
-func (r *http2Response) sendChain() error { return r.sendChain2() }
+func (r *server2Response) AddCookie(cookie *Cookie) bool {
+	// TODO
+	return false
+}
 
-func (r *http2Response) echoHeaders() error { return r.writeHeaders2() }
-func (r *http2Response) echoChain() error   { return r.echoChain2() }
+func (r *server2Response) sendChain() error { return r.sendChain2() }
 
-func (r *http2Response) addTrailer(name []byte, value []byte) bool {
+func (r *server2Response) echoHeaders() error { return r.writeHeaders2() }
+func (r *server2Response) echoChain() error   { return r.echoChain2() }
+
+func (r *server2Response) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer2(name, value)
 }
-func (r *http2Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer2(name) }
+func (r *server2Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer2(name) }
 
-func (r *http2Response) proxyPass1xx(resp HResponse) bool {
+func (r *server2Response) proxyPass1xx(resp BackendResponse) bool {
 	resp.delHopHeaders()
 	r.status = resp.Status()
 	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
@@ -2340,10 +2340,10 @@ func (r *http2Response) proxyPass1xx(resp HResponse) bool {
 	r.onUse(Version2)
 	return false
 }
-func (r *http2Response) passHeaders() error       { return r.writeHeaders2() }
-func (r *http2Response) passBytes(p []byte) error { return r.passBytes2(p) }
+func (r *server2Response) passHeaders() error       { return r.writeHeaders2() }
+func (r *server2Response) passBytes(p []byte) error { return r.passBytes2(p) }
 
-func (r *http2Response) finalizeHeaders() { // add at most 256 bytes
+func (r *server2Response) finalizeHeaders() { // add at most 256 bytes
 	// TODO
 	/*
 		// date: Sun, 06 Nov 1994 08:49:37 GMT
@@ -2352,36 +2352,36 @@ func (r *http2Response) finalizeHeaders() { // add at most 256 bytes
 		}
 	*/
 }
-func (r *http2Response) finalizeVague() error {
+func (r *server2Response) finalizeVague() error {
 	// TODO
 	return nil
 }
 
-func (r *http2Response) addedHeaders() []byte { return nil } // TODO
-func (r *http2Response) fixedHeaders() []byte { return nil } // TODO
+func (r *server2Response) addedHeaders() []byte { return nil } // TODO
+func (r *server2Response) fixedHeaders() []byte { return nil } // TODO
 
-// poolHTTP2Socket
-var poolHTTP2Socket sync.Pool
+// poolServer2Socket
+var poolServer2Socket sync.Pool
 
-func getHTTP2Socket(stream *http2Stream) *http2Socket {
+func getServer2Socket(stream *server2Stream) *server2Socket {
 	return nil
 }
-func putHTTP2Socket(socket *http2Socket) {
+func putServer2Socket(socket *server2Socket) {
 }
 
-// http2Socket is the server-side HTTP/2 websocket.
-type http2Socket struct {
+// server2Socket is the server-side HTTP/2 websocket.
+type server2Socket struct {
 	// Parent
-	httpSocket_
+	serverSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (s *http2Socket) onUse() {
-	s.httpSocket_.onUse()
+func (s *server2Socket) onUse() {
+	s.serverSocket_.onUse()
 }
-func (s *http2Socket) onEnd() {
-	s.httpSocket_.onEnd()
+func (s *server2Socket) onEnd() {
+	s.serverSocket_.onEnd()
 }

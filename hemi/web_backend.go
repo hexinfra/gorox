@@ -24,8 +24,8 @@ type WebBackend interface { // for *HTTP[1-3]Backend
 	MaxContentSize() int64      // in response
 	MaxMemoryContentSize() int32
 	MaxStreamsPerConn() int32
-	FetchStream() (HStream, error)
-	StoreStream(stream HStream)
+	FetchStream() (BackendStream, error)
+	StoreStream(stream BackendStream)
 }
 
 // webBackend_ is the parent for HTTP[1-3]Backend.
@@ -56,11 +56,11 @@ func (b *webBackend_[N]) OnPrepare() {
 	b.PrepareNodes()
 }
 
-// HStream is the backend-side web stream.
-type HStream interface { // for *H[1-3]Stream
-	Request() HRequest
-	Response() HResponse
-	Socket() HSocket
+// BackendStream is the backend-side web stream.
+type BackendStream interface { // for *Backend[1-3]Stream
+	Request() BackendRequest
+	Response() BackendResponse
+	Socket() BackendSocket
 
 	ExecuteExchan() error
 	ExecuteSocket() error
@@ -69,25 +69,25 @@ type HStream interface { // for *H[1-3]Stream
 	markBroken()
 }
 
-// HRequest is the backend-side web request.
-type HRequest interface { // for *H[1-3]Request
+// BackendRequest is the backend-side web request.
+type BackendRequest interface { // for *Backend[1-3]Request
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool
 	proxyCopyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
-	proxyCopyHead(req Request, args *WebExchanProxyArgs) bool
+	proxyCopyHead(req Request, cfg *WebExchanProxyConfig) bool
 	proxyPass(req Request) error
 	proxyPost(content any, hasTrailers bool) error
-	proxyCopyTail(req Request, args *WebExchanProxyArgs) bool
+	proxyCopyTail(req Request, cfg *WebExchanProxyConfig) bool
 	isVague() bool
 	endVague() error
 }
 
-// hRequest_ is the parent for H[1-3]Request.
-type hRequest_ struct { // outgoing. needs building
+// backendRequest_ is the parent for Backend[1-3]Request.
+type backendRequest_ struct { // outgoing. needs building
 	// Parent
 	webOut_ // outgoing web message
 	// Assocs
-	response HResponse // the corresponding response
+	response BackendResponse // the corresponding response
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -96,9 +96,9 @@ type hRequest_ struct { // outgoing. needs building
 		ifUnmodifiedSince int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
 	}
 	// Stream states (zeros)
-	hRequest0 // all values must be zero by default in this struct!
+	backendRequest0 // all values must be zero by default in this struct!
 }
-type hRequest0 struct { // for fast reset, entirely
+type backendRequest0 struct { // for fast reset, entirely
 	indexes struct {
 		host              uint8
 		ifModifiedSince   uint8
@@ -107,42 +107,42 @@ type hRequest0 struct { // for fast reset, entirely
 	}
 }
 
-func (r *hRequest_) onUse(versionCode uint8) { // for non-zeros
+func (r *backendRequest_) onUse(versionCode uint8) { // for non-zeros
 	const asRequest = true
 	r.webOut_.onUse(versionCode, asRequest)
 	r.unixTimes.ifModifiedSince = -1   // not set
 	r.unixTimes.ifUnmodifiedSince = -1 // not set
 }
-func (r *hRequest_) onEnd() { // for zeros
-	r.hRequest0 = hRequest0{}
+func (r *backendRequest_) onEnd() { // for zeros
+	r.backendRequest0 = backendRequest0{}
 	r.webOut_.onEnd()
 }
 
-func (r *hRequest_) Response() HResponse { return r.response }
+func (r *backendRequest_) Response() BackendResponse { return r.response }
 
-func (r *hRequest_) SetMethodURI(method string, uri string, hasContent bool) bool {
-	return r.shell.(HRequest).setMethodURI(ConstBytes(method), ConstBytes(uri), hasContent)
+func (r *backendRequest_) SetMethodURI(method string, uri string, hasContent bool) bool {
+	return r.shell.(BackendRequest).setMethodURI(ConstBytes(method), ConstBytes(uri), hasContent)
 }
-func (r *hRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only. HTTP/1 doesn't use this!
+func (r *backendRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only. HTTP/1 doesn't use this!
 	// TODO: copy `:scheme $scheme` to r.fields
 	return false
 }
-func (r *hRequest_) control() []byte { return r.fields[0:r.controlEdge] } // TODO: maybe we need a struct type to represent pseudo headers?
+func (r *backendRequest_) control() []byte { return r.fields[0:r.controlEdge] } // TODO: maybe we need a struct type to represent pseudo headers?
 
-func (r *hRequest_) SetIfModifiedSince(since int64) bool {
+func (r *backendRequest_) SetIfModifiedSince(since int64) bool {
 	return r._setUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince, since)
 }
-func (r *hRequest_) SetIfUnmodifiedSince(since int64) bool {
+func (r *backendRequest_) SetIfUnmodifiedSince(since int64) bool {
 	return r._setUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, since)
 }
 
-func (r *hRequest_) beforeSend() {} // revising is not supported in backend side.
-func (r *hRequest_) doSend() error { // revising is not supported in backend side.
+func (r *backendRequest_) beforeSend() {} // revising is not supported in backend side.
+func (r *backendRequest_) doSend() error { // revising is not supported in backend side.
 	return r.shell.sendChain()
 }
 
-func (r *hRequest_) beforeEcho() {} // revising is not supported in backend side.
-func (r *hRequest_) doEcho() error { // revising is not supported in backend side.
+func (r *backendRequest_) beforeEcho() {} // revising is not supported in backend side.
+func (r *backendRequest_) doEcho() error { // revising is not supported in backend side.
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
@@ -150,7 +150,7 @@ func (r *hRequest_) doEcho() error { // revising is not supported in backend sid
 	defer r.chain.free()
 	return r.shell.echoChain()
 }
-func (r *hRequest_) endVague() error { // revising is not supported in backend side.
+func (r *backendRequest_) endVague() error { // revising is not supported in backend side.
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
@@ -158,30 +158,30 @@ func (r *hRequest_) endVague() error { // revising is not supported in backend s
 }
 
 var ( // perfect hash table for request critical headers
-	hRequestCriticalHeaderTable = [12]struct {
+	backendRequestCriticalHeaderTable = [12]struct {
 		hash uint16
 		name []byte
-		fAdd func(*hRequest_, []byte) (ok bool)
-		fDel func(*hRequest_) (deleted bool)
+		fAdd func(*backendRequest_, []byte) (ok bool)
+		fDel func(*backendRequest_) (deleted bool)
 	}{ // connection content-length content-type cookie date host if-modified-since if-range if-unmodified-since transfer-encoding upgrade via
 		0:  {hashContentLength, bytesContentLength, nil, nil}, // restricted
 		1:  {hashConnection, bytesConnection, nil, nil},       // restricted
-		2:  {hashIfRange, bytesIfRange, (*hRequest_).appendIfRange, (*hRequest_).deleteIfRange},
+		2:  {hashIfRange, bytesIfRange, (*backendRequest_).appendIfRange, (*backendRequest_).deleteIfRange},
 		3:  {hashUpgrade, bytesUpgrade, nil, nil}, // restricted
-		4:  {hashIfModifiedSince, bytesIfModifiedSince, (*hRequest_).appendIfModifiedSince, (*hRequest_).deleteIfModifiedSince},
-		5:  {hashIfUnmodifiedSince, bytesIfUnmodifiedSince, (*hRequest_).appendIfUnmodifiedSince, (*hRequest_).deleteIfUnmodifiedSince},
-		6:  {hashHost, bytesHost, (*hRequest_).appendHost, (*hRequest_).deleteHost},
+		4:  {hashIfModifiedSince, bytesIfModifiedSince, (*backendRequest_).appendIfModifiedSince, (*backendRequest_).deleteIfModifiedSince},
+		5:  {hashIfUnmodifiedSince, bytesIfUnmodifiedSince, (*backendRequest_).appendIfUnmodifiedSince, (*backendRequest_).deleteIfUnmodifiedSince},
+		6:  {hashHost, bytesHost, (*backendRequest_).appendHost, (*backendRequest_).deleteHost},
 		7:  {hashTransferEncoding, bytesTransferEncoding, nil, nil}, // restricted
-		8:  {hashContentType, bytesContentType, (*hRequest_).appendContentType, (*hRequest_).deleteContentType},
+		8:  {hashContentType, bytesContentType, (*backendRequest_).appendContentType, (*backendRequest_).deleteContentType},
 		9:  {hashCookie, bytesCookie, nil, nil}, // restricted
-		10: {hashDate, bytesDate, (*hRequest_).appendDate, (*hRequest_).deleteDate},
+		10: {hashDate, bytesDate, (*backendRequest_).appendDate, (*backendRequest_).deleteDate},
 		11: {hashVia, bytesVia, nil, nil}, // restricted
 	}
-	hRequestCriticalHeaderFind = func(hash uint16) int { return (645048 / int(hash)) % 12 }
+	backendRequestCriticalHeaderFind = func(hash uint16) int { return (645048 / int(hash)) % 12 }
 )
 
-func (r *hRequest_) insertHeader(hash uint16, name []byte, value []byte) bool {
-	h := &hRequestCriticalHeaderTable[hRequestCriticalHeaderFind(hash)]
+func (r *backendRequest_) insertHeader(hash uint16, name []byte, value []byte) bool {
+	h := &backendRequestCriticalHeaderTable[backendRequestCriticalHeaderFind(hash)]
 	if h.hash == hash && bytes.Equal(h.name, name) {
 		if h.fAdd == nil { // mainly because this header is restricted to insert
 			return true // pretend to be successful
@@ -190,21 +190,21 @@ func (r *hRequest_) insertHeader(hash uint16, name []byte, value []byte) bool {
 	}
 	return r.shell.addHeader(name, value)
 }
-func (r *hRequest_) appendHost(host []byte) (ok bool) {
+func (r *backendRequest_) appendHost(host []byte) (ok bool) {
 	return r._appendSingleton(&r.indexes.host, bytesHost, host)
 }
-func (r *hRequest_) appendIfModifiedSince(since []byte) (ok bool) {
+func (r *backendRequest_) appendIfModifiedSince(since []byte) (ok bool) {
 	return r._addUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince, bytesIfModifiedSince, since)
 }
-func (r *hRequest_) appendIfUnmodifiedSince(since []byte) (ok bool) {
+func (r *backendRequest_) appendIfUnmodifiedSince(since []byte) (ok bool) {
 	return r._addUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, bytesIfUnmodifiedSince, since)
 }
-func (r *hRequest_) appendIfRange(ifRange []byte) (ok bool) {
+func (r *backendRequest_) appendIfRange(ifRange []byte) (ok bool) {
 	return r._appendSingleton(&r.indexes.ifRange, bytesIfRange, ifRange)
 }
 
-func (r *hRequest_) removeHeader(hash uint16, name []byte) bool {
-	h := &hRequestCriticalHeaderTable[hRequestCriticalHeaderFind(hash)]
+func (r *backendRequest_) removeHeader(hash uint16, name []byte) bool {
+	h := &backendRequestCriticalHeaderTable[backendRequestCriticalHeaderFind(hash)]
 	if h.hash == hash && bytes.Equal(h.name, name) {
 		if h.fDel == nil { // mainly because this header is restricted to remove
 			return true // pretend to be successful
@@ -213,20 +213,20 @@ func (r *hRequest_) removeHeader(hash uint16, name []byte) bool {
 	}
 	return r.shell.delHeader(name)
 }
-func (r *hRequest_) deleteHost() (deleted bool) {
+func (r *backendRequest_) deleteHost() (deleted bool) {
 	return r._deleteSingleton(&r.indexes.host)
 }
-func (r *hRequest_) deleteIfModifiedSince() (deleted bool) {
+func (r *backendRequest_) deleteIfModifiedSince() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince)
 }
-func (r *hRequest_) deleteIfUnmodifiedSince() (deleted bool) {
+func (r *backendRequest_) deleteIfUnmodifiedSince() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince)
 }
-func (r *hRequest_) deleteIfRange() (deleted bool) {
+func (r *backendRequest_) deleteIfRange() (deleted bool) {
 	return r._deleteSingleton(&r.indexes.ifRange)
 }
 
-func (r *hRequest_) proxyPass(req Request) error { // sync content to backend directly
+func (r *backendRequest_) proxyPass(req Request) error { // sync content to backend directly
 	pass := r.shell.passBytes
 	if req.IsVague() {
 		pass = r.EchoBytes
@@ -261,7 +261,7 @@ func (r *hRequest_) proxyPass(req Request) error { // sync content to backend di
 	}
 	return nil
 }
-func (r *hRequest_) proxyCopyHead(req Request, args *WebExchanProxyArgs) bool {
+func (r *backendRequest_) proxyCopyHead(req Request, cfg *WebExchanProxyConfig) bool {
 	req.delHopHeaders()
 
 	// copy control (:method, :path, :authority, :scheme)
@@ -272,10 +272,10 @@ func (r *hRequest_) proxyCopyHead(req Request, args *WebExchanProxyArgs) bool {
 		// then the last proxy on the request chain MUST send a request-target of "*" when it forwards the request to the indicated origin server.
 		uri = bytesAsterisk
 	}
-	if !r.shell.(HRequest).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
+	if !r.shell.(BackendRequest).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
 		return false
 	}
-	if req.IsAbsoluteForm() || len(args.Hostname) != 0 || len(args.ColonPort) != 0 { // TODO: what about HTTP/2 and HTTP/3?
+	if req.IsAbsoluteForm() || len(cfg.Hostname) != 0 || len(cfg.ColonPort) != 0 { // TODO: what about HTTP/2 and HTTP/3?
 		req.unsetHost()
 		if req.IsAbsoluteForm() {
 			if !r.shell.addHeader(bytesHost, req.UnsafeAuthority()) {
@@ -286,17 +286,17 @@ func (r *hRequest_) proxyCopyHead(req Request, args *WebExchanProxyArgs) bool {
 				hostname  []byte
 				colonPort []byte
 			)
-			if len(args.Hostname) == 0 { // no custom hostname
+			if len(cfg.Hostname) == 0 { // no custom hostname
 				hostname = req.UnsafeHostname()
 			} else {
-				hostname = args.Hostname
+				hostname = cfg.Hostname
 			}
-			if len(args.ColonPort) == 0 { // no custom colonPort
+			if len(cfg.ColonPort) == 0 { // no custom colonPort
 				colonPort = req.UnsafeColonPort()
 			} else {
-				colonPort = args.ColonPort
+				colonPort = cfg.ColonPort
 			}
-			if !r.shell.(HRequest).setAuthority(hostname, colonPort) {
+			if !r.shell.(BackendRequest).setAuthority(hostname, colonPort) {
 				return false
 			}
 		}
@@ -316,15 +316,15 @@ func (r *hRequest_) proxyCopyHead(req Request, args *WebExchanProxyArgs) bool {
 	}
 
 	// copy selective forbidden headers (including cookie) from req
-	if req.HasCookies() && !r.shell.(HRequest).proxyCopyCookies(req) {
+	if req.HasCookies() && !r.shell.(BackendRequest).proxyCopyCookies(req) {
 		return false
 	}
-	if !r.shell.addHeader(bytesVia, args.InboundViaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
+	if !r.shell.addHeader(bytesVia, cfg.InboundViaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
 		return false
 	}
 
 	// copy added headers
-	for name, vValue := range args.AddRequestHeaders {
+	for name, vValue := range cfg.AddRequestHeaders {
 		var value []byte
 		if vValue.IsVariable() {
 			value = vValue.BytesVar(req)
@@ -345,20 +345,20 @@ func (r *hRequest_) proxyCopyHead(req Request, args *WebExchanProxyArgs) bool {
 		return false
 	}
 
-	for _, name := range args.DelRequestHeaders {
+	for _, name := range cfg.DelRequestHeaders {
 		r.shell.delHeader(name)
 	}
 
 	return true
 }
-func (r *hRequest_) proxyCopyTail(req Request, args *WebExchanProxyArgs) bool {
+func (r *backendRequest_) proxyCopyTail(req Request, cfg *WebExchanProxyConfig) bool {
 	return req.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.shell.addTrailer(name, value)
 	})
 }
 
-// HResponse is the backend-side web response.
-type HResponse interface { // for *H[1-3]Response
+// BackendResponse is the backend-side web response.
+type BackendResponse interface { // for *Backend[1-3]Response
 	KeepAlive() int8
 	HeadResult() int16
 	BodyResult() int16
@@ -378,8 +378,8 @@ type HResponse interface { // for *H[1-3]Response
 	reuse()
 }
 
-// hResponse_ is the parent for H[1-3]Response.
-type hResponse_ struct { // incoming. needs parsing
+// backendResponse_ is the parent for Backend[1-3]Response.
+type backendResponse_ struct { // incoming. needs parsing
 	// Parent
 	webIn_ // incoming web message
 	// Stream states (stocks)
@@ -389,9 +389,9 @@ type hResponse_ struct { // incoming. needs parsing
 	// Stream states (non-zeros)
 	cookies []HCookie // hold cookies->r.input. [<r.stockCookies>/(make=32/128)]
 	// Stream states (zeros)
-	hResponse0 // all values must be zero by default in this struct!
+	backendResponse0 // all values must be zero by default in this struct!
 }
-type hResponse0 struct { // for fast reset, entirely
+type backendResponse0 struct { // for fast reset, entirely
 	status      int16    // 200, 302, 404, ...
 	acceptBytes bool     // accept-ranges: bytes?
 	hasAllow    bool     // has allow header?
@@ -429,32 +429,32 @@ type hResponse0 struct { // for fast reset, entirely
 	}
 }
 
-func (r *hResponse_) onUse(versionCode uint8) { // for non-zeros
+func (r *backendResponse_) onUse(versionCode uint8) { // for non-zeros
 	const asResponse = true
 	r.webIn_.onUse(versionCode, asResponse)
 
 	r.cookies = r.stockCookies[0:0:cap(r.stockCookies)] // use append()
 }
-func (r *hResponse_) onEnd() { // for zeros
+func (r *backendResponse_) onEnd() { // for zeros
 	r.cookie.input = nil
 	for i := 0; i < len(r.cookies); i++ {
 		r.cookies[i].input = nil
 	}
 	r.cookies = nil
-	r.hResponse0 = hResponse0{}
+	r.backendResponse0 = backendResponse0{}
 
 	r.webIn_.onEnd()
 }
 
-func (r *hResponse_) reuse() {
+func (r *backendResponse_) reuse() {
 	versionCode := r.versionCode
 	r.onEnd()
 	r.onUse(versionCode)
 }
 
-func (r *hResponse_) Status() int16 { return r.status }
+func (r *backendResponse_) Status() int16 { return r.status }
 
-func (r *hResponse_) examineHead() bool {
+func (r *backendResponse_) examineHead() bool {
 	for i := r.headers.from; i < r.headers.edge; i++ {
 		if !r.applyHeader(i) {
 			// r.headResult is set.
@@ -500,10 +500,10 @@ func (r *hResponse_) examineHead() bool {
 
 	return true
 }
-func (r *hResponse_) applyHeader(index uint8) bool {
+func (r *backendResponse_) applyHeader(index uint8) bool {
 	header := &r.primes[index]
 	name := header.nameAt(r.input)
-	if sh := &hResponseSingletonHeaderTable[hResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, name) {
+	if sh := &backendResponseSingletonHeaderTable[backendResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, name) {
 		header.setSingleton()
 		if !sh.parse { // unnecessary to parse
 			header.setParsed()
@@ -516,7 +516,7 @@ func (r *hResponse_) applyHeader(index uint8) bool {
 			// r.headResult is set.
 			return false
 		}
-	} else if mh := &hResponseImportantHeaderTable[hResponseImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, name) {
+	} else if mh := &backendResponseImportantHeaderTable[backendResponseImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, name) {
 		extraFrom := uint8(len(r.extras))
 		if !r._splitField(header, &mh.fdesc, r.input) {
 			r.headResult = StatusBadRequest
@@ -538,28 +538,28 @@ func (r *hResponse_) applyHeader(index uint8) bool {
 }
 
 var ( // perfect hash table for singleton response headers
-	hResponseSingletonHeaderTable = [12]struct {
+	backendResponseSingletonHeaderTable = [12]struct {
 		parse bool // need general parse or not
 		fdesc      // allowQuote, allowEmpty, allowParam, hasComment
-		check func(*hResponse_, *pair, uint8) bool
+		check func(*backendResponse_, *pair, uint8) bool
 	}{ // age content-length content-range content-type date etag expires last-modified location retry-after server set-cookie
-		0:  {false, fdesc{hashDate, false, false, false, false, bytesDate}, (*hResponse_).checkDate},
-		1:  {false, fdesc{hashContentLength, false, false, false, false, bytesContentLength}, (*hResponse_).checkContentLength},
-		2:  {false, fdesc{hashAge, false, false, false, false, bytesAge}, (*hResponse_).checkAge},
-		3:  {false, fdesc{hashSetCookie, false, false, false, false, bytesSetCookie}, (*hResponse_).checkSetCookie}, // `a=b; Path=/; HttpsOnly` is not parameters
-		4:  {false, fdesc{hashLastModified, false, false, false, false, bytesLastModified}, (*hResponse_).checkLastModified},
-		5:  {false, fdesc{hashLocation, false, false, false, false, bytesLocation}, (*hResponse_).checkLocation},
-		6:  {false, fdesc{hashExpires, false, false, false, false, bytesExpires}, (*hResponse_).checkExpires},
-		7:  {false, fdesc{hashContentRange, false, false, false, false, bytesContentRange}, (*hResponse_).checkContentRange},
-		8:  {false, fdesc{hashETag, false, false, false, false, bytesETag}, (*hResponse_).checkETag},
-		9:  {false, fdesc{hashServer, false, false, false, true, bytesServer}, (*hResponse_).checkServer},
-		10: {true, fdesc{hashContentType, false, false, true, false, bytesContentType}, (*hResponse_).checkContentType},
-		11: {false, fdesc{hashRetryAfter, false, false, false, false, bytesRetryAfter}, (*hResponse_).checkRetryAfter},
+		0:  {false, fdesc{hashDate, false, false, false, false, bytesDate}, (*backendResponse_).checkDate},
+		1:  {false, fdesc{hashContentLength, false, false, false, false, bytesContentLength}, (*backendResponse_).checkContentLength},
+		2:  {false, fdesc{hashAge, false, false, false, false, bytesAge}, (*backendResponse_).checkAge},
+		3:  {false, fdesc{hashSetCookie, false, false, false, false, bytesSetCookie}, (*backendResponse_).checkSetCookie}, // `a=b; Path=/; HttpsOnly` is not parameters
+		4:  {false, fdesc{hashLastModified, false, false, false, false, bytesLastModified}, (*backendResponse_).checkLastModified},
+		5:  {false, fdesc{hashLocation, false, false, false, false, bytesLocation}, (*backendResponse_).checkLocation},
+		6:  {false, fdesc{hashExpires, false, false, false, false, bytesExpires}, (*backendResponse_).checkExpires},
+		7:  {false, fdesc{hashContentRange, false, false, false, false, bytesContentRange}, (*backendResponse_).checkContentRange},
+		8:  {false, fdesc{hashETag, false, false, false, false, bytesETag}, (*backendResponse_).checkETag},
+		9:  {false, fdesc{hashServer, false, false, false, true, bytesServer}, (*backendResponse_).checkServer},
+		10: {true, fdesc{hashContentType, false, false, true, false, bytesContentType}, (*backendResponse_).checkContentType},
+		11: {false, fdesc{hashRetryAfter, false, false, false, false, bytesRetryAfter}, (*backendResponse_).checkRetryAfter},
 	}
-	hResponseSingletonHeaderFind = func(hash uint16) int { return (889344 / int(hash)) % 12 }
+	backendResponseSingletonHeaderFind = func(hash uint16) int { return (889344 / int(hash)) % 12 }
 )
 
-func (r *hResponse_) checkAge(header *pair, index uint8) bool { // Age = delta-seconds
+func (r *backendResponse_) checkAge(header *pair, index uint8) bool { // Age = delta-seconds
 	if header.value.isEmpty() {
 		r.headResult, r.failReason = StatusBadRequest, "empty age"
 		return false
@@ -567,33 +567,33 @@ func (r *hResponse_) checkAge(header *pair, index uint8) bool { // Age = delta-s
 	// TODO: check
 	return true
 }
-func (r *hResponse_) checkETag(header *pair, index uint8) bool { // ETag = entity-tag
+func (r *backendResponse_) checkETag(header *pair, index uint8) bool { // ETag = entity-tag
 	// TODO: check
 	r.indexes.etag = index
 	return true
 }
-func (r *hResponse_) checkExpires(header *pair, index uint8) bool { // Expires = HTTP-date
+func (r *backendResponse_) checkExpires(header *pair, index uint8) bool { // Expires = HTTP-date
 	return r._checkHTTPDate(header, index, &r.indexes.expires, &r.unixTimes.expires)
 }
-func (r *hResponse_) checkLastModified(header *pair, index uint8) bool { // Last-Modified = HTTP-date
+func (r *backendResponse_) checkLastModified(header *pair, index uint8) bool { // Last-Modified = HTTP-date
 	return r._checkHTTPDate(header, index, &r.indexes.lastModified, &r.unixTimes.lastModified)
 }
-func (r *hResponse_) checkLocation(header *pair, index uint8) bool { // Location = URI-reference
+func (r *backendResponse_) checkLocation(header *pair, index uint8) bool { // Location = URI-reference
 	// TODO: check
 	r.indexes.location = index
 	return true
 }
-func (r *hResponse_) checkRetryAfter(header *pair, index uint8) bool { // Retry-After = HTTP-date / delay-seconds
+func (r *backendResponse_) checkRetryAfter(header *pair, index uint8) bool { // Retry-After = HTTP-date / delay-seconds
 	// TODO: check
 	r.indexes.retryAfter = index
 	return true
 }
-func (r *hResponse_) checkServer(header *pair, index uint8) bool { // Server = product *( RWS ( product / comment ) )
+func (r *backendResponse_) checkServer(header *pair, index uint8) bool { // Server = product *( RWS ( product / comment ) )
 	// TODO: check
 	r.indexes.server = index
 	return true
 }
-func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool { // Set-Cookie = set-cookie-string
+func (r *backendResponse_) checkSetCookie(header *pair, index uint8) bool { // Set-Cookie = set-cookie-string
 	if !r.parseSetCookie(header.value) {
 		r.headResult, r.failReason = StatusBadRequest, "bad set-cookie"
 		return false
@@ -615,32 +615,32 @@ func (r *hResponse_) checkSetCookie(header *pair, index uint8) bool { // Set-Coo
 }
 
 var ( // perfect hash table for important response headers
-	hResponseImportantHeaderTable = [17]struct {
+	backendResponseImportantHeaderTable = [17]struct {
 		fdesc // allowQuote, allowEmpty, allowParam, hasComment
-		check func(*hResponse_, []pair, uint8, uint8) bool
+		check func(*backendResponse_, []pair, uint8, uint8) bool
 	}{ // accept-encoding accept-ranges allow alt-svc cache-control cache-status cdn-cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate
-		0:  {fdesc{hashAcceptRanges, false, false, false, false, bytesAcceptRanges}, (*hResponse_).checkAcceptRanges},
-		1:  {fdesc{hashVia, false, false, false, true, bytesVia}, (*hResponse_).checkVia},
-		2:  {fdesc{hashWWWAuthenticate, false, false, false, false, bytesWWWAuthenticate}, (*hResponse_).checkWWWAuthenticate},
-		3:  {fdesc{hashConnection, false, false, false, false, bytesConnection}, (*hResponse_).checkConnection},
-		4:  {fdesc{hashContentEncoding, false, false, false, false, bytesContentEncoding}, (*hResponse_).checkContentEncoding},
-		5:  {fdesc{hashAllow, false, true, false, false, bytesAllow}, (*hResponse_).checkAllow},
-		6:  {fdesc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*hResponse_).checkTransferEncoding}, // deliberately false
-		7:  {fdesc{hashTrailer, false, false, false, false, bytesTrailer}, (*hResponse_).checkTrailer},
-		8:  {fdesc{hashVary, false, false, false, false, bytesVary}, (*hResponse_).checkVary},
-		9:  {fdesc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*hResponse_).checkUpgrade},
-		10: {fdesc{hashProxyAuthenticate, false, false, false, false, bytesProxyAuthenticate}, (*hResponse_).checkProxyAuthenticate},
-		11: {fdesc{hashCacheControl, false, false, false, false, bytesCacheControl}, (*hResponse_).checkCacheControl},
-		12: {fdesc{hashAltSvc, false, false, true, false, bytesAltSvc}, (*hResponse_).checkAltSvc},
-		13: {fdesc{hashCDNCacheControl, false, false, false, false, bytesCDNCacheControl}, (*hResponse_).checkCDNCacheControl},
-		14: {fdesc{hashCacheStatus, false, false, true, false, bytesCacheStatus}, (*hResponse_).checkCacheStatus},
-		15: {fdesc{hashAcceptEncoding, false, true, true, false, bytesAcceptEncoding}, (*hResponse_).checkAcceptEncoding},
-		16: {fdesc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*hResponse_).checkContentLanguage},
+		0:  {fdesc{hashAcceptRanges, false, false, false, false, bytesAcceptRanges}, (*backendResponse_).checkAcceptRanges},
+		1:  {fdesc{hashVia, false, false, false, true, bytesVia}, (*backendResponse_).checkVia},
+		2:  {fdesc{hashWWWAuthenticate, false, false, false, false, bytesWWWAuthenticate}, (*backendResponse_).checkWWWAuthenticate},
+		3:  {fdesc{hashConnection, false, false, false, false, bytesConnection}, (*backendResponse_).checkConnection},
+		4:  {fdesc{hashContentEncoding, false, false, false, false, bytesContentEncoding}, (*backendResponse_).checkContentEncoding},
+		5:  {fdesc{hashAllow, false, true, false, false, bytesAllow}, (*backendResponse_).checkAllow},
+		6:  {fdesc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*backendResponse_).checkTransferEncoding}, // deliberately false
+		7:  {fdesc{hashTrailer, false, false, false, false, bytesTrailer}, (*backendResponse_).checkTrailer},
+		8:  {fdesc{hashVary, false, false, false, false, bytesVary}, (*backendResponse_).checkVary},
+		9:  {fdesc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*backendResponse_).checkUpgrade},
+		10: {fdesc{hashProxyAuthenticate, false, false, false, false, bytesProxyAuthenticate}, (*backendResponse_).checkProxyAuthenticate},
+		11: {fdesc{hashCacheControl, false, false, false, false, bytesCacheControl}, (*backendResponse_).checkCacheControl},
+		12: {fdesc{hashAltSvc, false, false, true, false, bytesAltSvc}, (*backendResponse_).checkAltSvc},
+		13: {fdesc{hashCDNCacheControl, false, false, false, false, bytesCDNCacheControl}, (*backendResponse_).checkCDNCacheControl},
+		14: {fdesc{hashCacheStatus, false, false, true, false, bytesCacheStatus}, (*backendResponse_).checkCacheStatus},
+		15: {fdesc{hashAcceptEncoding, false, true, true, false, bytesAcceptEncoding}, (*backendResponse_).checkAcceptEncoding},
+		16: {fdesc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*backendResponse_).checkContentLanguage},
 	}
-	hResponseImportantHeaderFind = func(hash uint16) int { return (72189325 / int(hash)) % 17 }
+	backendResponseImportantHeaderFind = func(hash uint16) int { return (72189325 / int(hash)) % 17 }
 )
 
-func (r *hResponse_) checkAcceptRanges(pairs []pair, from uint8, edge uint8) bool { // Accept-Ranges = 1#range-unit
+func (r *backendResponse_) checkAcceptRanges(pairs []pair, from uint8, edge uint8) bool { // Accept-Ranges = 1#range-unit
 	if from == edge {
 		r.headResult, r.failReason = StatusBadRequest, "accept-ranges = 1#range-unit"
 		return false
@@ -656,7 +656,7 @@ func (r *hResponse_) checkAcceptRanges(pairs []pair, from uint8, edge uint8) boo
 	}
 	return true
 }
-func (r *hResponse_) checkAllow(pairs []pair, from uint8, edge uint8) bool { // Allow = #method
+func (r *backendResponse_) checkAllow(pairs []pair, from uint8, edge uint8) bool { // Allow = #method
 	r.hasAllow = true
 	if r.zones.allow.isEmpty() {
 		r.zones.allow.from = from
@@ -664,7 +664,7 @@ func (r *hResponse_) checkAllow(pairs []pair, from uint8, edge uint8) bool { // 
 	r.zones.allow.edge = edge
 	return true
 }
-func (r *hResponse_) checkAltSvc(pairs []pair, from uint8, edge uint8) bool { // Alt-Svc = clear / 1#alt-value
+func (r *backendResponse_) checkAltSvc(pairs []pair, from uint8, edge uint8) bool { // Alt-Svc = clear / 1#alt-value
 	if from == edge {
 		r.headResult, r.failReason = StatusBadRequest, "alt-svc = clear / 1#alt-value"
 		return false
@@ -675,34 +675,34 @@ func (r *hResponse_) checkAltSvc(pairs []pair, from uint8, edge uint8) bool { //
 	r.zones.altSvc.edge = edge
 	return true
 }
-func (r *hResponse_) checkCacheControl(pairs []pair, from uint8, edge uint8) bool { // Cache-Control = #cache-directive
+func (r *backendResponse_) checkCacheControl(pairs []pair, from uint8, edge uint8) bool { // Cache-Control = #cache-directive
 	// cache-directive = token [ "=" ( token / quoted-string ) ]
 	for i := from; i < edge; i++ {
 		// TODO
 	}
 	return true
 }
-func (r *hResponse_) checkCacheStatus(pairs []pair, from uint8, edge uint8) bool { // ?
+func (r *backendResponse_) checkCacheStatus(pairs []pair, from uint8, edge uint8) bool { // ?
 	// TODO
 	return true
 }
-func (r *hResponse_) checkCDNCacheControl(pairs []pair, from uint8, edge uint8) bool { // ?
+func (r *backendResponse_) checkCDNCacheControl(pairs []pair, from uint8, edge uint8) bool { // ?
 	// TODO
 	return true
 }
-func (r *hResponse_) checkProxyAuthenticate(pairs []pair, from uint8, edge uint8) bool { // Proxy-Authenticate = #challenge
+func (r *backendResponse_) checkProxyAuthenticate(pairs []pair, from uint8, edge uint8) bool { // Proxy-Authenticate = #challenge
 	// TODO; use r._checkChallenge
 	return true
 }
-func (r *hResponse_) checkWWWAuthenticate(pairs []pair, from uint8, edge uint8) bool { // WWW-Authenticate = #challenge
+func (r *backendResponse_) checkWWWAuthenticate(pairs []pair, from uint8, edge uint8) bool { // WWW-Authenticate = #challenge
 	// TODO; use r._checkChallenge
 	return true
 }
-func (r *hResponse_) _checkChallenge(pairs []pair, from uint8, edge uint8) bool { // challenge = auth-scheme [ 1*SP ( token68 / [ auth-param *( OWS "," OWS auth-param ) ] ) ]
+func (r *backendResponse_) _checkChallenge(pairs []pair, from uint8, edge uint8) bool { // challenge = auth-scheme [ 1*SP ( token68 / [ auth-param *( OWS "," OWS auth-param ) ] ) ]
 	// TODO
 	return true
 }
-func (r *hResponse_) checkTransferEncoding(pairs []pair, from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
+func (r *backendResponse_) checkTransferEncoding(pairs []pair, from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
 	if r.status < StatusOK || r.status == StatusNoContent {
 		r.headResult, r.failReason = StatusBadRequest, "transfer-encoding is not allowed in 1xx and 204 responses"
 		return false
@@ -712,7 +712,7 @@ func (r *hResponse_) checkTransferEncoding(pairs []pair, from uint8, edge uint8)
 	}
 	return r.webIn_.checkTransferEncoding(pairs, from, edge)
 }
-func (r *hResponse_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { // Upgrade = #protocol
+func (r *backendResponse_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { // Upgrade = #protocol
 	if r.versionCode >= Version2 {
 		r.headResult, r.failReason = StatusBadRequest, "upgrade is not supported in http/2 and http/3"
 		return false
@@ -721,7 +721,7 @@ func (r *hResponse_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { /
 	r.headResult, r.failReason = StatusBadRequest, "upgrade is not supported in exchan mode"
 	return false
 }
-func (r *hResponse_) checkVary(pairs []pair, from uint8, edge uint8) bool { // Vary = #( "*" / field-name )
+func (r *backendResponse_) checkVary(pairs []pair, from uint8, edge uint8) bool { // Vary = #( "*" / field-name )
 	if r.zones.vary.isEmpty() {
 		r.zones.vary.from = from
 	}
@@ -729,7 +729,7 @@ func (r *hResponse_) checkVary(pairs []pair, from uint8, edge uint8) bool { // V
 	return true
 }
 
-func (r *hResponse_) parseSetCookie(setCookieString span) bool {
+func (r *backendResponse_) parseSetCookie(setCookieString span) bool {
 	// set-cookie-string = cookie-pair *( ";" SP cookie-av )
 	// cookie-pair = token "=" cookie-value
 	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
@@ -750,21 +750,21 @@ func (r *hResponse_) parseSetCookie(setCookieString span) bool {
 	return true
 }
 
-func (r *hResponse_) unsafeDate() []byte {
+func (r *backendResponse_) unsafeDate() []byte {
 	if r.iDate == 0 {
 		return nil
 	}
 	return r.primes[r.iDate].valueAt(r.input)
 }
-func (r *hResponse_) unsafeLastModified() []byte {
+func (r *backendResponse_) unsafeLastModified() []byte {
 	if r.indexes.lastModified == 0 {
 		return nil
 	}
 	return r.primes[r.indexes.lastModified].valueAt(r.input)
 }
 
-func (r *hResponse_) HasCookies() bool { return len(r.cookies) > 0 }
-func (r *hResponse_) GetCookie(name string) *HCookie {
+func (r *backendResponse_) HasCookies() bool { return len(r.cookies) > 0 }
+func (r *backendResponse_) GetCookie(name string) *HCookie {
 	for i := 0; i < len(r.cookies); i++ {
 		if cookie := &r.cookies[i]; cookie.nameEqualString(name) {
 			return cookie
@@ -772,7 +772,7 @@ func (r *hResponse_) GetCookie(name string) *HCookie {
 	}
 	return nil
 }
-func (r *hResponse_) HasCookie(name string) bool {
+func (r *backendResponse_) HasCookie(name string) bool {
 	for i := 0; i < len(r.cookies); i++ {
 		if cookie := &r.cookies[i]; cookie.nameEqualString(name) {
 			return true
@@ -780,7 +780,7 @@ func (r *hResponse_) HasCookie(name string) bool {
 	}
 	return false
 }
-func (r *hResponse_) forCookies(callback func(cookie *HCookie) bool) bool {
+func (r *backendResponse_) forCookies(callback func(cookie *HCookie) bool) bool {
 	for i := 0; i < len(r.cookies); i++ {
 		if !callback(&r.cookies[i]) {
 			return false
@@ -789,7 +789,7 @@ func (r *hResponse_) forCookies(callback func(cookie *HCookie) bool) bool {
 	return true
 }
 
-func (r *hResponse_) HasContent() bool {
+func (r *backendResponse_) HasContent() bool {
 	// All 1xx (Informational), 204 (No Content), and 304 (Not Modified)
 	// responses do not include content.
 	if r.status < StatusOK || r.status == StatusNoContent || r.status == StatusNotModified {
@@ -799,10 +799,10 @@ func (r *hResponse_) HasContent() bool {
 	// be of zero length.
 	return r.contentSize >= 0 || r.IsVague()
 }
-func (r *hResponse_) Content() string       { return string(r.unsafeContent()) }
-func (r *hResponse_) UnsafeContent() []byte { return r.unsafeContent() }
+func (r *backendResponse_) Content() string       { return string(r.unsafeContent()) }
+func (r *backendResponse_) UnsafeContent() []byte { return r.unsafeContent() }
 
-func (r *hResponse_) examineTail() bool {
+func (r *backendResponse_) examineTail() bool {
 	for i := r.trailers.from; i < r.trailers.edge; i++ {
 		if !r.applyTrailer(i) {
 			// r.bodyResult is set.
@@ -811,7 +811,7 @@ func (r *hResponse_) examineTail() bool {
 	}
 	return true
 }
-func (r *hResponse_) applyTrailer(index uint8) bool {
+func (r *backendResponse_) applyTrailer(index uint8) bool {
 	//trailer := &r.primes[index]
 	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
@@ -881,24 +881,24 @@ func (c *HCookie) nameEqualBytes(name []byte) bool {
 	return bytes.Equal(p[c.nameFrom:c.nameFrom+int16(c.nameSize)], name)
 }
 
-// HSocket is the backend-side web socket.
-type HSocket interface { // for *H[1-3]Socket
+// BackendSocket is the backend-side web socket.
+type BackendSocket interface { // for *Backend[1-3]Socket
 	Read(p []byte) (int, error)
 	Write(p []byte) (int, error)
 	Close() error
 }
 
-// hSocket_ is the parent for H[1-3]Socket.
-type hSocket_ struct {
+// backendSocket_ is the parent for Backend[1-3]Socket.
+type backendSocket_ struct {
 	// Parent
 	webSocket_
 	// Assocs
 	// Stream states (zeros)
 }
 
-func (s *hSocket_) onUse() {
+func (s *backendSocket_) onUse() {
 	s.webSocket_.onUse()
 }
-func (s *hSocket_) onEnd() {
+func (s *backendSocket_) onEnd() {
 	s.webSocket_.onEnd()
 }

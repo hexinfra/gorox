@@ -24,8 +24,8 @@ func init() {
 	})
 }
 
-// WebExchanProxyArgs
-type WebExchanProxyArgs struct {
+// WebExchanProxyConfig
+type WebExchanProxyConfig struct {
 	BufferClientContent bool
 	Hostname            []byte
 	ColonPort           []byte
@@ -40,10 +40,10 @@ type WebExchanProxyArgs struct {
 	DelResponseHeaders  [][]byte
 }
 
-func ReverseProxyWebExchan(req Request, resp Response, backend WebBackend, args *WebExchanProxyArgs) {
+func ReverseProxyWebExchan(req Request, resp Response, backend WebBackend, cfg *WebExchanProxyConfig) {
 	var content any
 	hasContent := req.HasContent()
-	if hasContent && args.BufferClientContent { // including size 0
+	if hasContent && cfg.BufferClientContent { // including size 0
 		content = req.holdContent()
 		if content == nil { // take failed
 			// stream is marked as broken
@@ -61,17 +61,17 @@ func ReverseProxyWebExchan(req Request, resp Response, backend WebBackend, args 
 	defer backend.StoreStream(backStream)
 
 	backReq := backStream.Request()
-	if !backReq.proxyCopyHead(req, args) {
+	if !backReq.proxyCopyHead(req, cfg) {
 		backStream.markBroken()
 		resp.SendBadGateway(nil)
 		return
 	}
 
-	if !hasContent || args.BufferClientContent {
+	if !hasContent || cfg.BufferClientContent {
 		hasTrailers := req.HasTrailers()
 		backErr = backReq.proxyPost(content, hasTrailers) // nil (no content), []byte, tempFile
 		if backErr == nil && hasTrailers {
-			if !backReq.proxyCopyTail(req, args) {
+			if !backReq.proxyCopyTail(req, cfg) {
 				backStream.markBroken()
 				backErr = webOutTrailerFailed
 			} else if backErr = backReq.endVague(); backErr != nil {
@@ -132,7 +132,7 @@ func ReverseProxyWebExchan(req Request, resp Response, backend WebBackend, args 
 	if req.MethodCode() != MethodHEAD {
 		backHasContent = backResp.HasContent()
 	}
-	if backHasContent && args.BufferServerContent { // including size 0
+	if backHasContent && cfg.BufferServerContent { // including size 0
 		backContent = backResp.holdContent()
 		if backContent == nil { // take failed
 			// backStream is marked as broken
@@ -141,11 +141,11 @@ func ReverseProxyWebExchan(req Request, resp Response, backend WebBackend, args 
 		}
 	}
 
-	if !resp.proxyCopyHead(backResp, args) {
+	if !resp.proxyCopyHead(backResp, cfg) {
 		backStream.markBroken()
 		return
 	}
-	if !backHasContent || args.BufferServerContent {
+	if !backHasContent || cfg.BufferServerContent {
 		backHasTrailers := backResp.HasTrailers()
 		if resp.proxyPost(backContent, backHasTrailers) != nil { // nil (no content), []byte, tempFile
 			if backHasTrailers {
@@ -153,7 +153,7 @@ func ReverseProxyWebExchan(req Request, resp Response, backend WebBackend, args 
 			}
 			return
 		}
-		if backHasTrailers && !resp.proxyCopyTail(backResp, args) {
+		if backHasTrailers && !resp.proxyCopyTail(backResp, cfg) {
 			return
 		}
 	} else if err := resp.proxyPass(backResp); err != nil {
@@ -172,7 +172,7 @@ type httpProxy struct {
 	backend WebBackend // the backend to pass to. can be *HTTP1Backend, *HTTP2Backend, or *HTTP3Backend
 	cacher  Cacher     // the cacher which is used by this proxy
 	// States
-	WebExchanProxyArgs
+	WebExchanProxyConfig
 }
 
 func (h *httpProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
@@ -260,16 +260,16 @@ func (h *httpProxy) IsProxy() bool { return true }
 func (h *httpProxy) IsCache() bool { return h.cacher != nil }
 
 func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
-	ReverseProxyWebExchan(req, resp, h.backend, &h.WebExchanProxyArgs)
+	ReverseProxyWebExchan(req, resp, h.backend, &h.WebExchanProxyConfig)
 	return true
 }
 
-// WebSocketProxyArgs
-type WebSocketProxyArgs struct {
+// WebSocketProxyConfig
+type WebSocketProxyConfig struct {
 	// TODO
 }
 
-func ReverseProxyWebSocket(req Request, sock Socket, backend WebBackend, args *WebSocketProxyArgs) {
+func ReverseProxyWebSocket(req Request, sock Socket, backend WebBackend, cfg *WebSocketProxyConfig) {
 }
 
 // sockProxy socklet passes web sockets to backend websocket servers.

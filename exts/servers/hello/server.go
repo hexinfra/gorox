@@ -92,7 +92,7 @@ func (g *helloGate) Open() error {
 }
 func (g *helloGate) Shut() error {
 	g.MarkShut()
-	return g.listener.Close()
+	return g.listener.Close() // breaks serve()
 }
 
 func (g *helloGate) serve() { // runner

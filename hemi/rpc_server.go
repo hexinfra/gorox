@@ -142,7 +142,7 @@ func (g *hrpcGate) _openInet() error {
 }
 func (g *hrpcGate) Shut() error {
 	g.MarkShut()
-	// TODO
+	// TODO // breaks serve()
 	return nil
 }
 
@@ -170,8 +170,6 @@ type hrpcExchan struct {
 	// Mixins
 	_rpcExchan_
 	// Assocs
-	//request  hrpcRequest
-	//response hrpcResponse
 	// Exchan states (stocks)
 	// Exchan states (controlled)
 	// Exchan states (non-zeros)
@@ -280,7 +278,7 @@ func (s *Service) maintain() { // runner
 }
 
 /*
-func (s *Service) dispatch(req rpcServerRequest, resp rpcServerResponse) {
+func (s *Service) dispatch(exchan) {
 	// TODO
 }
 */
@@ -295,6 +293,6 @@ type Bundlet_ struct {
 }
 
 /*
-func (b *Bundlet_) dispatch(req rpcServerRequest, resp rpcServerResponse) {
+func (b *Bundlet_) dispatch(exchan) {
 }
 */

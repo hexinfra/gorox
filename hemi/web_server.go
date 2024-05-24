@@ -129,7 +129,7 @@ func (s *webServer_[G]) findApp(hostname []byte) *Webapp {
 }
 
 // Request is the server-side web request.
-type Request interface { // for *http[1-3]Request
+type Request interface { // for *server[1-3]Request
 	RemoteAddr() net.Addr
 	Webapp() *Webapp
 
@@ -286,8 +286,8 @@ type Request interface { // for *http[1-3]Request
 	unsafeVariable(code int16, name string) (value []byte)
 }
 
-// httpRequest_ is the parent for http[1-3]Request.
-type httpRequest_ struct { // incoming. needs parsing
+// serverRequest_ is the parent for server[1-3]Request.
+type serverRequest_ struct { // incoming. needs parsing
 	// Parent
 	webIn_ // incoming web message
 	// Stream states (stocks)
@@ -297,14 +297,14 @@ type httpRequest_ struct { // incoming. needs parsing
 	// Stream states (non-zeros)
 	upfiles []Upfile // decoded upfiles -> r.array (for metadata) and temp files in local file system. [<r.stockUpfiles>/(make=16/128)]
 	// Stream states (zeros)
-	webapp       *Webapp     // target webapp of this request. set before executing the stream
-	path         []byte      // decoded path. only a reference. refers to r.array or region if rewrited, so can't be a span
-	absPath      []byte      // webapp.webRoot + r.UnsafePath(). if webapp.webRoot is not set then this is nil. set when dispatching to handlets. only a reference
-	pathInfo     os.FileInfo // cached result of os.Stat(r.absPath) if r.absPath is not nil
-	formWindow   []byte      // a window used when reading and parsing content as multipart/form-data. [<none>/r.contentText/4K/16K]
-	httpRequest0             // all values must be zero by default in this struct!
+	webapp         *Webapp     // target webapp of this request. set before executing the stream
+	path           []byte      // decoded path. only a reference. refers to r.array or region if rewrited, so can't be a span
+	absPath        []byte      // webapp.webRoot + r.UnsafePath(). if webapp.webRoot is not set then this is nil. set when dispatching to handlets. only a reference
+	pathInfo       os.FileInfo // cached result of os.Stat(r.absPath) if r.absPath is not nil
+	formWindow     []byte      // a window used when reading and parsing content as multipart/form-data. [<none>/r.contentText/4K/16K]
+	serverRequest0             // all values must be zero by default in this struct!
 }
-type httpRequest0 struct { // for fast reset, entirely
+type serverRequest0 struct { // for fast reset, entirely
 	gotInput        bool     // got some input from client? for request timeout handling
 	targetForm      int8     // request-target form. see webTargetXXX
 	asteriskOptions bool     // true if method and uri is: OPTIONS *
@@ -370,13 +370,13 @@ type httpRequest0 struct { // for fast reset, entirely
 	consumedSize int64     // bytes of consumed content when consuming received tempFile. used by, for example, _recvMultipartForm.
 }
 
-func (r *httpRequest_) onUse(versionCode uint8) { // for non-zeros
+func (r *serverRequest_) onUse(versionCode uint8) { // for non-zeros
 	const asResponse = false
 	r.webIn_.onUse(versionCode, asResponse)
 
 	r.upfiles = r.stockUpfiles[0:0:cap(r.stockUpfiles)] // use append()
 }
-func (r *httpRequest_) onEnd() { // for zeros
+func (r *serverRequest_) onEnd() { // for zeros
 	for _, upfile := range r.upfiles {
 		if upfile.isMoved() { // file was moved, don't remove it
 			continue
@@ -398,42 +398,42 @@ func (r *httpRequest_) onEnd() { // for zeros
 	r.absPath = nil
 	r.pathInfo = nil
 	r.formWindow = nil // if r.formWindow is fetched from pool, it's put into pool on return. so just set as nil
-	r.httpRequest0 = httpRequest0{}
+	r.serverRequest0 = serverRequest0{}
 
 	r.webIn_.onEnd()
 }
 
-func (r *httpRequest_) Webapp() *Webapp { return r.webapp }
+func (r *serverRequest_) Webapp() *Webapp { return r.webapp }
 
-func (r *httpRequest_) IsAbsoluteForm() bool    { return r.targetForm == webTargetAbsolute }
-func (r *httpRequest_) IsAsteriskOptions() bool { return r.asteriskOptions }
+func (r *serverRequest_) IsAbsoluteForm() bool    { return r.targetForm == webTargetAbsolute }
+func (r *serverRequest_) IsAsteriskOptions() bool { return r.asteriskOptions }
 
-func (r *httpRequest_) SchemeCode() uint8    { return r.schemeCode }
-func (r *httpRequest_) Scheme() string       { return webSchemeStrings[r.schemeCode] }
-func (r *httpRequest_) UnsafeScheme() []byte { return webSchemeByteses[r.schemeCode] }
-func (r *httpRequest_) IsHTTP() bool         { return r.schemeCode == SchemeHTTP }
-func (r *httpRequest_) IsHTTPS() bool        { return r.schemeCode == SchemeHTTPS }
+func (r *serverRequest_) SchemeCode() uint8    { return r.schemeCode }
+func (r *serverRequest_) Scheme() string       { return webSchemeStrings[r.schemeCode] }
+func (r *serverRequest_) UnsafeScheme() []byte { return webSchemeByteses[r.schemeCode] }
+func (r *serverRequest_) IsHTTP() bool         { return r.schemeCode == SchemeHTTP }
+func (r *serverRequest_) IsHTTPS() bool        { return r.schemeCode == SchemeHTTPS }
 
-func (r *httpRequest_) MethodCode() uint32   { return r.methodCode }
-func (r *httpRequest_) Method() string       { return string(r.UnsafeMethod()) }
-func (r *httpRequest_) UnsafeMethod() []byte { return r.input[r.method.from:r.method.edge] }
-func (r *httpRequest_) IsGET() bool          { return r.methodCode == MethodGET }
-func (r *httpRequest_) IsPOST() bool         { return r.methodCode == MethodPOST }
-func (r *httpRequest_) IsPUT() bool          { return r.methodCode == MethodPUT }
-func (r *httpRequest_) IsDELETE() bool       { return r.methodCode == MethodDELETE }
-func (r *httpRequest_) recognizeMethod(method []byte, hash uint16) {
+func (r *serverRequest_) MethodCode() uint32   { return r.methodCode }
+func (r *serverRequest_) Method() string       { return string(r.UnsafeMethod()) }
+func (r *serverRequest_) UnsafeMethod() []byte { return r.input[r.method.from:r.method.edge] }
+func (r *serverRequest_) IsGET() bool          { return r.methodCode == MethodGET }
+func (r *serverRequest_) IsPOST() bool         { return r.methodCode == MethodPOST }
+func (r *serverRequest_) IsPUT() bool          { return r.methodCode == MethodPUT }
+func (r *serverRequest_) IsDELETE() bool       { return r.methodCode == MethodDELETE }
+func (r *serverRequest_) recognizeMethod(method []byte, hash uint16) {
 	if m := webMethodTable[webMethodFind(hash)]; m.hash == hash && bytes.Equal(webMethodBytes[m.from:m.edge], method) {
 		r.methodCode = m.code
 	}
 }
 
-func (r *httpRequest_) Authority() string { return string(r.UnsafeAuthority()) }
-func (r *httpRequest_) UnsafeAuthority() []byte {
+func (r *serverRequest_) Authority() string { return string(r.UnsafeAuthority()) }
+func (r *serverRequest_) UnsafeAuthority() []byte {
 	return r.input[r.authority.from:r.authority.edge]
 }
-func (r *httpRequest_) Hostname() string       { return string(r.UnsafeHostname()) }
-func (r *httpRequest_) UnsafeHostname() []byte { return r.input[r.hostname.from:r.hostname.edge] }
-func (r *httpRequest_) ColonPort() string {
+func (r *serverRequest_) Hostname() string       { return string(r.UnsafeHostname()) }
+func (r *serverRequest_) UnsafeHostname() []byte { return r.input[r.hostname.from:r.hostname.edge] }
+func (r *serverRequest_) ColonPort() string {
 	if r.colonPort.notEmpty() {
 		return string(r.input[r.colonPort.from:r.colonPort.edge])
 	}
@@ -443,7 +443,7 @@ func (r *httpRequest_) ColonPort() string {
 		return stringColonPort80
 	}
 }
-func (r *httpRequest_) UnsafeColonPort() []byte {
+func (r *serverRequest_) UnsafeColonPort() []byte {
 	if r.colonPort.notEmpty() {
 		return r.input[r.colonPort.from:r.colonPort.edge]
 	}
@@ -454,49 +454,49 @@ func (r *httpRequest_) UnsafeColonPort() []byte {
 	}
 }
 
-func (r *httpRequest_) URI() string {
+func (r *serverRequest_) URI() string {
 	if r.uri.notEmpty() {
 		return string(r.input[r.uri.from:r.uri.edge])
 	} else { // use "/"
 		return stringSlash
 	}
 }
-func (r *httpRequest_) UnsafeURI() []byte {
+func (r *serverRequest_) UnsafeURI() []byte {
 	if r.uri.notEmpty() {
 		return r.input[r.uri.from:r.uri.edge]
 	} else { // use "/"
 		return bytesSlash
 	}
 }
-func (r *httpRequest_) EncodedPath() string {
+func (r *serverRequest_) EncodedPath() string {
 	if r.encodedPath.notEmpty() {
 		return string(r.input[r.encodedPath.from:r.encodedPath.edge])
 	} else { // use "/"
 		return stringSlash
 	}
 }
-func (r *httpRequest_) UnsafeEncodedPath() []byte {
+func (r *serverRequest_) UnsafeEncodedPath() []byte {
 	if r.encodedPath.notEmpty() {
 		return r.input[r.encodedPath.from:r.encodedPath.edge]
 	} else { // use "/"
 		return bytesSlash
 	}
 }
-func (r *httpRequest_) Path() string {
+func (r *serverRequest_) Path() string {
 	if len(r.path) != 0 {
 		return string(r.path)
 	} else { // use "/"
 		return stringSlash
 	}
 }
-func (r *httpRequest_) UnsafePath() []byte {
+func (r *serverRequest_) UnsafePath() []byte {
 	if len(r.path) != 0 {
 		return r.path
 	} else { // use "/"
 		return bytesSlash
 	}
 }
-func (r *httpRequest_) cleanPath() {
+func (r *serverRequest_) cleanPath() {
 	nPath := len(r.path)
 	if nPath <= 1 {
 		// Must be '/'.
@@ -537,8 +537,8 @@ func (r *httpRequest_) cleanPath() {
 		r.path = r.path[:pReal]
 	}
 }
-func (r *httpRequest_) unsafeAbsPath() []byte { return r.absPath }
-func (r *httpRequest_) makeAbsPath() {
+func (r *serverRequest_) unsafeAbsPath() []byte { return r.absPath }
+func (r *serverRequest_) makeAbsPath() {
 	if r.webapp.webRoot == "" { // if webapp's webRoot is empty, r.absPath is not used either. so it's safe to do nothing
 		return
 	}
@@ -547,7 +547,7 @@ func (r *httpRequest_) makeAbsPath() {
 	n := copy(r.absPath, webRoot)
 	copy(r.absPath[n:], r.UnsafePath())
 }
-func (r *httpRequest_) getPathInfo() os.FileInfo {
+func (r *serverRequest_) getPathInfo() os.FileInfo {
 	if !r.pathInfoGot {
 		r.pathInfoGot = true
 		if pathInfo, err := os.Stat(WeakString(r.absPath)); err == nil {
@@ -556,12 +556,12 @@ func (r *httpRequest_) getPathInfo() os.FileInfo {
 	}
 	return r.pathInfo
 }
-func (r *httpRequest_) QueryString() string { return string(r.UnsafeQueryString()) }
-func (r *httpRequest_) UnsafeQueryString() []byte {
+func (r *serverRequest_) QueryString() string { return string(r.UnsafeQueryString()) }
+func (r *serverRequest_) UnsafeQueryString() []byte {
 	return r.input[r.queryString.from:r.queryString.edge]
 }
 
-func (r *httpRequest_) addQuery(query *pair) bool { // as prime
+func (r *serverRequest_) addQuery(query *pair) bool { // as prime
 	if edge, ok := r._addPrime(query); ok {
 		r.queries.edge = edge
 		return true
@@ -569,21 +569,21 @@ func (r *httpRequest_) addQuery(query *pair) bool { // as prime
 	r.headResult, r.failReason = StatusURITooLong, "too many queries"
 	return false
 }
-func (r *httpRequest_) HasQueries() bool { return r.hasPairs(r.queries, kindQuery) }
-func (r *httpRequest_) AllQueries() (queries [][2]string) {
+func (r *serverRequest_) HasQueries() bool { return r.hasPairs(r.queries, kindQuery) }
+func (r *serverRequest_) AllQueries() (queries [][2]string) {
 	return r.allPairs(r.queries, kindQuery)
 }
-func (r *httpRequest_) Q(name string) string {
+func (r *serverRequest_) Q(name string) string {
 	value, _ := r.Query(name)
 	return value
 }
-func (r *httpRequest_) Qstr(name string, defaultValue string) string {
+func (r *serverRequest_) Qstr(name string, defaultValue string) string {
 	if value, ok := r.Query(name); ok {
 		return value
 	}
 	return defaultValue
 }
-func (r *httpRequest_) Qint(name string, defaultValue int) int {
+func (r *serverRequest_) Qint(name string, defaultValue int) int {
 	if value, ok := r.Query(name); ok {
 		if i, err := strconv.Atoi(value); err == nil {
 			return i
@@ -591,28 +591,28 @@ func (r *httpRequest_) Qint(name string, defaultValue int) int {
 	}
 	return defaultValue
 }
-func (r *httpRequest_) Query(name string) (value string, ok bool) {
+func (r *serverRequest_) Query(name string) (value string, ok bool) {
 	v, ok := r.getPair(name, 0, r.queries, kindQuery)
 	return string(v), ok
 }
-func (r *httpRequest_) UnsafeQuery(name string) (value []byte, ok bool) {
+func (r *serverRequest_) UnsafeQuery(name string) (value []byte, ok bool) {
 	return r.getPair(name, 0, r.queries, kindQuery)
 }
-func (r *httpRequest_) Queries(name string) (values []string, ok bool) {
+func (r *serverRequest_) Queries(name string) (values []string, ok bool) {
 	return r.getPairs(name, 0, r.queries, kindQuery)
 }
-func (r *httpRequest_) HasQuery(name string) bool {
+func (r *serverRequest_) HasQuery(name string) bool {
 	_, ok := r.getPair(name, 0, r.queries, kindQuery)
 	return ok
 }
-func (r *httpRequest_) DelQuery(name string) (deleted bool) {
+func (r *serverRequest_) DelQuery(name string) (deleted bool) {
 	return r.delPair(name, 0, r.queries, kindQuery)
 }
-func (r *httpRequest_) AddQuery(name string, value string) bool { // as extra
+func (r *serverRequest_) AddQuery(name string, value string) bool { // as extra
 	return r.addExtra(name, value, 0, kindQuery)
 }
 
-func (r *httpRequest_) examineHead() bool {
+func (r *serverRequest_) examineHead() bool {
 	for i := r.headers.from; i < r.headers.edge; i++ {
 		if !r.applyHeader(i) {
 			// r.headResult is set.
@@ -796,10 +796,10 @@ func (r *httpRequest_) examineHead() bool {
 
 	return true
 }
-func (r *httpRequest_) applyHeader(index uint8) bool {
+func (r *serverRequest_) applyHeader(index uint8) bool {
 	header := &r.primes[index]
 	name := header.nameAt(r.input)
-	if sh := &httpRequestSingletonHeaderTable[httpRequestSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, name) {
+	if sh := &serverRequestSingletonHeaderTable[serverRequestSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, name) {
 		header.setSingleton()
 		if !sh.parse { // unnecessary to parse
 			header.setParsed()
@@ -812,7 +812,7 @@ func (r *httpRequest_) applyHeader(index uint8) bool {
 			// r.headResult is set.
 			return false
 		}
-	} else if mh := &httpRequestImportantHeaderTable[httpRequestImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, name) {
+	} else if mh := &serverRequestImportantHeaderTable[serverRequestImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, name) {
 		extraFrom := uint8(len(r.extras))
 		if !r._splitField(header, &mh.fdesc, r.input) {
 			r.headResult = StatusBadRequest
@@ -834,29 +834,29 @@ func (r *httpRequest_) applyHeader(index uint8) bool {
 }
 
 var ( // perfect hash table for singleton request headers
-	httpRequestSingletonHeaderTable = [13]struct {
+	serverRequestSingletonHeaderTable = [13]struct {
 		parse bool // need general parse or not
 		fdesc      // allowQuote, allowEmpty, allowParam, hasComment
-		check func(*httpRequest_, *pair, uint8) bool
+		check func(*serverRequest_, *pair, uint8) bool
 	}{ // authorization content-length content-type cookie date host if-modified-since if-range if-unmodified-since max-forwards proxy-authorization range user-agent
-		0:  {false, fdesc{hashContentLength, false, false, false, false, bytesContentLength}, (*httpRequest_).checkContentLength},
-		1:  {false, fdesc{hashIfUnmodifiedSince, false, false, false, false, bytesIfUnmodifiedSince}, (*httpRequest_).checkIfUnmodifiedSince},
-		2:  {false, fdesc{hashMaxForwards, false, false, false, false, bytesMaxForwards}, (*httpRequest_).checkMaxForwards},
-		3:  {false, fdesc{hashUserAgent, false, false, false, true, bytesUserAgent}, (*httpRequest_).checkUserAgent},
-		4:  {false, fdesc{hashIfRange, false, false, false, false, bytesIfRange}, (*httpRequest_).checkIfRange},
-		5:  {false, fdesc{hashCookie, false, false, false, false, bytesCookie}, (*httpRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
-		6:  {false, fdesc{hashProxyAuthorization, false, false, false, false, bytesProxyAuthorization}, (*httpRequest_).checkProxyAuthorization},
-		7:  {false, fdesc{hashIfModifiedSince, false, false, false, false, bytesIfModifiedSince}, (*httpRequest_).checkIfModifiedSince},
-		8:  {true, fdesc{hashContentType, false, false, true, false, bytesContentType}, (*httpRequest_).checkContentType},
-		9:  {false, fdesc{hashDate, false, false, false, false, bytesDate}, (*httpRequest_).checkDate},
-		10: {false, fdesc{hashAuthorization, false, false, false, false, bytesAuthorization}, (*httpRequest_).checkAuthorization},
-		11: {false, fdesc{hashRange, false, false, false, false, bytesRange}, (*httpRequest_).checkRange},
-		12: {false, fdesc{hashHost, false, false, false, false, bytesHost}, (*httpRequest_).checkHost},
+		0:  {false, fdesc{hashContentLength, false, false, false, false, bytesContentLength}, (*serverRequest_).checkContentLength},
+		1:  {false, fdesc{hashIfUnmodifiedSince, false, false, false, false, bytesIfUnmodifiedSince}, (*serverRequest_).checkIfUnmodifiedSince},
+		2:  {false, fdesc{hashMaxForwards, false, false, false, false, bytesMaxForwards}, (*serverRequest_).checkMaxForwards},
+		3:  {false, fdesc{hashUserAgent, false, false, false, true, bytesUserAgent}, (*serverRequest_).checkUserAgent},
+		4:  {false, fdesc{hashIfRange, false, false, false, false, bytesIfRange}, (*serverRequest_).checkIfRange},
+		5:  {false, fdesc{hashCookie, false, false, false, false, bytesCookie}, (*serverRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
+		6:  {false, fdesc{hashProxyAuthorization, false, false, false, false, bytesProxyAuthorization}, (*serverRequest_).checkProxyAuthorization},
+		7:  {false, fdesc{hashIfModifiedSince, false, false, false, false, bytesIfModifiedSince}, (*serverRequest_).checkIfModifiedSince},
+		8:  {true, fdesc{hashContentType, false, false, true, false, bytesContentType}, (*serverRequest_).checkContentType},
+		9:  {false, fdesc{hashDate, false, false, false, false, bytesDate}, (*serverRequest_).checkDate},
+		10: {false, fdesc{hashAuthorization, false, false, false, false, bytesAuthorization}, (*serverRequest_).checkAuthorization},
+		11: {false, fdesc{hashRange, false, false, false, false, bytesRange}, (*serverRequest_).checkRange},
+		12: {false, fdesc{hashHost, false, false, false, false, bytesHost}, (*serverRequest_).checkHost},
 	}
-	httpRequestSingletonHeaderFind = func(hash uint16) int { return (811410 / int(hash)) % 13 }
+	serverRequestSingletonHeaderFind = func(hash uint16) int { return (811410 / int(hash)) % 13 }
 )
 
-func (r *httpRequest_) checkAuthorization(header *pair, index uint8) bool { // Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
+func (r *serverRequest_) checkAuthorization(header *pair, index uint8) bool { // Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
 	// auth-scheme = token
 	// token68     = 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" ) *"="
 	// auth-param  = token BWS "=" BWS ( token / quoted-string )
@@ -868,7 +868,7 @@ func (r *httpRequest_) checkAuthorization(header *pair, index uint8) bool { // A
 	r.indexes.authorization = index
 	return true
 }
-func (r *httpRequest_) checkCookie(header *pair, index uint8) bool { // Cookie = cookie-string
+func (r *serverRequest_) checkCookie(header *pair, index uint8) bool { // Cookie = cookie-string
 	if header.value.isEmpty() {
 		r.headResult, r.failReason = StatusBadRequest, "empty cookie"
 		return false
@@ -885,7 +885,7 @@ func (r *httpRequest_) checkCookie(header *pair, index uint8) bool { // Cookie =
 	r.cookies.edge = index + 1 // so we postpone cookie parsing after the request head is entirely received. only mark the edge
 	return true
 }
-func (r *httpRequest_) checkHost(header *pair, index uint8) bool { // Host = host [ ":" port ]
+func (r *serverRequest_) checkHost(header *pair, index uint8) bool { // Host = host [ ":" port ]
 	// RFC 7230 (section 5.4): A server MUST respond with a 400 (Bad Request) status code to any
 	// HTTP/1.1 request message that lacks a Host header field and to any request message that
 	// contains more than one Host header field or a Host header field with an invalid field-value.
@@ -907,10 +907,10 @@ func (r *httpRequest_) checkHost(header *pair, index uint8) bool { // Host = hos
 	r.indexes.host = index
 	return true
 }
-func (r *httpRequest_) checkIfModifiedSince(header *pair, index uint8) bool { // If-Modified-Since = HTTP-date
+func (r *serverRequest_) checkIfModifiedSince(header *pair, index uint8) bool { // If-Modified-Since = HTTP-date
 	return r._checkHTTPDate(header, index, &r.indexes.ifModifiedSince, &r.unixTimes.ifModifiedSince)
 }
-func (r *httpRequest_) checkIfRange(header *pair, index uint8) bool { // If-Range = entity-tag / HTTP-date
+func (r *serverRequest_) checkIfRange(header *pair, index uint8) bool { // If-Range = entity-tag / HTTP-date
 	if r.indexes.ifRange != 0 {
 		r.headResult, r.failReason = StatusBadRequest, "duplicated if-range header"
 		return false
@@ -921,10 +921,10 @@ func (r *httpRequest_) checkIfRange(header *pair, index uint8) bool { // If-Rang
 	r.indexes.ifRange = index
 	return true
 }
-func (r *httpRequest_) checkIfUnmodifiedSince(header *pair, index uint8) bool { // If-Unmodified-Since = HTTP-date
+func (r *serverRequest_) checkIfUnmodifiedSince(header *pair, index uint8) bool { // If-Unmodified-Since = HTTP-date
 	return r._checkHTTPDate(header, index, &r.indexes.ifUnmodifiedSince, &r.unixTimes.ifUnmodifiedSince)
 }
-func (r *httpRequest_) checkMaxForwards(header *pair, index uint8) bool { // Max-Forwards = Max-Forwards = 1*DIGIT
+func (r *serverRequest_) checkMaxForwards(header *pair, index uint8) bool { // Max-Forwards = Max-Forwards = 1*DIGIT
 	if r.indexes.maxForwards != 0 {
 		r.headResult, r.failReason = StatusBadRequest, "duplicated max-forwards header"
 		return false
@@ -933,7 +933,7 @@ func (r *httpRequest_) checkMaxForwards(header *pair, index uint8) bool { // Max
 	r.indexes.maxForwards = index
 	return true
 }
-func (r *httpRequest_) checkProxyAuthorization(header *pair, index uint8) bool { // Proxy-Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
+func (r *serverRequest_) checkProxyAuthorization(header *pair, index uint8) bool { // Proxy-Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
 	// auth-scheme = token
 	// token68     = 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" ) *"="
 	// auth-param  = token BWS "=" BWS ( token / quoted-string )
@@ -945,7 +945,7 @@ func (r *httpRequest_) checkProxyAuthorization(header *pair, index uint8) bool {
 	r.indexes.proxyAuthorization = index
 	return true
 }
-func (r *httpRequest_) checkRange(header *pair, index uint8) bool { // Range = ranges-specifier
+func (r *serverRequest_) checkRange(header *pair, index uint8) bool { // Range = ranges-specifier
 	if r.methodCode != MethodGET {
 		// A server MUST ignore a Range header field received with a request method that is unrecognized or for which range handling is not defined.
 		// For this specification, GET is the only method for which range handling is defined.
@@ -1069,7 +1069,7 @@ badRange:
 	r.headResult, r.failReason = StatusBadRequest, "invalid range"
 	return false
 }
-func (r *httpRequest_) _addRange(rang Range) bool {
+func (r *serverRequest_) _addRange(rang Range) bool {
 	if r.nRanges == int8(cap(r.ranges)) {
 		r.headResult, r.failReason = StatusBadRequest, "too many ranges"
 		return false
@@ -1078,7 +1078,7 @@ func (r *httpRequest_) _addRange(rang Range) bool {
 	r.nRanges++
 	return true
 }
-func (r *httpRequest_) checkUserAgent(header *pair, index uint8) bool { // User-Agent = product *( RWS ( product / comment ) )
+func (r *serverRequest_) checkUserAgent(header *pair, index uint8) bool { // User-Agent = product *( RWS ( product / comment ) )
 	if r.indexes.userAgent != 0 {
 		r.headResult, r.failReason = StatusBadRequest, "duplicated user-agent header"
 		return false
@@ -1088,31 +1088,31 @@ func (r *httpRequest_) checkUserAgent(header *pair, index uint8) bool { // User-
 }
 
 var ( // perfect hash table for important request headers
-	httpRequestImportantHeaderTable = [16]struct {
+	serverRequestImportantHeaderTable = [16]struct {
 		fdesc // allowQuote, allowEmpty, allowParam, hasComment
-		check func(*httpRequest_, []pair, uint8, uint8) bool
+		check func(*serverRequest_, []pair, uint8, uint8) bool
 	}{ // accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match te trailer transfer-encoding upgrade via x-forwarded-for
-		0:  {fdesc{hashIfMatch, true, false, false, false, bytesIfMatch}, (*httpRequest_).checkIfMatch},
-		1:  {fdesc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*httpRequest_).checkContentLanguage},
-		2:  {fdesc{hashVia, false, false, false, true, bytesVia}, (*httpRequest_).checkVia},
-		3:  {fdesc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*httpRequest_).checkTransferEncoding}, // deliberately false
-		4:  {fdesc{hashCacheControl, false, false, false, false, bytesCacheControl}, (*httpRequest_).checkCacheControl},
-		5:  {fdesc{hashConnection, false, false, false, false, bytesConnection}, (*httpRequest_).checkConnection},
-		6:  {fdesc{hashForwarded, false, false, false, false, bytesForwarded}, (*httpRequest_).checkForwarded}, // `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
-		7:  {fdesc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*httpRequest_).checkUpgrade},
-		8:  {fdesc{hashXForwardedFor, false, false, false, false, bytesXForwardedFor}, (*httpRequest_).checkXForwardedFor},
-		9:  {fdesc{hashExpect, false, false, true, false, bytesExpect}, (*httpRequest_).checkExpect},
-		10: {fdesc{hashAcceptEncoding, false, true, true, false, bytesAcceptEncoding}, (*httpRequest_).checkAcceptEncoding},
-		11: {fdesc{hashContentEncoding, false, false, false, false, bytesContentEncoding}, (*httpRequest_).checkContentEncoding},
-		12: {fdesc{hashAcceptLanguage, false, false, true, false, bytesAcceptLanguage}, (*httpRequest_).checkAcceptLanguage},
-		13: {fdesc{hashIfNoneMatch, true, false, false, false, bytesIfNoneMatch}, (*httpRequest_).checkIfNoneMatch},
-		14: {fdesc{hashTE, false, false, true, false, bytesTE}, (*httpRequest_).checkTE},
-		15: {fdesc{hashTrailer, false, false, false, false, bytesTrailer}, (*httpRequest_).checkTrailer},
+		0:  {fdesc{hashIfMatch, true, false, false, false, bytesIfMatch}, (*serverRequest_).checkIfMatch},
+		1:  {fdesc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*serverRequest_).checkContentLanguage},
+		2:  {fdesc{hashVia, false, false, false, true, bytesVia}, (*serverRequest_).checkVia},
+		3:  {fdesc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*serverRequest_).checkTransferEncoding}, // deliberately false
+		4:  {fdesc{hashCacheControl, false, false, false, false, bytesCacheControl}, (*serverRequest_).checkCacheControl},
+		5:  {fdesc{hashConnection, false, false, false, false, bytesConnection}, (*serverRequest_).checkConnection},
+		6:  {fdesc{hashForwarded, false, false, false, false, bytesForwarded}, (*serverRequest_).checkForwarded}, // `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
+		7:  {fdesc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*serverRequest_).checkUpgrade},
+		8:  {fdesc{hashXForwardedFor, false, false, false, false, bytesXForwardedFor}, (*serverRequest_).checkXForwardedFor},
+		9:  {fdesc{hashExpect, false, false, true, false, bytesExpect}, (*serverRequest_).checkExpect},
+		10: {fdesc{hashAcceptEncoding, false, true, true, false, bytesAcceptEncoding}, (*serverRequest_).checkAcceptEncoding},
+		11: {fdesc{hashContentEncoding, false, false, false, false, bytesContentEncoding}, (*serverRequest_).checkContentEncoding},
+		12: {fdesc{hashAcceptLanguage, false, false, true, false, bytesAcceptLanguage}, (*serverRequest_).checkAcceptLanguage},
+		13: {fdesc{hashIfNoneMatch, true, false, false, false, bytesIfNoneMatch}, (*serverRequest_).checkIfNoneMatch},
+		14: {fdesc{hashTE, false, false, true, false, bytesTE}, (*serverRequest_).checkTE},
+		15: {fdesc{hashTrailer, false, false, false, false, bytesTrailer}, (*serverRequest_).checkTrailer},
 	}
-	httpRequestImportantHeaderFind = func(hash uint16) int { return (49454765 / int(hash)) % 16 }
+	serverRequestImportantHeaderFind = func(hash uint16) int { return (49454765 / int(hash)) % 16 }
 )
 
-func (r *httpRequest_) checkAcceptLanguage(pairs []pair, from uint8, edge uint8) bool { // Accept-Language = #( language-range [ weight ] )
+func (r *serverRequest_) checkAcceptLanguage(pairs []pair, from uint8, edge uint8) bool { // Accept-Language = #( language-range [ weight ] )
 	// language-range = <language-range, see [RFC4647], Section 2.1>
 	// weight = OWS ";" OWS "q=" qvalue
 	// qvalue = ( "0" [ "." *3DIGIT ] ) / ( "1" [ "." *3"0" ] )
@@ -1131,14 +1131,14 @@ func (r *httpRequest_) checkAcceptLanguage(pairs []pair, from uint8, edge uint8)
 	}
 	return true
 }
-func (r *httpRequest_) checkCacheControl(pairs []pair, from uint8, edge uint8) bool { // Cache-Control = #cache-directive
+func (r *serverRequest_) checkCacheControl(pairs []pair, from uint8, edge uint8) bool { // Cache-Control = #cache-directive
 	// cache-directive = token [ "=" ( token / quoted-string ) ]
 	for i := from; i < edge; i++ {
 		// TODO
 	}
 	return true
 }
-func (r *httpRequest_) checkExpect(pairs []pair, from uint8, edge uint8) bool { // Expect = #expectation
+func (r *serverRequest_) checkExpect(pairs []pair, from uint8, edge uint8) bool { // Expect = #expectation
 	// expectation = token [ "=" ( token / quoted-string ) parameters ]
 	if r.versionCode >= Version1_1 {
 		if r.zones.expect.isEmpty() {
@@ -1167,7 +1167,7 @@ func (r *httpRequest_) checkExpect(pairs []pair, from uint8, edge uint8) bool { 
 	}
 	return true
 }
-func (r *httpRequest_) checkForwarded(pairs []pair, from uint8, edge uint8) bool { // Forwarded = 1#forwarded-element
+func (r *serverRequest_) checkForwarded(pairs []pair, from uint8, edge uint8) bool { // Forwarded = 1#forwarded-element
 	if from == edge {
 		r.headResult, r.failReason = StatusBadRequest, "forwarded = 1#forwarded-element"
 		return false
@@ -1181,13 +1181,13 @@ func (r *httpRequest_) checkForwarded(pairs []pair, from uint8, edge uint8) bool
 	r.zones.forwarded.edge = edge
 	return true
 }
-func (r *httpRequest_) checkIfMatch(pairs []pair, from uint8, edge uint8) bool { // If-Match = "*" / #entity-tag
+func (r *serverRequest_) checkIfMatch(pairs []pair, from uint8, edge uint8) bool { // If-Match = "*" / #entity-tag
 	return r._checkMatch(pairs, from, edge, &r.zones.ifMatch, &r.ifMatch)
 }
-func (r *httpRequest_) checkIfNoneMatch(pairs []pair, from uint8, edge uint8) bool { // If-None-Match = "*" / #entity-tag
+func (r *serverRequest_) checkIfNoneMatch(pairs []pair, from uint8, edge uint8) bool { // If-None-Match = "*" / #entity-tag
 	return r._checkMatch(pairs, from, edge, &r.zones.ifNoneMatch, &r.ifNoneMatch)
 }
-func (r *httpRequest_) _checkMatch(pairs []pair, from uint8, edge uint8, zMatch *zone, match *int8) bool {
+func (r *serverRequest_) _checkMatch(pairs []pair, from uint8, edge uint8, zMatch *zone, match *int8) bool {
 	if zMatch.isEmpty() {
 		zMatch.from = from
 	}
@@ -1215,7 +1215,7 @@ func (r *httpRequest_) _checkMatch(pairs []pair, from uint8, edge uint8, zMatch 
 	}
 	return true
 }
-func (r *httpRequest_) checkTE(pairs []pair, from uint8, edge uint8) bool { // TE = #t-codings
+func (r *serverRequest_) checkTE(pairs []pair, from uint8, edge uint8) bool { // TE = #t-codings
 	// t-codings = "trailers" / ( transfer-coding [ t-ranking ] )
 	// t-ranking = OWS ";" OWS "q=" rank
 	for i := from; i < edge; i++ {
@@ -1234,7 +1234,7 @@ func (r *httpRequest_) checkTE(pairs []pair, from uint8, edge uint8) bool { // T
 	}
 	return true
 }
-func (r *httpRequest_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { // Upgrade = #protocol
+func (r *serverRequest_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { // Upgrade = #protocol
 	if r.versionCode > Version1_1 {
 		r.headResult, r.failReason = StatusBadRequest, "upgrade is only supported in http/1"
 		return false
@@ -1265,7 +1265,7 @@ func (r *httpRequest_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool {
 	}
 	return true
 }
-func (r *httpRequest_) checkXForwardedFor(pairs []pair, from uint8, edge uint8) bool { // X-Forwarded-For: <client>, <proxy1>, <proxy2>
+func (r *serverRequest_) checkXForwardedFor(pairs []pair, from uint8, edge uint8) bool { // X-Forwarded-For: <client>, <proxy1>, <proxy2>
 	if from == edge {
 		r.headResult, r.failReason = StatusBadRequest, "empty x-forwarded-for"
 		return false
@@ -1277,7 +1277,7 @@ func (r *httpRequest_) checkXForwardedFor(pairs []pair, from uint8, edge uint8) 
 	return true
 }
 
-func (r *httpRequest_) parseAuthority(from int32, edge int32, save bool) bool { // authority = host [ ":" port ]
+func (r *serverRequest_) parseAuthority(from int32, edge int32, save bool) bool { // authority = host [ ":" port ]
 	if save {
 		r.authority.set(from, edge)
 	}
@@ -1344,7 +1344,7 @@ func (r *httpRequest_) parseAuthority(from int32, edge int32, save bool) bool { 
 	}
 	return true
 }
-func (r *httpRequest_) parseCookie(cookieString span) bool { // cookie-string = cookie-pair *( ";" SP cookie-pair )
+func (r *serverRequest_) parseCookie(cookieString span) bool { // cookie-string = cookie-pair *( ";" SP cookie-pair )
 	// cookie-pair = token "=" cookie-value
 	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
 	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
@@ -1436,18 +1436,18 @@ func (r *httpRequest_) parseCookie(cookieString span) bool { // cookie-string = 
 	return true
 }
 
-func (r *httpRequest_) AcceptTrailers() bool { return r.acceptTrailers }
-func (r *httpRequest_) HasRanges() bool      { return r.nRanges > 0 }
-func (r *httpRequest_) HasIfRange() bool     { return r.indexes.ifRange != 0 }
-func (r *httpRequest_) UserAgent() string    { return string(r.UnsafeUserAgent()) }
-func (r *httpRequest_) UnsafeUserAgent() []byte {
+func (r *serverRequest_) AcceptTrailers() bool { return r.acceptTrailers }
+func (r *serverRequest_) HasRanges() bool      { return r.nRanges > 0 }
+func (r *serverRequest_) HasIfRange() bool     { return r.indexes.ifRange != 0 }
+func (r *serverRequest_) UserAgent() string    { return string(r.UnsafeUserAgent()) }
+func (r *serverRequest_) UnsafeUserAgent() []byte {
 	if r.indexes.userAgent == 0 {
 		return nil
 	}
 	return r.primes[r.indexes.userAgent].valueAt(r.input)
 }
 
-func (r *httpRequest_) addCookie(cookie *pair) bool { // as prime
+func (r *serverRequest_) addCookie(cookie *pair) bool { // as prime
 	if edge, ok := r._addPrime(cookie); ok {
 		r.cookies.edge = edge
 		return true
@@ -1455,21 +1455,21 @@ func (r *httpRequest_) addCookie(cookie *pair) bool { // as prime
 	r.headResult = StatusRequestHeaderFieldsTooLarge
 	return false
 }
-func (r *httpRequest_) HasCookies() bool { return r.hasPairs(r.cookies, kindCookie) }
-func (r *httpRequest_) AllCookies() (cookies [][2]string) {
+func (r *serverRequest_) HasCookies() bool { return r.hasPairs(r.cookies, kindCookie) }
+func (r *serverRequest_) AllCookies() (cookies [][2]string) {
 	return r.allPairs(r.cookies, kindCookie)
 }
-func (r *httpRequest_) C(name string) string {
+func (r *serverRequest_) C(name string) string {
 	value, _ := r.Cookie(name)
 	return value
 }
-func (r *httpRequest_) Cstr(name string, defaultValue string) string {
+func (r *serverRequest_) Cstr(name string, defaultValue string) string {
 	if value, ok := r.Cookie(name); ok {
 		return value
 	}
 	return defaultValue
 }
-func (r *httpRequest_) Cint(name string, defaultValue int) int {
+func (r *serverRequest_) Cint(name string, defaultValue int) int {
 	if value, ok := r.Cookie(name); ok {
 		if i, err := strconv.Atoi(value); err == nil {
 			return i
@@ -1477,27 +1477,27 @@ func (r *httpRequest_) Cint(name string, defaultValue int) int {
 	}
 	return defaultValue
 }
-func (r *httpRequest_) Cookie(name string) (value string, ok bool) {
+func (r *serverRequest_) Cookie(name string) (value string, ok bool) {
 	v, ok := r.getPair(name, 0, r.cookies, kindCookie)
 	return string(v), ok
 }
-func (r *httpRequest_) UnsafeCookie(name string) (value []byte, ok bool) {
+func (r *serverRequest_) UnsafeCookie(name string) (value []byte, ok bool) {
 	return r.getPair(name, 0, r.cookies, kindCookie)
 }
-func (r *httpRequest_) Cookies(name string) (values []string, ok bool) {
+func (r *serverRequest_) Cookies(name string) (values []string, ok bool) {
 	return r.getPairs(name, 0, r.cookies, kindCookie)
 }
-func (r *httpRequest_) HasCookie(name string) bool {
+func (r *serverRequest_) HasCookie(name string) bool {
 	_, ok := r.getPair(name, 0, r.cookies, kindCookie)
 	return ok
 }
-func (r *httpRequest_) DelCookie(name string) (deleted bool) {
+func (r *serverRequest_) DelCookie(name string) (deleted bool) {
 	return r.delPair(name, 0, r.cookies, kindCookie)
 }
-func (r *httpRequest_) AddCookie(name string, value string) bool { // as extra
+func (r *serverRequest_) AddCookie(name string, value string) bool { // as extra
 	return r.addExtra(name, value, 0, kindCookie)
 }
-func (r *httpRequest_) forCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool {
+func (r *serverRequest_) forCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool {
 	for i := r.cookies.from; i < r.cookies.edge; i++ {
 		if cookie := &r.primes[i]; cookie.hash != 0 {
 			if !callback(cookie, cookie.nameAt(r.input), cookie.valueAt(r.input)) {
@@ -1517,7 +1517,7 @@ func (r *httpRequest_) forCookies(callback func(cookie *pair, name []byte, value
 	return true
 }
 
-func (r *httpRequest_) EvalPreconditions(date int64, etag []byte, asOrigin bool) (status int16, normal bool) { // to test against preconditons intentionally
+func (r *serverRequest_) EvalPreconditions(date int64, etag []byte, asOrigin bool) (status int16, normal bool) { // to test against preconditons intentionally
 	// Get effective etag without ""
 	if n := len(etag); n >= 2 && etag[0] == '"' && etag[n-1] == '"' {
 		etag = etag[1 : n-1]
@@ -1550,7 +1550,7 @@ func (r *httpRequest_) EvalPreconditions(date int64, etag []byte, asOrigin bool)
 	}
 	return StatusOK, true
 }
-func (r *httpRequest_) _evalIfMatch(etag []byte) (pass bool) {
+func (r *serverRequest_) _evalIfMatch(etag []byte) (pass bool) {
 	if r.ifMatch == -1 { // *
 		// If the field value is "*", the condition is true if the origin server has a current representation for the target resource.
 		return true
@@ -1569,7 +1569,7 @@ func (r *httpRequest_) _evalIfMatch(etag []byte) (pass bool) {
 	// TODO: r.extras?
 	return false
 }
-func (r *httpRequest_) _evalIfNoneMatch(etag []byte) (pass bool) {
+func (r *serverRequest_) _evalIfNoneMatch(etag []byte) (pass bool) {
 	if r.ifNoneMatch == -1 { // *
 		// If the field value is "*", the condition is false if the origin server has a current representation for the target resource.
 		return false
@@ -1587,16 +1587,16 @@ func (r *httpRequest_) _evalIfNoneMatch(etag []byte) (pass bool) {
 	// TODO: r.extras?
 	return true
 }
-func (r *httpRequest_) _evalIfModifiedSince(date int64) (pass bool) {
+func (r *serverRequest_) _evalIfModifiedSince(date int64) (pass bool) {
 	// If the selected representation's last modification date is earlier than or equal to the date provided in the field value, the condition is false.
 	return date > r.unixTimes.ifModifiedSince
 }
-func (r *httpRequest_) _evalIfUnmodifiedSince(date int64) (pass bool) {
+func (r *serverRequest_) _evalIfUnmodifiedSince(date int64) (pass bool) {
 	// If the selected representation's last modification date is earlier than or equal to the date provided in the field value, the condition is true.
 	return date <= r.unixTimes.ifUnmodifiedSince
 }
 
-func (r *httpRequest_) EvalIfRange(date int64, etag []byte, asOrigin bool) (canRange bool) {
+func (r *serverRequest_) EvalIfRange(date int64, etag []byte, asOrigin bool) (canRange bool) {
 	if r.unixTimes.ifRange == 0 {
 		if r._evalIfRangeETag(etag) {
 			return true
@@ -1606,7 +1606,7 @@ func (r *httpRequest_) EvalIfRange(date int64, etag []byte, asOrigin bool) (canR
 	}
 	return false
 }
-func (r *httpRequest_) _evalIfRangeETag(etag []byte) (pass bool) {
+func (r *serverRequest_) _evalIfRangeETag(etag []byte) (pass bool) {
 	ifRange := &r.primes[r.indexes.ifRange] // TODO: r.extras?
 	data := ifRange.dataAt(r.input)
 	if size := len(data); !(size >= 4 && data[0] == 'W' && data[1] == '/' && data[2] == '"' && data[size-1] == '"') && bytes.Equal(data, etag) {
@@ -1615,12 +1615,12 @@ func (r *httpRequest_) _evalIfRangeETag(etag []byte) (pass bool) {
 	}
 	return false
 }
-func (r *httpRequest_) _evalIfRangeDate(date int64) (pass bool) {
+func (r *serverRequest_) _evalIfRangeDate(date int64) (pass bool) {
 	// If the HTTP-date validator provided exactly matches the Last-Modified field value for the selected representation, the condition is true.
 	return r.unixTimes.ifRange == date
 }
 
-func (r *httpRequest_) EvalRanges(contentSize int64) []Range { // returned ranges are converted from [from:last] to the format of [from:edge)
+func (r *serverRequest_) EvalRanges(contentSize int64) []Range { // returned ranges are converted from [from:last] to the format of [from:edge)
 	rangedSize := int64(0)
 	for i := int8(0); i < r.nRanges; i++ {
 		rang := &r.ranges[i]
@@ -1656,20 +1656,20 @@ func (r *httpRequest_) EvalRanges(contentSize int64) []Range { // returned range
 	return r.ranges[:r.nRanges]
 }
 
-func (r *httpRequest_) unsetHost() { // used by proxies
+func (r *serverRequest_) unsetHost() { // used by proxies
 	r._delPrime(r.indexes.host) // zero safe
 }
 
-func (r *httpRequest_) HasContent() bool { return r.contentSize >= 0 || r.IsVague() }
-func (r *httpRequest_) Content() string  { return string(r.UnsafeContent()) }
-func (r *httpRequest_) UnsafeContent() []byte {
+func (r *serverRequest_) HasContent() bool { return r.contentSize >= 0 || r.IsVague() }
+func (r *serverRequest_) Content() string  { return string(r.UnsafeContent()) }
+func (r *serverRequest_) UnsafeContent() []byte {
 	if r.formKind == webFormMultipart { // loading multipart form into memory is not allowed!
 		return nil
 	}
 	return r.unsafeContent()
 }
 
-func (r *httpRequest_) parseHTMLForm() { // to populate r.forms and r.upfiles
+func (r *serverRequest_) parseHTMLForm() { // to populate r.forms and r.upfiles
 	if r.formKind == webFormNotForm || r.formReceived {
 		return
 	}
@@ -1682,7 +1682,7 @@ func (r *httpRequest_) parseHTMLForm() { // to populate r.forms and r.upfiles
 		r._recvMultipartForm()
 	}
 }
-func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
+func (r *serverRequest_) _loadURLEncodedForm() { // into memory entirely
 	r.loadContent()
 	if r.stream.isBroken() {
 		return
@@ -1770,7 +1770,7 @@ func (r *httpRequest_) _loadURLEncodedForm() { // into memory entirely
 		r.bodyResult, r.failReason = StatusBadRequest, "incomplete pct-encoded"
 	}
 }
-func (r *httpRequest_) _recvMultipartForm() { // into memory or tempFile. see RFC 7578: https://datatracker.ietf.org/doc/html/rfc7578
+func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see RFC 7578: https://datatracker.ietf.org/doc/html/rfc7578
 	r.pBack, r.pFore = 0, 0
 	r.consumedSize = r.receivedSize
 	if r.contentReceived { // (0, 64K1)
@@ -2114,7 +2114,7 @@ func (r *httpRequest_) _recvMultipartForm() { // into memory or tempFile. see RF
 		}
 	}
 }
-func (r *httpRequest_) _growMultipartForm() bool { // caller needs more data from content file
+func (r *serverRequest_) _growMultipartForm() bool { // caller needs more data from content file
 	if r.consumedSize == r.receivedSize || (r.formEdge == int32(len(r.formWindow)) && r.pBack == 0) {
 		r.stream.markBroken()
 		return false
@@ -2144,7 +2144,7 @@ func (r *httpRequest_) _growMultipartForm() bool { // caller needs more data fro
 	}
 	return true
 }
-func (r *httpRequest_) _parseParas(p []byte, from int32, edge int32, paras []para) (int, bool) {
+func (r *serverRequest_) _parseParas(p []byte, from int32, edge int32, paras []para) (int, bool) {
 	// param-string = *( OWS ";" OWS param-pair )
 	// param-pair   = token "=" param-value
 	// param-value  = *param-octet / ( DQUOTE *param-octet DQUOTE )
@@ -2215,7 +2215,7 @@ func (r *httpRequest_) _parseParas(p []byte, from int32, edge int32, paras []par
 	}
 }
 
-func (r *httpRequest_) addForm(form *pair) bool { // as prime
+func (r *serverRequest_) addForm(form *pair) bool { // as prime
 	if edge, ok := r._addPrime(form); ok {
 		r.forms.edge = edge
 		return true
@@ -2223,25 +2223,25 @@ func (r *httpRequest_) addForm(form *pair) bool { // as prime
 	r.bodyResult, r.failReason = StatusURITooLong, "too many forms"
 	return false
 }
-func (r *httpRequest_) HasForms() bool {
+func (r *serverRequest_) HasForms() bool {
 	r.parseHTMLForm()
 	return r.hasPairs(r.forms, kindForm)
 }
-func (r *httpRequest_) AllForms() (forms [][2]string) {
+func (r *serverRequest_) AllForms() (forms [][2]string) {
 	r.parseHTMLForm()
 	return r.allPairs(r.forms, kindForm)
 }
-func (r *httpRequest_) F(name string) string {
+func (r *serverRequest_) F(name string) string {
 	value, _ := r.Form(name)
 	return value
 }
-func (r *httpRequest_) Fstr(name string, defaultValue string) string {
+func (r *serverRequest_) Fstr(name string, defaultValue string) string {
 	if value, ok := r.Form(name); ok {
 		return value
 	}
 	return defaultValue
 }
-func (r *httpRequest_) Fint(name string, defaultValue int) int {
+func (r *serverRequest_) Fint(name string, defaultValue int) int {
 	if value, ok := r.Form(name); ok {
 		if i, err := strconv.Atoi(value); err == nil {
 			return i
@@ -2249,33 +2249,33 @@ func (r *httpRequest_) Fint(name string, defaultValue int) int {
 	}
 	return defaultValue
 }
-func (r *httpRequest_) Form(name string) (value string, ok bool) {
+func (r *serverRequest_) Form(name string) (value string, ok bool) {
 	r.parseHTMLForm()
 	v, ok := r.getPair(name, 0, r.forms, kindForm)
 	return string(v), ok
 }
-func (r *httpRequest_) UnsafeForm(name string) (value []byte, ok bool) {
+func (r *serverRequest_) UnsafeForm(name string) (value []byte, ok bool) {
 	r.parseHTMLForm()
 	return r.getPair(name, 0, r.forms, kindForm)
 }
-func (r *httpRequest_) Forms(name string) (values []string, ok bool) {
+func (r *serverRequest_) Forms(name string) (values []string, ok bool) {
 	r.parseHTMLForm()
 	return r.getPairs(name, 0, r.forms, kindForm)
 }
-func (r *httpRequest_) HasForm(name string) bool {
+func (r *serverRequest_) HasForm(name string) bool {
 	r.parseHTMLForm()
 	_, ok := r.getPair(name, 0, r.forms, kindForm)
 	return ok
 }
-func (r *httpRequest_) DelForm(name string) (deleted bool) {
+func (r *serverRequest_) DelForm(name string) (deleted bool) {
 	r.parseHTMLForm()
 	return r.delPair(name, 0, r.forms, kindForm)
 }
-func (r *httpRequest_) AddForm(name string, value string) bool { // as extra
+func (r *serverRequest_) AddForm(name string, value string) bool { // as extra
 	return r.addExtra(name, value, 0, kindForm)
 }
 
-func (r *httpRequest_) addUpfile(upfile *Upfile) {
+func (r *serverRequest_) addUpfile(upfile *Upfile) {
 	if len(r.upfiles) == cap(r.upfiles) {
 		if cap(r.upfiles) == cap(r.stockUpfiles) {
 			upfiles := make([]Upfile, 0, 16)
@@ -2290,11 +2290,11 @@ func (r *httpRequest_) addUpfile(upfile *Upfile) {
 	}
 	r.upfiles = append(r.upfiles, *upfile)
 }
-func (r *httpRequest_) HasUpfiles() bool {
+func (r *serverRequest_) HasUpfiles() bool {
 	r.parseHTMLForm()
 	return len(r.upfiles) != 0
 }
-func (r *httpRequest_) AllUpfiles() (upfiles []*Upfile) {
+func (r *serverRequest_) AllUpfiles() (upfiles []*Upfile) {
 	r.parseHTMLForm()
 	for i := 0; i < len(r.upfiles); i++ {
 		upfile := &r.upfiles[i]
@@ -2303,11 +2303,11 @@ func (r *httpRequest_) AllUpfiles() (upfiles []*Upfile) {
 	}
 	return upfiles
 }
-func (r *httpRequest_) U(name string) *Upfile {
+func (r *serverRequest_) U(name string) *Upfile {
 	upfile, _ := r.Upfile(name)
 	return upfile
 }
-func (r *httpRequest_) Upfile(name string) (upfile *Upfile, ok bool) {
+func (r *serverRequest_) Upfile(name string) (upfile *Upfile, ok bool) {
 	r.parseHTMLForm()
 	if n := len(r.upfiles); n > 0 && name != "" {
 		hash := stringHash(name)
@@ -2320,7 +2320,7 @@ func (r *httpRequest_) Upfile(name string) (upfile *Upfile, ok bool) {
 	}
 	return
 }
-func (r *httpRequest_) Upfiles(name string) (upfiles []*Upfile, ok bool) {
+func (r *serverRequest_) Upfiles(name string) (upfiles []*Upfile, ok bool) {
 	r.parseHTMLForm()
 	if n := len(r.upfiles); n > 0 && name != "" {
 		hash := stringHash(name)
@@ -2336,13 +2336,13 @@ func (r *httpRequest_) Upfiles(name string) (upfiles []*Upfile, ok bool) {
 	}
 	return
 }
-func (r *httpRequest_) HasUpfile(name string) bool {
+func (r *serverRequest_) HasUpfile(name string) bool {
 	r.parseHTMLForm()
 	_, ok := r.Upfile(name)
 	return ok
 }
 
-func (r *httpRequest_) examineTail() bool {
+func (r *serverRequest_) examineTail() bool {
 	for i := r.trailers.from; i < r.trailers.edge; i++ {
 		if !r.applyTrailer(i) {
 			// r.bodyResult is set.
@@ -2351,18 +2351,18 @@ func (r *httpRequest_) examineTail() bool {
 	}
 	return true
 }
-func (r *httpRequest_) applyTrailer(index uint8) bool {
+func (r *serverRequest_) applyTrailer(index uint8) bool {
 	//trailer := &r.primes[index]
 	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
 }
 
-func (r *httpRequest_) hookReviser(reviser Reviser) {
+func (r *serverRequest_) hookReviser(reviser Reviser) {
 	r.hasRevisers = true
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
 }
 
-func (r *httpRequest_) unsafeVariable(code int16, name string) (value []byte) {
+func (r *serverRequest_) unsafeVariable(code int16, name string) (value []byte) {
 	if code != -1 {
 		return httpRequestVariables[code](r)
 	}
@@ -2391,17 +2391,17 @@ const ( // web server request prefixes
 	httpRequestPrefixCookie = "cookie_"
 )
 
-var httpRequestVariables = [...]func(*httpRequest_) []byte{ // keep sync with varCodes
-	(*httpRequest_).UnsafeMethod,      // method
-	(*httpRequest_).UnsafeScheme,      // scheme
-	(*httpRequest_).UnsafeAuthority,   // authority
-	(*httpRequest_).UnsafeHostname,    // hostname
-	(*httpRequest_).UnsafeColonPort,   // colonPort
-	(*httpRequest_).UnsafePath,        // path
-	(*httpRequest_).UnsafeURI,         // uri
-	(*httpRequest_).UnsafeEncodedPath, // encodedPath
-	(*httpRequest_).UnsafeQueryString, // queryString
-	(*httpRequest_).UnsafeContentType, // contentType
+var httpRequestVariables = [...]func(*serverRequest_) []byte{ // keep sync with varCodes
+	(*serverRequest_).UnsafeMethod,      // method
+	(*serverRequest_).UnsafeScheme,      // scheme
+	(*serverRequest_).UnsafeAuthority,   // authority
+	(*serverRequest_).UnsafeHostname,    // hostname
+	(*serverRequest_).UnsafeColonPort,   // colonPort
+	(*serverRequest_).UnsafePath,        // path
+	(*serverRequest_).UnsafeURI,         // uri
+	(*serverRequest_).UnsafeEncodedPath, // encodedPath
+	(*serverRequest_).UnsafeQueryString, // queryString
+	(*serverRequest_).UnsafeContentType, // contentType
 }
 
 // Upfile is a file uploaded by web client.
@@ -2507,7 +2507,7 @@ func (u *Upfile) MoveTo(path string) error {
 }
 
 // Response is the server-side web response.
-type Response interface { // for *http[1-3]Response
+type Response interface { // for *server[1-3]Response
 	Request() Request
 
 	SetStatus(status int16) error
@@ -2560,7 +2560,7 @@ type Response interface { // for *http[1-3]Response
 	header(name []byte) (value []byte, ok bool)
 	hasHeader(name []byte) bool
 	delHeader(name []byte) bool
-	employRanges(ranges []Range, rangeType string)
+	pickRanges(ranges []Range, rangeType string)
 	sendText(content []byte) error
 	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
 	sendChain() error                                             // content
@@ -2568,17 +2568,17 @@ type Response interface { // for *http[1-3]Response
 	echoChain() error // chunks
 	addTrailer(name []byte, value []byte) bool
 	endVague() error
-	proxyPass1xx(resp HResponse) bool
-	proxyPass(resp HResponse) error
+	proxyPass1xx(resp BackendResponse) bool
+	proxyPass(resp BackendResponse) error
 	proxyPost(content any, hasTrailers bool) error
-	proxyCopyHead(resp HResponse, args *WebExchanProxyArgs) bool
-	proxyCopyTail(resp HResponse, args *WebExchanProxyArgs) bool
+	proxyCopyHead(resp BackendResponse, cfg *WebExchanProxyConfig) bool
+	proxyCopyTail(resp BackendResponse, cfg *WebExchanProxyConfig) bool
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
 }
 
-// httpResponse_ is the parent for http[1-3]Response.
-type httpResponse_ struct { // outgoing. needs building
+// serverResponse_ is the parent for server[1-3]Response.
+type serverResponse_ struct { // outgoing. needs building
 	// Parent
 	webOut_ // outgoing web message
 	// Assocs
@@ -2594,10 +2594,10 @@ type httpResponse_ struct { // outgoing. needs building
 		lastModified int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
 	}
 	// Stream states (zeros)
-	webapp        *Webapp // associated webapp
-	httpResponse0         // all values must be zero by default in this struct!
+	webapp          *Webapp // associated webapp
+	serverResponse0         // all values must be zero by default in this struct!
 }
-type httpResponse0 struct { // for fast reset, entirely
+type serverResponse0 struct { // for fast reset, entirely
 	indexes struct {
 		expires      uint8
 		lastModified uint8
@@ -2606,22 +2606,22 @@ type httpResponse0 struct { // for fast reset, entirely
 	revisers [32]uint8 // reviser ids which will apply on this response. indexed by reviser order
 }
 
-func (r *httpResponse_) onUse(versionCode uint8) { // for non-zeros
+func (r *serverResponse_) onUse(versionCode uint8) { // for non-zeros
 	const asRequest = false
 	r.webOut_.onUse(versionCode, asRequest)
 	r.status = StatusOK
 	r.unixTimes.expires = -1      // not set
 	r.unixTimes.lastModified = -1 // not set
 }
-func (r *httpResponse_) onEnd() { // for zeros
+func (r *serverResponse_) onEnd() { // for zeros
 	r.webapp = nil
-	r.httpResponse0 = httpResponse0{}
+	r.serverResponse0 = serverResponse0{}
 	r.webOut_.onEnd()
 }
 
-func (r *httpResponse_) Request() Request { return r.request }
+func (r *serverResponse_) Request() Request { return r.request }
 
-func (r *httpResponse_) SetStatus(status int16) error {
+func (r *serverResponse_) SetStatus(status int16) error {
 	if status >= 200 && status < 1000 {
 		r.status = status
 		if status == StatusNoContent {
@@ -2637,9 +2637,9 @@ func (r *httpResponse_) SetStatus(status int16) error {
 		return webOutUnknownStatus
 	}
 }
-func (r *httpResponse_) Status() int16 { return r.status }
+func (r *serverResponse_) Status() int16 { return r.status }
 
-func (r *httpResponse_) MakeETagFrom(date int64, size int64) ([]byte, bool) { // with ""
+func (r *serverResponse_) MakeETagFrom(date int64, size int64) ([]byte, bool) { // with ""
 	if date < 0 || size < 0 {
 		return nil, false
 	}
@@ -2655,27 +2655,27 @@ func (r *httpResponse_) MakeETagFrom(date int64, size int64) ([]byte, bool) { //
 	p[n] = '"'
 	return p[0 : n+1], true
 }
-func (r *httpResponse_) SetExpires(expires int64) bool {
+func (r *serverResponse_) SetExpires(expires int64) bool {
 	return r._setUnixTime(&r.unixTimes.expires, &r.indexes.expires, expires)
 }
-func (r *httpResponse_) SetLastModified(lastModified int64) bool {
+func (r *serverResponse_) SetLastModified(lastModified int64) bool {
 	return r._setUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified, lastModified)
 }
 
-func (r *httpResponse_) SendBadRequest(content []byte) error { // 400
+func (r *serverResponse_) SendBadRequest(content []byte) error { // 400
 	return r.sendError(StatusBadRequest, content)
 }
-func (r *httpResponse_) SendForbidden(content []byte) error { // 403
+func (r *serverResponse_) SendForbidden(content []byte) error { // 403
 	return r.sendError(StatusForbidden, content)
 }
-func (r *httpResponse_) SendNotFound(content []byte) error { // 404
+func (r *serverResponse_) SendNotFound(content []byte) error { // 404
 	return r.sendError(StatusNotFound, content)
 }
-func (r *httpResponse_) SendMethodNotAllowed(allow string, content []byte) error { // 405
+func (r *serverResponse_) SendMethodNotAllowed(allow string, content []byte) error { // 405
 	r.AddHeaderBytes(bytesAllow, ConstBytes(allow))
 	return r.sendError(StatusMethodNotAllowed, content)
 }
-func (r *httpResponse_) SendRangeNotSatisfiable(contentSize int64, content []byte) error { // 416
+func (r *serverResponse_) SendRangeNotSatisfiable(contentSize int64, content []byte) error { // 416
 	// add a header like: content-range: bytes */1234
 	valueBuffer := r.stream.buffer256()
 	n := copy(valueBuffer, bytesBytesStarSlash)
@@ -2683,20 +2683,20 @@ func (r *httpResponse_) SendRangeNotSatisfiable(contentSize int64, content []byt
 	r.AddHeaderBytes(bytesContentRange, valueBuffer[:n])
 	return r.sendError(StatusRangeNotSatisfiable, content)
 }
-func (r *httpResponse_) SendInternalServerError(content []byte) error { // 500
+func (r *serverResponse_) SendInternalServerError(content []byte) error { // 500
 	return r.sendError(StatusInternalServerError, content)
 }
-func (r *httpResponse_) SendNotImplemented(content []byte) error { // 501
+func (r *serverResponse_) SendNotImplemented(content []byte) error { // 501
 	return r.sendError(StatusNotImplemented, content)
 }
-func (r *httpResponse_) SendBadGateway(content []byte) error { // 502
+func (r *serverResponse_) SendBadGateway(content []byte) error { // 502
 	return r.sendError(StatusBadGateway, content)
 }
-func (r *httpResponse_) SendGatewayTimeout(content []byte) error { // 504
+func (r *serverResponse_) SendGatewayTimeout(content []byte) error { // 504
 	return r.sendError(StatusGatewayTimeout, content)
 }
 
-func (r *httpResponse_) sendError(status int16, content []byte) error {
+func (r *serverResponse_) sendError(status int16, content []byte) error {
 	if err := r._beforeSend(); err != nil {
 		return err
 	}
@@ -2743,7 +2743,7 @@ footer{padding:20px;}
 	return pages
 }()
 
-func (r *httpResponse_) beforeSend() {
+func (r *serverResponse_) beforeSend() {
 	resp := r.shell.(Response)
 	for _, id := range r.revisers { // revise headers
 		if id == 0 { // id of effective reviser is ensured to be > 0
@@ -2753,7 +2753,7 @@ func (r *httpResponse_) beforeSend() {
 		reviser.BeforeSend(resp.Request(), resp)
 	}
 }
-func (r *httpResponse_) doSend() error {
+func (r *serverResponse_) doSend() error {
 	if r.hasRevisers {
 		resp := r.shell.(Response)
 		for _, id := range r.revisers { // revise sized content
@@ -2773,7 +2773,7 @@ func (r *httpResponse_) doSend() error {
 	return r.shell.sendChain()
 }
 
-func (r *httpResponse_) beforeEcho() {
+func (r *serverResponse_) beforeEcho() {
 	resp := r.shell.(Response)
 	for _, id := range r.revisers { // revise headers
 		if id == 0 { // id of effective reviser is ensured to be > 0
@@ -2783,7 +2783,7 @@ func (r *httpResponse_) beforeEcho() {
 		reviser.BeforeEcho(resp.Request(), resp)
 	}
 }
-func (r *httpResponse_) doEcho() error {
+func (r *serverResponse_) doEcho() error {
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
@@ -2801,7 +2801,7 @@ func (r *httpResponse_) doEcho() error {
 	}
 	return r.shell.echoChain()
 }
-func (r *httpResponse_) endVague() error {
+func (r *serverResponse_) endVague() error {
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
@@ -2819,28 +2819,28 @@ func (r *httpResponse_) endVague() error {
 }
 
 var ( // perfect hash table for response critical headers
-	httpResponseCriticalHeaderTable = [10]struct {
+	serverResponseCriticalHeaderTable = [10]struct {
 		hash uint16
 		name []byte
-		fAdd func(*httpResponse_, []byte) (ok bool)
-		fDel func(*httpResponse_) (deleted bool)
+		fAdd func(*serverResponse_, []byte) (ok bool)
+		fDel func(*serverResponse_) (deleted bool)
 	}{ // connection content-length content-type date expires last-modified server set-cookie transfer-encoding upgrade
 		0: {hashServer, bytesServer, nil, nil},       // restricted
 		1: {hashSetCookie, bytesSetCookie, nil, nil}, // restricted
 		2: {hashUpgrade, bytesUpgrade, nil, nil},     // restricted
-		3: {hashDate, bytesDate, (*httpResponse_).appendDate, (*httpResponse_).deleteDate},
+		3: {hashDate, bytesDate, (*serverResponse_).appendDate, (*serverResponse_).deleteDate},
 		4: {hashTransferEncoding, bytesTransferEncoding, nil, nil}, // restricted
 		5: {hashConnection, bytesConnection, nil, nil},             // restricted
-		6: {hashLastModified, bytesLastModified, (*httpResponse_).appendLastModified, (*httpResponse_).deleteLastModified},
-		7: {hashExpires, bytesExpires, (*httpResponse_).appendExpires, (*httpResponse_).deleteExpires},
+		6: {hashLastModified, bytesLastModified, (*serverResponse_).appendLastModified, (*serverResponse_).deleteLastModified},
+		7: {hashExpires, bytesExpires, (*serverResponse_).appendExpires, (*serverResponse_).deleteExpires},
 		8: {hashContentLength, bytesContentLength, nil, nil}, // restricted
-		9: {hashContentType, bytesContentType, (*httpResponse_).appendContentType, (*httpResponse_).deleteContentType},
+		9: {hashContentType, bytesContentType, (*serverResponse_).appendContentType, (*serverResponse_).deleteContentType},
 	}
-	httpResponseCriticalHeaderFind = func(hash uint16) int { return (113100 / int(hash)) % 10 }
+	serverResponseCriticalHeaderFind = func(hash uint16) int { return (113100 / int(hash)) % 10 }
 )
 
-func (r *httpResponse_) insertHeader(hash uint16, name []byte, value []byte) bool {
-	h := &httpResponseCriticalHeaderTable[httpResponseCriticalHeaderFind(hash)]
+func (r *serverResponse_) insertHeader(hash uint16, name []byte, value []byte) bool {
+	h := &serverResponseCriticalHeaderTable[serverResponseCriticalHeaderFind(hash)]
 	if h.hash == hash && bytes.Equal(h.name, name) {
 		if h.fAdd == nil { // mainly because this header is restricted to insert
 			return true // pretend to be successful
@@ -2849,15 +2849,15 @@ func (r *httpResponse_) insertHeader(hash uint16, name []byte, value []byte) boo
 	}
 	return r.shell.addHeader(name, value)
 }
-func (r *httpResponse_) appendExpires(expires []byte) (ok bool) {
+func (r *serverResponse_) appendExpires(expires []byte) (ok bool) {
 	return r._addUnixTime(&r.unixTimes.expires, &r.indexes.expires, bytesExpires, expires)
 }
-func (r *httpResponse_) appendLastModified(lastModified []byte) (ok bool) {
+func (r *serverResponse_) appendLastModified(lastModified []byte) (ok bool) {
 	return r._addUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified, bytesLastModified, lastModified)
 }
 
-func (r *httpResponse_) removeHeader(hash uint16, name []byte) bool {
-	h := &httpResponseCriticalHeaderTable[httpResponseCriticalHeaderFind(hash)]
+func (r *serverResponse_) removeHeader(hash uint16, name []byte) bool {
+	h := &serverResponseCriticalHeaderTable[serverResponseCriticalHeaderFind(hash)]
 	if h.hash == hash && bytes.Equal(h.name, name) {
 		if h.fDel == nil { // mainly because this header is restricted to remove
 			return true // pretend to be successful
@@ -2866,14 +2866,14 @@ func (r *httpResponse_) removeHeader(hash uint16, name []byte) bool {
 	}
 	return r.shell.delHeader(name)
 }
-func (r *httpResponse_) deleteExpires() (deleted bool) {
+func (r *serverResponse_) deleteExpires() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.expires, &r.indexes.expires)
 }
-func (r *httpResponse_) deleteLastModified() (deleted bool) {
+func (r *serverResponse_) deleteLastModified() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified)
 }
 
-func (r *httpResponse_) proxyPass(resp HResponse) error { // sync content to the other side directly
+func (r *serverResponse_) proxyPass(resp BackendResponse) error { // sync content to the other side directly
 	pass := r.shell.passBytes
 	if resp.IsVague() || r.hasRevisers { // if we need to revise, we always use vague no matter the original content is sized or vague
 		pass = r.EchoBytes
@@ -2908,7 +2908,7 @@ func (r *httpResponse_) proxyPass(resp HResponse) error { // sync content to the
 	}
 	return nil
 }
-func (r *httpResponse_) proxyCopyHead(resp HResponse, args *WebExchanProxyArgs) bool {
+func (r *serverResponse_) proxyCopyHead(resp BackendResponse, cfg *WebExchanProxyConfig) bool {
 	resp.delHopHeaders()
 
 	// copy control (:status)
@@ -2929,13 +2929,13 @@ func (r *httpResponse_) proxyCopyHead(resp HResponse, args *WebExchanProxyArgs) 
 
 	return true
 }
-func (r *httpResponse_) proxyCopyTail(resp HResponse, args *WebExchanProxyArgs) bool {
+func (r *serverResponse_) proxyCopyTail(resp BackendResponse, cfg *WebExchanProxyConfig) bool {
 	return resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.shell.addTrailer(name, value)
 	})
 }
 
-func (r *httpResponse_) hookReviser(reviser Reviser) {
+func (r *serverResponse_) hookReviser(reviser Reviser) {
 	r.hasRevisers = true
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
 }
@@ -3100,14 +3100,14 @@ func (c *Cookie) writeTo(p []byte) int {
 }
 
 // Socket is the server-side web socket.
-type Socket interface { // for *http[1-3]Socket
+type Socket interface { // for *server[1-3]Socket
 	Read(p []byte) (int, error)
 	Write(p []byte) (int, error)
 	Close() error
 }
 
-// httpSocket_ is the parent for http[1-3]Socket.
-type httpSocket_ struct {
+// serverSocket_ is the parent for server[1-3]Socket.
+type serverSocket_ struct {
 	// Parent
 	webSocket_
 	// Assocs
@@ -3115,10 +3115,10 @@ type httpSocket_ struct {
 	// Stream states (zeros)
 }
 
-func (s *httpSocket_) onUse() {
+func (s *serverSocket_) onUse() {
 	s.webSocket_.onUse()
 }
-func (s *httpSocket_) onEnd() {
+func (s *serverSocket_) onEnd() {
 	s.webSocket_.onEnd()
 }
 
@@ -3763,7 +3763,7 @@ func (r *Rule) executeExchan(req Request, resp Response) (handled bool) {
 			if handlet.IsProxy() { // request to proxy server. checks against proxy server
 				toOrigin = false
 				if req.VersionCode() == Version1_0 {
-					resp.(*http1Response).setConnectionClose() // A proxy server MUST NOT maintain a persistent connection with an HTTP/1.0 client.
+					resp.(*server1Response).setConnectionClose() // A proxy server MUST NOT maintain a persistent connection with an HTTP/1.0 client.
 				}
 				if handlet.IsCache() { // request to proxy cache. checks against proxy cache
 					// Add checks here.

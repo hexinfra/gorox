@@ -46,7 +46,7 @@ type fcgiProxy struct {
 	backend *TCPSBackend // the backend to pass to
 	cacher  Cacher       // the cacher which is used by this proxy
 	// States
-	WebExchanProxyArgs
+	WebExchanProxyConfig
 	persistent       bool          // instructs FCGI server to keep conn?
 	preferUnderscore bool          // if header name "foo-bar" and "foo_bar" are both present, prefer "foo_bar" to "foo-bar"?
 	scriptFilename   []byte        // for SCRIPT_FILENAME
@@ -242,7 +242,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 		}
 	}
 
-	if !resp.proxyCopyHead(fcgiResp, &h.WebExchanProxyArgs) {
+	if !resp.proxyCopyHead(fcgiResp, &h.WebExchanProxyConfig) {
 		fcgiExchan.markBroken()
 		return
 	}

@@ -269,7 +269,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 			resp.SetLastModified(date)
 		}
 	} else if ranges := req.EvalRanges(size); ranges != nil { // ranges are satisfiable
-		resp.employRanges(ranges, contentType)
+		resp.pickRanges(ranges, contentType)
 	} else { // ranges are not satisfiable
 		resp.SendRangeNotSatisfiable(size, nil)
 		return true

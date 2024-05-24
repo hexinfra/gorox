@@ -40,12 +40,12 @@ func (b *HTTP3Backend) CreateNode(name string) Node {
 	return node
 }
 
-func (b *HTTP3Backend) FetchStream() (HStream, error) {
+func (b *HTTP3Backend) FetchStream() (BackendStream, error) {
 	node := b.nodes[b.nextIndex()]
 	return node.fetchStream()
 }
-func (b *HTTP3Backend) StoreStream(stream HStream) {
-	node := stream.webConn().(*H3Conn).webNode()
+func (b *HTTP3Backend) StoreStream(stream BackendStream) {
+	node := stream.webConn().(*Backend3Conn).http3Node()
 	node.storeStream(stream)
 }
 
@@ -82,16 +82,16 @@ func (n *http3Node) Maintain() { // runner
 	n.backend.DecSub()
 }
 
-func (n *http3Node) fetchStream() (HStream, error) {
+func (n *http3Node) fetchStream() (BackendStream, error) {
 	// TODO
 	return nil, nil
 }
-func (n *http3Node) storeStream(stream HStream) {
+func (n *http3Node) storeStream(stream BackendStream) {
 	// TODO
 }
 
 /*
-func (n *http3Node) fetchConn() (*H3Conn, error) {
+func (n *http3Node) fetchConn() (*Backend3Conn, error) {
 	// TODO: dynamic address names?
 	// TODO
 	conn, err := quic.DialTimeout(n.address, n.backend.DialTimeout())
@@ -99,33 +99,33 @@ func (n *http3Node) fetchConn() (*H3Conn, error) {
 		return nil, err
 	}
 	connID := n.backend.nextConnID()
-	return getH3Conn(connID, n, conn), nil
+	return getBackend3Conn(connID, n, conn), nil
 }
-func (n *http3Node) storeConn(conn *H3Conn) {
+func (n *http3Node) storeConn(conn *Backend3Conn) {
 	// TODO
 }
 */
 
-// poolH3Conn is the backend-side HTTP/3 connection pool.
-var poolH3Conn sync.Pool
+// poolBackend3Conn is the backend-side HTTP/3 connection pool.
+var poolBackend3Conn sync.Pool
 
-func getH3Conn(id int64, node *http3Node, quicConn *quic.Conn) *H3Conn {
-	var h3Conn *H3Conn
-	if x := poolH3Conn.Get(); x == nil {
-		h3Conn = new(H3Conn)
+func getBackend3Conn(id int64, node *http3Node, quicConn *quic.Conn) *Backend3Conn {
+	var conn *Backend3Conn
+	if x := poolBackend3Conn.Get(); x == nil {
+		conn = new(Backend3Conn)
 	} else {
-		h3Conn = x.(*H3Conn)
+		conn = x.(*Backend3Conn)
 	}
-	h3Conn.onGet(id, node, quicConn)
-	return h3Conn
+	conn.onGet(id, node, quicConn)
+	return conn
 }
-func putH3Conn(h3Conn *H3Conn) {
-	h3Conn.onPut()
-	poolH3Conn.Put(h3Conn)
+func putBackend3Conn(conn *Backend3Conn) {
+	conn.onPut()
+	poolBackend3Conn.Put(conn)
 }
 
-// H3Conn
-type H3Conn struct {
+// Backend3Conn
+type Backend3Conn struct {
 	// Parent
 	BackendConn_
 	// Mixins
@@ -135,58 +135,58 @@ type H3Conn struct {
 	// Conn states (non-zeros)
 	quicConn *quic.Conn // the underlying quic connection
 	// Conn states (zeros)
-	nStreams atomic.Int32                     // concurrent streams
-	streams  [http3MaxActiveStreams]*H3Stream // active (open, remoteClosed, localClosed) streams
-	h3Conn0                                   // all values must be zero by default in this struct!
+	nStreams      atomic.Int32                           // concurrent streams
+	streams       [http3MaxActiveStreams]*Backend3Stream // active (open, remoteClosed, localClosed) streams
+	backend3Conn0                                        // all values must be zero by default in this struct!
 }
-type h3Conn0 struct { // for fast reset, entirely
+type backend3Conn0 struct { // for fast reset, entirely
 }
 
-func (c *H3Conn) onGet(id int64, node *http3Node, quicConn *quic.Conn) {
+func (c *Backend3Conn) onGet(id int64, node *http3Node, quicConn *quic.Conn) {
 	c.BackendConn_.OnGet(id, node)
 	c._webConn_.onGet()
 	c.quicConn = quicConn
 }
-func (c *H3Conn) onPut() {
+func (c *Backend3Conn) onPut() {
 	c.quicConn = nil
 	c.nStreams.Store(0)
-	c.streams = [http3MaxActiveStreams]*H3Stream{}
-	c.h3Conn0 = h3Conn0{}
+	c.streams = [http3MaxActiveStreams]*Backend3Stream{}
+	c.backend3Conn0 = backend3Conn0{}
 	c._webConn_.onPut()
 	c.BackendConn_.OnPut()
 }
 
-func (c *H3Conn) WebBackend() WebBackend { return c.Backend().(WebBackend) }
-func (c *H3Conn) webNode() *http3Node    { return c.Node().(*http3Node) }
+func (c *Backend3Conn) WebBackend() WebBackend { return c.Backend().(WebBackend) }
+func (c *Backend3Conn) http3Node() *http3Node  { return c.Node().(*http3Node) }
 
-func (c *H3Conn) reachLimit() bool {
+func (c *Backend3Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.WebBackend().MaxStreamsPerConn()
 }
 
-func (c *H3Conn) fetchStream() (HStream, error) {
-	// Note: An H3Conn can be used concurrently, limited by maxStreams.
+func (c *Backend3Conn) fetchStream() (BackendStream, error) {
+	// Note: A Backend3Conn can be used concurrently, limited by maxStreams.
 	// TODO: stream.onUse()
 	return nil, nil
 }
-func (c *H3Conn) storeStream(stream HStream) {
-	// Note: An H3Conn can be used concurrently, limited by maxStreams.
+func (c *Backend3Conn) storeStream(stream BackendStream) {
+	// Note: A Backend3Conn can be used concurrently, limited by maxStreams.
 	// TODO
 	//stream.onEnd()
 }
 
-func (c *H3Conn) Close() error {
+func (c *Backend3Conn) Close() error {
 	quicConn := c.quicConn
-	putH3Conn(c)
+	putBackend3Conn(c)
 	return quicConn.Close()
 }
 
-// poolH3Stream
-var poolH3Stream sync.Pool
+// poolBackend3Stream
+var poolBackend3Stream sync.Pool
 
-func getH3Stream(conn *H3Conn, quicStream *quic.Stream) *H3Stream {
-	var stream *H3Stream
-	if x := poolH3Stream.Get(); x == nil {
-		stream = new(H3Stream)
+func getBackend3Stream(conn *Backend3Conn, quicStream *quic.Stream) *Backend3Stream {
+	var stream *Backend3Stream
+	if x := poolBackend3Stream.Get(); x == nil {
+		stream = new(Backend3Stream)
 		req, resp := &stream.request, &stream.response
 		req.shell = req
 		req.stream = stream
@@ -194,40 +194,40 @@ func getH3Stream(conn *H3Conn, quicStream *quic.Stream) *H3Stream {
 		resp.shell = resp
 		resp.stream = stream
 	} else {
-		stream = x.(*H3Stream)
+		stream = x.(*Backend3Stream)
 	}
 	stream.onUse(conn, quicStream)
 	return stream
 }
-func putH3Stream(stream *H3Stream) {
+func putBackend3Stream(stream *Backend3Stream) {
 	stream.onEnd()
-	poolH3Stream.Put(stream)
+	poolBackend3Stream.Put(stream)
 }
 
-// H3Stream
-type H3Stream struct {
+// Backend3Stream
+type Backend3Stream struct {
 	// Mixins
 	_webStream_
 	// Assocs
-	request  H3Request
-	response H3Response
-	socket   *H3Socket
+	request  Backend3Request
+	response Backend3Response
+	socket   *Backend3Socket
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	conn       *H3Conn
+	conn       *Backend3Conn
 	quicStream *quic.Stream // the underlying quic stream
 	// Stream states (zeros)
 }
 
-func (s *H3Stream) onUse(conn *H3Conn, quicStream *quic.Stream) { // for non-zeros
+func (s *Backend3Stream) onUse(conn *Backend3Conn, quicStream *quic.Stream) { // for non-zeros
 	s._webStream_.onUse()
 	s.conn = conn
 	s.quicStream = quicStream
 	s.request.onUse(Version3)
 	s.response.onUse(Version3)
 }
-func (s *H3Stream) onEnd() { // for zeros
+func (s *Backend3Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
 	if s.socket != nil {
@@ -239,142 +239,142 @@ func (s *H3Stream) onEnd() { // for zeros
 	s._webStream_.onEnd()
 }
 
-func (s *H3Stream) Request() HRequest   { return &s.request }
-func (s *H3Stream) Response() HResponse { return &s.response }
-func (s *H3Stream) Socket() HSocket     { return nil } // TODO
+func (s *Backend3Stream) Request() BackendRequest   { return &s.request }
+func (s *Backend3Stream) Response() BackendResponse { return &s.response }
+func (s *Backend3Stream) Socket() BackendSocket     { return nil } // TODO
 
-func (s *H3Stream) ExecuteExchan() error { // request & response
+func (s *Backend3Stream) ExecuteExchan() error { // request & response
 	// TODO
 	return nil
 }
-func (s *H3Stream) ExecuteSocket() error { // see RFC 9220
+func (s *Backend3Stream) ExecuteSocket() error { // see RFC 9220
 	// TODO
 	return nil
 }
 
-func (s *H3Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only?
+func (s *Backend3Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only?
 	return nil
 }
-func (s *H3Stream) setReadDeadline(deadline time.Time) error { // for content i/o only?
+func (s *Backend3Stream) setReadDeadline(deadline time.Time) error { // for content i/o only?
 	return nil
 }
 
-func (s *H3Stream) isBroken() bool { return false } // TODO
-func (s *H3Stream) markBroken()    {}               // TODO
+func (s *Backend3Stream) isBroken() bool { return false } // TODO
+func (s *Backend3Stream) markBroken()    {}               // TODO
 
-func (s *H3Stream) webKeeper() webKeeper { return s.conn.WebBackend() }
-func (s *H3Stream) webConn() webConn     { return s.conn }
-func (s *H3Stream) remoteAddr() net.Addr { return nil } // TODO
+func (s *Backend3Stream) webKeeper() webKeeper { return s.conn.WebBackend() }
+func (s *Backend3Stream) webConn() webConn     { return s.conn }
+func (s *Backend3Stream) remoteAddr() net.Addr { return nil } // TODO
 
-func (s *H3Stream) write(p []byte) (int, error) { // for content i/o only?
+func (s *Backend3Stream) write(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
-func (s *H3Stream) writev(vector *net.Buffers) (int64, error) { // for content i/o only?
+func (s *Backend3Stream) writev(vector *net.Buffers) (int64, error) { // for content i/o only?
 	return 0, nil
 }
-func (s *H3Stream) read(p []byte) (int, error) { // for content i/o only?
+func (s *Backend3Stream) read(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
-func (s *H3Stream) readFull(p []byte) (int, error) { // for content i/o only?
+func (s *Backend3Stream) readFull(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
 
-// H3Request is the backend-side HTTP/3 request.
-type H3Request struct { // outgoing. needs building
+// Backend3Request is the backend-side HTTP/3 request.
+type Backend3Request struct { // outgoing. needs building
 	// Parent
-	hRequest_
+	backendRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (r *H3Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // :method = method, :path = uri
+func (r *Backend3Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // :method = method, :path = uri
 	// TODO: set :method and :path
 	return false
 }
-func (r *H3Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
+func (r *Backend3Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
 	// TODO: set :authority
 	return false
 }
 
-func (r *H3Request) addHeader(name []byte, value []byte) bool   { return r.addHeader3(name, value) }
-func (r *H3Request) header(name []byte) (value []byte, ok bool) { return r.header3(name) }
-func (r *H3Request) hasHeader(name []byte) bool                 { return r.hasHeader3(name) }
-func (r *H3Request) delHeader(name []byte) (deleted bool)       { return r.delHeader3(name) }
-func (r *H3Request) delHeaderAt(i uint8)                        { r.delHeaderAt3(i) }
+func (r *Backend3Request) addHeader(name []byte, value []byte) bool   { return r.addHeader3(name, value) }
+func (r *Backend3Request) header(name []byte) (value []byte, ok bool) { return r.header3(name) }
+func (r *Backend3Request) hasHeader(name []byte) bool                 { return r.hasHeader3(name) }
+func (r *Backend3Request) delHeader(name []byte) (deleted bool)       { return r.delHeader3(name) }
+func (r *Backend3Request) delHeaderAt(i uint8)                        { r.delHeaderAt3(i) }
 
-func (r *H3Request) AddCookie(name string, value string) bool {
+func (r *Backend3Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
 	return false
 }
-func (r *H3Request) proxyCopyCookies(req Request) bool { // DO NOT merge into one "cookie" header!
+func (r *Backend3Request) proxyCopyCookies(req Request) bool { // DO NOT merge into one "cookie" header!
 	// TODO: one by one?
 	return true
 }
 
-func (r *H3Request) sendChain() error { return r.sendChain3() }
+func (r *Backend3Request) sendChain() error { return r.sendChain3() }
 
-func (r *H3Request) echoHeaders() error { return r.writeHeaders3() }
-func (r *H3Request) echoChain() error   { return r.echoChain3() }
+func (r *Backend3Request) echoHeaders() error { return r.writeHeaders3() }
+func (r *Backend3Request) echoChain() error   { return r.echoChain3() }
 
-func (r *H3Request) addTrailer(name []byte, value []byte) bool {
+func (r *Backend3Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer3(name, value)
 }
-func (r *H3Request) trailer(name []byte) (value []byte, ok bool) { return r.trailer3(name) }
+func (r *Backend3Request) trailer(name []byte) (value []byte, ok bool) { return r.trailer3(name) }
 
-func (r *H3Request) passHeaders() error       { return r.writeHeaders3() }
-func (r *H3Request) passBytes(p []byte) error { return r.passBytes3(p) }
+func (r *Backend3Request) passHeaders() error       { return r.writeHeaders3() }
+func (r *Backend3Request) passBytes(p []byte) error { return r.passBytes3(p) }
 
-func (r *H3Request) finalizeHeaders() { // add at most 256 bytes
+func (r *Backend3Request) finalizeHeaders() { // add at most 256 bytes
 	// TODO
 }
-func (r *H3Request) finalizeVague() error {
+func (r *Backend3Request) finalizeVague() error {
 	// TODO
 	return nil
 }
 
-func (r *H3Request) addedHeaders() []byte { return nil } // TODO
-func (r *H3Request) fixedHeaders() []byte { return nil } // TODO
+func (r *Backend3Request) addedHeaders() []byte { return nil } // TODO
+func (r *Backend3Request) fixedHeaders() []byte { return nil } // TODO
 
-// H3Response is the backend-side HTTP/3 response.
-type H3Response struct { // incoming. needs parsing
+// Backend3Response is the backend-side HTTP/3 response.
+type Backend3Response struct { // incoming. needs parsing
 	// Parent
-	hResponse_
+	backendResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (r *H3Response) recvHead() {
+func (r *Backend3Response) recvHead() {
 	// TODO
 }
 
-func (r *H3Response) readContent() (p []byte, err error) { return r.readContent3() }
+func (r *Backend3Response) readContent() (p []byte, err error) { return r.readContent3() }
 
-// poolH3Socket
-var poolH3Socket sync.Pool
+// poolBackend3Socket
+var poolBackend3Socket sync.Pool
 
-func getH3Socket(stream *H3Stream) *H3Socket {
+func getBackend3Socket(stream *Backend3Stream) *Backend3Socket {
 	return nil
 }
-func putH3Socket(socket *H3Socket) {
+func putBackend3Socket(socket *Backend3Socket) {
 }
 
-// H3Socket is the backend-side HTTP/3 websocket.
-type H3Socket struct {
+// Backend3Socket is the backend-side HTTP/3 websocket.
+type Backend3Socket struct {
 	// Parent
-	hSocket_
+	backendSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (s *H3Socket) onUse() {
-	s.hSocket_.onUse()
+func (s *Backend3Socket) onUse() {
+	s.backendSocket_.onUse()
 }
-func (s *H3Socket) onEnd() {
-	s.hSocket_.onEnd()
+func (s *Backend3Socket) onEnd() {
+	s.backendSocket_.onEnd()
 }

@@ -87,7 +87,7 @@ func (g *http3Gate) Open() error {
 }
 func (g *http3Gate) Shut() error {
 	g.MarkShut()
-	return g.listener.Close()
+	return g.listener.Close() // breaks serve()
 }
 
 func (g *http3Gate) serve() { // runner
@@ -105,8 +105,8 @@ func (g *http3Gate) serve() { // runner
 		if g.ReachLimit() {
 			g.justClose(quicConn)
 		} else {
-			http3Conn := getHTTP3Conn(connID, g, quicConn)
-			go http3Conn.serve() // http3Conn is put to pool in serve()
+			server3Conn := getServer3Conn(connID, g, quicConn)
+			go server3Conn.serve() // server3Conn is put to pool in serve()
 			connID++
 		}
 	}
@@ -122,26 +122,26 @@ func (g *http3Gate) justClose(quicConn *quic.Conn) {
 	g.OnConnClosed()
 }
 
-// poolHTTP3Conn is the server-side HTTP/3 connection pool.
-var poolHTTP3Conn sync.Pool
+// poolServer3Conn is the server-side HTTP/3 connection pool.
+var poolServer3Conn sync.Pool
 
-func getHTTP3Conn(id int64, gate *http3Gate, quicConn *quic.Conn) *http3Conn {
-	var httpConn *http3Conn
-	if x := poolHTTP3Conn.Get(); x == nil {
-		httpConn = new(http3Conn)
+func getServer3Conn(id int64, gate *http3Gate, quicConn *quic.Conn) *server3Conn {
+	var serverConn *server3Conn
+	if x := poolServer3Conn.Get(); x == nil {
+		serverConn = new(server3Conn)
 	} else {
-		httpConn = x.(*http3Conn)
+		serverConn = x.(*server3Conn)
 	}
-	httpConn.onGet(id, gate, quicConn)
-	return httpConn
+	serverConn.onGet(id, gate, quicConn)
+	return serverConn
 }
-func putHTTP3Conn(httpConn *http3Conn) {
-	httpConn.onPut()
-	poolHTTP3Conn.Put(httpConn)
+func putServer3Conn(serverConn *server3Conn) {
+	serverConn.onPut()
+	poolServer3Conn.Put(serverConn)
 }
 
-// http3Conn is the server-side HTTP/3 connection.
-type http3Conn struct {
+// server3Conn is the server-side HTTP/3 connection.
+type server3Conn struct {
 	// Parent
 	ServerConn_
 	// Mixins
@@ -153,16 +153,16 @@ type http3Conn struct {
 	buffer   *http3Buffer      // ...
 	table    http3DynamicTable // ...
 	// Conn states (zeros)
-	streams    [http3MaxActiveStreams]*http3Stream // active (open, remoteClosed, localClosed) streams
-	http3Conn0                                     // all values must be zero by default in this struct!
+	streams      [http3MaxActiveStreams]*server3Stream // active (open, remoteClosed, localClosed) streams
+	server3Conn0                                       // all values must be zero by default in this struct!
 }
-type http3Conn0 struct { // for fast reset, entirely
+type server3Conn0 struct { // for fast reset, entirely
 	bufferEdge uint32 // incoming data ends at c.buffer.buf[c.bufferEdge]
 	pBack      uint32 // incoming frame part (header or payload) begins from c.buffer.buf[c.pBack]
 	pFore      uint32 // incoming frame part (header or payload) ends at c.buffer.buf[c.pFore]
 }
 
-func (c *http3Conn) onGet(id int64, gate *http3Gate, quicConn *quic.Conn) {
+func (c *server3Conn) onGet(id int64, gate *http3Gate, quicConn *quic.Conn) {
 	c.ServerConn_.OnGet(id, gate)
 	c._webConn_.onGet()
 	c.quicConn = quicConn
@@ -171,50 +171,50 @@ func (c *http3Conn) onGet(id int64, gate *http3Gate, quicConn *quic.Conn) {
 		c.buffer.incRef()
 	}
 }
-func (c *http3Conn) onPut() {
+func (c *server3Conn) onPut() {
 	c.quicConn = nil
 	// c.buffer is reserved
 	// c.table is reserved
-	c.streams = [http3MaxActiveStreams]*http3Stream{}
-	c.http3Conn0 = http3Conn0{}
+	c.streams = [http3MaxActiveStreams]*server3Stream{}
+	c.server3Conn0 = server3Conn0{}
 	c._webConn_.onPut()
 	c.ServerConn_.OnPut()
 }
 
-func (c *http3Conn) WebServer() WebServer { return c.Server().(WebServer) }
+func (c *server3Conn) WebServer() WebServer { return c.Server().(WebServer) }
 
-func (c *http3Conn) serve() { // runner
+func (c *server3Conn) serve() { // runner
 	// TODO
 	// use go c.receive()?
 }
 
-func (c *http3Conn) receive() { // runner
+func (c *server3Conn) receive() { // runner
 	// TODO
 }
 
-func (c *http3Conn) setReadDeadline(deadline time.Time) error {
-	// TODO
-	return nil
-}
-func (c *http3Conn) setWriteDeadline(deadline time.Time) error {
+func (c *server3Conn) setReadDeadline(deadline time.Time) error {
 	// TODO
 	return nil
 }
+func (c *server3Conn) setWriteDeadline(deadline time.Time) error {
+	// TODO
+	return nil
+}
 
-func (c *http3Conn) write(p []byte) (int, error) { return 0, nil } // TODO
+func (c *server3Conn) write(p []byte) (int, error) { return 0, nil } // TODO
 
-func (c *http3Conn) closeConn() {
+func (c *server3Conn) closeConn() {
 	c.quicConn.Close()
 	c.gate.OnConnClosed()
 }
 
-// poolHTTP3Stream is the server-side HTTP/3 stream pool.
-var poolHTTP3Stream sync.Pool
+// poolServer3Stream is the server-side HTTP/3 stream pool.
+var poolServer3Stream sync.Pool
 
-func getHTTP3Stream(conn *http3Conn, quicStream *quic.Stream) *http3Stream {
-	var stream *http3Stream
-	if x := poolHTTP3Stream.Get(); x == nil {
-		stream = new(http3Stream)
+func getServer3Stream(conn *server3Conn, quicStream *quic.Stream) *server3Stream {
+	var stream *server3Stream
+	if x := poolServer3Stream.Get(); x == nil {
+		stream = new(server3Stream)
 		req, resp := &stream.request, &stream.response
 		req.shell = req
 		req.stream = stream
@@ -222,46 +222,46 @@ func getHTTP3Stream(conn *http3Conn, quicStream *quic.Stream) *http3Stream {
 		resp.stream = stream
 		resp.request = req
 	} else {
-		stream = x.(*http3Stream)
+		stream = x.(*server3Stream)
 	}
 	stream.onUse(conn, quicStream)
 	return stream
 }
-func putHTTP3Stream(stream *http3Stream) {
+func putServer3Stream(stream *server3Stream) {
 	stream.onEnd()
-	poolHTTP3Stream.Put(stream)
+	poolServer3Stream.Put(stream)
 }
 
-// http3Stream is the server-side HTTP/3 stream.
-type http3Stream struct {
+// server3Stream is the server-side HTTP/3 stream.
+type server3Stream struct {
 	// Mixins
 	_webStream_
 	// Assocs
-	request  http3Request  // the http/3 request.
-	response http3Response // the http/3 response.
-	socket   *http3Socket  // ...
+	request  server3Request  // the http/3 request.
+	response server3Response // the http/3 response.
+	socket   *server3Socket  // ...
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	conn       *http3Conn
+	conn       *server3Conn
 	quicStream *quic.Stream // the underlying quic stream
 	// Stream states (zeros)
-	http3Stream0 // all values must be zero by default in this struct!
+	server3Stream0 // all values must be zero by default in this struct!
 }
-type http3Stream0 struct { // for fast reset, entirely
+type server3Stream0 struct { // for fast reset, entirely
 	index uint8
 	state uint8
 	reset bool
 }
 
-func (s *http3Stream) onUse(conn *http3Conn, quicStream *quic.Stream) { // for non-zeros
+func (s *server3Stream) onUse(conn *server3Conn, quicStream *quic.Stream) { // for non-zeros
 	s._webStream_.onUse()
 	s.conn = conn
 	s.quicStream = quicStream
 	s.request.onUse(Version3)
 	s.response.onUse(Version3)
 }
-func (s *http3Stream) onEnd() { // for zeros
+func (s *server3Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
 	if s.socket != nil {
@@ -270,82 +270,82 @@ func (s *http3Stream) onEnd() { // for zeros
 	}
 	s.conn = nil
 	s.quicStream = nil
-	s.http3Stream0 = http3Stream0{}
+	s.server3Stream0 = server3Stream0{}
 	s._webStream_.onEnd()
 }
 
-func (s *http3Stream) execute() { // runner
+func (s *server3Stream) execute() { // runner
 	// TODO ...
-	putHTTP3Stream(s)
+	putServer3Stream(s)
 }
 
-func (s *http3Stream) writeContinue() bool { // 100 continue
+func (s *server3Stream) writeContinue() bool { // 100 continue
 	// TODO
 	return false
 }
 
-func (s *http3Stream) executeExchan(webapp *Webapp, req *http3Request, resp *http3Response) { // request & response
+func (s *server3Stream) executeExchan(webapp *Webapp, req *server3Request, resp *server3Response) { // request & response
 	// TODO
 	webapp.dispatchExchan(req, resp)
 }
-func (s *http3Stream) serveAbnormal(req *http3Request, resp *http3Response) { // 4xx & 5xx
+func (s *server3Stream) serveAbnormal(req *server3Request, resp *server3Response) { // 4xx & 5xx
 	// TODO
 }
 
-func (s *http3Stream) executeSocket() { // see RFC 9220
+func (s *server3Stream) executeSocket() { // see RFC 9220
 	// TODO
 }
 
-func (s *http3Stream) setReadDeadline(deadline time.Time) error { // for content i/o only
+func (s *server3Stream) setReadDeadline(deadline time.Time) error { // for content i/o only
 	return nil
 }
-func (s *http3Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only
+func (s *server3Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only
 	return nil
 }
 
-func (s *http3Stream) isBroken() bool { return false } // TODO
-func (s *http3Stream) markBroken()    {}               // TODO
+func (s *server3Stream) isBroken() bool { return false } // TODO
+func (s *server3Stream) markBroken()    {}               // TODO
 
-func (s *http3Stream) webKeeper() webKeeper { return s.conn.WebServer() }
-func (s *http3Stream) webConn() webConn     { return s.conn }
-func (s *http3Stream) remoteAddr() net.Addr { return nil } // TODO
+func (s *server3Stream) webKeeper() webKeeper { return s.conn.WebServer() }
+func (s *server3Stream) webConn() webConn     { return s.conn }
+func (s *server3Stream) remoteAddr() net.Addr { return nil } // TODO
 
-func (s *http3Stream) read(p []byte) (int, error) { // for content i/o only
+func (s *server3Stream) read(p []byte) (int, error) { // for content i/o only
 	return 0, nil
 }
-func (s *http3Stream) readFull(p []byte) (int, error) { // for content i/o only
+func (s *server3Stream) readFull(p []byte) (int, error) { // for content i/o only
 	return 0, nil
 }
-func (s *http3Stream) write(p []byte) (int, error) { // for content i/o only
+func (s *server3Stream) write(p []byte) (int, error) { // for content i/o only
 	return 0, nil
 }
-func (s *http3Stream) writev(vector *net.Buffers) (int64, error) { // for content i/o only
+func (s *server3Stream) writev(vector *net.Buffers) (int64, error) { // for content i/o only
 	return 0, nil
 }
 
-// http3Request is the server-side HTTP/3 request.
-type http3Request struct { // incoming. needs parsing
+// server3Request is the server-side HTTP/3 request.
+type server3Request struct { // incoming. needs parsing
 	// Parent
-	httpRequest_
+	serverRequest_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (r *http3Request) readContent() (p []byte, err error) { return r.readContent3() }
+func (r *server3Request) readContent() (p []byte, err error) { return r.readContent3() }
 
-// http3Response is the server-side HTTP/3 response.
-type http3Response struct { // outgoing. needs building
+// server3Response is the server-side HTTP/3 response.
+type server3Response struct { // outgoing. needs building
 	// Parent
-	httpResponse_
+	serverResponse_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (r *http3Response) control() []byte { // :status xxx
+func (r *server3Response) control() []byte { // :status xxx
 	var start []byte
 	if r.status >= int16(len(http3Controls)) || http3Controls[r.status] == nil {
 		copy(r.start[:], http3Template[:])
@@ -359,41 +359,41 @@ func (r *http3Response) control() []byte { // :status xxx
 	return start
 }
 
-func (r *http3Response) addHeader(name []byte, value []byte) bool   { return r.addHeader3(name, value) }
-func (r *http3Response) header(name []byte) (value []byte, ok bool) { return r.header3(name) }
-func (r *http3Response) hasHeader(name []byte) bool                 { return r.hasHeader3(name) }
-func (r *http3Response) delHeader(name []byte) (deleted bool)       { return r.delHeader3(name) }
-func (r *http3Response) delHeaderAt(i uint8)                        { r.delHeaderAt3(i) }
+func (r *server3Response) addHeader(name []byte, value []byte) bool   { return r.addHeader3(name, value) }
+func (r *server3Response) header(name []byte) (value []byte, ok bool) { return r.header3(name) }
+func (r *server3Response) hasHeader(name []byte) bool                 { return r.hasHeader3(name) }
+func (r *server3Response) delHeader(name []byte) (deleted bool)       { return r.delHeader3(name) }
+func (r *server3Response) delHeaderAt(i uint8)                        { r.delHeaderAt3(i) }
 
-func (r *http3Response) AddHTTPSRedirection(authority string) bool {
+func (r *server3Response) AddHTTPSRedirection(authority string) bool {
 	// TODO
 	return false
 }
-func (r *http3Response) AddHostnameRedirection(hostname string) bool {
+func (r *server3Response) AddHostnameRedirection(hostname string) bool {
 	// TODO
 	return false
 }
-func (r *http3Response) AddDirectoryRedirection() bool {
-	// TODO
-	return false
-}
-
-func (r *http3Response) AddCookie(cookie *Cookie) bool {
+func (r *server3Response) AddDirectoryRedirection() bool {
 	// TODO
 	return false
 }
 
-func (r *http3Response) sendChain() error { return r.sendChain3() }
+func (r *server3Response) AddCookie(cookie *Cookie) bool {
+	// TODO
+	return false
+}
 
-func (r *http3Response) echoHeaders() error { return r.writeHeaders3() }
-func (r *http3Response) echoChain() error   { return r.echoChain3() }
+func (r *server3Response) sendChain() error { return r.sendChain3() }
 
-func (r *http3Response) addTrailer(name []byte, value []byte) bool {
+func (r *server3Response) echoHeaders() error { return r.writeHeaders3() }
+func (r *server3Response) echoChain() error   { return r.echoChain3() }
+
+func (r *server3Response) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer3(name, value)
 }
-func (r *http3Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer3(name) }
+func (r *server3Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer3(name) }
 
-func (r *http3Response) proxyPass1xx(resp HResponse) bool {
+func (r *server3Response) proxyPass1xx(resp BackendResponse) bool {
 	resp.delHopHeaders()
 	r.status = resp.Status()
 	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
@@ -407,10 +407,10 @@ func (r *http3Response) proxyPass1xx(resp HResponse) bool {
 	r.onUse(Version3)
 	return false
 }
-func (r *http3Response) passHeaders() error       { return r.writeHeaders3() }
-func (r *http3Response) passBytes(p []byte) error { return r.passBytes3(p) }
+func (r *server3Response) passHeaders() error       { return r.writeHeaders3() }
+func (r *server3Response) passBytes(p []byte) error { return r.passBytes3(p) }
 
-func (r *http3Response) finalizeHeaders() { // add at most 256 bytes
+func (r *server3Response) finalizeHeaders() { // add at most 256 bytes
 	// TODO
 	/*
 		// date: Sun, 06 Nov 1994 08:49:37 GMT
@@ -419,36 +419,36 @@ func (r *http3Response) finalizeHeaders() { // add at most 256 bytes
 		}
 	*/
 }
-func (r *http3Response) finalizeVague() error {
+func (r *server3Response) finalizeVague() error {
 	// TODO
 	return nil
 }
 
-func (r *http3Response) addedHeaders() []byte { return nil }
-func (r *http3Response) fixedHeaders() []byte { return nil }
+func (r *server3Response) addedHeaders() []byte { return nil }
+func (r *server3Response) fixedHeaders() []byte { return nil }
 
-// poolHTTP3Socket
-var poolHTTP3Socket sync.Pool
+// poolServer3Socket
+var poolServer3Socket sync.Pool
 
-func getHTTP3Socket(stream *http3Stream) *http3Socket {
+func getServer3Socket(stream *server3Stream) *server3Socket {
 	return nil
 }
-func putHTTP3Socket(socket *http3Socket) {
+func putServer3Socket(socket *server3Socket) {
 }
 
-// http3Socket is the server-side HTTP/3 websocket.
-type http3Socket struct {
+// server3Socket is the server-side HTTP/3 websocket.
+type server3Socket struct {
 	// Parent
-	httpSocket_
+	serverSocket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (s *http3Socket) onUse() {
-	s.httpSocket_.onUse()
+func (s *server3Socket) onUse() {
+	s.serverSocket_.onUse()
 }
-func (s *http3Socket) onEnd() {
-	s.httpSocket_.onEnd()
+func (s *server3Socket) onEnd() {
+	s.serverSocket_.onEnd()
 }

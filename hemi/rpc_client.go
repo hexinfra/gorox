@@ -20,8 +20,6 @@ type HExchan struct {
 	// Mixins
 	_rpcExchan_
 	// Assocs
-	//request  HRequest
-	//response HResponse
 	// Exchan states (stocks)
 	// Exchan states (controlled)
 	// Exchan states (non-zeros)

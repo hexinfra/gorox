@@ -154,7 +154,7 @@ func (g *quixGate) Open() error {
 }
 func (g *quixGate) Shut() error {
 	g.MarkShut()
-	return g.listener.Close()
+	return g.listener.Close() // breaks serve()
 }
 
 func (g *quixGate) serve() { // runner

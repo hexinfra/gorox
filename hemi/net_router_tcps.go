@@ -193,7 +193,7 @@ func (g *tcpsGate) _openInet() error {
 }
 func (g *tcpsGate) Shut() error {
 	g.MarkShut()
-	return g.listener.Close()
+	return g.listener.Close() // breaks serve()
 }
 
 func (g *tcpsGate) serveUDS() { // runner

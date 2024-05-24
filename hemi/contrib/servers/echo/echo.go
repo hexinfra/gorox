@@ -93,7 +93,7 @@ func (g *echoGate) Open() error {
 }
 func (g *echoGate) Shut() error {
 	g.MarkShut()
-	return g.listener.Close()
+	return g.listener.Close() // breaks serve()
 }
 
 func (g *echoGate) serve() { // runner

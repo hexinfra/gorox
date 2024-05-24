@@ -99,7 +99,7 @@ func (k *_webKeeper_) MaxContentSize() int64       { return k.maxContentSize }
 func (k *_webKeeper_) MaxMemoryContentSize() int32 { return k.maxMemoryContentSize }
 func (k *_webKeeper_) MaxStreamsPerConn() int32    { return k.maxStreamsPerConn }
 
-// webConn collects shared methods between *http[1-3]Conn and *H[1-3]Conn.
+// webConn collects shared methods between *server[1-3]Conn and *Backend[1-3]Conn.
 type webConn interface {
 	ID() int64
 	IsUDS() bool
@@ -111,7 +111,7 @@ type webConn interface {
 	markBroken()
 }
 
-// _webConn_ is a mixin for http[1-3]Conn and H[1-3]Conn.
+// _webConn_ is a mixin for server[1-3]Conn and Backend[1-3]Conn.
 type _webConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
@@ -136,7 +136,7 @@ func (c *_webConn_) setPersistent(persistent bool) { c.persistent = persistent }
 func (c *_webConn_) isBroken() bool { return c.broken.Load() }
 func (c *_webConn_) markBroken()    { c.broken.Store(true) }
 
-// webStream collects shared methods between *http[1-3]Stream and *H[1-3]Stream.
+// webStream collects shared methods between *server[1-3]Stream and *Backend[1-3]Stream.
 type webStream interface {
 	webKeeper() webKeeper
 	webConn() webConn
@@ -158,7 +158,7 @@ type webStream interface {
 	markBroken()    // mark stream as broken
 }
 
-// _webStream_ is a mixin for http[1-3]Stream and H[1-3]Stream.
+// _webStream_ is a mixin for server[1-3]Stream and Backend[1-3]Stream.
 type _webStream_ struct {
 	// Stream states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
@@ -181,11 +181,11 @@ func (s *_webStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 // webIn_ is the parent for httpRequest_ and hResponse_.
 type webIn_ struct { // incoming. needs parsing
 	// Assocs
-	shell interface { // *http[1-3]Request, *H[1-3]Response
+	shell interface { // *server[1-3]Request, *Backend[1-3]Response
 		readContent() (p []byte, err error)
 		examineTail() bool
 	}
-	stream webStream // *http[1-3]Stream, *H[1-3]Stream
+	stream webStream // *server[1-3]Stream, *Backend[1-3]Stream
 	// Stream states (stocks)
 	stockPrimes [40]pair   // for r.primes
 	stockExtras [30]pair   // for r.extras
@@ -1553,7 +1553,7 @@ var ( // web incoming message errors
 // webOut_ is the parent for httpResponse_ and hRequest_.
 type webOut_ struct { // outgoing. needs building
 	// Assocs
-	shell interface { // *http[1-3]Response, *H[1-3]Request
+	shell interface { // *server[1-3]Response, *Backend[1-3]Request
 		control() []byte
 		addHeader(name []byte, value []byte) bool
 		header(name []byte) (value []byte, ok bool)
@@ -1578,7 +1578,7 @@ type webOut_ struct { // outgoing. needs building
 		passHeaders() error
 		passBytes(p []byte) error
 	}
-	stream webStream // *http[1-3]Stream, *H[1-3]Stream
+	stream webStream // *server[1-3]Stream, *Backend[1-3]Stream
 	// Stream states (stocks)
 	stockFields [1536]byte // for r.fields
 	// Stream states (controlled)
@@ -1715,7 +1715,7 @@ func (r *webOut_) IsSent() bool  { return r.isSent }
 func (r *webOut_) appendContentType(contentType []byte) (ok bool) {
 	return r._appendSingleton(&r.iContentType, bytesContentType, contentType)
 }
-func (r *webOut_) appendDate(date []byte) (ok bool) { // rarely used in backendRequest
+func (r *webOut_) appendDate(date []byte) (ok bool) { // rarely used in backend request
 	return r._appendSingleton(&r.iDate, bytesDate, date)
 }
 
@@ -1855,7 +1855,7 @@ func (r *webOut_) proxyPost(content any, hasTrailers bool) error { // post held 
 	}
 }
 
-func (r *webOut_) employRanges(ranges []Range, rangeType string) {
+func (r *webOut_) pickRanges(ranges []Range, rangeType string) {
 	r.ranges = ranges
 	r.rangeType = rangeType
 }
@@ -2001,12 +2001,12 @@ var ( // web outgoing message errors
 // webSocket_
 type webSocket_ struct {
 	// Assocs
-	shell interface { // *http[1-3]Socket, *H[1-3]Socket
+	shell interface { // *server[1-3]Socket, *Backend[1-3]Socket
 		Read(p []byte) (int, error)
 		Write(p []byte) (int, error)
 		Close() error
 	}
-	stream webStream // *http[1-3]Stream, *H[1-3]Stream
+	stream webStream // *server[1-3]Stream, *Backend[1-3]Stream
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

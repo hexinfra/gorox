@@ -12,7 +12,7 @@ import (
 )
 
 func Check() bool {
-	// ensure reuseport?
+	// ensure reuseport support?
 	return true
 }
 

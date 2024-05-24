@@ -94,7 +94,7 @@ func (g *socksGate) Open() error {
 }
 func (g *socksGate) Shut() error {
 	g.MarkShut()
-	return g.listener.Close()
+	return g.listener.Close() // breaks serve()
 }
 
 func (g *socksGate) serve() { // runner

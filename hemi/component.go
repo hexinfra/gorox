@@ -653,16 +653,16 @@ func (s *Stage) Start(id int32) {
 	s.numCPU = int32(runtime.NumCPU())
 
 	if DebugLevel() >= 2 {
-		Printf("size of http1Conn = %d\n", unsafe.Sizeof(http1Conn{}))
-		Printf("size of http2Conn = %d\n", unsafe.Sizeof(http2Conn{}))
-		Printf("size of http3Conn = %d\n", unsafe.Sizeof(http3Conn{}))
-		Printf("size of http2Stream = %d\n", unsafe.Sizeof(http2Stream{}))
-		Printf("size of http3Stream = %d\n", unsafe.Sizeof(http3Stream{}))
-		Printf("size of H1Conn = %d\n", unsafe.Sizeof(H1Conn{}))
-		Printf("size of H2Conn = %d\n", unsafe.Sizeof(H2Conn{}))
-		Printf("size of H3Conn = %d\n", unsafe.Sizeof(H3Conn{}))
-		Printf("size of H2Stream = %d\n", unsafe.Sizeof(H2Stream{}))
-		Printf("size of H3Stream = %d\n", unsafe.Sizeof(H3Stream{}))
+		Printf("size of server1Conn = %d\n", unsafe.Sizeof(server1Conn{}))
+		Printf("size of server2Conn = %d\n", unsafe.Sizeof(server2Conn{}))
+		Printf("size of server2Stream = %d\n", unsafe.Sizeof(server2Stream{}))
+		Printf("size of server3Conn = %d\n", unsafe.Sizeof(server3Conn{}))
+		Printf("size of server3Stream = %d\n", unsafe.Sizeof(server3Stream{}))
+		Printf("size of Backend1Conn = %d\n", unsafe.Sizeof(Backend1Conn{}))
+		Printf("size of Backend2Conn = %d\n", unsafe.Sizeof(Backend2Conn{}))
+		Printf("size of Backend2Stream = %d\n", unsafe.Sizeof(Backend2Stream{}))
+		Printf("size of Backend3Conn = %d\n", unsafe.Sizeof(Backend3Conn{}))
+		Printf("size of Backend3Stream = %d\n", unsafe.Sizeof(Backend3Stream{}))
 	}
 	if DebugLevel() >= 1 {
 		Printf("stageID=%d\n", s.id)

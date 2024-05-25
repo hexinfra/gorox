@@ -239,9 +239,9 @@ func (n *Node_) closeConn(conn io.Closer) {
 // BackendConn_ is the parent for backend conns.
 type BackendConn_ struct {
 	// Conn states (non-zeros)
-	id      int64 // the conn id
-	backend Backend
-	node    Node
+	id      int64     // the conn id
+	backend Backend   // associated backend
+	node    Node      // associated node
 	expire  time.Time // when the conn is considered expired
 	// Conn states (zeros)
 	counter   atomic.Int64 // can be used to generate a random number

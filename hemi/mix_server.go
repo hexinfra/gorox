@@ -114,9 +114,11 @@ func (s *Server_[G]) OnPrepare() {
 	}
 }
 
-func (s *Server_[G]) AddGate(gate G) { s.gates = append(s.gates, gate) }
+func (s *Server_[G]) Stage() *Stage { return s.stage }
 
-func (s *Server_[G]) Stage() *Stage               { return s.stage }
+func (s *Server_[G]) AddGate(gate G)  { s.gates = append(s.gates, gate) }
+func (s *Server_[G]) NumGates() int32 { return s.numGates }
+
 func (s *Server_[G]) ReadTimeout() time.Duration  { return s.readTimeout }
 func (s *Server_[G]) WriteTimeout() time.Duration { return s.writeTimeout }
 
@@ -139,8 +141,6 @@ func (s *Server_[G]) IsUDS() bool            { return s.udsMode }
 func (s *Server_[G]) IsTLS() bool            { return s.tlsMode }
 func (s *Server_[G]) TLSConfig() *tls.Config { return s.tlsConfig }
 func (s *Server_[G]) MaxConnsPerGate() int32 { return s.maxConnsPerGate }
-
-func (s *Server_[G]) NumGates() int32 { return s.numGates }
 
 // Gate is the interface for all gates. Gates are not components.
 type Gate interface {
@@ -196,9 +196,9 @@ type ServerConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id     int64 // the conn id
-	server Server
-	gate   Gate
+	id     int64  // the conn id
+	server Server // associated server
+	gate   Gate   // associated gate
 	// Conn states (zeros)
 	counter   atomic.Int64 // can be used to generate a random number
 	lastRead  time.Time    // deadline of last read operation

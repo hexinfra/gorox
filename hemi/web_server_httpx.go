@@ -40,7 +40,6 @@ type httpxServer struct {
 	forceScheme  int8 // scheme (http/https) that must be used
 	adjustScheme bool // use https scheme for TLS and http scheme for others?
 	enableHTTP2  bool // enable HTTP/2 support?
-	http2Only    bool // if true, server runs HTTP/2 *only*. requires enableHTTP2 to be true, otherwise ignored
 }
 
 func (s *httpxServer) onCreate(name string, stage *Stage) {
@@ -73,8 +72,6 @@ func (s *httpxServer) OnConfigure() {
 	if DebugLevel() >= 2 { // remove this condition after HTTP/2 server has been fully implemented
 		// enableHTTP2
 		s.ConfigureBool("enableHTTP2", &s.enableHTTP2, true)
-		// http2Only
-		s.ConfigureBool("http2Only", &s.http2Only, false)
 	}
 }
 func (s *httpxServer) OnPrepare() {
@@ -82,16 +79,12 @@ func (s *httpxServer) OnPrepare() {
 
 	if s.IsTLS() {
 		var nextProtos []string
-		if !s.enableHTTP2 {
-			nextProtos = []string{"http/1.1"}
-		} else if s.http2Only {
-			nextProtos = []string{"h2"}
-		} else {
+		if s.enableHTTP2 {
 			nextProtos = []string{"h2", "http/1.1"}
+		} else {
+			nextProtos = []string{"http/1.1"}
 		}
 		s.tlsConfig.NextProtos = nextProtos
-	} else if !s.enableHTTP2 {
-		s.http2Only = false
 	}
 }
 
@@ -177,7 +170,6 @@ func (g *httpxGate) Shut() error {
 
 func (g *httpxGate) serveUDS() { // runner
 	listener := g.listener.(*net.UnixListener)
-	http2Only := g.server.(*httpxServer).http2Only
 	connID := int64(0)
 	for {
 		unixConn, err := listener.AcceptUnix()
@@ -199,13 +191,8 @@ func (g *httpxGate) serveUDS() { // runner
 				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
 				continue
 			}
-			if http2Only {
-				serverConn := getServer2Conn(connID, g, unixConn, rawConn)
-				go serverConn.serve() // serverConn is put to pool in serve()
-			} else {
-				serverConn := getServer1Conn(connID, g, unixConn, rawConn)
-				go serverConn.serve() // serverConn is put to pool in serve()
-			}
+			serverConn := getServer1Conn(connID, g, unixConn, rawConn)
+			go serverConn.serve() // serverConn is put to pool in serve()
 			connID++
 		}
 	}
@@ -255,7 +242,6 @@ func (g *httpxGate) serveTLS() { // runner
 }
 func (g *httpxGate) serveTCP() { // runner
 	listener := g.listener.(*net.TCPListener)
-	http2Only := g.server.(*httpxServer).http2Only
 	connID := int64(0)
 	for {
 		tcpConn, err := listener.AcceptTCP()
@@ -277,13 +263,8 @@ func (g *httpxGate) serveTCP() { // runner
 				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
 				continue
 			}
-			if http2Only {
-				serverConn := getServer2Conn(connID, g, tcpConn, rawConn)
-				go serverConn.serve() // serverConn is put to pool in serve()
-			} else {
-				serverConn := getServer1Conn(connID, g, tcpConn, rawConn)
-				go serverConn.serve() // serverConn is put to pool in serve()
-			}
+			serverConn := getServer1Conn(connID, g, tcpConn, rawConn)
+			go serverConn.serve() // serverConn is put to pool in serve()
 			connID++
 		}
 	}

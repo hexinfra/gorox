@@ -64,7 +64,7 @@ func (s *http3Server) Serve() { // runner
 	s.stage.DecSub()
 }
 
-// http3Gate is a gate of HTTP/3 server.
+// http3Gate is a gate of http3Server.
 type http3Gate struct {
 	// Parent
 	Gate_

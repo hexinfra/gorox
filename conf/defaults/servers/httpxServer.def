@@ -12,6 +12,5 @@ httpxServer "hs1" {
 	.forceScheme         = ""
 	.adjustScheme        = true
 	.enableHTTP2         = false
-	.http2Only           = false
 	.saveContentFilesDir = %tmpsDir + "/web/servers/hs1"
 }

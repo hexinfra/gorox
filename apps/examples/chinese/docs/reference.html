@@ -1408,7 +1408,6 @@ httpProxy {
 		.forceScheme = ""
 		.adjustScheme = true
 		.enableHTTP2 = false
-		.http2Only = false
 	}
 }
 </code>
@@ -1506,14 +1505,6 @@ httpProxy {
 				<li>
 					<p>.enableHTTP2 是否开启 http2 协议。</p>
 					<code>语法： .enableHTTP2 = false
-						默认值：false
-						取值范围：false | true
-					</code>
-				</li>
-
-				<li>
-					<p>.http2Only 是否仅支持 http2 协议？</p>
-					<code>语法：.http2Only = false
 						默认值：false
 						取值范围：false | true
 					</code>

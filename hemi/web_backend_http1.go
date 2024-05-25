@@ -41,12 +41,12 @@ func (b *HTTP1Backend) CreateNode(name string) Node {
 	return node
 }
 
-func (b *HTTP1Backend) FetchStream() (BackendStream, error) {
+func (b *HTTP1Backend) FetchStream() (backendStream, error) {
 	node := b.nodes[b.nextIndex()]
 	return node.fetchStream()
 }
-func (b *HTTP1Backend) StoreStream(stream BackendStream) {
-	node := stream.webConn().(*Backend1Conn).http1Node()
+func (b *HTTP1Backend) StoreStream(stream backendStream) {
+	node := stream.webConn().(*backend1Conn).http1Node()
 	node.storeStream(stream)
 }
 
@@ -58,8 +58,8 @@ type http1Node struct {
 	// States
 	connPool struct {
 		sync.Mutex
-		head *Backend1Conn
-		tail *Backend1Conn
+		head *backend1Conn
+		tail *backend1Conn
 		qnty int
 	}
 }
@@ -94,7 +94,7 @@ func (n *http1Node) Maintain() { // runner
 	n.backend.DecSub()
 }
 
-func (n *http1Node) fetchStream() (BackendStream, error) {
+func (n *http1Node) fetchStream() (backendStream, error) {
 	conn := n.pullConn()
 	down := n.isDown()
 	if conn != nil {
@@ -120,7 +120,7 @@ func (n *http1Node) fetchStream() (BackendStream, error) {
 	n.IncSub()
 	return conn.fetchStream()
 }
-func (n *http1Node) _dialUDS() (*Backend1Conn, error) {
+func (n *http1Node) _dialUDS() (*backend1Conn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("unix", n.address, n.backend.DialTimeout())
 	if err != nil {
@@ -138,7 +138,7 @@ func (n *http1Node) _dialUDS() (*Backend1Conn, error) {
 	}
 	return getBackend1Conn(connID, n, netConn, rawConn), nil
 }
-func (n *http1Node) _dialTLS() (*Backend1Conn, error) {
+func (n *http1Node) _dialTLS() (*backend1Conn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
 	if err != nil {
@@ -160,7 +160,7 @@ func (n *http1Node) _dialTLS() (*Backend1Conn, error) {
 	}
 	return getBackend1Conn(connID, n, tlsConn, nil), nil
 }
-func (n *http1Node) _dialTCP() (*Backend1Conn, error) {
+func (n *http1Node) _dialTCP() (*backend1Conn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
 	if err != nil {
@@ -178,8 +178,8 @@ func (n *http1Node) _dialTCP() (*Backend1Conn, error) {
 	}
 	return getBackend1Conn(connID, n, netConn, rawConn), nil
 }
-func (n *http1Node) storeStream(stream BackendStream) {
-	conn := stream.(*Backend1Stream)
+func (n *http1Node) storeStream(stream backendStream) {
+	conn := stream.(*backend1Stream)
 	conn.storeStream(stream)
 
 	if conn.isBroken() || n.isDown() || !conn.isAlive() || !conn.isPersistent() {
@@ -195,7 +195,7 @@ func (n *http1Node) storeStream(stream BackendStream) {
 	}
 }
 
-func (n *http1Node) pullConn() *Backend1Conn {
+func (n *http1Node) pullConn() *backend1Conn {
 	list := &n.connPool
 
 	list.Lock()
@@ -211,7 +211,7 @@ func (n *http1Node) pullConn() *Backend1Conn {
 
 	return conn
 }
-func (n *http1Node) pushConn(conn *Backend1Conn) {
+func (n *http1Node) pushConn(conn *backend1Conn) {
 	list := &n.connPool
 
 	list.Lock()
@@ -245,10 +245,10 @@ func (n *http1Node) closeFree() int {
 // poolBackend1Conn is the backend-side HTTP/1 connection pool.
 var poolBackend1Conn sync.Pool
 
-func getBackend1Conn(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) *Backend1Conn {
-	var conn *Backend1Conn
+func getBackend1Conn(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) *backend1Conn {
+	var conn *backend1Conn
 	if x := poolBackend1Conn.Get(); x == nil {
-		conn = new(Backend1Conn)
+		conn = new(backend1Conn)
 		stream := conn
 		req, resp := &stream.request, &stream.response
 		req.shell = req
@@ -257,24 +257,24 @@ func getBackend1Conn(id int64, node *http1Node, netConn net.Conn, rawConn syscal
 		resp.shell = resp
 		resp.stream = stream
 	} else {
-		conn = x.(*Backend1Conn)
+		conn = x.(*backend1Conn)
 	}
 	conn.onGet(id, node, netConn, rawConn)
 	return conn
 }
-func putBackend1Conn(conn *Backend1Conn) {
+func putBackend1Conn(conn *backend1Conn) {
 	conn.onPut()
 	poolBackend1Conn.Put(conn)
 }
 
-// Backend1Conn is the backend-side HTTP/1 connection.
-type Backend1Conn struct {
+// backend1Conn is the backend-side HTTP/1 connection.
+type backend1Conn struct {
 	// Parent
 	BackendConn_
 	// Mixins
 	_webConn_
 	// Assocs
-	next *Backend1Conn // the linked-list
+	next *backend1Conn // the linked-list
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -285,23 +285,23 @@ type Backend1Conn struct {
 	// Mixins
 	_webStream_
 	// Assocs
-	request  Backend1Request  // the backend-side http/1 request
-	response Backend1Response // the backend-side http/1 response
-	socket   *Backend1Socket  // the backend-side http/1 socket
+	request  backend1Request  // the backend-side http/1 request
+	response backend1Response // the backend-side http/1 response
+	socket   *backend1Socket  // the backend-side http/1 socket
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non zeros)
 	// Stream states (zeros)
 }
 
-func (c *Backend1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
+func (c *backend1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
 	c.BackendConn_.OnGet(id, node)
 	c._webConn_.onGet()
 
 	c.netConn = netConn
 	c.rawConn = rawConn
 }
-func (c *Backend1Conn) onPut() {
+func (c *backend1Conn) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
 
@@ -309,38 +309,38 @@ func (c *Backend1Conn) onPut() {
 	c.BackendConn_.OnPut()
 }
 
-func (c *Backend1Conn) WebBackend() WebBackend { return c.Backend().(WebBackend) }
-func (c *Backend1Conn) http1Node() *http1Node  { return c.Node().(*http1Node) }
+func (c *backend1Conn) WebBackend() WebBackend { return c.Backend().(WebBackend) }
+func (c *backend1Conn) http1Node() *http1Node  { return c.Node().(*http1Node) }
 
-func (c *Backend1Conn) reachLimit() bool {
+func (c *backend1Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.WebBackend().MaxStreamsPerConn()
 }
 
-func (c *Backend1Conn) fetchStream() (BackendStream, error) {
+func (c *backend1Conn) fetchStream() (backendStream, error) {
 	stream := c
 	stream.onUse()
 	return stream, nil
 }
-func (c *Backend1Conn) storeStream(stream BackendStream) {
-	stream.(*Backend1Stream).onEnd()
+func (c *backend1Conn) storeStream(stream backendStream) {
+	stream.(*backend1Stream).onEnd()
 }
 
-func (c *Backend1Conn) Close() error {
+func (c *backend1Conn) Close() error {
 	netConn := c.netConn
 	putBackend1Conn(c)
 	return netConn.Close()
 }
 
-// Backend1Stream is the backend-side HTTP/1 stream.
-type Backend1Stream = Backend1Conn
+// backend1Stream is the backend-side HTTP/1 stream.
+type backend1Stream = backend1Conn
 
-func (s *Backend1Stream) onUse() { // for non-zeros
+func (s *backend1Stream) onUse() { // for non-zeros
 	s._webStream_.onUse()
 
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
 }
-func (s *Backend1Stream) onEnd() { // for zeros
+func (s *backend1Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
 	if s.socket != nil {
@@ -351,20 +351,20 @@ func (s *Backend1Stream) onEnd() { // for zeros
 	s._webStream_.onEnd()
 }
 
-func (s *Backend1Stream) Request() BackendRequest   { return &s.request }
-func (s *Backend1Stream) Response() BackendResponse { return &s.response }
-func (s *Backend1Stream) Socket() BackendSocket     { return nil } // TODO
+func (s *backend1Stream) Request() backendRequest   { return &s.request }
+func (s *backend1Stream) Response() backendResponse { return &s.response }
+func (s *backend1Stream) Socket() backendSocket     { return nil } // TODO
 
-func (s *Backend1Stream) ExecuteExchan() error { // request & response
+func (s *backend1Stream) ExecuteExchan() error { // request & response
 	// TODO
 	return nil
 }
-func (s *Backend1Stream) ExecuteSocket() error { // upgrade: websocket
+func (s *backend1Stream) ExecuteSocket() error { // upgrade: websocket
 	// TODO
 	return nil
 }
 
-func (s *Backend1Stream) setWriteDeadline(deadline time.Time) error {
+func (s *backend1Stream) setWriteDeadline(deadline time.Time) error {
 	conn := s
 	if deadline.Sub(conn.lastWrite) >= time.Second {
 		if err := conn.netConn.SetWriteDeadline(deadline); err != nil {
@@ -374,7 +374,7 @@ func (s *Backend1Stream) setWriteDeadline(deadline time.Time) error {
 	}
 	return nil
 }
-func (s *Backend1Stream) setReadDeadline(deadline time.Time) error {
+func (s *backend1Stream) setReadDeadline(deadline time.Time) error {
 	conn := s
 	if deadline.Sub(conn.lastRead) >= time.Second {
 		if err := conn.netConn.SetReadDeadline(deadline); err != nil {
@@ -385,17 +385,17 @@ func (s *Backend1Stream) setReadDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (c *Backend1Stream) webKeeper() webKeeper { return c.WebBackend() }
-func (c *Backend1Stream) webConn() webConn     { return c }
-func (c *Backend1Stream) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
+func (c *backend1Stream) webKeeper() webKeeper { return c.WebBackend() }
+func (c *backend1Stream) webConn() webConn     { return c }
+func (c *backend1Stream) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
 
-func (c *Backend1Stream) write(p []byte) (int, error)               { return c.netConn.Write(p) }
-func (c *Backend1Stream) writev(vector *net.Buffers) (int64, error) { return vector.WriteTo(c.netConn) }
-func (c *Backend1Stream) read(p []byte) (int, error)                { return c.netConn.Read(p) }
-func (c *Backend1Stream) readFull(p []byte) (int, error)            { return io.ReadFull(c.netConn, p) }
+func (c *backend1Stream) write(p []byte) (int, error)               { return c.netConn.Write(p) }
+func (c *backend1Stream) writev(vector *net.Buffers) (int64, error) { return vector.WriteTo(c.netConn) }
+func (c *backend1Stream) read(p []byte) (int, error)                { return c.netConn.Read(p) }
+func (c *backend1Stream) readFull(p []byte) (int, error)            { return io.ReadFull(c.netConn, p) }
 
-// Backend1Request is the backend-side HTTP/1 request.
-type Backend1Request struct { // outgoing. needs building
+// backend1Request is the backend-side HTTP/1 request.
+type backend1Request struct { // outgoing. needs building
 	// Parent
 	backendRequest_
 	// Stream states (stocks)
@@ -404,7 +404,7 @@ type Backend1Request struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
-func (r *Backend1Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // METHOD uri HTTP/1.1\r\n
+func (r *backend1Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // METHOD uri HTTP/1.1\r\n
 	controlSize := len(method) + 1 + len(uri) + 1 + len(bytesHTTP1_1) + len(bytesCRLF)
 	if from, edge, ok := r._growFields(controlSize); ok {
 		from += copy(r.fields[from:], method)
@@ -426,7 +426,7 @@ func (r *Backend1Request) setMethodURI(method []byte, uri []byte, hasContent boo
 		return false
 	}
 }
-func (r *Backend1Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
+func (r *backend1Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
 	if r.stream.webConn().IsTLS() {
 		if bytes.Equal(colonPort, bytesColonPort443) {
 			colonPort = nil
@@ -449,17 +449,17 @@ func (r *Backend1Request) setAuthority(hostname []byte, colonPort []byte) bool {
 	}
 }
 
-func (r *Backend1Request) addHeader(name []byte, value []byte) bool   { return r.addHeader1(name, value) }
-func (r *Backend1Request) header(name []byte) (value []byte, ok bool) { return r.header1(name) }
-func (r *Backend1Request) hasHeader(name []byte) bool                 { return r.hasHeader1(name) }
-func (r *Backend1Request) delHeader(name []byte) (deleted bool)       { return r.delHeader1(name) }
-func (r *Backend1Request) delHeaderAt(i uint8)                        { r.delHeaderAt1(i) }
+func (r *backend1Request) addHeader(name []byte, value []byte) bool   { return r.addHeader1(name, value) }
+func (r *backend1Request) header(name []byte) (value []byte, ok bool) { return r.header1(name) }
+func (r *backend1Request) hasHeader(name []byte) bool                 { return r.hasHeader1(name) }
+func (r *backend1Request) delHeader(name []byte) (deleted bool)       { return r.delHeader1(name) }
+func (r *backend1Request) delHeaderAt(i uint8)                        { r.delHeaderAt1(i) }
 
-func (r *Backend1Request) AddCookie(name string, value string) bool { // cookie: foo=bar; xyz=baz
+func (r *backend1Request) AddCookie(name string, value string) bool { // cookie: foo=bar; xyz=baz
 	// TODO. need some space to place the cookie. use stream.unsafeMake()?
 	return false
 }
-func (r *Backend1Request) proxyCopyCookies(req Request) bool { // merge all cookies into one "cookie" header
+func (r *backend1Request) proxyCopyCookies(req Request) bool { // merge all cookies into one "cookie" header
 	headerSize := len(bytesCookie) + len(bytesColonSpace) // `cookie: `
 	req.forCookies(func(cookie *pair, name []byte, value []byte) bool {
 		headerSize += len(name) + 1 + len(value) + 2 // `name=value; `
@@ -488,20 +488,20 @@ func (r *Backend1Request) proxyCopyCookies(req Request) bool { // merge all cook
 	}
 }
 
-func (r *Backend1Request) sendChain() error { return r.sendChain1() }
+func (r *backend1Request) sendChain() error { return r.sendChain1() }
 
-func (r *Backend1Request) echoHeaders() error { return r.writeHeaders1() }
-func (r *Backend1Request) echoChain() error   { return r.echoChain1(true) } // we always use HTTP/1.1 chunked
+func (r *backend1Request) echoHeaders() error { return r.writeHeaders1() }
+func (r *backend1Request) echoChain() error   { return r.echoChain1(true) } // we always use HTTP/1.1 chunked
 
-func (r *Backend1Request) addTrailer(name []byte, value []byte) bool {
+func (r *backend1Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer1(name, value)
 }
-func (r *Backend1Request) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }
+func (r *backend1Request) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }
 
-func (r *Backend1Request) passHeaders() error       { return r.writeHeaders1() }
-func (r *Backend1Request) passBytes(p []byte) error { return r.passBytes1(p) }
+func (r *backend1Request) passHeaders() error       { return r.writeHeaders1() }
+func (r *backend1Request) passBytes(p []byte) error { return r.passBytes1(p) }
 
-func (r *Backend1Request) finalizeHeaders() { // add at most 256 bytes
+func (r *backend1Request) finalizeHeaders() { // add at most 256 bytes
 	// if-modified-since: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.unixTimes.ifModifiedSince >= 0 {
 		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesIfModifiedSince, r.unixTimes.ifModifiedSince))
@@ -528,13 +528,13 @@ func (r *Backend1Request) finalizeHeaders() { // add at most 256 bytes
 	// connection: keep-alive\r\n
 	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
 }
-func (r *Backend1Request) finalizeVague() error { return r.finalizeVague1() }
+func (r *backend1Request) finalizeVague() error { return r.finalizeVague1() }
 
-func (r *Backend1Request) addedHeaders() []byte { return r.fields[r.controlEdge:r.fieldsEdge] }
-func (r *Backend1Request) fixedHeaders() []byte { return http1BytesFixedRequestHeaders }
+func (r *backend1Request) addedHeaders() []byte { return r.fields[r.controlEdge:r.fieldsEdge] }
+func (r *backend1Request) fixedHeaders() []byte { return http1BytesFixedRequestHeaders }
 
-// Backend1Response is the backend-side HTTP/1 response.
-type Backend1Response struct { // incoming. needs parsing
+// backend1Response is the backend-side HTTP/1 response.
+type backend1Response struct { // incoming. needs parsing
 	// Parent
 	backendResponse_
 	// Stream states (stocks)
@@ -543,7 +543,7 @@ type Backend1Response struct { // incoming. needs parsing
 	// Stream states (zeros)
 }
 
-func (r *Backend1Response) recvHead() { // control + headers
+func (r *backend1Response) recvHead() { // control + headers
 	// The entire response head must be received within one timeout
 	if err := r._beforeRead(&r.recvTime); err != nil {
 		r.headResult = -1
@@ -562,7 +562,7 @@ func (r *Backend1Response) recvHead() { // control + headers
 		Printf("[Backend1Stream=%d]<======= [%s]\n", r.stream.webConn().ID(), r.input[r.head.from:r.head.edge])
 	}
 }
-func (r *Backend1Response) _recvControl() bool { // HTTP-version SP status-code SP [ reason-phrase ] CRLF
+func (r *backend1Response) _recvControl() bool { // HTTP-version SP status-code SP [ reason-phrase ] CRLF
 	// HTTP-version = HTTP-name "/" DIGIT "." DIGIT
 	// HTTP-name = %x48.54.54.50 ; "HTTP", case-sensitive
 	if have := r.inputEdge - r.pFore; have >= 9 {
@@ -645,7 +645,7 @@ invalid:
 	r.headResult, r.failReason = StatusBadRequest, "invalid character in control"
 	return false
 }
-func (r *Backend1Response) cleanInput() {
+func (r *backend1Response) cleanInput() {
 	// r.pFore is at the beginning of content (if exists) or next response (if exists and is pipelined).
 	if r.contentSize == -1 { // no content
 		r.contentReceived = true
@@ -679,19 +679,19 @@ func (r *Backend1Response) cleanInput() {
 	}
 }
 
-func (r *Backend1Response) readContent() (p []byte, err error) { return r.readContent1() }
+func (r *backend1Response) readContent() (p []byte, err error) { return r.readContent1() }
 
 // poolBackend1Socket
 var poolBackend1Socket sync.Pool
 
-func getBackend1Socket(stream *Backend1Stream) *Backend1Socket {
+func getBackend1Socket(stream *backend1Stream) *backend1Socket {
 	return nil
 }
-func putBackend1Socket(socket *Backend1Socket) {
+func putBackend1Socket(socket *backend1Socket) {
 }
 
-// Backend1Socket is the backend-side HTTP/1 websocket.
-type Backend1Socket struct {
+// backend1Socket is the backend-side HTTP/1 websocket.
+type backend1Socket struct {
 	// Parent
 	backendSocket_
 	// Stream states (stocks)
@@ -700,9 +700,9 @@ type Backend1Socket struct {
 	// Stream states (zeros)
 }
 
-func (s *Backend1Socket) onUse() {
+func (s *backend1Socket) onUse() {
 	s.backendSocket_.onUse()
 }
-func (s *Backend1Socket) onEnd() {
+func (s *backend1Socket) onEnd() {
 	s.backendSocket_.onEnd()
 }

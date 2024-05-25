@@ -40,12 +40,12 @@ func (b *HTTP2Backend) CreateNode(name string) Node {
 	return node
 }
 
-func (b *HTTP2Backend) FetchStream() (BackendStream, error) {
+func (b *HTTP2Backend) FetchStream() (backendStream, error) {
 	node := b.nodes[b.nextIndex()]
 	return node.fetchStream()
 }
-func (b *HTTP2Backend) StoreStream(stream BackendStream) {
-	node := stream.webConn().(*Backend2Conn).http2Node()
+func (b *HTTP2Backend) StoreStream(stream backendStream) {
+	node := stream.webConn().(*backend2Conn).http2Node()
 	node.storeStream(stream)
 }
 
@@ -83,36 +83,36 @@ func (n *http2Node) Maintain() { // runner
 	n.backend.DecSub()
 }
 
-func (n *http2Node) fetchStream() (BackendStream, error) {
-	// Note: A Backend2Conn can be used concurrently, limited by maxStreams.
+func (n *http2Node) fetchStream() (backendStream, error) {
+	// Note: A backend2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 	return nil, nil
 }
-func (n *http2Node) storeStream(stream BackendStream) {
-	// Note: A Backend2Conn can be used concurrently, limited by maxStreams.
+func (n *http2Node) storeStream(stream backendStream) {
+	// Note: A backend2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 }
 
 /*
-func (n *http2Node) fetchConn() (*Backend2Conn, error) {
-	// Note: A Backend2Conn can be used concurrently, limited by maxStreams.
+func (n *http2Node) fetchConn() (*backend2Conn, error) {
+	// Note: A backend2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 	var netConn net.Conn
 	var rawConn syscall.RawConn
 	connID := n.backend.nextConnID()
 	return getBackend2Conn(connID, n, netConn, rawConn), nil
 }
-func (n *http2Node) _dialTCP() (*Backend2Conn, error) {
+func (n *http2Node) _dialTCP() (*backend2Conn, error) {
 	return nil, nil
 }
-func (n *http2Node) _dialTLS() (*Backend2Conn, error) {
+func (n *http2Node) _dialTLS() (*backend2Conn, error) {
 	return nil, nil
 }
-func (n *http2Node) _dialUDS() (*Backend2Conn, error) {
+func (n *http2Node) _dialUDS() (*backend2Conn, error) {
 	return nil, nil
 }
-func (n *http2Node) storeConn(conn *Backend2Conn) {
-	// Note: A Backend2Conn can be used concurrently, limited by maxStreams.
+func (n *http2Node) storeConn(conn *backend2Conn) {
+	// Note: A backend2Conn can be used concurrently, limited by maxStreams.
 	// TODO: decRef
 	if conn.nStreams.Add(-1) > 0 {
 		return
@@ -123,23 +123,23 @@ func (n *http2Node) storeConn(conn *Backend2Conn) {
 // poolBackend2Conn is the backend-side HTTP/2 connection pool.
 var poolBackend2Conn sync.Pool
 
-func getBackend2Conn(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) *Backend2Conn {
-	var conn *Backend2Conn
+func getBackend2Conn(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) *backend2Conn {
+	var conn *backend2Conn
 	if x := poolBackend2Conn.Get(); x == nil {
-		conn = new(Backend2Conn)
+		conn = new(backend2Conn)
 	} else {
-		conn = x.(*Backend2Conn)
+		conn = x.(*backend2Conn)
 	}
 	conn.onGet(id, node, netConn, rawConn)
 	return conn
 }
-func putBackend2Conn(conn *Backend2Conn) {
+func putBackend2Conn(conn *backend2Conn) {
 	conn.onPut()
 	poolBackend2Conn.Put(conn)
 }
 
-// Backend2Conn
-type Backend2Conn struct {
+// backend2Conn
+type backend2Conn struct {
 	// Parent
 	BackendConn_
 	// Mixins
@@ -151,47 +151,47 @@ type Backend2Conn struct {
 	rawConn syscall.RawConn
 	// Conn states (zeros)
 	nStreams      atomic.Int32                           // concurrent streams
-	streams       [http2MaxActiveStreams]*Backend2Stream // active (open, remoteClosed, localClosed) streams
+	streams       [http2MaxActiveStreams]*backend2Stream // active (open, remoteClosed, localClosed) streams
 	backend2Conn0                                        // all values must be zero by default in this struct!
 }
 type backend2Conn0 struct { // for fast reset, entirely
 }
 
-func (c *Backend2Conn) onGet(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
+func (c *backend2Conn) onGet(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
 	c.BackendConn_.OnGet(id, node)
 	c._webConn_.onGet()
 	c.netConn = netConn
 	c.rawConn = rawConn
 }
-func (c *Backend2Conn) onPut() {
+func (c *backend2Conn) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
 	c.nStreams.Store(0)
-	c.streams = [http2MaxActiveStreams]*Backend2Stream{}
+	c.streams = [http2MaxActiveStreams]*backend2Stream{}
 	c.backend2Conn0 = backend2Conn0{}
 	c._webConn_.onPut()
 	c.BackendConn_.OnPut()
 }
 
-func (c *Backend2Conn) WebBackend() WebBackend { return c.Backend().(WebBackend) }
-func (c *Backend2Conn) http2Node() *http2Node  { return c.Node().(*http2Node) }
+func (c *backend2Conn) WebBackend() WebBackend { return c.Backend().(WebBackend) }
+func (c *backend2Conn) http2Node() *http2Node  { return c.Node().(*http2Node) }
 
-func (c *Backend2Conn) reachLimit() bool {
+func (c *backend2Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.WebBackend().MaxStreamsPerConn()
 }
 
-func (c *Backend2Conn) fetchStream() (BackendStream, error) {
-	// Note: A Backend2Conn can be used concurrently, limited by maxStreams.
+func (c *backend2Conn) fetchStream() (backendStream, error) {
+	// Note: A backend2Conn can be used concurrently, limited by maxStreams.
 	// TODO: incRef, stream.onUse()
 	return nil, nil
 }
-func (c *Backend2Conn) storeStream(stream BackendStream) {
-	// Note: A Backend2Conn can be used concurrently, limited by maxStreams.
+func (c *backend2Conn) storeStream(stream backendStream) {
+	// Note: A backend2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 	//stream.onEnd()
 }
 
-func (c *Backend2Conn) setWriteDeadline(deadline time.Time) error {
+func (c *backend2Conn) setWriteDeadline(deadline time.Time) error {
 	if deadline.Sub(c.lastWrite) >= time.Second {
 		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
@@ -200,7 +200,7 @@ func (c *Backend2Conn) setWriteDeadline(deadline time.Time) error {
 	}
 	return nil
 }
-func (c *Backend2Conn) setReadDeadline(deadline time.Time) error {
+func (c *backend2Conn) setReadDeadline(deadline time.Time) error {
 	if deadline.Sub(c.lastRead) >= time.Second {
 		if err := c.netConn.SetReadDeadline(deadline); err != nil {
 			return err
@@ -210,16 +210,16 @@ func (c *Backend2Conn) setReadDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (c *Backend2Conn) write(p []byte) (int, error) { return c.netConn.Write(p) }
-func (c *Backend2Conn) writev(vector *net.Buffers) (int64, error) {
+func (c *backend2Conn) write(p []byte) (int, error) { return c.netConn.Write(p) }
+func (c *backend2Conn) writev(vector *net.Buffers) (int64, error) {
 	// Will consume vector automatically
 	return vector.WriteTo(c.netConn)
 }
-func (c *Backend2Conn) readAtLeast(p []byte, n int) (int, error) {
+func (c *backend2Conn) readAtLeast(p []byte, n int) (int, error) {
 	return io.ReadAtLeast(c.netConn, p, n)
 }
 
-func (c *Backend2Conn) Close() error {
+func (c *backend2Conn) Close() error {
 	netConn := c.netConn
 	putBackend2Conn(c)
 	return netConn.Close()
@@ -228,10 +228,10 @@ func (c *Backend2Conn) Close() error {
 // poolBackend2Stream
 var poolBackend2Stream sync.Pool
 
-func getBackend2Stream(conn *Backend2Conn, id uint32) *Backend2Stream {
-	var stream *Backend2Stream
+func getBackend2Stream(conn *backend2Conn, id uint32) *backend2Stream {
+	var stream *backend2Stream
 	if x := poolBackend2Stream.Get(); x == nil {
-		stream = new(Backend2Stream)
+		stream = new(backend2Stream)
 		req, resp := &stream.request, &stream.response
 		req.shell = req
 		req.stream = stream
@@ -239,40 +239,40 @@ func getBackend2Stream(conn *Backend2Conn, id uint32) *Backend2Stream {
 		resp.shell = resp
 		resp.stream = stream
 	} else {
-		stream = x.(*Backend2Stream)
+		stream = x.(*backend2Stream)
 	}
 	stream.onUse(conn, id)
 	return stream
 }
-func putBackend2Stream(stream *Backend2Stream) {
+func putBackend2Stream(stream *backend2Stream) {
 	stream.onEnd()
 	poolBackend2Stream.Put(stream)
 }
 
-// Backend2Stream
-type Backend2Stream struct {
+// backend2Stream
+type backend2Stream struct {
 	// Mixins
 	_webStream_
 	// Assocs
-	request  Backend2Request
-	response Backend2Response
-	socket   *Backend2Socket
+	request  backend2Request
+	response backend2Response
+	socket   *backend2Socket
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	conn *Backend2Conn
+	conn *backend2Conn
 	id   uint32
 	// Stream states (zeros)
 }
 
-func (s *Backend2Stream) onUse(conn *Backend2Conn, id uint32) { // for non-zeros
+func (s *backend2Stream) onUse(conn *backend2Conn, id uint32) { // for non-zeros
 	s._webStream_.onUse()
 	s.conn = conn
 	s.id = id
 	s.request.onUse(Version2)
 	s.response.onUse(Version2)
 }
-func (s *Backend2Stream) onEnd() { // for zeros
+func (s *backend2Stream) onEnd() { // for zeros
 	s.response.onEnd()
 	s.request.onEnd()
 	if s.socket != nil {
@@ -283,48 +283,48 @@ func (s *Backend2Stream) onEnd() { // for zeros
 	s._webStream_.onEnd()
 }
 
-func (s *Backend2Stream) Request() BackendRequest   { return &s.request }
-func (s *Backend2Stream) Response() BackendResponse { return &s.response }
-func (s *Backend2Stream) Socket() BackendSocket     { return nil } // TODO
+func (s *backend2Stream) Request() backendRequest   { return &s.request }
+func (s *backend2Stream) Response() backendResponse { return &s.response }
+func (s *backend2Stream) Socket() backendSocket     { return nil } // TODO
 
-func (s *Backend2Stream) ExecuteExchan() error { // request & response
+func (s *backend2Stream) ExecuteExchan() error { // request & response
 	// TODO
 	return nil
 }
-func (s *Backend2Stream) ExecuteSocket() error { // see RFC 8441: https://datatracker.ietf.org/doc/html/rfc8441
+func (s *backend2Stream) ExecuteSocket() error { // see RFC 8441: https://datatracker.ietf.org/doc/html/rfc8441
 	// TODO
 	return nil
 }
 
-func (s *Backend2Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only?
+func (s *backend2Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only?
 	return nil
 }
-func (s *Backend2Stream) setReadDeadline(deadline time.Time) error { // for content i/o only?
+func (s *backend2Stream) setReadDeadline(deadline time.Time) error { // for content i/o only?
 	return nil
 }
 
-func (s *Backend2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
-func (s *Backend2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
+func (s *backend2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
+func (s *backend2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
-func (s *Backend2Stream) webKeeper() webKeeper { return s.conn.WebBackend() }
-func (s *Backend2Stream) webConn() webConn     { return s.conn }
-func (s *Backend2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
+func (s *backend2Stream) webKeeper() webKeeper { return s.conn.WebBackend() }
+func (s *backend2Stream) webConn() webConn     { return s.conn }
+func (s *backend2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
-func (s *Backend2Stream) write(p []byte) (int, error) { // for content i/o only?
+func (s *backend2Stream) write(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
-func (s *Backend2Stream) writev(vector *net.Buffers) (int64, error) { // for content i/o only?
+func (s *backend2Stream) writev(vector *net.Buffers) (int64, error) { // for content i/o only?
 	return 0, nil
 }
-func (s *Backend2Stream) read(p []byte) (int, error) { // for content i/o only?
+func (s *backend2Stream) read(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
-func (s *Backend2Stream) readFull(p []byte) (int, error) { // for content i/o only?
+func (s *backend2Stream) readFull(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
 
-// Backend2Request is the backend-side HTTP/2 request.
-type Backend2Request struct { // outgoing. needs building
+// backend2Request is the backend-side HTTP/2 request.
+type backend2Request struct { // outgoing. needs building
 	// Parent
 	backendRequest_
 	// Stream states (stocks)
@@ -333,56 +333,56 @@ type Backend2Request struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
-func (r *Backend2Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // :method = method, :path = uri
+func (r *backend2Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // :method = method, :path = uri
 	// TODO: set :method and :path
 	return false
 }
-func (r *Backend2Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
+func (r *backend2Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
 	// TODO: set :authority
 	return false
 }
 
-func (r *Backend2Request) addHeader(name []byte, value []byte) bool   { return r.addHeader2(name, value) }
-func (r *Backend2Request) header(name []byte) (value []byte, ok bool) { return r.header2(name) }
-func (r *Backend2Request) hasHeader(name []byte) bool                 { return r.hasHeader2(name) }
-func (r *Backend2Request) delHeader(name []byte) (deleted bool)       { return r.delHeader2(name) }
-func (r *Backend2Request) delHeaderAt(i uint8)                        { r.delHeaderAt2(i) }
+func (r *backend2Request) addHeader(name []byte, value []byte) bool   { return r.addHeader2(name, value) }
+func (r *backend2Request) header(name []byte) (value []byte, ok bool) { return r.header2(name) }
+func (r *backend2Request) hasHeader(name []byte) bool                 { return r.hasHeader2(name) }
+func (r *backend2Request) delHeader(name []byte) (deleted bool)       { return r.delHeader2(name) }
+func (r *backend2Request) delHeaderAt(i uint8)                        { r.delHeaderAt2(i) }
 
-func (r *Backend2Request) AddCookie(name string, value string) bool {
+func (r *backend2Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
 	return false
 }
-func (r *Backend2Request) proxyCopyCookies(req Request) bool { // DO NOT merge into one "cookie" header!
+func (r *backend2Request) proxyCopyCookies(req Request) bool { // DO NOT merge into one "cookie" header!
 	// TODO: one by one?
 	return true
 }
 
-func (r *Backend2Request) sendChain() error { return r.sendChain2() }
+func (r *backend2Request) sendChain() error { return r.sendChain2() }
 
-func (r *Backend2Request) echoHeaders() error { return r.writeHeaders2() }
-func (r *Backend2Request) echoChain() error   { return r.echoChain2() }
+func (r *backend2Request) echoHeaders() error { return r.writeHeaders2() }
+func (r *backend2Request) echoChain() error   { return r.echoChain2() }
 
-func (r *Backend2Request) addTrailer(name []byte, value []byte) bool {
+func (r *backend2Request) addTrailer(name []byte, value []byte) bool {
 	return r.addTrailer2(name, value)
 }
-func (r *Backend2Request) trailer(name []byte) (value []byte, ok bool) { return r.trailer2(name) }
+func (r *backend2Request) trailer(name []byte) (value []byte, ok bool) { return r.trailer2(name) }
 
-func (r *Backend2Request) passHeaders() error       { return r.writeHeaders2() }
-func (r *Backend2Request) passBytes(p []byte) error { return r.passBytes2(p) }
+func (r *backend2Request) passHeaders() error       { return r.writeHeaders2() }
+func (r *backend2Request) passBytes(p []byte) error { return r.passBytes2(p) }
 
-func (r *Backend2Request) finalizeHeaders() { // add at most 256 bytes
+func (r *backend2Request) finalizeHeaders() { // add at most 256 bytes
 	// TODO
 }
-func (r *Backend2Request) finalizeVague() error {
+func (r *backend2Request) finalizeVague() error {
 	// TODO
 	return nil
 }
 
-func (r *Backend2Request) addedHeaders() []byte { return nil } // TODO
-func (r *Backend2Request) fixedHeaders() []byte { return nil } // TODO
+func (r *backend2Request) addedHeaders() []byte { return nil } // TODO
+func (r *backend2Request) fixedHeaders() []byte { return nil } // TODO
 
-// Backend2Response is the backend-side HTTP/2 response.
-type Backend2Response struct { // incoming. needs parsing
+// backend2Response is the backend-side HTTP/2 response.
+type backend2Response struct { // incoming. needs parsing
 	// Parent
 	backendResponse_
 	// Stream states (stocks)
@@ -391,23 +391,23 @@ type Backend2Response struct { // incoming. needs parsing
 	// Stream states (zeros)
 }
 
-func (r *Backend2Response) recvHead() {
+func (r *backend2Response) recvHead() {
 	// TODO
 }
 
-func (r *Backend2Response) readContent() (p []byte, err error) { return r.readContent2() }
+func (r *backend2Response) readContent() (p []byte, err error) { return r.readContent2() }
 
 // poolBackend2Socket
 var poolBackend2Socket sync.Pool
 
-func getBackend2Socket(stream *Backend2Stream) *Backend2Socket {
+func getBackend2Socket(stream *backend2Stream) *backend2Socket {
 	return nil
 }
-func putBackend2Socket(socket *Backend2Socket) {
+func putBackend2Socket(socket *backend2Socket) {
 }
 
-// Backend2Socket is the backend-side HTTP/2 websocket.
-type Backend2Socket struct {
+// backend2Socket is the backend-side HTTP/2 websocket.
+type backend2Socket struct {
 	// Parent
 	backendSocket_
 	// Stream states (stocks)
@@ -416,9 +416,9 @@ type Backend2Socket struct {
 	// Stream states (zeros)
 }
 
-func (s *Backend2Socket) onUse() {
+func (s *backend2Socket) onUse() {
 	s.backendSocket_.onUse()
 }
-func (s *Backend2Socket) onEnd() {
+func (s *backend2Socket) onEnd() {
 	s.backendSocket_.onEnd()
 }

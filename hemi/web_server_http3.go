@@ -393,7 +393,7 @@ func (r *server3Response) addTrailer(name []byte, value []byte) bool {
 }
 func (r *server3Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer3(name) }
 
-func (r *server3Response) proxyPass1xx(resp BackendResponse) bool {
+func (r *server3Response) proxyPass1xx(resp backendResponse) bool {
 	resp.delHopHeaders()
 	r.status = resp.Status()
 	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {

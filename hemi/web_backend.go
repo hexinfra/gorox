@@ -24,8 +24,8 @@ type WebBackend interface { // for *HTTP[1-3]Backend
 	MaxContentSize() int64      // in response
 	MaxMemoryContentSize() int32
 	MaxStreamsPerConn() int32
-	FetchStream() (BackendStream, error)
-	StoreStream(stream BackendStream)
+	FetchStream() (backendStream, error)
+	StoreStream(stream backendStream)
 }
 
 // webBackend_ is the parent for HTTP[1-3]Backend.
@@ -56,21 +56,22 @@ func (b *webBackend_[N]) OnPrepare() {
 	b.PrepareNodes()
 }
 
-// BackendStream is the backend-side web stream.
-type BackendStream interface { // for *Backend[1-3]Stream
-	Request() BackendRequest
-	Response() BackendResponse
-	Socket() BackendSocket
+// backendStream is the backend-side web stream.
+type backendStream interface { // for *Backend[1-3]Stream
+	Request() backendRequest
+	Response() backendResponse
+	Socket() backendSocket
 
 	ExecuteExchan() error
 	ExecuteSocket() error
 
 	webConn() webConn
+	isBroken() bool
 	markBroken()
 }
 
-// BackendRequest is the backend-side web request.
-type BackendRequest interface { // for *Backend[1-3]Request
+// backendRequest is the backend-side web request.
+type backendRequest interface { // for *Backend[1-3]Request
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool
 	proxyCopyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
@@ -87,7 +88,7 @@ type backendRequest_ struct { // outgoing. needs building
 	// Parent
 	webOut_ // outgoing web message
 	// Assocs
-	response BackendResponse // the corresponding response
+	response backendResponse // the corresponding response
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -118,10 +119,10 @@ func (r *backendRequest_) onEnd() { // for zeros
 	r.webOut_.onEnd()
 }
 
-func (r *backendRequest_) Response() BackendResponse { return r.response }
+func (r *backendRequest_) Response() backendResponse { return r.response }
 
 func (r *backendRequest_) SetMethodURI(method string, uri string, hasContent bool) bool {
-	return r.shell.(BackendRequest).setMethodURI(ConstBytes(method), ConstBytes(uri), hasContent)
+	return r.shell.(backendRequest).setMethodURI(ConstBytes(method), ConstBytes(uri), hasContent)
 }
 func (r *backendRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only. HTTP/1 doesn't use this!
 	// TODO: copy `:scheme $scheme` to r.fields
@@ -272,7 +273,7 @@ func (r *backendRequest_) proxyCopyHead(req Request, cfg *WebExchanProxyConfig) 
 		// then the last proxy on the request chain MUST send a request-target of "*" when it forwards the request to the indicated origin server.
 		uri = bytesAsterisk
 	}
-	if !r.shell.(BackendRequest).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
+	if !r.shell.(backendRequest).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
 		return false
 	}
 	if req.IsAbsoluteForm() || len(cfg.Hostname) != 0 || len(cfg.ColonPort) != 0 { // TODO: what about HTTP/2 and HTTP/3?
@@ -296,7 +297,7 @@ func (r *backendRequest_) proxyCopyHead(req Request, cfg *WebExchanProxyConfig) 
 			} else {
 				colonPort = cfg.ColonPort
 			}
-			if !r.shell.(BackendRequest).setAuthority(hostname, colonPort) {
+			if !r.shell.(backendRequest).setAuthority(hostname, colonPort) {
 				return false
 			}
 		}
@@ -316,7 +317,7 @@ func (r *backendRequest_) proxyCopyHead(req Request, cfg *WebExchanProxyConfig) 
 	}
 
 	// copy selective forbidden headers (including cookie) from req
-	if req.HasCookies() && !r.shell.(BackendRequest).proxyCopyCookies(req) {
+	if req.HasCookies() && !r.shell.(backendRequest).proxyCopyCookies(req) {
 		return false
 	}
 	if !r.shell.addHeader(bytesVia, cfg.InboundViaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
@@ -357,8 +358,8 @@ func (r *backendRequest_) proxyCopyTail(req Request, cfg *WebExchanProxyConfig) 
 	})
 }
 
-// BackendResponse is the backend-side web response.
-type BackendResponse interface { // for *Backend[1-3]Response
+// backendResponse is the backend-side web response.
+type backendResponse interface { // for *Backend[1-3]Response
 	KeepAlive() int8
 	HeadResult() int16
 	BodyResult() int16
@@ -881,8 +882,8 @@ func (c *HCookie) nameEqualBytes(name []byte) bool {
 	return bytes.Equal(p[c.nameFrom:c.nameFrom+int16(c.nameSize)], name)
 }
 
-// BackendSocket is the backend-side web socket.
-type BackendSocket interface { // for *Backend[1-3]Socket
+// backendSocket is the backend-side web socket.
+type backendSocket interface { // for *Backend[1-3]Socket
 	Read(p []byte) (int, error)
 	Write(p []byte) (int, error)
 	Close() error

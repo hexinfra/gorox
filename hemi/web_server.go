@@ -2364,20 +2364,20 @@ func (r *serverRequest_) hookReviser(reviser Reviser) {
 
 func (r *serverRequest_) unsafeVariable(code int16, name string) (value []byte) {
 	if code != -1 {
-		return httpRequestVariables[code](r)
+		return serverRequestVariables[code](r)
 	}
-	if strings.HasPrefix(name, httpRequestPrefixHeader) {
-		name = name[len(httpRequestPrefixHeader):]
+	if strings.HasPrefix(name, serverRequestPrefixHeader) {
+		name = name[len(serverRequestPrefixHeader):]
 		if v, ok := r.UnsafeHeader(name); ok {
 			return v
 		}
-	} else if strings.HasPrefix(name, httpRequestPrefixQuery) {
-		name = name[len(httpRequestPrefixQuery):]
+	} else if strings.HasPrefix(name, serverRequestPrefixQuery) {
+		name = name[len(serverRequestPrefixQuery):]
 		if v, ok := r.UnsafeQuery(name); ok {
 			return v
 		}
-	} else if strings.HasPrefix(name, httpRequestPrefixCookie) {
-		name = name[len(httpRequestPrefixCookie):]
+	} else if strings.HasPrefix(name, serverRequestPrefixCookie) {
+		name = name[len(serverRequestPrefixCookie):]
 		if v, ok := r.UnsafeCookie(name); ok {
 			return v
 		}
@@ -2386,12 +2386,12 @@ func (r *serverRequest_) unsafeVariable(code int16, name string) (value []byte) 
 }
 
 const ( // web server request prefixes
-	httpRequestPrefixQuery  = "query_"
-	httpRequestPrefixHeader = "header_"
-	httpRequestPrefixCookie = "cookie_"
+	serverRequestPrefixQuery  = "query_"
+	serverRequestPrefixHeader = "header_"
+	serverRequestPrefixCookie = "cookie_"
 )
 
-var httpRequestVariables = [...]func(*serverRequest_) []byte{ // keep sync with varCodes
+var serverRequestVariables = [...]func(*serverRequest_) []byte{ // keep sync with varCodes
 	(*serverRequest_).UnsafeMethod,      // method
 	(*serverRequest_).UnsafeScheme,      // scheme
 	(*serverRequest_).UnsafeAuthority,   // authority
@@ -2568,11 +2568,11 @@ type Response interface { // for *server[1-3]Response
 	echoChain() error // chunks
 	addTrailer(name []byte, value []byte) bool
 	endVague() error
-	proxyPass1xx(resp BackendResponse) bool
-	proxyPass(resp BackendResponse) error
+	proxyPass1xx(resp backendResponse) bool
+	proxyPass(resp backendResponse) error
 	proxyPost(content any, hasTrailers bool) error
-	proxyCopyHead(resp BackendResponse, cfg *WebExchanProxyConfig) bool
-	proxyCopyTail(resp BackendResponse, cfg *WebExchanProxyConfig) bool
+	proxyCopyHead(resp backendResponse, cfg *WebExchanProxyConfig) bool
+	proxyCopyTail(resp backendResponse, cfg *WebExchanProxyConfig) bool
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
 }
@@ -2873,7 +2873,7 @@ func (r *serverResponse_) deleteLastModified() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified)
 }
 
-func (r *serverResponse_) proxyPass(resp BackendResponse) error { // sync content to the other side directly
+func (r *serverResponse_) proxyPass(resp backendResponse) error { // sync content to the other side directly
 	pass := r.shell.passBytes
 	if resp.IsVague() || r.hasRevisers { // if we need to revise, we always use vague no matter the original content is sized or vague
 		pass = r.EchoBytes
@@ -2908,7 +2908,7 @@ func (r *serverResponse_) proxyPass(resp BackendResponse) error { // sync conten
 	}
 	return nil
 }
-func (r *serverResponse_) proxyCopyHead(resp BackendResponse, cfg *WebExchanProxyConfig) bool {
+func (r *serverResponse_) proxyCopyHead(resp backendResponse, cfg *WebExchanProxyConfig) bool {
 	resp.delHopHeaders()
 
 	// copy control (:status)
@@ -2929,7 +2929,7 @@ func (r *serverResponse_) proxyCopyHead(resp BackendResponse, cfg *WebExchanProx
 
 	return true
 }
-func (r *serverResponse_) proxyCopyTail(resp BackendResponse, cfg *WebExchanProxyConfig) bool {
+func (r *serverResponse_) proxyCopyTail(resp backendResponse, cfg *WebExchanProxyConfig) bool {
 	return resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.shell.addTrailer(name, value)
 	})

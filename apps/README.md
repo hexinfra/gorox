@@ -18,8 +18,8 @@ To add a new static or configured webapp named "foo":
 To add a new Go webapp named "bar":
 
   1. Create a folder called "bar" in this directory,
-  2. Create its config file "bar/goapp.conf" and configure it correctly,
-  3. Create Go file "bar/goapp.go" with initial code,
+  2. Create its config file "bar/webapp.conf" and configure it correctly,
+  3. Create Go file "bar/webapp.go" with initial code,
   4. Import package "bar" in "import.go",
   5. Add webapp "bar" in "../conf/gorox.conf" and bind it to your web servers.
 

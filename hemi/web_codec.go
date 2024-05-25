@@ -178,7 +178,7 @@ func (s *_webStream_) onEnd() {
 func (s *_webStream_) buffer256() []byte          { return s.stockBuffer[:] }
 func (s *_webStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 
-// webIn_ is the parent for httpRequest_ and hResponse_.
+// webIn_ is the parent for serverRequest_ and backendResponse_.
 type webIn_ struct { // incoming. needs parsing
 	// Assocs
 	shell interface { // *server[1-3]Request, *Backend[1-3]Response
@@ -1550,7 +1550,7 @@ var ( // web incoming message errors
 	webInTooSlow  = errors.New("web incoming too slow")
 )
 
-// webOut_ is the parent for httpResponse_ and hRequest_.
+// webOut_ is the parent for serverResponse_ and backendRequest_.
 type webOut_ struct { // outgoing. needs building
 	// Assocs
 	shell interface { // *server[1-3]Response, *Backend[1-3]Request

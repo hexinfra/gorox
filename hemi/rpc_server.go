@@ -165,25 +165,6 @@ func (c *hrpcConn) onPut() {
 
 func (c *hrpcConn) rpcServer() *hrpcServer { return c.Server().(*hrpcServer) }
 
-// hrpcExchan is the server-side HRPC exchan.
-type hrpcExchan struct {
-	// Mixins
-	_rpcExchan_
-	// Assocs
-	// Exchan states (stocks)
-	// Exchan states (controlled)
-	// Exchan states (non-zeros)
-	gate *hrpcGate
-	// Exchan states (zeros)
-}
-
-func (x *hrpcExchan) onUse() {
-	x._rpcExchan_.onUse()
-}
-func (x *hrpcExchan) onEnd() {
-	x._rpcExchan_.onEnd()
-}
-
 // Service is the HRPC service.
 type Service struct {
 	// Parent

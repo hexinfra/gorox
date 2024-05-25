@@ -658,11 +658,11 @@ func (s *Stage) Start(id int32) {
 		Printf("size of server2Stream = %d\n", unsafe.Sizeof(server2Stream{}))
 		Printf("size of server3Conn = %d\n", unsafe.Sizeof(server3Conn{}))
 		Printf("size of server3Stream = %d\n", unsafe.Sizeof(server3Stream{}))
-		Printf("size of Backend1Conn = %d\n", unsafe.Sizeof(Backend1Conn{}))
-		Printf("size of Backend2Conn = %d\n", unsafe.Sizeof(Backend2Conn{}))
-		Printf("size of Backend2Stream = %d\n", unsafe.Sizeof(Backend2Stream{}))
-		Printf("size of Backend3Conn = %d\n", unsafe.Sizeof(Backend3Conn{}))
-		Printf("size of Backend3Stream = %d\n", unsafe.Sizeof(Backend3Stream{}))
+		Printf("size of backend1Conn = %d\n", unsafe.Sizeof(backend1Conn{}))
+		Printf("size of backend2Conn = %d\n", unsafe.Sizeof(backend2Conn{}))
+		Printf("size of backend2Stream = %d\n", unsafe.Sizeof(backend2Stream{}))
+		Printf("size of backend3Conn = %d\n", unsafe.Sizeof(backend3Conn{}))
+		Printf("size of backend3Stream = %d\n", unsafe.Sizeof(backend3Stream{}))
 	}
 	if DebugLevel() >= 1 {
 		Printf("stageID=%d\n", s.id)

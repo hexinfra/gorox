@@ -57,7 +57,7 @@ func (b *webBackend_[N]) OnPrepare() {
 }
 
 // backendStream is the backend-side web stream.
-type backendStream interface { // for *Backend[1-3]Stream
+type backendStream interface { // for *backend[1-3]Stream
 	Request() backendRequest
 	Response() backendResponse
 	Socket() backendSocket
@@ -71,7 +71,7 @@ type backendStream interface { // for *Backend[1-3]Stream
 }
 
 // backendRequest is the backend-side web request.
-type backendRequest interface { // for *Backend[1-3]Request
+type backendRequest interface { // for *backend[1-3]Request
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool
 	proxyCopyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
@@ -83,7 +83,7 @@ type backendRequest interface { // for *Backend[1-3]Request
 	endVague() error
 }
 
-// backendRequest_ is the parent for Backend[1-3]Request.
+// backendRequest_ is the parent for backend[1-3]Request.
 type backendRequest_ struct { // outgoing. needs building
 	// Parent
 	webOut_ // outgoing web message
@@ -359,7 +359,7 @@ func (r *backendRequest_) proxyCopyTail(req Request, cfg *WebExchanProxyConfig) 
 }
 
 // backendResponse is the backend-side web response.
-type backendResponse interface { // for *Backend[1-3]Response
+type backendResponse interface { // for *backend[1-3]Response
 	KeepAlive() int8
 	HeadResult() int16
 	BodyResult() int16
@@ -379,16 +379,13 @@ type backendResponse interface { // for *Backend[1-3]Response
 	reuse()
 }
 
-// backendResponse_ is the parent for Backend[1-3]Response.
+// backendResponse_ is the parent for backend[1-3]Response.
 type backendResponse_ struct { // incoming. needs parsing
 	// Parent
 	webIn_ // incoming web message
 	// Stream states (stocks)
-	stockCookies [8]HCookie // for r.cookies
 	// Stream states (controlled)
-	cookie HCookie // to overcome the limitation of Go's escape analysis when receiving set-cookie
 	// Stream states (non-zeros)
-	cookies []HCookie // hold cookies->r.input. [<r.stockCookies>/(make=32/128)]
 	// Stream states (zeros)
 	backendResponse0 // all values must be zero by default in this struct!
 }
@@ -433,15 +430,8 @@ type backendResponse0 struct { // for fast reset, entirely
 func (r *backendResponse_) onUse(versionCode uint8) { // for non-zeros
 	const asResponse = true
 	r.webIn_.onUse(versionCode, asResponse)
-
-	r.cookies = r.stockCookies[0:0:cap(r.stockCookies)] // use append()
 }
 func (r *backendResponse_) onEnd() { // for zeros
-	r.cookie.input = nil
-	for i := 0; i < len(r.cookies); i++ {
-		r.cookies[i].input = nil
-	}
-	r.cookies = nil
 	r.backendResponse0 = backendResponse0{}
 
 	r.webIn_.onEnd()
@@ -595,23 +585,19 @@ func (r *backendResponse_) checkServer(header *pair, index uint8) bool { // Serv
 	return true
 }
 func (r *backendResponse_) checkSetCookie(header *pair, index uint8) bool { // Set-Cookie = set-cookie-string
-	if !r.parseSetCookie(header.value) {
-		r.headResult, r.failReason = StatusBadRequest, "bad set-cookie"
-		return false
-	}
-	if len(r.cookies) == cap(r.cookies) {
-		if cap(r.cookies) == cap(r.stockCookies) {
-			cookies := make([]HCookie, 0, 16)
-			r.cookies = append(cookies, r.cookies...)
-		} else if cap(r.cookies) == 16 {
-			cookies := make([]HCookie, 0, 128)
-			r.cookies = append(cookies, r.cookies...)
-		} else {
-			r.headResult = StatusRequestHeaderFieldsTooLarge
-			return false
-		}
-	}
-	r.cookies = append(r.cookies, r.cookie)
+	// set-cookie-string = cookie-pair *( ";" SP cookie-av )
+	// cookie-pair = token "=" cookie-value
+	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
+	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
+	// cookie-av = expires-av / max-age-av / domain-av / path-av / secure-av / httponly-av / samesite-av / extension-av
+	// expires-av = "Expires=" sane-cookie-date
+	// max-age-av = "Max-Age=" non-zero-digit *DIGIT
+	// domain-av = "Domain=" domain-value
+	// path-av = "Path=" path-value
+	// secure-av = "Secure"
+	// httponly-av = "HttpOnly"
+	// samesite-av = "SameSite=" samesite-value
+	// extension-av = <any CHAR except CTLs or ";">
 	return true
 }
 
@@ -730,27 +716,6 @@ func (r *backendResponse_) checkVary(pairs []pair, from uint8, edge uint8) bool 
 	return true
 }
 
-func (r *backendResponse_) parseSetCookie(setCookieString span) bool {
-	// set-cookie-string = cookie-pair *( ";" SP cookie-av )
-	// cookie-pair = token "=" cookie-value
-	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
-	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
-	// cookie-av = expires-av / max-age-av / domain-av / path-av / secure-av / httponly-av / samesite-av / extension-av
-	// expires-av = "Expires=" sane-cookie-date
-	// max-age-av = "Max-Age=" non-zero-digit *DIGIT
-	// domain-av = "Domain=" domain-value
-	// path-av = "Path=" path-value
-	// secure-av = "Secure"
-	// httponly-av = "HttpOnly"
-	// samesite-av = "SameSite=" samesite-value
-	// extension-av = <any CHAR except CTLs or ";">
-	cookie := &r.cookie
-	cookie.zero()
-	cookie.input = &r.input
-	// TODO: parse
-	return true
-}
-
 func (r *backendResponse_) unsafeDate() []byte {
 	if r.iDate == 0 {
 		return nil
@@ -762,32 +727,6 @@ func (r *backendResponse_) unsafeLastModified() []byte {
 		return nil
 	}
 	return r.primes[r.indexes.lastModified].valueAt(r.input)
-}
-
-func (r *backendResponse_) HasCookies() bool { return len(r.cookies) > 0 }
-func (r *backendResponse_) GetCookie(name string) *HCookie {
-	for i := 0; i < len(r.cookies); i++ {
-		if cookie := &r.cookies[i]; cookie.nameEqualString(name) {
-			return cookie
-		}
-	}
-	return nil
-}
-func (r *backendResponse_) HasCookie(name string) bool {
-	for i := 0; i < len(r.cookies); i++ {
-		if cookie := &r.cookies[i]; cookie.nameEqualString(name) {
-			return true
-		}
-	}
-	return false
-}
-func (r *backendResponse_) forCookies(callback func(cookie *HCookie) bool) bool {
-	for i := 0; i < len(r.cookies); i++ {
-		if !callback(&r.cookies[i]) {
-			return false
-		}
-	}
-	return true
 }
 
 func (r *backendResponse_) HasContent() bool {
@@ -818,78 +757,14 @@ func (r *backendResponse_) applyTrailer(index uint8) bool {
 	return true
 }
 
-// HCookie is a "set-cookie" header received from backend.
-type HCookie struct { // 32 bytes
-	input      *[]byte // the buffer holding data
-	expires    int64   // Expires=Wed, 09 Jun 2021 10:18:14 GMT
-	maxAge     int32   // Max-Age=123
-	nameFrom   int16   // foo
-	valueEdge  int16   // bar
-	domainFrom int16   // Domain=example.com
-	pathFrom   int16   // Path=/abc
-	nameSize   uint8   // <= 255
-	domainSize uint8   // <= 255
-	pathSize   uint8   // <= 255
-	flags      uint8   // secure(1), httpOnly(1), sameSite(2), reserved(2), valueOffset(2)
-}
-
-func (c *HCookie) zero() { *c = HCookie{} }
-
-func (c *HCookie) Name() string {
-	p := *c.input
-	return string(p[c.nameFrom : c.nameFrom+int16(c.nameSize)])
-}
-func (c *HCookie) Value() string {
-	p := *c.input
-	valueFrom := c.nameFrom + int16(c.nameSize) + 1 // name=value
-	return string(p[valueFrom:c.valueEdge])
-}
-func (c *HCookie) Expires() int64 { return c.expires }
-func (c *HCookie) MaxAge() int32  { return c.maxAge }
-func (c *HCookie) domain() []byte {
-	p := *c.input
-	return p[c.domainFrom : c.domainFrom+int16(c.domainSize)]
-}
-func (c *HCookie) path() []byte {
-	p := *c.input
-	return p[c.pathFrom : c.pathFrom+int16(c.pathSize)]
-}
-func (c *HCookie) sameSite() string {
-	switch c.flags & 0b00110000 {
-	case 0b00010000:
-		return "Lax"
-	case 0b00100000:
-		return "Strict"
-	default:
-		return "None"
-	}
-}
-func (c *HCookie) secure() bool   { return c.flags&0b10000000 > 0 }
-func (c *HCookie) httpOnly() bool { return c.flags&0b01000000 > 0 }
-
-func (c *HCookie) nameEqualString(name string) bool {
-	if int(c.nameSize) != len(name) {
-		return false
-	}
-	p := *c.input
-	return string(p[c.nameFrom:c.nameFrom+int16(c.nameSize)]) == name
-}
-func (c *HCookie) nameEqualBytes(name []byte) bool {
-	if int(c.nameSize) != len(name) {
-		return false
-	}
-	p := *c.input
-	return bytes.Equal(p[c.nameFrom:c.nameFrom+int16(c.nameSize)], name)
-}
-
 // backendSocket is the backend-side web socket.
-type backendSocket interface { // for *Backend[1-3]Socket
+type backendSocket interface { // for *backend[1-3]Socket
 	Read(p []byte) (int, error)
 	Write(p []byte) (int, error)
 	Close() error
 }
 
-// backendSocket_ is the parent for Backend[1-3]Socket.
+// backendSocket_ is the parent for backend[1-3]Socket.
 type backendSocket_ struct {
 	// Parent
 	webSocket_

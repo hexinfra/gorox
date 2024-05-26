@@ -47,14 +47,18 @@ type webServer_[G Gate] struct {
 	// Assocs
 	defaultApp *Webapp // default webapp if not found
 	// States
-	webapps    []string               // for what webapps
-	exactApps  []*hostnameTo[*Webapp] // like: ("example.com")
-	suffixApps []*hostnameTo[*Webapp] // like: ("*.example.com")
-	prefixApps []*hostnameTo[*Webapp] // like: ("www.example.*")
+	webapps      []string               // for what webapps
+	exactApps    []*hostnameTo[*Webapp] // like: ("example.com")
+	suffixApps   []*hostnameTo[*Webapp] // like: ("*.example.com")
+	prefixApps   []*hostnameTo[*Webapp] // like: ("www.example.*")
+	forceScheme  int8                   // scheme (http/https) that must be used
+	adjustScheme bool                   // use https scheme for TLS and http scheme for others?
 }
 
 func (s *webServer_[G]) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
+
+	s.forceScheme = -1 // not forced
 }
 
 func (s *webServer_[G]) onConfigure() {
@@ -63,6 +67,24 @@ func (s *webServer_[G]) onConfigure() {
 
 	// webapps
 	s.ConfigureStringList("webapps", &s.webapps, nil, []string{})
+
+	// forceScheme
+	var scheme string
+	s.ConfigureString("forceScheme", &scheme, func(value string) error {
+		if value != "http" && value != "https" {
+			return errors.New(".forceScheme has an invalid value")
+		}
+		return nil
+	}, "")
+	switch scheme {
+	case "http":
+		s.forceScheme = SchemeHTTP
+	case "https":
+		s.forceScheme = SchemeHTTPS
+	}
+
+	// adjustScheme
+	s.ConfigureBool("adjustScheme", &s.adjustScheme, true)
 }
 func (s *webServer_[G]) onPrepare() {
 	s.Server_.OnPrepare()
@@ -3654,6 +3676,7 @@ func (r *Rule) OnConfigure() {
 
 	// logAccess
 	r.ConfigureBool("logAccess", &r.logAccess, true)
+
 	// returnCode
 	r.ConfigureInt16("returnCode", &r.returnCode, func(value int16) error {
 		if value >= 200 && value < 1000 {

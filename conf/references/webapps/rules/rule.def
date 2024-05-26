@@ -1,2 +1,8 @@
 rule {
+	.logAccess = bool
+	.returnCode = integer
+	.returnText = string
+	// handlets
+	// revisers
+	// socklets
 }

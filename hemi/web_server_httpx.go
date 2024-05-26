@@ -13,7 +13,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"errors"
 	"io"
 	"net"
 	"os"
@@ -37,37 +36,15 @@ type httpxServer struct {
 	// Parent
 	webServer_[*httpxGate]
 	// States
-	forceScheme  int8 // scheme (http/https) that must be used
-	adjustScheme bool // use https scheme for TLS and http scheme for others?
-	enableHTTP2  bool // enable HTTP/2 support?
+	enableHTTP2 bool // enable HTTP/2 support?
 }
 
 func (s *httpxServer) onCreate(name string, stage *Stage) {
 	s.webServer_.onCreate(name, stage)
-
-	s.forceScheme = -1 // not forced
 }
 
 func (s *httpxServer) OnConfigure() {
 	s.webServer_.onConfigure()
-
-	// forceScheme
-	var scheme string
-	s.ConfigureString("forceScheme", &scheme, func(value string) error {
-		if value != "http" && value != "https" {
-			return errors.New(".forceScheme has an invalid value")
-		}
-		return nil
-	}, "")
-	switch scheme {
-	case "http":
-		s.forceScheme = SchemeHTTP
-	case "https":
-		s.forceScheme = SchemeHTTPS
-	}
-
-	// adjustScheme
-	s.ConfigureBool("adjustScheme", &s.adjustScheme, true)
 
 	if DebugLevel() >= 2 { // remove this condition after HTTP/2 server has been fully implemented
 		// enableHTTP2

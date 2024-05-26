@@ -14,7 +14,6 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/binary"
-	"errors"
 	"io"
 	"net"
 	"os"
@@ -38,36 +37,14 @@ type http2Server struct {
 	// Parent
 	webServer_[*http2Gate]
 	// States
-	forceScheme  int8 // scheme (http/https) that must be used
-	adjustScheme bool // use https scheme for TLS and http scheme for others?
 }
 
 func (s *http2Server) onCreate(name string, stage *Stage) {
 	s.webServer_.onCreate(name, stage)
-
-	s.forceScheme = -1 // not forced
 }
 
 func (s *http2Server) OnConfigure() {
 	s.webServer_.onConfigure()
-
-	// forceScheme
-	var scheme string
-	s.ConfigureString("forceScheme", &scheme, func(value string) error {
-		if value != "http" && value != "https" {
-			return errors.New(".forceScheme has an invalid value")
-		}
-		return nil
-	}, "")
-	switch scheme {
-	case "http":
-		s.forceScheme = SchemeHTTP
-	case "https":
-		s.forceScheme = SchemeHTTPS
-	}
-
-	// adjustScheme
-	s.ConfigureBool("adjustScheme", &s.adjustScheme, true)
 }
 func (s *http2Server) OnPrepare() {
 	s.webServer_.onPrepare()

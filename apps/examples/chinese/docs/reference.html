@@ -1407,7 +1407,7 @@ httpProxy {
 		.sendTimeout = 120s
 		.forceScheme = ""
 		.adjustScheme = true
-		.enableHTTP2 = false
+		.tlsEnableHTTP2 = false
 	}
 }
 </code>
@@ -1503,8 +1503,8 @@ httpProxy {
 				</li>
 
 				<li>
-					<p>.enableHTTP2 是否开启 http2 协议。</p>
-					<code>语法： .enableHTTP2 = false
+					<p>.tlsEnableHTTP2 是否开启 http2 协议。</p>
+					<code>语法： .tlsEnableHTTP2 = false
 						默认值：false
 						取值范围：false | true
 					</code>

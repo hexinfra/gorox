@@ -11,6 +11,6 @@ httpxServer "hs1" {
 	.sendTimeout         = 120s
 	.forceScheme         = ""
 	.adjustScheme        = true
-	.enableHTTP2         = false
+	.tlsEnableHTTP2      = false
 	.saveContentFilesDir = %tmpsDir + "/web/servers/hs1"
 }

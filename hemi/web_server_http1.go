@@ -36,7 +36,7 @@ type httpxServer struct {
 	// Parent
 	webServer_[*httpxGate]
 	// States
-	enableHTTP2 bool // enable HTTP/2 support?
+	tlsEnableHTTP2 bool // enable HTTP/2 support for TLS?
 }
 
 func (s *httpxServer) onCreate(name string, stage *Stage) {
@@ -47,8 +47,8 @@ func (s *httpxServer) OnConfigure() {
 	s.webServer_.onConfigure()
 
 	if DebugLevel() >= 2 { // remove this condition after HTTP/2 server has been fully implemented
-		// enableHTTP2
-		s.ConfigureBool("enableHTTP2", &s.enableHTTP2, true)
+		// tlsEnableHTTP2
+		s.ConfigureBool("tlsEnableHTTP2", &s.tlsEnableHTTP2, true)
 	}
 }
 func (s *httpxServer) OnPrepare() {
@@ -56,7 +56,7 @@ func (s *httpxServer) OnPrepare() {
 
 	if s.IsTLS() {
 		var nextProtos []string
-		if s.enableHTTP2 {
+		if s.tlsEnableHTTP2 {
 			nextProtos = []string{"h2", "http/1.1"}
 		} else {
 			nextProtos = []string{"http/1.1"}

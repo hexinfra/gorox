@@ -6,6 +6,7 @@
 // HTTP/2 server implementation. See RFC 9113 and 7541.
 
 // Server Push is not supported because it's rarely used.
+// NOTE: This is HTTP/2 only server (with Prior Knowledge). If you need to support both HTTP/1 and HTTP/2, use httpxServer instead.
 
 package hemi
 

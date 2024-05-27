@@ -31,7 +31,7 @@ func init() {
 	})
 }
 
-// httpxServer is the HTTP/1 server.
+// httpxServer is the HTTP/1 server which supports switching to HTTP/2.
 type httpxServer struct {
 	// Parent
 	webServer_[*httpxGate]

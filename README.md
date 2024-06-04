@@ -286,7 +286,7 @@ Gorox is hosted at Github:
 Fork this repository and contribute your patch through Github Pull Requests.
 
 By contributing to Gorox, you MUST agree to release your code under the BSD
-License that you can find in the LICENSE.md file.
+License that you can find in the "hemi/LICENSE.md" file.
 
 
 Security

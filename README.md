@@ -273,7 +273,7 @@ The official website of the Gorox project is at:
 License
 =======
 
-Gorox is licensed under a 2-clause BSD License. See LICENSE.md file.
+Gorox is licensed under a 2-clause BSD License. See "hemi/LICENSE.md" file.
 
 
 Contributing

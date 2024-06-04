@@ -17,8 +17,8 @@ import (
 
 func main() {
 	procmgr.Main(&procmgr.Args{
-		Title:      "Develop",
 		Program:    "develop",
+		Title:      "Develop",
 		DebugLevel: 2,
 		CmdUIAddr:  "127.0.0.1:9523",
 		WebUIAddr:  "127.0.0.1:9524",

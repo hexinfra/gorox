@@ -6,7 +6,6 @@
 // HTTP/2 server implementation. See RFC 9113 and 7541.
 
 // Server Push is not supported because it's rarely used.
-// NOTE: This is HTTP/2 only server (with Prior Knowledge). If you need to support both HTTP/1 and HTTP/2, use httpxServer instead.
 
 package hemi
 
@@ -38,6 +37,7 @@ type http2Server struct {
 	// Parent
 	webServer_[*http2Gate]
 	// States
+	tlsEnableHTTP1 bool // enable switching to HTTP/1.1 for TLS?
 }
 
 func (s *http2Server) onCreate(name string, stage *Stage) {
@@ -46,12 +46,21 @@ func (s *http2Server) onCreate(name string, stage *Stage) {
 
 func (s *http2Server) OnConfigure() {
 	s.webServer_.onConfigure()
+
+	// tlsEnableHTTP1
+	s.ConfigureBool("tlsEnableHTTP1", &s.tlsEnableHTTP1, true)
 }
 func (s *http2Server) OnPrepare() {
 	s.webServer_.onPrepare()
 
 	if s.IsTLS() {
-		s.tlsConfig.NextProtos = []string{"h2"}
+		var nextProtos []string
+		if s.tlsEnableHTTP1 {
+			nextProtos = []string{"h2", "http/1.1"}
+		} else {
+			nextProtos = []string{"h2"}
+		}
+		s.tlsConfig.NextProtos = nextProtos
 	}
 }
 
@@ -191,8 +200,13 @@ func (g *http2Gate) serveTLS() { // runner
 				g.justClose(tlsConn)
 				continue
 			}
-			serverConn := getServer2Conn(connID, g, tlsConn, nil)
-			go serverConn.serve() // serverConn is put to pool in serve()
+			if connState := tlsConn.ConnectionState(); connState.NegotiatedProtocol == "h2" {
+				serverConn := getServer2Conn(connID, g, tlsConn, nil)
+				go serverConn.serve() // serverConn is put to pool in serve()
+			} else {
+				serverConn := getServer1Conn(connID, g, tlsConn, nil)
+				go serverConn.serve() // serverConn is put to pool in serve()
+			}
 			connID++
 		}
 	}

@@ -81,8 +81,8 @@ OPTIONS
 
 // Args is the args passed to Main() to control its behavior.
 type Args struct {
-	Title      string
 	Program    string
+	Title      string
 	DebugLevel int
 	CmdUIAddr  string
 	WebUIAddr  string

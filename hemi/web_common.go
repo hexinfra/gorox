@@ -2244,8 +2244,8 @@ type para struct { // 16 bytes
 	name, value span
 }
 
-// defaultDesc
-var defaultDesc = &fdesc{
+// defaultFdesc
+var defaultFdesc = &fdesc{
 	allowQuote: true,
 	allowEmpty: false,
 	allowParam: true,

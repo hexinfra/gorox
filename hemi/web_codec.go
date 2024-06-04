@@ -111,7 +111,7 @@ type webConn interface {
 	markBroken()
 }
 
-// _webConn_ is a mixin for server[1-3]Conn and Backend[1-3]Conn.
+// _webConn_ is a mixin for server[1-3]Conn and backend[1-3]Conn.
 type _webConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
@@ -158,7 +158,7 @@ type webStream interface {
 	markBroken()    // mark stream as broken
 }
 
-// _webStream_ is a mixin for server[1-3]Stream and Backend[1-3]Stream.
+// _webStream_ is a mixin for server[1-3]Stream and backend[1-3]Stream.
 type _webStream_ struct {
 	// Stream states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
@@ -1243,7 +1243,7 @@ func (r *webIn_) getPair(name string, hash uint16, primes zone, extraKind int8) 
 		for i := primes.from; i < primes.edge; i++ {
 			if prime := &r.primes[i]; prime.hash == hash {
 				if p := r._placeOf(prime); prime.nameEqualString(p, name) {
-					if !prime.isParsed() && !r._splitField(prime, defaultDesc, p) {
+					if !prime.isParsed() && !r._splitField(prime, defaultFdesc, p) {
 						continue
 					}
 					if !prime.isCommaValue() {
@@ -1290,7 +1290,7 @@ func (r *webIn_) getPairs(name string, hash uint16, primes zone, extraKind int8)
 		for i := primes.from; i < primes.edge; i++ {
 			if prime := &r.primes[i]; prime.hash == hash {
 				if p := r._placeOf(prime); prime.nameEqualString(p, name) {
-					if !prime.isParsed() && !r._splitField(prime, defaultDesc, p) {
+					if !prime.isParsed() && !r._splitField(prime, defaultFdesc, p) {
 						continue
 					}
 					if !prime.isCommaValue() {
@@ -1594,12 +1594,12 @@ type webOut_ struct { // outgoing. needs building
 	nHeaders    uint8         // 1+num of added headers, starts from 1 because edges[0] is not used
 	nTrailers   uint8         // 1+num of added trailers, starts from 1 because edges[0] is not used
 	// Stream states (zeros)
-	sendTime    time.Time   // the time when first send operation is performed
-	ranges      []Range     // if content is ranged, this is set
-	rangeType   string      // if content is ranged, this is the content type for each range
-	vector      net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream
-	fixedVector [4][]byte   // for sending/echoing message. reset after stream
-	webOut0                 // all values must be zero by default in this struct!
+	sendTime      time.Time   // the time when first send operation is performed
+	contentRanges []Range     // if outgoing content is ranged, this will be set
+	rangeType     string      // if outgoing content is ranged, this will be the content type for each range
+	vector        net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream
+	fixedVector   [4][]byte   // for sending/echoing message. reset after stream
+	webOut0                   // all values must be zero by default in this struct!
 }
 type webOut0 struct { // for fast reset, entirely
 	controlEdge   uint16 // edge of control in r.fields. only used by request to mark the method and request-target
@@ -1629,7 +1629,7 @@ func (r *webOut_) onEnd() { // for zeros
 	r.chain.free()
 
 	r.sendTime = time.Time{}
-	r.ranges = nil
+	r.contentRanges = nil
 	r.rangeType = ""
 	r.vector = nil
 	r.fixedVector = [4][]byte{}
@@ -1855,8 +1855,8 @@ func (r *webOut_) proxyPost(content any, hasTrailers bool) error { // post held 
 	}
 }
 
-func (r *webOut_) pickRanges(ranges []Range, rangeType string) {
-	r.ranges = ranges
+func (r *webOut_) pickRanges(contentRanges []Range, rangeType string) {
+	r.contentRanges = contentRanges
 	r.rangeType = rangeType
 }
 

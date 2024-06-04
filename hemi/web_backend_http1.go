@@ -559,7 +559,7 @@ func (r *backend1Response) recvHead() { // control + headers
 	}
 	r.cleanInput()
 	if DebugLevel() >= 2 {
-		Printf("[Backend1Stream=%d]<======= [%s]\n", r.stream.webConn().ID(), r.input[r.head.from:r.head.edge])
+		Printf("[backend1Stream=%d]<======= [%s]\n", r.stream.webConn().ID(), r.input[r.head.from:r.head.edge])
 	}
 }
 func (r *backend1Response) _recvControl() bool { // HTTP-version SP status-code SP [ reason-phrase ] CRLF

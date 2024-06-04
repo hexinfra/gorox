@@ -628,14 +628,14 @@ func (r *webOut_) _addFixedHeader1(name []byte, value []byte) { // used by final
 func (r *webOut_) sendChain1() error { // TODO: if conn is TLS, don't use writev as it uses many Write() which might be slower than make+copy+write.
 	return r._sendEntireChain1()
 	// TODO
-	nRanges := len(r.ranges)
-	if nRanges == 0 {
+	nContentRanges := len(r.contentRanges)
+	if nContentRanges == 0 {
 		return r._sendEntireChain1()
 	}
 	if !r.asRequest {
 		r.shell.(Response).SetStatus(StatusPartialContent)
 	}
-	if nRanges == 1 {
+	if nContentRanges == 1 {
 		return r._sendSingleRange1()
 	} else {
 		return r._sendMultiRanges1()
@@ -646,7 +646,7 @@ func (r *webOut_) _sendEntireChain1() error {
 	vector := r._prepareVector1() // waiting to write
 	if DebugLevel() >= 2 {
 		if r.asRequest {
-			Printf("[Backend1Stream=%d]=======> ", r.stream.webConn().ID())
+			Printf("[backend1Stream=%d]=======> ", r.stream.webConn().ID())
 		} else {
 			Printf("[server1Stream=%d]-------> ", r.stream.webConn().ID())
 		}
@@ -699,11 +699,11 @@ func (r *webOut_) _sendSingleRange1() error {
 	r.AddContentType(r.rangeType)
 	valueBuffer := r.stream.buffer256()
 	n := copy(valueBuffer, "bytes ")
-	theRange := r.ranges[0]
-	n += i64ToDec(theRange.From, valueBuffer[n:])
+	contentRange := r.contentRanges[0]
+	n += i64ToDec(contentRange.From, valueBuffer[n:])
 	valueBuffer[n] = '-'
 	n++
-	n += i64ToDec(theRange.Last-1, valueBuffer[n:])
+	n += i64ToDec(contentRange.Last-1, valueBuffer[n:])
 	valueBuffer[n] = '/'
 	n++
 	n += i64ToDec(r.contentSize, valueBuffer[n:])
@@ -735,9 +735,9 @@ func (r *webOut_) _prepareVector1() [][]byte {
 	return vector
 }
 
-func (r *webOut_) echoChain1(chunked bool) error { // TODO: coalesce text pieces?
+func (r *webOut_) echoChain1(inChunked bool) error { // TODO: coalesce text pieces?
 	for piece := r.chain.head; piece != nil; piece = piece.next {
-		if err := r.writePiece1(piece, chunked); err != nil {
+		if err := r.writePiece1(piece, inChunked); err != nil {
 			return err
 		}
 	}
@@ -802,7 +802,7 @@ func (r *webOut_) writeHeaders1() error { // used by echo and pass
 	r.vector[2] = r.shell.fixedHeaders()
 	if DebugLevel() >= 2 {
 		if r.asRequest {
-			Printf("[Backend1Stream=%d]", r.stream.webConn().ID())
+			Printf("[backend1Stream=%d]", r.stream.webConn().ID())
 		} else {
 			Printf("[server1Stream=%d]", r.stream.webConn().ID())
 		}
@@ -814,18 +814,18 @@ func (r *webOut_) writeHeaders1() error { // used by echo and pass
 	r.fieldsEdge = 0 // now that headers are all sent, r.fields will be used by trailers (if any), so reset it.
 	return nil
 }
-func (r *webOut_) writePiece1(piece *Piece, chunked bool) error {
+func (r *webOut_) writePiece1(piece *Piece, inChunked bool) error {
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
 	if piece.IsText() { // text piece
-		return r._writeTextPiece1(piece, chunked)
+		return r._writeTextPiece1(piece, inChunked)
 	} else {
-		return r._writeFilePiece1(piece, chunked)
+		return r._writeFilePiece1(piece, inChunked)
 	}
 }
-func (r *webOut_) _writeTextPiece1(piece *Piece, chunked bool) error {
-	if chunked { // HTTP/1.1 chunked data
+func (r *webOut_) _writeTextPiece1(piece *Piece, inChunked bool) error {
+	if inChunked { // HTTP/1.1 chunked data
 		sizeBuffer := r.stream.buffer256() // buffer is enough for chunk size
 		n := i64ToHex(piece.size, sizeBuffer)
 		sizeBuffer[n] = '\r'
@@ -840,7 +840,7 @@ func (r *webOut_) _writeTextPiece1(piece *Piece, chunked bool) error {
 		return r.writeBytes1(piece.Text())
 	}
 }
-func (r *webOut_) _writeFilePiece1(piece *Piece, chunked bool) error {
+func (r *webOut_) _writeFilePiece1(piece *Piece, inChunked bool) error {
 	// file piece. currently we don't use sendfile(2).
 	buffer := Get16K() // 16K is a tradeoff between performance and memory consumption.
 	defer PutNK(buffer)
@@ -863,7 +863,7 @@ func (r *webOut_) _writeFilePiece1(piece *Piece, chunked bool) error {
 			r.stream.markBroken()
 			return err
 		}
-		if chunked { // use HTTP/1.1 chunked mode
+		if inChunked { // use HTTP/1.1 chunked mode
 			sizeBuffer := r.stream.buffer256()
 			k := i64ToHex(int64(n), sizeBuffer)
 			sizeBuffer[k] = '\r'

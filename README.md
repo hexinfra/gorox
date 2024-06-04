@@ -3,16 +3,16 @@ Welcome
 
 Welcome to Gorox!
 
-Gorox is a pragmatic Webapp Server, RPC Framework, and Network Proxy. It can be
-used as:
+Gorox is a pragmatic Network Proxy, Webapp Server, and RPC Framework. It can be
+used as a:
 
-  * Web Server (HTTP, TLS, WebSocket, static, FCGI, uwsgi)
   * Web Reverse Proxy (HTTP, TLS, WebSocket, Caching, Load Balancing)
-  * Web Application Server for Go (Frameworks, Applications)
-  * HRPC Framework for Go (Server, Client)
   * Layer 7 Reverse Proxy (Various Protocols, with or without Load Balancing)
   * Layer 4 Reverse Proxy (TCP, UDP, QUIC, UDS, Load Balancing)
   * Forward Proxy (SOCKS, HTTP Tunnel)
+  * Web Server (HTTP, TLS, WebSocket, static, FCGI, uwsgi)
+  * Web Application Server for Go (Frameworks, Applications)
+  * HRPC Framework for Go (Server, Client)
   * ... and more through its highly extensible compoments design!
 
 Gorox is currently under heavy development. For more details about Gorox, please
@@ -70,8 +70,8 @@ If build failed, set CGO_ENABLED to 0 and try again:
 On succeed, a "gorox" or "gorox.exe" binary will be generated.
 
 Now, you can try to change some webapps under "apps/examples/", and build again.
-To follow the Gorox convention, put your new webapps under "apps/" and your new
-services under "svcs/".
+To follow the Gorox convention, put your new web applications under "apps/" and
+your new rpc services under "svcs/".
 
 Start and stop Gorox
 --------------------

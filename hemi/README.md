@@ -10,9 +10,9 @@ Layout
 Hemi contains these directories:
 
   * common/   - Place general purpose libraries,
+  * compdef/  - Definitions of components,
   * contrib/  - Place optional components,
   * develop/  - A prototype application used to develop Hemi,
-  * newprog/  - The recommended directory hierarchy for programs using Hemi,
   * procmgr/  - A process manager for programs using Hemi,
   * toolkit/  - Place useful commands.
 

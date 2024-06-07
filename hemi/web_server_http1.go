@@ -74,10 +74,10 @@ func (s *http1Server) Serve() { // runner
 		}
 		s.AddGate(gate)
 		s.IncSub()
-		if s.IsUDS() {
-			go gate.serveUDS()
-		} else if s.IsTLS() {
+		if s.IsTLS() {
 			go gate.serveTLS()
+		} else if s.IsUDS() {
+			go gate.serveUDS()
 		} else {
 			go gate.serveTCP()
 		}
@@ -145,40 +145,6 @@ func (g *http1Gate) Shut() error {
 	return g.listener.Close() // breaks serve()
 }
 
-func (g *http1Gate) serveUDS() { // runner
-	listener := g.listener.(*net.UnixListener)
-	connID := int64(0)
-	for {
-		unixConn, err := listener.AcceptUnix()
-		if err != nil {
-			if g.IsShut() {
-				break
-			} else {
-				//g.stage.Logf("http1Server[%s] http1Gate[%d]: accept error: %v\n", g.server.name, g.id, err)
-				continue
-			}
-		}
-		g.IncSub()
-		if g.ReachLimit() {
-			g.justClose(unixConn)
-		} else {
-			rawConn, err := unixConn.SyscallConn()
-			if err != nil {
-				g.justClose(unixConn)
-				//g.stage.Logf("http1Server[%s] http1Gate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
-				continue
-			}
-			serverConn := getServer1Conn(connID, g, unixConn, rawConn)
-			go serverConn.serve() // serverConn is put to pool in serve()
-			connID++
-		}
-	}
-	g.WaitSubs() // conns. TODO: max timeout?
-	if DebugLevel() >= 2 {
-		Printf("http1Gate=%d TCP done\n", g.id)
-	}
-	g.server.DecSub()
-}
 func (g *http1Gate) serveTLS() { // runner
 	listener := g.listener.(*net.TCPListener)
 	connID := int64(0)
@@ -214,6 +180,40 @@ func (g *http1Gate) serveTLS() { // runner
 	g.WaitSubs() // conns. TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("http1Gate=%d TLS done\n", g.id)
+	}
+	g.server.DecSub()
+}
+func (g *http1Gate) serveUDS() { // runner
+	listener := g.listener.(*net.UnixListener)
+	connID := int64(0)
+	for {
+		unixConn, err := listener.AcceptUnix()
+		if err != nil {
+			if g.IsShut() {
+				break
+			} else {
+				//g.stage.Logf("http1Server[%s] http1Gate[%d]: accept error: %v\n", g.server.name, g.id, err)
+				continue
+			}
+		}
+		g.IncSub()
+		if g.ReachLimit() {
+			g.justClose(unixConn)
+		} else {
+			rawConn, err := unixConn.SyscallConn()
+			if err != nil {
+				g.justClose(unixConn)
+				//g.stage.Logf("http1Server[%s] http1Gate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
+				continue
+			}
+			serverConn := getServer1Conn(connID, g, unixConn, rawConn)
+			go serverConn.serve() // serverConn is put to pool in serve()
+			connID++
+		}
+	}
+	g.WaitSubs() // conns. TODO: max timeout?
+	if DebugLevel() >= 2 {
+		Printf("http1Gate=%d TCP done\n", g.id)
 	}
 	g.server.DecSub()
 }
@@ -367,10 +367,10 @@ func (c *server1Conn) serve() { // runner
 	// response.  Finally, the server fully closes the connection.
 	netConn := c.netConn
 	if !c.closeSafe {
-		if c.IsUDS() {
-			netConn.(*net.UnixConn).CloseWrite()
-		} else if c.IsTLS() {
+		if c.IsTLS() {
 			netConn.(*tls.Conn).CloseWrite()
+		} else if c.IsUDS() {
+			netConn.(*net.UnixConn).CloseWrite()
 		} else {
 			netConn.(*net.TCPConn).CloseWrite()
 		}
@@ -524,7 +524,7 @@ func (s *server1Stream) executeExchan(webapp *Webapp, req *server1Request, resp 
 	}
 
 	if !req.contentReceived { // request content exists but was not used, we receive and drop it here
-		req.dropContent()
+		req._dropContent()
 	}
 }
 func (s *server1Stream) serveAbnormal(req *server1Request, resp *server1Response) { // 4xx & 5xx
@@ -790,7 +790,7 @@ func (r *server1Request) _recvControl() bool { // method SP request-target SP HT
 		)
 		query := &r.mainPair
 		query.zero()
-		query.kind = kindQuery
+		query.kind = pairQuery
 		query.place = placeArray // all received queries are placed in r.array because queries are decoded
 
 		// r.pFore is at '/'.
@@ -997,9 +997,9 @@ beforeVersion: // r.pFore is at ' '.
 		}
 	}
 	if version := r.input[r.pBack:r.pFore]; bytes.Equal(version, bytesHTTP1_1) {
-		r.versionCode = Version1_1
+		r.httpVersion = Version1_1
 	} else if bytes.Equal(version, bytesHTTP1_0) {
-		r.versionCode = Version1_0
+		r.httpVersion = Version1_0
 	} else { // i don't believe there will be a HTTP/1.2 in the future.
 		r.headResult = StatusHTTPVersionNotSupported
 		return false

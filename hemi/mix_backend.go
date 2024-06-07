@@ -224,8 +224,8 @@ func (n *Node_) OnPrepare() {
 }
 
 func (n *Node_) Backend() Backend { return n.backend }
-func (n *Node_) IsUDS() bool      { return n.udsMode }
 func (n *Node_) IsTLS() bool      { return n.tlsMode }
+func (n *Node_) IsUDS() bool      { return n.udsMode }
 
 func (n *Node_) markDown()    { n.down.Store(true) }
 func (n *Node_) markUp()      { n.down.Store(false) }
@@ -271,7 +271,7 @@ func (c *BackendConn_) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *BackendConn_) IsUDS() bool { return c.node.IsUDS() }
 func (c *BackendConn_) IsTLS() bool { return c.node.IsTLS() }
+func (c *BackendConn_) IsUDS() bool { return c.node.IsUDS() }
 
 func (c *BackendConn_) isAlive() bool { return time.Now().Before(c.expire) }

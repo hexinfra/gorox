@@ -234,8 +234,8 @@ var quixConnVariables = [...]func(*QUIXConn) []byte{ // keep sync with varCodes
 	// TODO
 	nil, // srcHost
 	nil, // srcPort
-	nil, // isUDS
 	nil, // isTLS
+	nil, // isUDS
 }
 
 // QUIXStream

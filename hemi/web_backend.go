@@ -108,9 +108,9 @@ type backendRequest0 struct { // for fast reset, entirely
 	}
 }
 
-func (r *backendRequest_) onUse(versionCode uint8) { // for non-zeros
+func (r *backendRequest_) onUse(httpVersion uint8) { // for non-zeros
 	const asRequest = true
-	r.webOut_.onUse(versionCode, asRequest)
+	r.webOut_.onUse(httpVersion, asRequest)
 	r.unixTimes.ifModifiedSince = -1   // not set
 	r.unixTimes.ifUnmodifiedSince = -1 // not set
 }
@@ -302,7 +302,7 @@ func (r *backendRequest_) proxyCopyHead(req Request, cfg *WebExchanProxyConfig) 
 			}
 		}
 	}
-	if r.versionCode >= Version2 {
+	if r.httpVersion >= Version2 {
 		var scheme []byte
 		if r.stream.webConn().IsTLS() {
 			scheme = bytesSchemeHTTPS
@@ -427,9 +427,9 @@ type backendResponse0 struct { // for fast reset, entirely
 	}
 }
 
-func (r *backendResponse_) onUse(versionCode uint8) { // for non-zeros
+func (r *backendResponse_) onUse(httpVersion uint8) { // for non-zeros
 	const asResponse = true
-	r.webIn_.onUse(versionCode, asResponse)
+	r.webIn_.onUse(httpVersion, asResponse)
 }
 func (r *backendResponse_) onEnd() { // for zeros
 	r.backendResponse0 = backendResponse0{}
@@ -438,9 +438,9 @@ func (r *backendResponse_) onEnd() { // for zeros
 }
 
 func (r *backendResponse_) reuse() {
-	versionCode := r.versionCode
+	httpVersion := r.httpVersion
 	r.onEnd()
-	r.onUse(versionCode)
+	r.onUse(httpVersion)
 }
 
 func (r *backendResponse_) Status() int16 { return r.status }
@@ -464,7 +464,7 @@ func (r *backendResponse_) examineHead() bool {
 	}
 
 	// Basic checks against versions
-	switch r.versionCode {
+	switch r.httpVersion {
 	case Version1_0: // we don't support HTTP/1.0 in backend side
 		BugExitln("HTTP/1.0 must be denied priorly")
 	case Version1_1:
@@ -700,7 +700,7 @@ func (r *backendResponse_) checkTransferEncoding(pairs []pair, from uint8, edge 
 	return r.webIn_.checkTransferEncoding(pairs, from, edge)
 }
 func (r *backendResponse_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { // Upgrade = #protocol
-	if r.versionCode >= Version2 {
+	if r.httpVersion >= Version2 {
 		r.headResult, r.failReason = StatusBadRequest, "upgrade is not supported in http/2 and http/3"
 		return false
 	}

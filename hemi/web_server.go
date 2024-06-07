@@ -234,9 +234,9 @@ type serverRequest0 struct { // for fast reset, entirely
 	consumedSize int64     // bytes of consumed content when consuming received tempFile. used by, for example, _recvMultipartForm.
 }
 
-func (r *serverRequest_) onUse(versionCode uint8) { // for non-zeros
+func (r *serverRequest_) onUse(httpVersion uint8) { // for non-zeros
 	const asResponse = false
-	r.webIn_.onUse(versionCode, asResponse)
+	r.webIn_.onUse(httpVersion, asResponse)
 
 	r.upfiles = r.stockUpfiles[0:0:cap(r.stockUpfiles)] // use append()
 }
@@ -433,9 +433,9 @@ func (r *serverRequest_) addQuery(query *pair) bool { // as prime
 	r.headResult, r.failReason = StatusURITooLong, "too many queries"
 	return false
 }
-func (r *serverRequest_) HasQueries() bool { return r.hasPairs(r.queries, kindQuery) }
+func (r *serverRequest_) HasQueries() bool { return r.hasPairs(r.queries, pairQuery) }
 func (r *serverRequest_) AllQueries() (queries [][2]string) {
-	return r.allPairs(r.queries, kindQuery)
+	return r.allPairs(r.queries, pairQuery)
 }
 func (r *serverRequest_) Q(name string) string {
 	value, _ := r.Query(name)
@@ -456,24 +456,24 @@ func (r *serverRequest_) Qint(name string, defaultValue int) int {
 	return defaultValue
 }
 func (r *serverRequest_) Query(name string) (value string, ok bool) {
-	v, ok := r.getPair(name, 0, r.queries, kindQuery)
+	v, ok := r.getPair(name, 0, r.queries, pairQuery)
 	return string(v), ok
 }
 func (r *serverRequest_) UnsafeQuery(name string) (value []byte, ok bool) {
-	return r.getPair(name, 0, r.queries, kindQuery)
+	return r.getPair(name, 0, r.queries, pairQuery)
 }
 func (r *serverRequest_) Queries(name string) (values []string, ok bool) {
-	return r.getPairs(name, 0, r.queries, kindQuery)
+	return r.getPairs(name, 0, r.queries, pairQuery)
 }
 func (r *serverRequest_) HasQuery(name string) bool {
-	_, ok := r.getPair(name, 0, r.queries, kindQuery)
+	_, ok := r.getPair(name, 0, r.queries, pairQuery)
 	return ok
 }
 func (r *serverRequest_) DelQuery(name string) (deleted bool) {
-	return r.delPair(name, 0, r.queries, kindQuery)
+	return r.delPair(name, 0, r.queries, pairQuery)
 }
 func (r *serverRequest_) AddQuery(name string, value string) bool { // as extra
-	return r.addExtra(name, value, 0, kindQuery)
+	return r.addExtra(name, value, 0, pairQuery)
 }
 
 func (r *serverRequest_) examineHead() bool {
@@ -516,7 +516,7 @@ func (r *serverRequest_) examineHead() bool {
 	// duplicate header fields that would impact request processing.
 
 	// Basic checks against versions
-	switch r.versionCode {
+	switch r.httpVersion {
 	case Version1_0:
 		if r.keepAlive == -1 { // no connection header
 			r.keepAlive = 0 // default is close for HTTP/1.0
@@ -548,7 +548,7 @@ func (r *serverRequest_) examineHead() bool {
 	if r.upgradeSocket {
 		// RFC 6455 (section 4.1):
 		// The method of the request MUST be GET, and the HTTP version MUST be at least 1.1.
-		if r.methodCode != MethodGET || r.versionCode == Version1_0 || r.contentSize != -1 {
+		if r.methodCode != MethodGET || r.httpVersion == Version1_0 || r.contentSize != -1 {
 			r.headResult, r.failReason = StatusMethodNotAllowed, "websocket only supports GET method and HTTP version >= 1.1, without content"
 			return false
 		}
@@ -987,7 +987,7 @@ func (r *serverRequest_) checkAcceptLanguage(pairs []pair, from uint8, edge uint
 	if DebugLevel() >= 2 {
 		/*
 			for i := from; i < edge; i++ {
-				// NOTE: test pair.kind == kindHeader
+				// NOTE: test pair.kind == pairHeader
 				data := pairs[i].dataAt(r.input)
 				Printf("lang=%s\n", string(data))
 			}
@@ -1004,14 +1004,14 @@ func (r *serverRequest_) checkCacheControl(pairs []pair, from uint8, edge uint8)
 }
 func (r *serverRequest_) checkExpect(pairs []pair, from uint8, edge uint8) bool { // Expect = #expectation
 	// expectation = token [ "=" ( token / quoted-string ) parameters ]
-	if r.versionCode >= Version1_1 {
+	if r.httpVersion >= Version1_1 {
 		if r.zones.expect.isEmpty() {
 			r.zones.expect.from = from
 		}
 		r.zones.expect.edge = edge
 		for i := from; i < edge; i++ {
 			pair := &pairs[i]
-			if pair.kind != kindHeader {
+			if pair.kind != pairHeader {
 				continue
 			}
 			data := pair.dataAt(r.input)
@@ -1084,14 +1084,14 @@ func (r *serverRequest_) checkTE(pairs []pair, from uint8, edge uint8) bool { //
 	// t-ranking = OWS ";" OWS "q=" rank
 	for i := from; i < edge; i++ {
 		pair := &pairs[i]
-		if pair.kind != kindHeader {
+		if pair.kind != pairHeader {
 			continue
 		}
 		data := pair.dataAt(r.input)
 		bytesToLower(data)
 		if bytes.Equal(data, bytesTrailers) {
 			r.acceptTrailers = true
-		} else if r.versionCode > Version1_1 {
+		} else if r.httpVersion > Version1_1 {
 			r.headResult, r.failReason = StatusBadRequest, "te codings other than trailers are not allowed in http/2 and http/3"
 			return false
 		}
@@ -1099,7 +1099,7 @@ func (r *serverRequest_) checkTE(pairs []pair, from uint8, edge uint8) bool { //
 	return true
 }
 func (r *serverRequest_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { // Upgrade = #protocol
-	if r.versionCode > Version1_1 {
+	if r.httpVersion > Version1_1 {
 		r.headResult, r.failReason = StatusBadRequest, "upgrade is only supported in http/1"
 		return false
 	}
@@ -1107,7 +1107,7 @@ func (r *serverRequest_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool
 		// TODO: confirm this
 		return true
 	}
-	if r.versionCode == Version1_1 {
+	if r.httpVersion == Version1_1 {
 		// protocol         = protocol-name ["/" protocol-version]
 		// protocol-name    = token
 		// protocol-version = token
@@ -1215,7 +1215,7 @@ func (r *serverRequest_) parseCookie(cookieString span) bool { // cookie-string 
 	// exclude these: %x22=`"`  %2C=`,`  %3B=`;`  %5C=`\`
 	cookie := &r.mainPair
 	cookie.zero()
-	cookie.kind = kindCookie
+	cookie.kind = pairCookie
 	cookie.place = placeInput // all received cookies are in r.input
 	cookie.nameFrom = cookieString.from
 	state := 0
@@ -1319,9 +1319,9 @@ func (r *serverRequest_) addCookie(cookie *pair) bool { // as prime
 	r.headResult = StatusRequestHeaderFieldsTooLarge
 	return false
 }
-func (r *serverRequest_) HasCookies() bool { return r.hasPairs(r.cookies, kindCookie) }
+func (r *serverRequest_) HasCookies() bool { return r.hasPairs(r.cookies, pairCookie) }
 func (r *serverRequest_) AllCookies() (cookies [][2]string) {
-	return r.allPairs(r.cookies, kindCookie)
+	return r.allPairs(r.cookies, pairCookie)
 }
 func (r *serverRequest_) C(name string) string {
 	value, _ := r.Cookie(name)
@@ -1342,24 +1342,24 @@ func (r *serverRequest_) Cint(name string, defaultValue int) int {
 	return defaultValue
 }
 func (r *serverRequest_) Cookie(name string) (value string, ok bool) {
-	v, ok := r.getPair(name, 0, r.cookies, kindCookie)
+	v, ok := r.getPair(name, 0, r.cookies, pairCookie)
 	return string(v), ok
 }
 func (r *serverRequest_) UnsafeCookie(name string) (value []byte, ok bool) {
-	return r.getPair(name, 0, r.cookies, kindCookie)
+	return r.getPair(name, 0, r.cookies, pairCookie)
 }
 func (r *serverRequest_) Cookies(name string) (values []string, ok bool) {
-	return r.getPairs(name, 0, r.cookies, kindCookie)
+	return r.getPairs(name, 0, r.cookies, pairCookie)
 }
 func (r *serverRequest_) HasCookie(name string) bool {
-	_, ok := r.getPair(name, 0, r.cookies, kindCookie)
+	_, ok := r.getPair(name, 0, r.cookies, pairCookie)
 	return ok
 }
 func (r *serverRequest_) DelCookie(name string) (deleted bool) {
-	return r.delPair(name, 0, r.cookies, kindCookie)
+	return r.delPair(name, 0, r.cookies, pairCookie)
 }
 func (r *serverRequest_) AddCookie(name string, value string) bool { // as extra
-	return r.addExtra(name, value, 0, kindCookie)
+	return r.addExtra(name, value, 0, pairCookie)
 }
 func (r *serverRequest_) forCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool {
 	for i := r.cookies.from; i < r.cookies.edge; i++ {
@@ -1369,9 +1369,9 @@ func (r *serverRequest_) forCookies(callback func(cookie *pair, name []byte, val
 			}
 		}
 	}
-	if r.hasExtra[kindCookie] {
+	if r.hasExtra[pairCookie] {
 		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.hash != 0 && extra.kind == kindCookie {
+			if extra := &r.extras[i]; extra.hash != 0 && extra.kind == pairCookie {
 				if !callback(extra, extra.nameAt(r.array), extra.valueAt(r.array)) {
 					return false
 				}
@@ -1547,7 +1547,7 @@ func (r *serverRequest_) parseHTMLForm() { // to populate r.forms and r.upfiles
 	}
 }
 func (r *serverRequest_) _loadURLEncodedForm() { // into memory entirely
-	r.loadContent()
+	r._loadContent()
 	if r.stream.isBroken() {
 		return
 	}
@@ -1557,7 +1557,7 @@ func (r *serverRequest_) _loadURLEncodedForm() { // into memory entirely
 	)
 	form := &r.mainPair
 	form.zero()
-	form.kind = kindForm
+	form.kind = pairForm
 	form.place = placeArray // all received forms are placed in r.array
 	form.nameFrom = r.arrayEdge
 	for i := int64(0); i < r.receivedSize; i++ { // TODO: use a better algorithm to improve performance
@@ -1722,7 +1722,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 			form   pair     // if part is a form, this is used
 			upfile Upfile   // if part is a file, this is used. zeroed
 		}
-		part.form.kind = kindForm
+		part.form.kind = pairForm
 		part.form.place = placeArray // all received forms are placed in r.array
 		for {                        // each field in current part
 			// End of part fields?
@@ -2089,11 +2089,11 @@ func (r *serverRequest_) addForm(form *pair) bool { // as prime
 }
 func (r *serverRequest_) HasForms() bool {
 	r.parseHTMLForm()
-	return r.hasPairs(r.forms, kindForm)
+	return r.hasPairs(r.forms, pairForm)
 }
 func (r *serverRequest_) AllForms() (forms [][2]string) {
 	r.parseHTMLForm()
-	return r.allPairs(r.forms, kindForm)
+	return r.allPairs(r.forms, pairForm)
 }
 func (r *serverRequest_) F(name string) string {
 	value, _ := r.Form(name)
@@ -2115,28 +2115,28 @@ func (r *serverRequest_) Fint(name string, defaultValue int) int {
 }
 func (r *serverRequest_) Form(name string) (value string, ok bool) {
 	r.parseHTMLForm()
-	v, ok := r.getPair(name, 0, r.forms, kindForm)
+	v, ok := r.getPair(name, 0, r.forms, pairForm)
 	return string(v), ok
 }
 func (r *serverRequest_) UnsafeForm(name string) (value []byte, ok bool) {
 	r.parseHTMLForm()
-	return r.getPair(name, 0, r.forms, kindForm)
+	return r.getPair(name, 0, r.forms, pairForm)
 }
 func (r *serverRequest_) Forms(name string) (values []string, ok bool) {
 	r.parseHTMLForm()
-	return r.getPairs(name, 0, r.forms, kindForm)
+	return r.getPairs(name, 0, r.forms, pairForm)
 }
 func (r *serverRequest_) HasForm(name string) bool {
 	r.parseHTMLForm()
-	_, ok := r.getPair(name, 0, r.forms, kindForm)
+	_, ok := r.getPair(name, 0, r.forms, pairForm)
 	return ok
 }
 func (r *serverRequest_) DelForm(name string) (deleted bool) {
 	r.parseHTMLForm()
-	return r.delPair(name, 0, r.forms, kindForm)
+	return r.delPair(name, 0, r.forms, pairForm)
 }
 func (r *serverRequest_) AddForm(name string, value string) bool { // as extra
-	return r.addExtra(name, value, 0, kindForm)
+	return r.addExtra(name, value, 0, pairForm)
 }
 
 func (r *serverRequest_) addUpfile(upfile *Upfile) {
@@ -2291,9 +2291,9 @@ type serverResponse0 struct { // for fast reset, entirely
 	revisers [32]uint8 // reviser ids which will apply on this response. indexed by reviser order
 }
 
-func (r *serverResponse_) onUse(versionCode uint8) { // for non-zeros
+func (r *serverResponse_) onUse(httpVersion uint8) { // for non-zeros
 	const asRequest = false
-	r.webOut_.onUse(versionCode, asRequest)
+	r.webOut_.onUse(httpVersion, asRequest)
 	r.status = StatusOK
 	r.unixTimes.expires = -1      // not set
 	r.unixTimes.lastModified = -1 // not set

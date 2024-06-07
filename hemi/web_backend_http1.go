@@ -107,10 +107,10 @@ func (n *http1Node) fetchStream() (backendStream, error) {
 		return nil, errNodeDown
 	}
 	var err error
-	if n.IsUDS() {
-		conn, err = n._dialUDS()
-	} else if n.IsTLS() {
+	if n.IsTLS() {
 		conn, err = n._dialTLS()
+	} else if n.IsUDS() {
+		conn, err = n._dialUDS()
 	} else {
 		conn, err = n._dialTCP()
 	}
@@ -119,24 +119,6 @@ func (n *http1Node) fetchStream() (backendStream, error) {
 	}
 	n.IncSub()
 	return conn.fetchStream()
-}
-func (n *http1Node) _dialUDS() (*backend1Conn, error) {
-	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("unix", n.address, n.backend.DialTimeout())
-	if err != nil {
-		n.markDown()
-		return nil, err
-	}
-	if DebugLevel() >= 2 {
-		Printf("http1Node=%s dial %s OK!\n", n.name, n.address)
-	}
-	connID := n.backend.nextConnID()
-	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
-	if err != nil {
-		netConn.Close()
-		return nil, err
-	}
-	return getBackend1Conn(connID, n, netConn, rawConn), nil
 }
 func (n *http1Node) _dialTLS() (*backend1Conn, error) {
 	// TODO: dynamic address names?
@@ -159,6 +141,24 @@ func (n *http1Node) _dialTLS() (*backend1Conn, error) {
 		return nil, err
 	}
 	return getBackend1Conn(connID, n, tlsConn, nil), nil
+}
+func (n *http1Node) _dialUDS() (*backend1Conn, error) {
+	// TODO: dynamic address names?
+	netConn, err := net.DialTimeout("unix", n.address, n.backend.DialTimeout())
+	if err != nil {
+		n.markDown()
+		return nil, err
+	}
+	if DebugLevel() >= 2 {
+		Printf("http1Node=%s dial %s OK!\n", n.name, n.address)
+	}
+	connID := n.backend.nextConnID()
+	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
+	if err != nil {
+		netConn.Close()
+		return nil, err
+	}
+	return getBackend1Conn(connID, n, netConn, rawConn), nil
 }
 func (n *http1Node) _dialTCP() (*backend1Conn, error) {
 	// TODO: dynamic address names?

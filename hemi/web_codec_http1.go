@@ -56,7 +56,7 @@ func (r *webIn_) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS 
 	r.headers.edge = r.headers.from
 	header := &r.mainPair
 	header.zero()
-	header.kind = kindHeader
+	header.kind = pairHeader
 	header.place = placeInput // all received headers are in r.input
 	// r.pFore is at headers (if any) or end of headers (if none).
 	for { // each header
@@ -390,7 +390,7 @@ func (r *webIn_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
 	r.trailers.edge = r.trailers.from
 	trailer := &r.mainPair
 	trailer.zero()
-	trailer.kind = kindTrailer
+	trailer.kind = pairTrailer
 	trailer.place = placeArray // all received trailers are placed in r.array
 	for {
 		if b := r.bodyWindow[r.pFore]; b == '\r' {

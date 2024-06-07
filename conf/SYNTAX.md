@@ -44,8 +44,8 @@ Variables
 
     $srcHost  : like "1.2.3.4", "[1::3]"
     $srcPort  : like "1234", "8888"
-    $isUDS    : true or false
     $isTLS    : true or false
+    $isUDS    : true or false
     $hostname : like "foobar.com"
 
   Defined rule variables are:

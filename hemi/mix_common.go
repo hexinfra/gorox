@@ -134,8 +134,8 @@ var varCodes = map[string]int16{ // TODO
 	// general conn vars for quix, tcps, and udps
 	"srcHost": 0,
 	"srcPort": 1,
-	"isUDS":   2,
-	"isTLS":   3,
+	"isTLS":   2,
+	"isUDS":   3,
 
 	// quix conn vars
 
@@ -236,16 +236,16 @@ type _contentSaver_ struct {
 	saveContentFilesDir string
 }
 
-func (s *_contentSaver_) onConfigure(shell Component, defaultDir string) {
+func (s *_contentSaver_) onConfigure(component Component, defaultDir string) {
 	// saveContentFilesDir
-	shell.ConfigureString("saveContentFilesDir", &s.saveContentFilesDir, func(value string) error {
+	component.ConfigureString("saveContentFilesDir", &s.saveContentFilesDir, func(value string) error {
 		if value != "" && len(value) <= 232 {
 			return nil
 		}
 		return errors.New(".saveContentFilesDir has an invalid value")
 	}, defaultDir)
 }
-func (s *_contentSaver_) onPrepare(shell Component, perm os.FileMode) {
+func (s *_contentSaver_) onPrepare(component Component, perm os.FileMode) {
 	if err := os.MkdirAll(s.saveContentFilesDir, perm); err != nil {
 		EnvExitln(err.Error())
 	}

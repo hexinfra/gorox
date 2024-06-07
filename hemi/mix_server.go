@@ -137,9 +137,9 @@ func (s *Server_[G]) ColonPortBytes() []byte {
 		return s.colonPortBytes
 	}
 }
-func (s *Server_[G]) IsUDS() bool            { return s.udsMode }
 func (s *Server_[G]) IsTLS() bool            { return s.tlsMode }
 func (s *Server_[G]) TLSConfig() *tls.Config { return s.tlsConfig }
+func (s *Server_[G]) IsUDS() bool            { return s.udsMode }
 func (s *Server_[G]) MaxConnsPerGate() int32 { return s.maxConnsPerGate }
 
 // Gate is the interface for all gates. Gates are not components.
@@ -148,8 +148,8 @@ type Gate interface {
 	Server() Server
 	Address() string
 	ID() int32
-	IsUDS() bool
 	IsTLS() bool
+	IsUDS() bool
 	Open() error
 	Shut() error
 	IsShut() bool
@@ -177,8 +177,8 @@ func (g *Gate_) Init(id int32, server Server) {
 
 func (g *Gate_) Server() Server  { return g.server }
 func (g *Gate_) Address() string { return g.server.Address() }
-func (g *Gate_) IsUDS() bool     { return g.server.IsUDS() }
 func (g *Gate_) IsTLS() bool     { return g.server.IsTLS() }
+func (g *Gate_) IsUDS() bool     { return g.server.IsUDS() }
 
 func (g *Gate_) ID() int32        { return g.id }
 func (g *Gate_) IsShut() bool     { return g.shut.Load() }
@@ -225,5 +225,5 @@ func (c *ServerConn_) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *ServerConn_) IsUDS() bool { return c.server.IsUDS() }
 func (c *ServerConn_) IsTLS() bool { return c.server.IsTLS() }
+func (c *ServerConn_) IsUDS() bool { return c.server.IsUDS() }

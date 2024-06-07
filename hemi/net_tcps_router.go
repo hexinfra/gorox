@@ -113,10 +113,10 @@ func (r *TCPSRouter) Serve() { // runner
 		}
 		r.AddGate(gate)
 		r.IncSub()
-		if r.IsUDS() {
-			go gate.serveUDS()
-		} else if r.IsTLS() {
+		if r.IsTLS() {
 			go gate.serveTLS()
+		} else if r.IsUDS() {
+			go gate.serveUDS()
 		} else {
 			go gate.serveTCP()
 		}
@@ -196,38 +196,6 @@ func (g *tcpsGate) Shut() error {
 	return g.listener.Close() // breaks serve()
 }
 
-func (g *tcpsGate) serveUDS() { // runner
-	listener := g.listener.(*net.UnixListener)
-	connID := int64(0)
-	for {
-		unixConn, err := listener.AcceptUnix()
-		if err != nil {
-			if g.IsShut() {
-				break
-			} else {
-				continue
-			}
-		}
-		g.IncSub()
-		if g.ReachLimit() {
-			g.justClose(unixConn)
-		} else {
-			rawConn, err := unixConn.SyscallConn()
-			if err != nil {
-				g.justClose(unixConn)
-				continue
-			}
-			conn := getTCPSConn(connID, g, unixConn, rawConn)
-			go conn.serve() // conn is put to pool in serve()
-			connID++
-		}
-	}
-	g.WaitSubs() // conns. TODO: max timeout?
-	if DebugLevel() >= 2 {
-		Printf("tcpsGate=%d TCP done\n", g.id)
-	}
-	g.server.DecSub()
-}
 func (g *tcpsGate) serveTLS() { // runner
 	listener := g.listener.(*net.TCPListener)
 	connID := int64(0)
@@ -257,6 +225,38 @@ func (g *tcpsGate) serveTLS() { // runner
 	g.WaitSubs() // conns. TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("tcpsGate=%d TLS done\n", g.id)
+	}
+	g.server.DecSub()
+}
+func (g *tcpsGate) serveUDS() { // runner
+	listener := g.listener.(*net.UnixListener)
+	connID := int64(0)
+	for {
+		unixConn, err := listener.AcceptUnix()
+		if err != nil {
+			if g.IsShut() {
+				break
+			} else {
+				continue
+			}
+		}
+		g.IncSub()
+		if g.ReachLimit() {
+			g.justClose(unixConn)
+		} else {
+			rawConn, err := unixConn.SyscallConn()
+			if err != nil {
+				g.justClose(unixConn)
+				continue
+			}
+			conn := getTCPSConn(connID, g, unixConn, rawConn)
+			go conn.serve() // conn is put to pool in serve()
+			connID++
+		}
+	}
+	g.WaitSubs() // conns. TODO: max timeout?
+	if DebugLevel() >= 2 {
+		Printf("tcpsGate=%d TCP done\n", g.id)
 	}
 	g.server.DecSub()
 }
@@ -394,10 +394,10 @@ func (c *TCPSConn) _checkClose() {
 }
 
 func (c *TCPSConn) closeWrite() {
-	if router := c.Server(); router.IsUDS() {
-		c.netConn.(*net.UnixConn).CloseWrite()
-	} else if router.IsTLS() {
+	if router := c.Server(); router.IsTLS() {
 		c.netConn.(*tls.Conn).CloseWrite()
+	} else if router.IsUDS() {
+		c.netConn.(*net.UnixConn).CloseWrite()
 	} else {
 		c.netConn.(*net.TCPConn).CloseWrite()
 	}
@@ -417,8 +417,8 @@ var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes
 	// TODO
 	nil, // srcHost
 	nil, // srcPort
-	nil, // isUDS
 	nil, // isTLS
+	nil, // isUDS
 	nil, // serverName
 	nil, // nextProto
 }

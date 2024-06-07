@@ -130,10 +130,10 @@ func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or n
 		tConn *TConn
 		err   error
 	)
-	if n.IsUDS() {
-		tConn, err = n._dialUDS()
-	} else if n.IsTLS() {
+	if n.IsTLS() {
 		tConn, err = n._dialTLS()
+	} else if n.IsUDS() {
+		tConn, err = n._dialUDS()
 	} else {
 		tConn, err = n._dialTCP()
 	}
@@ -142,24 +142,6 @@ func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or n
 	}
 	n.IncSub()
 	return tConn, err
-}
-func (n *tcpsNode) _dialUDS() (*TConn, error) {
-	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("unix", n.address, n.backend.DialTimeout())
-	if err != nil {
-		n.markDown()
-		return nil, err
-	}
-	if DebugLevel() >= 2 {
-		Printf("tcpsNode=%s dial %s OK!\n", n.name, n.address)
-	}
-	connID := n.backend.nextConnID()
-	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
-	if err != nil {
-		netConn.Close()
-		return nil, err
-	}
-	return getTConn(connID, n, netConn, rawConn), nil
 }
 func (n *tcpsNode) _dialTLS() (*TConn, error) {
 	// TODO: dynamic address names?
@@ -182,6 +164,24 @@ func (n *tcpsNode) _dialTLS() (*TConn, error) {
 		return nil, err
 	}
 	return getTConn(connID, n, tlsConn, nil), nil
+}
+func (n *tcpsNode) _dialUDS() (*TConn, error) {
+	// TODO: dynamic address names?
+	netConn, err := net.DialTimeout("unix", n.address, n.backend.DialTimeout())
+	if err != nil {
+		n.markDown()
+		return nil, err
+	}
+	if DebugLevel() >= 2 {
+		Printf("tcpsNode=%s dial %s OK!\n", n.name, n.address)
+	}
+	connID := n.backend.nextConnID()
+	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
+	if err != nil {
+		netConn.Close()
+		return nil, err
+	}
+	return getTConn(connID, n, netConn, rawConn), nil
 }
 func (n *tcpsNode) _dialTCP() (*TConn, error) {
 	// TODO: dynamic address names?
@@ -326,9 +326,9 @@ func (c *TConn) onPut() {
 	c.BackendConn_.OnPut()
 }
 
-func (c *TConn) TCPConn() *net.TCPConn  { return c.netConn.(*net.TCPConn) }
 func (c *TConn) TLSConn() *tls.Conn     { return c.netConn.(*tls.Conn) }
 func (c *TConn) UDSConn() *net.UnixConn { return c.netConn.(*net.UnixConn) }
+func (c *TConn) TCPConn() *net.TCPConn  { return c.netConn.(*net.TCPConn) }
 
 func (c *TConn) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }
 
@@ -393,10 +393,10 @@ func (c *TConn) markWriteBroken() { c.writeBroken.Store(true) }
 func (c *TConn) markReadBroken()  { c.readBroken.Store(true) }
 
 func (c *TConn) CloseWrite() error {
-	if c.IsUDS() {
-		return c.netConn.(*net.UnixConn).CloseWrite()
-	} else if c.IsTLS() {
+	if c.IsTLS() {
 		return c.netConn.(*tls.Conn).CloseWrite()
+	} else if c.IsUDS() {
+		return c.netConn.(*net.UnixConn).CloseWrite()
 	} else {
 		return c.netConn.(*net.TCPConn).CloseWrite()
 	}

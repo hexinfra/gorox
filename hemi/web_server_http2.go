@@ -73,10 +73,10 @@ func (s *http2Server) Serve() { // runner
 		}
 		s.AddGate(gate)
 		s.IncSub()
-		if s.IsUDS() {
-			go gate.serveUDS()
-		} else if s.IsTLS() {
+		if s.IsTLS() {
 			go gate.serveTLS()
+		} else if s.IsUDS() {
+			go gate.serveUDS()
 		} else {
 			go gate.serveTCP()
 		}
@@ -144,40 +144,6 @@ func (g *http2Gate) Shut() error {
 	return g.listener.Close() // breaks serve()
 }
 
-func (g *http2Gate) serveUDS() { // runner
-	listener := g.listener.(*net.UnixListener)
-	connID := int64(0)
-	for {
-		unixConn, err := listener.AcceptUnix()
-		if err != nil {
-			if g.IsShut() {
-				break
-			} else {
-				//g.stage.Logf("http2Server[%s] http2Gate[%d]: accept error: %v\n", g.server.name, g.id, err)
-				continue
-			}
-		}
-		g.IncSub()
-		if g.ReachLimit() {
-			g.justClose(unixConn)
-		} else {
-			rawConn, err := unixConn.SyscallConn()
-			if err != nil {
-				g.justClose(unixConn)
-				//g.stage.Logf("http2Server[%s] http2Gate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
-				continue
-			}
-			serverConn := getServer2Conn(connID, g, unixConn, rawConn)
-			go serverConn.serve() // serverConn is put to pool in serve()
-			connID++
-		}
-	}
-	g.WaitSubs() // conns. TODO: max timeout?
-	if DebugLevel() >= 2 {
-		Printf("http2Gate=%d TCP done\n", g.id)
-	}
-	g.server.DecSub()
-}
 func (g *http2Gate) serveTLS() { // runner
 	listener := g.listener.(*net.TCPListener)
 	connID := int64(0)
@@ -213,6 +179,40 @@ func (g *http2Gate) serveTLS() { // runner
 	g.WaitSubs() // conns. TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("http2Gate=%d TLS done\n", g.id)
+	}
+	g.server.DecSub()
+}
+func (g *http2Gate) serveUDS() { // runner
+	listener := g.listener.(*net.UnixListener)
+	connID := int64(0)
+	for {
+		unixConn, err := listener.AcceptUnix()
+		if err != nil {
+			if g.IsShut() {
+				break
+			} else {
+				//g.stage.Logf("http2Server[%s] http2Gate[%d]: accept error: %v\n", g.server.name, g.id, err)
+				continue
+			}
+		}
+		g.IncSub()
+		if g.ReachLimit() {
+			g.justClose(unixConn)
+		} else {
+			rawConn, err := unixConn.SyscallConn()
+			if err != nil {
+				g.justClose(unixConn)
+				//g.stage.Logf("http2Server[%s] http2Gate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
+				continue
+			}
+			serverConn := getServer2Conn(connID, g, unixConn, rawConn)
+			go serverConn.serve() // serverConn is put to pool in serve()
+			connID++
+		}
+	}
+	g.WaitSubs() // conns. TODO: max timeout?
+	if DebugLevel() >= 2 {
+		Printf("http2Gate=%d TCP done\n", g.id)
 	}
 	g.server.DecSub()
 }

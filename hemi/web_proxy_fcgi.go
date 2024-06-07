@@ -759,7 +759,7 @@ type fcgiResponse0 struct { // for fast reset, entirely
 	pFore           int32    // element spanning to. for parsing header elements
 	head            span     // for debugging
 	imme            span     // immediate bytes in r.input that belongs to content, not headers
-	hasExtra        [8]bool  // see kindXXX for indexes
+	hasExtra        [8]bool  // see pairXXX for indexes
 	inputEdge       int32    // edge position of r.input
 	receiving       int8     // currently receiving. see webSectionXXX
 	contentTextKind int8     // kind of current r.contentText. see webContentTextXXX
@@ -930,7 +930,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 	// field-content   = *( token | separator | quoted-string )
 	header := &r.header
 	header.zero()
-	header.kind = kindHeader
+	header.kind = pairHeader
 	header.place = placeInput // all received headers are in r.input
 	// r.pFore is at headers (if any) or end of headers (if none).
 	for { // each header

@@ -107,10 +107,10 @@ func (r *UDPSRouter) Serve() { // runner
 		}
 		r.AddGate(gate)
 		r.IncSub()
-		if r.IsUDS() {
-			go gate.serveUDS()
-		} else if r.IsTLS() {
+		if r.IsTLS() {
 			go gate.serveTLS()
+		} else if r.IsUDS() {
+			go gate.serveUDS()
 		} else {
 			go gate.serveUDP()
 		}
@@ -172,13 +172,6 @@ func (g *udpsGate) Shut() error {
 	return nil
 }
 
-func (g *udpsGate) serveUDP() { // runner
-	// TODO
-	for !g.shut.Load() {
-		time.Sleep(time.Second)
-	}
-	g.server.DecSub()
-}
 func (g *udpsGate) serveTLS() { // runner
 	// TODO
 	for !g.shut.Load() {
@@ -188,6 +181,13 @@ func (g *udpsGate) serveTLS() { // runner
 }
 func (g *udpsGate) serveUDS() { // runner
 	// TODO
+}
+func (g *udpsGate) serveUDP() { // runner
+	// TODO
+	for !g.shut.Load() {
+		time.Sleep(time.Second)
+	}
+	g.server.DecSub()
 }
 
 func (g *udpsGate) justClose(pktConn net.PacketConn) {
@@ -251,9 +251,9 @@ func (c *UDPSConn) Close() error {
 }
 
 func (c *UDPSConn) closeConn() {
-	// TODO: uds, tls?
-	if router := c.Server(); router.IsUDS() {
-	} else if router.IsTLS() {
+	// TODO: tls, uds?
+	if router := c.Server(); router.IsTLS() {
+	} else if router.IsUDS() {
 	} else {
 	}
 	c.pktConn.Close()
@@ -268,8 +268,8 @@ var udpsConnVariables = [...]func(*UDPSConn) []byte{ // keep sync with varCodes
 	// TODO
 	nil, // srcHost
 	nil, // srcPort
-	nil, // isUDS
 	nil, // isTLS
+	nil, // isUDS
 }
 
 // UDPSDealet

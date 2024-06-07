@@ -46,11 +46,11 @@ type _webKeeper_ struct {
 	maxStreamsPerConn    int32         // max streams of one conn. 0 means infinite
 }
 
-func (k *_webKeeper_) onConfigure(shell Component, recvTimeout time.Duration, sendTimeout time.Duration, defaultMaxStreams int32, defaultDir string) {
-	k._contentSaver_.onConfigure(shell, defaultDir)
+func (k *_webKeeper_) onConfigure(component Component, recvTimeout time.Duration, sendTimeout time.Duration, defaultMaxStreams int32, defaultDir string) {
+	k._contentSaver_.onConfigure(component, defaultDir)
 
 	// recvTimeout
-	shell.ConfigureDuration("recvTimeout", &k.recvTimeout, func(value time.Duration) error {
+	component.ConfigureDuration("recvTimeout", &k.recvTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
@@ -58,7 +58,7 @@ func (k *_webKeeper_) onConfigure(shell Component, recvTimeout time.Duration, se
 	}, recvTimeout)
 
 	// sendTimeout
-	shell.ConfigureDuration("sendTimeout", &k.sendTimeout, func(value time.Duration) error {
+	component.ConfigureDuration("sendTimeout", &k.sendTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
@@ -66,7 +66,7 @@ func (k *_webKeeper_) onConfigure(shell Component, recvTimeout time.Duration, se
 	}, sendTimeout)
 
 	// maxContentSize
-	shell.ConfigureInt64("maxContentSize", &k.maxContentSize, func(value int64) error {
+	component.ConfigureInt64("maxContentSize", &k.maxContentSize, func(value int64) error {
 		if value > 0 {
 			return nil
 		}
@@ -74,7 +74,7 @@ func (k *_webKeeper_) onConfigure(shell Component, recvTimeout time.Duration, se
 	}, _1T)
 
 	// maxMemoryContentSize
-	shell.ConfigureInt32("maxMemoryContentSize", &k.maxMemoryContentSize, func(value int32) error {
+	component.ConfigureInt32("maxMemoryContentSize", &k.maxMemoryContentSize, func(value int32) error {
 		if value > 0 && value <= _1G { // DO NOT CHANGE THIS, otherwise integer overflow may occur
 			return nil
 		}
@@ -82,15 +82,15 @@ func (k *_webKeeper_) onConfigure(shell Component, recvTimeout time.Duration, se
 	}, _16M)
 
 	// maxStreamsPerConn
-	shell.ConfigureInt32("maxStreamsPerConn", &k.maxStreamsPerConn, func(value int32) error {
+	component.ConfigureInt32("maxStreamsPerConn", &k.maxStreamsPerConn, func(value int32) error {
 		if value >= 0 {
 			return nil
 		}
 		return errors.New(".maxStreamsPerConn has an invalid value")
 	}, defaultMaxStreams)
 }
-func (k *_webKeeper_) onPrepare(shell Component) {
-	k._contentSaver_.onPrepare(shell, 0755)
+func (k *_webKeeper_) onPrepare(component Component) {
+	k._contentSaver_.onPrepare(component, 0755)
 }
 
 func (k *_webKeeper_) RecvTimeout() time.Duration  { return k.recvTimeout }
@@ -102,8 +102,8 @@ func (k *_webKeeper_) MaxStreamsPerConn() int32    { return k.maxStreamsPerConn 
 // webConn collects shared methods between *server[1-3]Conn and *backend[1-3]Conn.
 type webConn interface {
 	ID() int64
-	IsUDS() bool
 	IsTLS() bool
+	IsUDS() bool
 	MakeTempName(p []byte, unixTime int64) int
 	isPersistent() bool
 	setPersistent(persistent bool)
@@ -195,8 +195,8 @@ type webIn_ struct { // incoming. needs parsing
 	inputNext      int32    // HTTP/1 request only. next request begins from r.input[r.inputNext]. exists because HTTP/1 supports pipelining
 	inputEdge      int32    // edge position of current message head is at r.input[r.inputEdge]. placed here to make it compatible with HTTP/1 pipelining
 	mainPair       pair     // to overcome the limitation of Go's escape analysis when receiving pairs
-	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see webCodingXXX. values: none compress deflate gzip br
-	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.nAcceptCodings. see webCodingXXX. values: identity(none) compress deflate gzip br
+	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see webCodingXXX for values
+	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.nAcceptCodings. see webCodingXXX for values
 	// Stream states (non-zeros)
 	primes         []pair        // hold prime queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockPrimes>/max]
 	extras         []pair        // hold extra queries, headers(main+subs), cookies, forms, trailers(main+subs), and params. [<r.stockExtras>/max]
@@ -205,7 +205,7 @@ type webIn_ struct { // incoming. needs parsing
 	recvTimeout    time.Duration // timeout to recv the whole message content
 	maxContentSize int64         // max content size allowed for current message. if the content is vague, size will be calculated on receiving
 	contentSize    int64         // info about incoming content. >=0: content size, -1: no content, -2: vague content
-	versionCode    uint8         // Version1_0, Version1_1, Version2, Version3
+	httpVersion    uint8         // Version1_0, Version1_1, Version2, Version3
 	asResponse     bool          // treat this message as a response?
 	keepAlive      int8          // used by HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
 	_              byte          // padding
@@ -213,7 +213,7 @@ type webIn_ struct { // incoming. needs parsing
 	bodyResult     int16         // result of receiving message body. values are as same as http status for convenience
 	// Stream states (zeros)
 	bodyWindow  []byte    // a window used for receiving body. sizes must be same with r.input for HTTP/1. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
-	failReason  string    // the reason of headResult or bodyResult
+	failReason  string    // the fail reason of headResult or bodyResult
 	recvTime    time.Time // the time when we begin receiving message
 	bodyTime    time.Time // the time when first body read operation is performed on this stream
 	contentText []byte    // if loadable, the received and loaded content of current message is at r.contentText[:r.receivedSize]. [<none>/r.input/4K/16K/64K1/(make)]
@@ -225,7 +225,7 @@ type webIn0 struct { // for fast reset, entirely
 	pFore            int32   // element spanning to. for parsing control & headers & content & trailers elements
 	head             span    // head (control + headers) of current message -> r.input. set after head is received. only for debugging
 	imme             span    // HTTP/1 only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
-	hasExtra         [8]bool // has extra pairs? see kindXXX for indexes
+	hasExtra         [8]bool // has extra pairs? see pairXXX for indexes
 	dateTime         int64   // parsed unix time of the date header
 	arrayEdge        int32   // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
 	arrayKind        int8    // kind of current r.array. see arrayKindXXX
@@ -233,8 +233,8 @@ type webIn0 struct { // for fast reset, entirely
 	headers          zone    // headers ->r.primes
 	hasRevisers      bool    // are there any incoming revisers hooked on this incoming message?
 	upgradeSocket    bool    // upgrade: websocket?
-	acceptGzip       bool    // does peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
-	acceptBrotli     bool    // does peer accept brotli content coding? i.e. accept-encoding: gzip, br
+	acceptGzip       bool    // does the peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
+	acceptBrotli     bool    // does the peer accept brotli content coding? i.e. accept-encoding: gzip, br
 	nContentCodings  int8    // num of content-encoding flags, controls r.contentCodings
 	nAcceptCodings   int8    // num of accept-encoding flags, controls r.acceptCodings
 	iContentLength   uint8   // index of content-length header in r.primes
@@ -247,7 +247,7 @@ type webIn0 struct { // for fast reset, entirely
 	zContentLanguage zone    // zone of content-language headers in r.primes. may not be continuous
 	zTrailer         zone    // zone of trailer headers in r.primes. may not be continuous
 	zVia             zone    // zone of via headers in r.primes. may not be continuous
-	contentReceived  bool    // is content received? if message has no content, it is true (received)
+	contentReceived  bool    // is the content received? true if the message has no content or the content is received
 	contentTextKind  int8    // kind of current r.contentText if it is text. see webContentTextXXX
 	receivedSize     int64   // bytes of currently received content. used by both sized & vague content receiver
 	chunkSize        int64   // left size of current chunk if the chunk is too large to receive in one call. HTTP/1.1 chunked only
@@ -259,11 +259,11 @@ type webIn0 struct { // for fast reset, entirely
 	trailers         zone    // trailers -> r.primes. set after trailer section is received and parsed
 }
 
-func (r *webIn_) onUse(versionCode uint8, asResponse bool) { // for non-zeros
+func (r *webIn_) onUse(httpVersion uint8, asResponse bool) { // for non-zeros
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of pair indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
 	r.array = r.stockArray[:]
-	if versionCode >= Version2 || asResponse {
+	if httpVersion >= Version2 || asResponse {
 		r.input = r.stockInput[:]
 	} else {
 		// HTTP/1 supports request pipelining, so input related are not set here.
@@ -272,7 +272,7 @@ func (r *webIn_) onUse(versionCode uint8, asResponse bool) { // for non-zeros
 	r.recvTimeout = keeper.RecvTimeout()
 	r.maxContentSize = keeper.MaxContentSize()
 	r.contentSize = -1 // no content
-	r.versionCode = versionCode
+	r.httpVersion = httpVersion
 	r.asResponse = asResponse
 	r.keepAlive = -1 // no connection header
 	r.headResult = StatusOK
@@ -291,7 +291,7 @@ func (r *webIn_) onEnd() { // for zeros
 		PutNK(r.array)
 	}
 	r.array = nil                                  // array of other kinds is only a reference, so just reset.
-	if r.versionCode >= Version2 || r.asResponse { // as we don't use pipelining for outgoing requests, incoming responses are not pipelined.
+	if r.httpVersion >= Version2 || r.asResponse { // as we don't pipeline outgoing requests, incoming responses are not pipelined.
 		if cap(r.input) != cap(r.stockInput) {
 			PutNK(r.input)
 		}
@@ -345,14 +345,14 @@ func (r *webIn_) onEnd() { // for zeros
 func (r *webIn_) UnsafeMake(size int) []byte { return r.stream.unsafeMake(size) }
 func (r *webIn_) RemoteAddr() net.Addr       { return r.stream.remoteAddr() }
 
-func (r *webIn_) VersionCode() uint8    { return r.versionCode }
-func (r *webIn_) IsHTTP1_0() bool       { return r.versionCode == Version1_0 }
-func (r *webIn_) IsHTTP1_1() bool       { return r.versionCode == Version1_1 }
-func (r *webIn_) IsHTTP1() bool         { return r.versionCode <= Version1_1 }
-func (r *webIn_) IsHTTP2() bool         { return r.versionCode == Version2 }
-func (r *webIn_) IsHTTP3() bool         { return r.versionCode == Version3 }
-func (r *webIn_) Version() string       { return webVersionStrings[r.versionCode] }
-func (r *webIn_) UnsafeVersion() []byte { return webVersionByteses[r.versionCode] }
+func (r *webIn_) VersionCode() uint8    { return r.httpVersion }
+func (r *webIn_) IsHTTP1_0() bool       { return r.httpVersion == Version1_0 }
+func (r *webIn_) IsHTTP1_1() bool       { return r.httpVersion == Version1_1 }
+func (r *webIn_) IsHTTP1() bool         { return r.httpVersion <= Version1_1 }
+func (r *webIn_) IsHTTP2() bool         { return r.httpVersion == Version2 }
+func (r *webIn_) IsHTTP3() bool         { return r.httpVersion == Version3 }
+func (r *webIn_) Version() string       { return webVersionStrings[r.httpVersion] }
+func (r *webIn_) UnsafeVersion() []byte { return webVersionByteses[r.httpVersion] }
 
 func (r *webIn_) KeepAlive() int8   { return r.keepAlive }
 func (r *webIn_) HeadResult() int16 { return r.headResult }
@@ -366,8 +366,8 @@ func (r *webIn_) addHeader(header *pair) bool { // as prime
 	r.headResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
 	return false
 }
-func (r *webIn_) HasHeaders() bool                  { return r.hasPairs(r.headers, kindHeader) }
-func (r *webIn_) AllHeaders() (headers [][2]string) { return r.allPairs(r.headers, kindHeader) }
+func (r *webIn_) HasHeaders() bool                  { return r.hasPairs(r.headers, pairHeader) }
+func (r *webIn_) AllHeaders() (headers [][2]string) { return r.allPairs(r.headers, pairHeader) }
 func (r *webIn_) H(name string) string {
 	value, _ := r.Header(name)
 	return value
@@ -387,31 +387,31 @@ func (r *webIn_) Hint(name string, defaultValue int) int {
 	return defaultValue
 }
 func (r *webIn_) Header(name string) (value string, ok bool) {
-	v, ok := r.getPair(name, 0, r.headers, kindHeader)
+	v, ok := r.getPair(name, 0, r.headers, pairHeader)
 	return string(v), ok
 }
 func (r *webIn_) UnsafeHeader(name string) (value []byte, ok bool) {
-	return r.getPair(name, 0, r.headers, kindHeader)
+	return r.getPair(name, 0, r.headers, pairHeader)
 }
 func (r *webIn_) Headers(name string) (values []string, ok bool) {
-	return r.getPairs(name, 0, r.headers, kindHeader)
+	return r.getPairs(name, 0, r.headers, pairHeader)
 }
 func (r *webIn_) HasHeader(name string) bool {
-	_, ok := r.getPair(name, 0, r.headers, kindHeader)
+	_, ok := r.getPair(name, 0, r.headers, pairHeader)
 	return ok
 }
 func (r *webIn_) DelHeader(name string) (deleted bool) {
 	// TODO: add restrictions on what headers are allowed to del?
-	return r.delPair(name, 0, r.headers, kindHeader)
+	return r.delPair(name, 0, r.headers, pairHeader)
 }
 func (r *webIn_) delHeader(name []byte, hash uint16) {
-	r.delPair(WeakString(name), hash, r.headers, kindHeader)
+	r.delPair(WeakString(name), hash, r.headers, pairHeader)
 }
 func (r *webIn_) AddHeader(name string, value string) bool { // as extra
 	// TODO: add restrictions on what headers are allowed to add? should we check the value?
 	// TODO: parse and check?
 	// setFlags?
-	return r.addExtra(name, value, 0, kindHeader)
+	return r.addExtra(name, value, 0, pairHeader)
 }
 
 func (r *webIn_) _parseField(field *pair, fdesc *fdesc, p []byte, fully bool) bool { // for field data and value params
@@ -421,13 +421,12 @@ func (r *webIn_) _parseField(field *pair, fdesc *fdesc, p []byte, fully bool) bo
 		if fdesc.allowEmpty {
 			field.dataEdge = field.value.edge
 			return true
-		} else {
-			r.failReason = "field can't be empty"
-			return false
 		}
+		r.failReason = "field can't be empty"
+		return false
 	}
 
-	// Now parse field value.
+	// Now parse field value which is not empty.
 	text := field.value
 	if p[text.from] != '"' { // field value is normal text
 	forData:
@@ -586,7 +585,7 @@ func (r *webIn_) _parseField(field *pair, fdesc *fdesc, p []byte, fully bool) bo
 		}
 		var param pair
 		param.hash = bytesHash(p[text.from:text.edge])
-		param.kind = kindParam
+		param.kind = pairParam
 		param.nameSize = uint8(nameSize)
 		param.nameFrom = text.from
 		param.place = field.place
@@ -780,7 +779,7 @@ func (r *webIn_) checkAcceptEncoding(pairs []pair, from uint8, edge uint8) bool 
 			break // ignore too many codings
 		}
 		pair := &pairs[i]
-		if pair.kind != kindHeader {
+		if pair.kind != pairHeader {
 			continue
 		}
 		data := pair.dataAt(r.input)
@@ -807,7 +806,7 @@ func (r *webIn_) checkAcceptEncoding(pairs []pair, from uint8, edge uint8) bool 
 	return true
 }
 func (r *webIn_) checkConnection(pairs []pair, from uint8, edge uint8) bool { // Connection = #connection-option
-	if r.versionCode >= Version2 {
+	if r.httpVersion >= Version2 {
 		r.headResult, r.failReason = StatusBadRequest, "connection header is not allowed in HTTP/2 and HTTP/3"
 		return false
 	}
@@ -875,7 +874,7 @@ func (r *webIn_) checkTrailer(pairs []pair, from uint8, edge uint8) bool { // Tr
 	return true
 }
 func (r *webIn_) checkTransferEncoding(pairs []pair, from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
-	if r.versionCode != Version1_1 {
+	if r.httpVersion != Version1_1 {
 		r.headResult, r.failReason = StatusBadRequest, "transfer-encoding is only allowed in http/1.1"
 		return false
 	}
@@ -919,7 +918,7 @@ func (r *webIn_) determineContentMode() bool {
 			return false
 		}
 		r.contentSize = -2 // vague
-	} else if r.versionCode >= Version2 && r.contentSize == -1 { // no content-length header
+	} else if r.httpVersion >= Version2 && r.contentSize == -1 { // no content-length header
 		// TODO: if there is no content, HTTP/2 and HTTP/3 should mark END_STREAM in headers frame. use this to decide!
 		r.contentSize = -2 // if there is no content-length in HTTP/2 or HTTP/3, we treat it as vague
 	}
@@ -945,13 +944,13 @@ func (r *webIn_) UnsafeContentType() []byte {
 func (r *webIn_) SetRecvTimeout(timeout time.Duration) { r.recvTimeout = timeout }
 
 func (r *webIn_) unsafeContent() []byte { // load content into memory anyway
-	r.loadContent()
+	r._loadContent()
 	if r.stream.isBroken() {
 		return nil
 	}
 	return r.contentText[0:r.receivedSize]
 }
-func (r *webIn_) loadContent() { // into memory. [0, r.maxContentSize]
+func (r *webIn_) _loadContent() { // into memory. [0, r.maxContentSize]
 	if r.contentReceived {
 		// Content is in r.contentText already.
 		return
@@ -1011,7 +1010,7 @@ func (r *webIn_) holdContent() any { // used by proxies
 	r.stream.markBroken()
 	return nil
 }
-func (r *webIn_) dropContent() { // if message content is not received, this will be called at last
+func (r *webIn_) _dropContent() { // if message content is not received, this will be called at last
 	switch content := r._recvContent(false).(type) { // don't retain
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		PutNK(content)
@@ -1084,8 +1083,8 @@ func (r *webIn_) addTrailer(trailer *pair) bool { // as prime
 	r.bodyResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many trailers"
 	return false
 }
-func (r *webIn_) HasTrailers() bool                   { return r.hasPairs(r.trailers, kindTrailer) }
-func (r *webIn_) AllTrailers() (trailers [][2]string) { return r.allPairs(r.trailers, kindTrailer) }
+func (r *webIn_) HasTrailers() bool                   { return r.hasPairs(r.trailers, pairTrailer) }
+func (r *webIn_) AllTrailers() (trailers [][2]string) { return r.allPairs(r.trailers, pairTrailer) }
 func (r *webIn_) T(name string) string {
 	value, _ := r.Trailer(name)
 	return value
@@ -1105,30 +1104,30 @@ func (r *webIn_) Tint(name string, defaultValue int) int {
 	return defaultValue
 }
 func (r *webIn_) Trailer(name string) (value string, ok bool) {
-	v, ok := r.getPair(name, 0, r.trailers, kindTrailer)
+	v, ok := r.getPair(name, 0, r.trailers, pairTrailer)
 	return string(v), ok
 }
 func (r *webIn_) UnsafeTrailer(name string) (value []byte, ok bool) {
-	return r.getPair(name, 0, r.trailers, kindTrailer)
+	return r.getPair(name, 0, r.trailers, pairTrailer)
 }
 func (r *webIn_) Trailers(name string) (values []string, ok bool) {
-	return r.getPairs(name, 0, r.trailers, kindTrailer)
+	return r.getPairs(name, 0, r.trailers, pairTrailer)
 }
 func (r *webIn_) HasTrailer(name string) bool {
-	_, ok := r.getPair(name, 0, r.trailers, kindTrailer)
+	_, ok := r.getPair(name, 0, r.trailers, pairTrailer)
 	return ok
 }
 func (r *webIn_) DelTrailer(name string) (deleted bool) {
-	return r.delPair(name, 0, r.trailers, kindTrailer)
+	return r.delPair(name, 0, r.trailers, pairTrailer)
 }
 func (r *webIn_) delTrailer(name []byte, hash uint16) {
-	r.delPair(WeakString(name), hash, r.trailers, kindTrailer)
+	r.delPair(WeakString(name), hash, r.trailers, pairTrailer)
 }
 func (r *webIn_) AddTrailer(name string, value string) bool { // as extra
 	// TODO: add restrictions on what trailers are allowed to add? should we check the value?
 	// TODO: parse and check?
 	// setFlags?
-	return r.addExtra(name, value, 0, kindTrailer)
+	return r.addExtra(name, value, 0, pairTrailer)
 }
 
 func (r *webIn_) _addPrime(prime *pair) (edge uint8, ok bool) {
@@ -1153,7 +1152,7 @@ func (r *webIn_) addExtra(name string, value string, hash uint16, extraKind int8
 		return false
 	}
 	valueSize := len(value)
-	if extraKind == kindForm { // for forms, max value size is 1G
+	if extraKind == pairForm { // for forms, max value size is 1G
 		if valueSize > _1G {
 			return false
 		}
@@ -1201,7 +1200,7 @@ func (r *webIn_) hasPairs(primes zone, extraKind int8) bool {
 }
 func (r *webIn_) allPairs(primes zone, extraKind int8) [][2]string {
 	var pairs [][2]string
-	if extraKind == kindHeader || extraKind == kindTrailer { // skip sub fields, only collects values of main fields
+	if extraKind == pairHeader || extraKind == pairTrailer { // skip sub fields, only collects values of main fields
 		for i := primes.from; i < primes.edge; i++ {
 			if prime := &r.primes[i]; prime.hash != 0 {
 				p := r._placeOf(prime)
@@ -1239,7 +1238,7 @@ func (r *webIn_) getPair(name string, hash uint16, primes zone, extraKind int8) 
 	if hash == 0 {
 		hash = stringHash(name)
 	}
-	if extraKind == kindHeader || extraKind == kindTrailer { // skip comma fields, only collects data of fields without comma
+	if extraKind == pairHeader || extraKind == pairTrailer { // skip comma fields, only collects data of fields without comma
 		for i := primes.from; i < primes.edge; i++ {
 			if prime := &r.primes[i]; prime.hash == hash {
 				if p := r._placeOf(prime); prime.nameEqualString(p, name) {
@@ -1286,7 +1285,7 @@ func (r *webIn_) getPairs(name string, hash uint16, primes zone, extraKind int8)
 	if hash == 0 {
 		hash = stringHash(name)
 	}
-	if extraKind == kindHeader || extraKind == kindTrailer { // skip comma fields, only collects data of fields without comma
+	if extraKind == pairHeader || extraKind == pairTrailer { // skip comma fields, only collects data of fields without comma
 		for i := primes.from; i < primes.edge; i++ {
 			if prime := &r.primes[i]; prime.hash == hash {
 				if p := r._placeOf(prime); prime.nameEqualString(p, name) {
@@ -1372,10 +1371,10 @@ func (r *webIn_) _placeOf(pair *pair) []byte {
 }
 
 func (r *webIn_) delHopHeaders() {
-	r._delHopFields(r.headers, kindHeader, r.delHeader)
+	r._delHopFields(r.headers, pairHeader, r.delHeader)
 }
 func (r *webIn_) delHopTrailers() {
-	r._delHopFields(r.trailers, kindTrailer, r.delTrailer)
+	r._delHopFields(r.trailers, pairTrailer, r.delTrailer)
 }
 func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name []byte, hash uint16)) { // TODO: improve performance
 	// These fields should be removed anyway: proxy-connection, keep-alive, te, transfer-encoding, upgrade
@@ -1420,10 +1419,10 @@ func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name [
 }
 
 func (r *webIn_) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by webOut.proxyCopyHead(). excluding sub headers
-	return r._forMainFields(r.headers, kindHeader, callback)
+	return r._forMainFields(r.headers, pairHeader, callback)
 }
 func (r *webIn_) forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // by webOut.proxyCopyTail(). excluding sub trailers
-	return r._forMainFields(r.trailers, kindTrailer, callback)
+	return r._forMainFields(r.trailers, pairTrailer, callback)
 }
 func (r *webIn_) _forMainFields(fields zone, extraKind int8, callback func(field *pair, name []byte, value []byte) bool) bool {
 	for i := fields.from; i < fields.edge; i++ {
@@ -1476,7 +1475,7 @@ func (r *webIn_) _growArray(size int32) bool { // stock(<4K)->4K->16K->64K1->(12
 	if edge <= int32(cap(r.array)) { // existing array is enough
 		return true
 	}
-	arrayKind := r.arrayKind
+	lastKind := r.arrayKind
 	var array []byte
 	if edge <= _64K1 { // (stock, 64K1]
 		r.arrayKind = arrayKindPool
@@ -1514,7 +1513,7 @@ func (r *webIn_) _growArray(size int32) bool { // stock(<4K)->4K->16K->64K1->(12
 		}
 	}
 	copy(array, r.array[0:r.arrayEdge])
-	if arrayKind == arrayKindPool {
+	if lastKind == arrayKindPool {
 		PutNK(r.array)
 	}
 	r.array = array
@@ -1524,6 +1523,7 @@ func (r *webIn_) _growArray(size int32) bool { // stock(<4K)->4K->16K->64K1->(12
 func (r *webIn_) saveContentFilesDir() string {
 	return r.stream.webKeeper().SaveContentFilesDir()
 }
+
 func (r *webIn_) _newTempFile(retain bool) (tempFile, error) { // to save content to
 	if !retain { // since data is not used by upper caller, we don't need to actually write data to file.
 		return fakeFile, nil
@@ -1589,7 +1589,7 @@ type webOut_ struct { // outgoing. needs building
 	fields      []byte        // bytes of the headers or trailers which are not manipulated at the same time. [<r.stockFields>/4K/16K]
 	sendTimeout time.Duration // timeout to send the whole message
 	contentSize int64         // info of outgoing content. -1: not set, -2: vague, >=0: size
-	versionCode uint8         // Version1_1, Version2, Version3
+	httpVersion uint8         // Version1_1, Version2, Version3
 	asRequest   bool          // treat this message as request?
 	nHeaders    uint8         // 1+num of added headers, starts from 1 because edges[0] is not used
 	nTrailers   uint8         // 1+num of added trailers, starts from 1 because edges[0] is not used
@@ -1612,11 +1612,11 @@ type webOut0 struct { // for fast reset, entirely
 	iDate         uint8  // position of date in r.edges
 }
 
-func (r *webOut_) onUse(versionCode uint8, asRequest bool) { // for non-zeros
+func (r *webOut_) onUse(httpVersion uint8, asRequest bool) { // for non-zeros
 	r.fields = r.stockFields[:]
 	r.sendTimeout = r.stream.webKeeper().SendTimeout()
 	r.contentSize = -1 // not set
-	r.versionCode = versionCode
+	r.httpVersion = httpVersion
 	r.asRequest = asRequest
 	r.nHeaders, r.nTrailers = 1, 1 // r.edges[0] is not used
 }
@@ -1818,10 +1818,10 @@ func (r *webOut_) AddTrailer(name string, value string) bool {
 	return r.AddTrailerBytes(ConstBytes(name), ConstBytes(value))
 }
 func (r *webOut_) AddTrailerBytes(name []byte, value []byte) bool {
-	if r.isSent { // trailers must be added after headers & content are sent, otherwise r.fields will be messed up
-		return r.shell.addTrailer(name, value)
+	if !r.isSent { // trailers must be added after headers & content are sent, otherwise r.fields will be messed up
+		return false
 	}
-	return false
+	return r.shell.addTrailer(name, value)
 }
 func (r *webOut_) Trailer(name string) (value string, ok bool) {
 	v, ok := r.shell.trailer(ConstBytes(name))

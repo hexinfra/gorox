@@ -2127,13 +2127,13 @@ type pair struct { // 24 bytes
 // +-----------------------------------------------------------------------------------------------------------------+
 
 const ( // pair kinds
-	kindUnknown = iota
-	kindQuery   // normal
-	kindHeader  // field
-	kindCookie  // normal
-	kindForm    // normal
-	kindTrailer // field
-	kindParam   // parameter of fields, normal
+	pairUnknown = iota
+	pairQuery   // normal
+	pairHeader  // field
+	pairCookie  // normal
+	pairForm    // normal
+	pairTrailer // field
+	pairParam   // parameter of fields, normal
 )
 
 const ( // pair places
@@ -2189,17 +2189,17 @@ func (p *pair) dataEmpty() bool        { return p.value.from+int32(p.flags&flagQ
 func (p *pair) show(place []byte) { // TODO: optimize, or simply remove
 	var kind string
 	switch p.kind {
-	case kindQuery:
+	case pairQuery:
 		kind = "query"
-	case kindHeader:
+	case pairHeader:
 		kind = "header"
-	case kindCookie:
+	case pairCookie:
 		kind = "cookie"
-	case kindForm:
+	case pairForm:
 		kind = "form"
-	case kindTrailer:
+	case pairTrailer:
 		kind = "trailer"
-	case kindParam:
+	case pairParam:
 		kind = "param"
 	default:
 		kind = "unknown"

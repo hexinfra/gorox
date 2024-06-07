@@ -976,8 +976,8 @@ type Node interface {
 	// Methods
 	Maintain() // runner
 	Backend() Backend
-	IsUDS() bool
 	IsTLS() bool
+	IsUDS() bool
 }
 
 // Server component. A Server is a group of gates.
@@ -992,8 +992,8 @@ type Server interface {
 	Address() string
 	ColonPort() string
 	ColonPortBytes() []byte
-	IsUDS() bool
 	IsTLS() bool
+	IsUDS() bool
 	TLSConfig() *tls.Config
 	MaxConnsPerGate() int32
 }

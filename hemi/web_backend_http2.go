@@ -102,13 +102,13 @@ func (n *http2Node) fetchConn() (*backend2Conn, error) {
 	connID := n.backend.nextConnID()
 	return getBackend2Conn(connID, n, netConn, rawConn), nil
 }
-func (n *http2Node) _dialTCP() (*backend2Conn, error) {
-	return nil, nil
-}
 func (n *http2Node) _dialTLS() (*backend2Conn, error) {
 	return nil, nil
 }
 func (n *http2Node) _dialUDS() (*backend2Conn, error) {
+	return nil, nil
+}
+func (n *http2Node) _dialTCP() (*backend2Conn, error) {
 	return nil, nil
 }
 func (n *http2Node) storeConn(conn *backend2Conn) {

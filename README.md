@@ -273,7 +273,7 @@ The official website of the Gorox project is at:
 License
 =======
 
-Gorox is licensed under a 2-clause BSD License. See "hemi/LICENSE.md" file.
+Gorox is licensed under a 2-clause BSD License. See LICENSE.md file.
 
 
 Contributing
@@ -286,7 +286,7 @@ Gorox is hosted at Github:
 Fork this repository and contribute your patch through Github Pull Requests.
 
 By contributing to Gorox, you MUST agree to release your code under the BSD
-License that you can find in the "hemi/LICENSE.md" file.
+License that you can find in the LICENSE.md file.
 
 
 Security

@@ -13,10 +13,10 @@ import (
 )
 
 func Main() {
-	hemi.SetBaseDir(system.ExeDir)
-	hemi.SetLogsDir(system.ExeDir + "/data/logs")
-	hemi.SetTmpsDir(system.ExeDir + "/data/tmps")
-	hemi.SetVarsDir(system.ExeDir + "/data/vars")
+	hemi.SetTopDir(system.ExeDir)
+	hemi.SetLogDir(system.ExeDir + "/data/log")
+	hemi.SetTmpDir(system.ExeDir + "/data/tmp")
+	hemi.SetVarDir(system.ExeDir + "/data/var")
 
 	stage, err := hemi.NewStageText("stage{}")
 	if err != nil {

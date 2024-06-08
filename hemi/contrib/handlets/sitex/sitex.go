@@ -85,7 +85,7 @@ func (h *Sitex) OnConfigure() {
 				UseExitln("viewDir must be string")
 			}
 		} else {
-			site.viewDir = BaseDir() + "/apps/" + h.webapp.Name() + "/" + name + "/view"
+			site.viewDir = TopDir() + "/apps/" + h.webapp.Name() + "/" + name + "/view"
 		}
 		site.settings = make(map[string]string)
 		if vSettings, ok := siteDict["settings"]; ok {

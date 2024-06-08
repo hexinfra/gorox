@@ -1,3 +1,3 @@
 localCacher "lc1" {
-	.cacheDir = %varsDir + "/cachers/lc1"
+	.cacheDir = %varDir + "/cachers/lc1"
 }

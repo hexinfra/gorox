@@ -12,5 +12,5 @@ http1Server "hs1" {
 	.forceScheme         = ""
 	.adjustScheme        = true
 	.tlsEnableHTTP2      = false
-	.saveContentFilesDir = %tmpsDir + "/web/servers/hs1"
+	.saveContentFilesDir = %tmpDir + "/web/servers/hs1"
 }

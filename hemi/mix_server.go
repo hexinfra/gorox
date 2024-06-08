@@ -15,6 +15,24 @@ import (
 	"time"
 )
 
+// Server component. A Server is a group of gates.
+type Server interface {
+	// Imports
+	Component
+	// Methods
+	Serve() // runner
+	Stage() *Stage
+	ReadTimeout() time.Duration  // timeout for a single read operation
+	WriteTimeout() time.Duration // timeout for a single write operation
+	Address() string
+	ColonPort() string
+	ColonPortBytes() []byte
+	IsTLS() bool
+	IsUDS() bool
+	TLSConfig() *tls.Config
+	MaxConnsPerGate() int32
+}
+
 // Server_ is the parent for all servers.
 type Server_[G Gate] struct {
 	// Parent

@@ -1,9 +1,9 @@
 stage {
-	.cpuFile = %tmpsDir + "/cpu.prof"
-	.hepFile = %tmpsDir + "/hep.prof"
-	.thrFile = %tmpsDir + "/thr.prof"
-	.grtFile = %tmpsDir + "/grt.prof"
-	.blkFile = %tmpsDir + "/blk.prof"
+	.cpuFile = %tmpDir + "/cpu.prof"
+	.hepFile = %tmpDir + "/hep.prof"
+	.thrFile = %tmpDir + "/thr.prof"
+	.grtFile = %tmpDir + "/grt.prof"
+	.blkFile = %tmpDir + "/blk.prof"
 
 	// fixtures
 

@@ -66,7 +66,7 @@ func (h *fcgiProxy) OnShutdown() {
 }
 
 func (h *fcgiProxy) OnConfigure() {
-	h._contentSaver_.onConfigure(h, TmpsDir()+"/web/fcgi/"+h.name)
+	h._contentSaver_.onConfigure(h, TmpDir()+"/web/fcgi/"+h.name)
 
 	// toBackend
 	if v, ok := h.Find("toBackend"); ok {

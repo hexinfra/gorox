@@ -53,7 +53,7 @@ func (h *uwsgiProxy) OnShutdown() {
 }
 
 func (h *uwsgiProxy) OnConfigure() {
-	h._contentSaver_.onConfigure(h, TmpsDir()+"/web/uwsgi/"+h.name)
+	h._contentSaver_.onConfigure(h, TmpDir()+"/web/uwsgi/"+h.name)
 	// toBackend
 	if v, ok := h.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {

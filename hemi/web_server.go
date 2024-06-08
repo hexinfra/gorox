@@ -63,7 +63,7 @@ func (s *webServer_[G]) onCreate(name string, stage *Stage) {
 
 func (s *webServer_[G]) onConfigure() {
 	s.Server_.OnConfigure()
-	s._webKeeper_.onConfigure(s, 120*time.Second, 120*time.Second, 1000, TmpsDir()+"/web/servers/"+s.name)
+	s._webKeeper_.onConfigure(s, 120*time.Second, 120*time.Second, 1000, TmpDir()+"/web/servers/"+s.name)
 
 	// webapps
 	s.ConfigureStringList("webapps", &s.webapps, nil, []string{})

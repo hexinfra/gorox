@@ -25,12 +25,12 @@ var (
 	ConfigFile string
 	SingleMode bool
 	DaemonMode bool
-	BaseDir    string
-	LogsDir    string
-	TmpsDir    string
-	VarsDir    string
-	OutFile    string
-	ErrFile    string
+	TopDir     string
+	LogDir     string
+	TmpDir     string
+	VarDir     string
+	Stdout     string
+	Stderr     string
 )
 
 func GetConfig() (configBase string, configFile string) {
@@ -40,13 +40,13 @@ func GetConfig() (configBase string, configFile string) {
 		panic("currently not supported!")
 	} else {
 		if ConfigFile == "" {
-			configBase = BaseDir
+			configBase = TopDir
 			configFile = "conf/" + Program + ".conf"
 		} else if filepath.IsAbs(ConfigFile) { // /path/to/file.conf
 			configBase = filepath.Dir(ConfigFile)
 			configFile = filepath.Base(ConfigFile)
 		} else { // path/to/file.conf
-			configBase = BaseDir
+			configBase = TopDir
 			configFile = ConfigFile
 		}
 		configBase += "/"

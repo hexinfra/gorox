@@ -8,7 +8,6 @@
 package hemi
 
 import (
-	"crypto/tls"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -441,7 +440,7 @@ func (s *Stage) OnShutdown() {
 }
 
 func (s *Stage) OnConfigure() {
-	tmpsDir := TmpsDir()
+	tmpDir := TmpDir()
 
 	// cpuFile
 	s.ConfigureString("cpuFile", &s.cpuFile, func(value string) error {
@@ -449,7 +448,7 @@ func (s *Stage) OnConfigure() {
 			return errors.New(".cpuFile has an invalid value")
 		}
 		return nil
-	}, tmpsDir+"/cpu.prof")
+	}, tmpDir+"/cpu.prof")
 
 	// hepFile
 	s.ConfigureString("hepFile", &s.hepFile, func(value string) error {
@@ -457,7 +456,7 @@ func (s *Stage) OnConfigure() {
 			return errors.New(".hepFile has an invalid value")
 		}
 		return nil
-	}, tmpsDir+"/hep.prof")
+	}, tmpDir+"/hep.prof")
 
 	// thrFile
 	s.ConfigureString("thrFile", &s.thrFile, func(value string) error {
@@ -465,7 +464,7 @@ func (s *Stage) OnConfigure() {
 			return errors.New(".thrFile has an invalid value")
 		}
 		return nil
-	}, tmpsDir+"/thr.prof")
+	}, tmpDir+"/thr.prof")
 
 	// grtFile
 	s.ConfigureString("grtFile", &s.grtFile, func(value string) error {
@@ -473,7 +472,7 @@ func (s *Stage) OnConfigure() {
 			return errors.New(".grtFile has an invalid value")
 		}
 		return nil
-	}, tmpsDir+"/grt.prof")
+	}, tmpDir+"/grt.prof")
 
 	// blkFile
 	s.ConfigureString("blkFile", &s.blkFile, func(value string) error {
@@ -481,7 +480,7 @@ func (s *Stage) OnConfigure() {
 			return errors.New(".blkFile has an invalid value")
 		}
 		return nil
-	}, tmpsDir+"/blk.prof")
+	}, tmpDir+"/blk.prof")
 
 	// sub components
 	s.fixtures.walk(fixture.OnConfigure)
@@ -667,15 +666,15 @@ func (s *Stage) Start(id int32) {
 	if DebugLevel() >= 1 {
 		Printf("stageID=%d\n", s.id)
 		Printf("numCPU=%d\n", s.numCPU)
-		Printf("baseDir=%s\n", BaseDir())
-		Printf("logsDir=%s\n", LogsDir())
-		Printf("tmpsDir=%s\n", TmpsDir())
-		Printf("varsDir=%s\n", VarsDir())
+		Printf("topDir=%s\n", TopDir())
+		Printf("logDir=%s\n", LogDir())
+		Printf("tmpDir=%s\n", TmpDir())
+		Printf("varDir=%s\n", VarDir())
 	}
 
 	// Init running environment
 	rand.Seed(time.Now().UnixNano())
-	if err := os.Chdir(BaseDir()); err != nil {
+	if err := os.Chdir(TopDir()); err != nil {
 		EnvExitln(err.Error())
 	}
 
@@ -953,50 +952,6 @@ func (s *Session) init() {
 func (s *Session) Get(name string) string        { return s.states[name] }
 func (s *Session) Set(name string, value string) { s.states[name] = value }
 func (s *Session) Del(name string)               { delete(s.states, name) }
-
-// Backend component. A Backend is a group of nodes.
-type Backend interface {
-	// Imports
-	Component
-	// Methods
-	Maintain() // runner
-	Stage() *Stage
-	CreateNode(name string) Node
-	DialTimeout() time.Duration
-	ReadTimeout() time.Duration  // timeout for a single read operation
-	WriteTimeout() time.Duration // timeout for a single write operation
-	AliveTimeout() time.Duration
-	nextConnID() int64
-}
-
-// Node is a member of backend.
-type Node interface {
-	// Imports
-	Component
-	// Methods
-	Maintain() // runner
-	Backend() Backend
-	IsTLS() bool
-	IsUDS() bool
-}
-
-// Server component. A Server is a group of gates.
-type Server interface {
-	// Imports
-	Component
-	// Methods
-	Serve() // runner
-	Stage() *Stage
-	ReadTimeout() time.Duration  // timeout for a single read operation
-	WriteTimeout() time.Duration // timeout for a single write operation
-	Address() string
-	ColonPort() string
-	ColonPortBytes() []byte
-	IsTLS() bool
-	IsUDS() bool
-	TLSConfig() *tls.Config
-	MaxConnsPerGate() int32
-}
 
 // Cronjob component
 type Cronjob interface {

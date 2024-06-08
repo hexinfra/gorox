@@ -169,7 +169,7 @@ article table.none tr td {
 			<code class="pre">stage {
 	webapp "example" {
 		.hostnames = ("*.example.com")
-		.webRoot = %baseDir + "/apps/example/root"
+		.webRoot = %topDir + "/apps/example/root"
 		static {}
 	}
 
@@ -195,22 +195,22 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 			<p>gorox 启动之后会定义如下常量，并且在整个运行阶段都不会再次修改。</p>
 			<ul>
 				<li>
-					<code class="pre">%baseDir : gorox 可执行文件的当前目录
+					<code class="pre">%topDir : gorox 程序文件所在目录
 
-%logsDir : 启动 gorox 时候 参数 -logs 指定的的目录，
+%logDir : 启动 gorox 时候 参数 -logs 指定的的目录，
 	 如果指定的是绝对目录，则采用这个目录。
-	 如果指定的是相对目录，则 %baseDir 加上这个相对目录。
-	 如果未指定目录，则以 %baseDir + "/data/logs" 做为日志目录。
+	 如果指定的是相对目录，则 %topDir 加上这个相对目录。
+	 如果未指定目录，则以 %topDir + "/data/log" 做为日志目录。
 
-%tmpsDir : 启动 gorox 时候 参数 -tmps 指定的的目录，
+%tmpDir : 启动 gorox 时候 参数 -tmps 指定的的目录，
 	 如果指定的是绝对目录，则采用这个目录。
-	 如果指定的是相对目录，则 %baseDir 加上这个相对目录。
-	 如果未指定目录，则以 %baseDir + "/data/tmps"，做为临时文件的目录。
+	 如果指定的是相对目录，则 %topDir 加上这个相对目录。
+	 如果未指定目录，则以 %topDir + "/data/tmp"，做为临时文件的目录。
 
-%varsDir : 启动 gorox 时候 参数 -vars 指定的的目录，
+%varDir : 启动 gorox 时候 参数 -vars 指定的的目录，
 	 如果指定的是绝对目录，则采用这个目录。
-	 如果指定的是相对目录，则 %baseDir 加上这个相对目录。
-	 如果未指定目录，则以 %baseDir + "/data/vars"，做为vars目录。</code>
+	 如果指定的是相对目录，则 %topDir 加上这个相对目录。
+	 如果未指定目录，则以 %topDir + "/data/var"，做为var目录。</code>
 				</li>
 			</ul>
 		</li>
@@ -218,39 +218,39 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		<li>
 			<p>stage 属性列表。</p>
 			<code class="pre">stage {
-	.cpuFile = %tmpsDir + "/cpu.prof"
-	.hepFile = %tmpsDir + "/hep.prof"
-	.thrFile = %tmpsDir + "/thr.prof"
-	.grtFile = %tmpsDir + "/grt.prof"
-	.blkFile = %tmpsDir + "/blk.prof"
+	.cpuFile = %tmpDir + "/cpu.prof"
+	.hepFile = %tmpDir + "/hep.prof"
+	.thrFile = %tmpDir + "/thr.prof"
+	.grtFile = %tmpDir + "/grt.prof"
+	.blkFile = %tmpDir + "/blk.prof"
 }</code>
 			<ul>
 				<li>
 					<p>.cpuFile: 采集 gorox 5s 的 CPU profile，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox cpu。
 					</p>
 					<code>语法：.cpuFile = "filename"
-						默认值：%tmpsDir + "/cpu.prof"
+						默认值：%tmpDir + "/cpu.prof"
 					</code>
 
 					<p>.hepFile: 采集 gorox 5s 的 heap profile，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox heap。</p>
 					<code>语法：.hepFile = "filename"
-						默认值：%tmpsDir + "/hep.prof"
+						默认值：%tmpDir + "/hep.prof"
 					</code>
 
 					<p>.thrFile: 采集 gorox 5s 的新创建的系统线程的堆栈数据，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox thread。</p>
 					<code>语法：.thrFile = "filename"
-						默认值：%tmpsDir + "/thr.prof"
+						默认值：%tmpDir + "/thr.prof"
 					</code>
 
 
 					<p>.grtFile: 采集 gorox 进程内所有当前 goroutine 的堆栈跟踪数据，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox goroutine。</p>
 					<code>语法：.grtFile = "filename"
-						默认值：%tmpsDir + "/grt.prof"
+						默认值：%tmpDir + "/grt.prof"
 					</code>
 
 					<p>.blkFile: 采集 gorox 5s 内导致阻塞同步原语的堆栈数据，只保留本次数据，此前已经存在的数据会清空。 采集命令: ./gorox block。</p>
 					<code>语法：.blkFile = "filename"
-						默认值：%tmpsDir + "/blk.prof"
+						默认值：%tmpDir + "/blk.prof"
 					</code>
 				</li>
 			</ul>
@@ -317,7 +317,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		.readTimeout = 30s
 		.aliveTimeout = 4s
 		.maxStreamsPerConn = 1000
-		.saveContentFilesDir = %tmpsDir + "/web/backends/h1b"
+		.saveContentFilesDir = %tmpDir + "/web/backends/h1b"
 		.maxContentSize = 1T
 		.sendTimeout = 60s
 		.recvTimeout = 60s
@@ -385,7 +385,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 				<li>
 					<p>.saveContentFilesDir 上传文件的临时目录，如果配置路径不存在，会自动创建，权限0755。</p>
 					<code>语法：.saveContentFilesDir = "path"
-						默认值：%tmpsDir + "/web/backends/" + backendName
+						默认值：%tmpDir + "/web/backends/" + backendName
 						取值范围：-
 					</code>
 				</li>
@@ -461,7 +461,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 				<li>
 					<p>.cacheDir 缓存目录</p>
 					<code>语法：.cacheDir = "path"
-					默认值： %varsDir + "/cachers/cacherName"
+					默认值： %varDir + "/cachers/cacherName"
 					取值范围：-
 				</code>
 				</li>
@@ -498,9 +498,9 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 
 	webapp "proxy" {
 		.hostnames = ("example.com" "*.example.com" "www.example*")
-		.webRoot = %baseDir + "/apps/proxy/root"
+		.webRoot = %topDir + "/apps/proxy/root"
 		.accessLog = [
-			"logFile": %logsDir + "/webapps/proxy.log",
+			"logFile": %logDir + "/webapps/proxy.log",
 			"rotate" : "day",
 			"format" : "%T",
 		]
@@ -602,7 +602,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					</code>
 
 					<p>rule 属性说明。</p>
-					<p>.logAccess 是否开启日志。</p>
+					<p>.logAccess 是否记录访问日志。</p>
 					<code>语法：.logAccess = false
 						默认值： false
 						取值范围：true | false
@@ -946,7 +946,7 @@ stage {
 	}
 
 	webapp "main" {
-		.webRoot = %baseDir + "/apps/diogin/root"
+		.webRoot = %topDir + "/apps/diogin/root"
 
 		fcgiProxy "fpm" {
 			.toBackend = "php-fpm"
@@ -968,7 +968,7 @@ stage {
 				<li>
 					<p>.saveContentFilesDir 保存文件的路径，如果配置路径不存在，会自动创建，权限0755。</p>
 					<code>语法： .saveContentFilesDir = "path"  
-						默认值：%tmpsDir + "/web/fcgi/fpm"
+						默认值：%tmpDir + "/web/fcgi/fpm"
 					</code>
 				</li>
 
@@ -1063,7 +1063,7 @@ stage {
 	}
 
 	webapp "main" {
-		.webRoot = %baseDir + "/apps/diogin/root"
+		.webRoot = %topDir + "/apps/diogin/root"
 
 		fcgiProxy "php-fpm" {
 			.toBackend = "php-fpm"
@@ -1177,7 +1177,7 @@ httpProxy {
 			<h4>stage &gt; webapp &gt; static </h4>
 			<p>static 处理静态资源，例如（js、css、html）等。</p>
 			<code class="pre">static {
-	.webRoot = %baseDir + "/apps/app1/root"
+	.webRoot = %topDir + "/apps/app1/root"
 	.indexFile = "index.html"
 	.autoIndex = true
 	.mimeTypes = [
@@ -1389,7 +1389,7 @@ httpProxy {
 			<code class="pre">stage {
 	webapp "example_com" {
 		.hostnames = ("example.com" "*.example.com")
-		.webRoot = %baseDir + "/apps/example_com/root"
+		.webRoot = %topDir + "/apps/example_com/root"
 		.tlsCertificate = "/etc/tls/example_com.pem"
 		.tlsPrivateKey = "/etc/tls/example_com.key"
 	}

@@ -17,6 +17,21 @@ import (
 	"time"
 )
 
+// Backend component. A Backend is a group of nodes.
+type Backend interface {
+	// Imports
+	Component
+	// Methods
+	Maintain() // runner
+	Stage() *Stage
+	CreateNode(name string) Node
+	DialTimeout() time.Duration
+	ReadTimeout() time.Duration  // timeout for a single read operation
+	WriteTimeout() time.Duration // timeout for a single write operation
+	AliveTimeout() time.Duration
+	nextConnID() int64
+}
+
 // Backend_ is the parent for backends.
 type Backend_[N Node] struct {
 	// Parent
@@ -153,6 +168,17 @@ func (b *Backend_[N]) nextIndexByIPHash() int64 {
 }
 func (b *Backend_[N]) nextIndexByRandom() int64 {
 	return rand.Int63n(b.numNodes)
+}
+
+// Node is a member of backend.
+type Node interface {
+	// Imports
+	Component
+	// Methods
+	Maintain() // runner
+	Backend() Backend
+	IsTLS() bool
+	IsUDS() bool
 }
 
 // Node_ is the parent for all backend nodes.

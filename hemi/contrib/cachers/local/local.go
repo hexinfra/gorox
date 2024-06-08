@@ -48,7 +48,7 @@ func (c *localCacher) OnConfigure() {
 			return nil
 		}
 		return errors.New(".cacheDir has an invalid value")
-	}, VarsDir()+"/cachers/"+c.Name())
+	}, VarDir()+"/cachers/"+c.Name())
 }
 func (c *localCacher) OnPrepare() {
 	if err := os.MkdirAll(c.cacheDir, 0755); err != nil {

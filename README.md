@@ -158,9 +158,9 @@ By default, Gorox uses these directories:
 After Gorox is started, an extra directory called "data/" will be created, with
 3 sub directories in it:
 
-  * data/logs/ - Place running logs,
-  * data/tmps/ - Place files which are safe to remove after Gorox is shutdown,
-  * data/vars/ - Place dynamic data files used by Gorox.
+  * data/log/ - Place running logs,
+  * data/tmp/ - Place files which are safe to remove after Gorox is shutdown,
+  * data/var/ - Place dynamic data files used by Gorox.
 
 
 Architecture

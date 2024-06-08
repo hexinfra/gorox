@@ -3,7 +3,7 @@ sitex "s1" {
 	.sites = [
 		"front": [
 			"hostnames": ("example.net"),
-			"viewDir": %baseDir + "/apps/english/view",
+			"viewDir": %topDir + "/apps/english/view",
 		],
 	]
 }

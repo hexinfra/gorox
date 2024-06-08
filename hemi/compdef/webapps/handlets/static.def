@@ -1,5 +1,5 @@
 static "s1" {
-	.webRoot = %baseDir + "/apps/a1/root"
+	.webRoot = %topDir + "/apps/a1/root"
 	.indexFile = "index.html"
 	.autoIndex = true
 	.mimeTypes = [

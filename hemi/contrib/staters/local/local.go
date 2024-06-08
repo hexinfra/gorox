@@ -48,7 +48,7 @@ func (s *localStater) OnConfigure() {
 			return nil
 		}
 		return errors.New(".stateDir has an invalid value")
-	}, VarsDir()+"/staters/"+s.Name())
+	}, VarDir()+"/staters/"+s.Name())
 }
 func (s *localStater) OnPrepare() {
 	if err := os.MkdirAll(s.stateDir, 0755); err != nil {

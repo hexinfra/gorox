@@ -64,12 +64,12 @@ OPTIONS
   -config <config>  # path to worker config file (default: conf/%s.conf)
   -single           # run server in single mode. only a process is started
   -daemon           # run server as daemon (default: false)
-  -base   <path>    # base directory of the program
-  -logs   <path>    # logs directory to use
-  -tmps   <path>    # tmps directory to use
-  -vars   <path>    # vars directory to use
-  -stdout <path>    # daemon's stdout file (default: %s.out in logs dir)
-  -stderr <path>    # daemon's stderr file (default: %s.err in logs dir)
+  -base   <path>    # top directory of the program files
+  -logs   <path>    # log directory to use
+  -tmps   <path>    # tmp directory to use
+  -vars   <path>    # var directory to use
+  -stdout <path>    # daemon's stdout file (default: %s.out in log directory)
+  -stderr <path>    # daemon's stderr file (default: %s.err in log directory)
 
   "-debug" applies to all actions.
   "-target" applies to telling and calling actions only.
@@ -112,12 +112,12 @@ func Main(args *Args) {
 	flag.StringVar(&common.ConfigFile, "config", "", "")
 	flag.BoolVar(&common.SingleMode, "single", false, "")
 	flag.BoolVar(&common.DaemonMode, "daemon", false, "")
-	flag.StringVar(&common.BaseDir, "base", "", "")
-	flag.StringVar(&common.LogsDir, "logs", "", "")
-	flag.StringVar(&common.TmpsDir, "tmps", "", "")
-	flag.StringVar(&common.VarsDir, "vars", "", "")
-	flag.StringVar(&common.OutFile, "stdout", "", "")
-	flag.StringVar(&common.ErrFile, "stderr", "", "")
+	flag.StringVar(&common.TopDir, "base", "", "")
+	flag.StringVar(&common.LogDir, "logs", "", "")
+	flag.StringVar(&common.TmpDir, "tmps", "", "")
+	flag.StringVar(&common.VarDir, "vars", "", "")
+	flag.StringVar(&common.Stdout, "stdout", "", "")
+	flag.StringVar(&common.Stderr, "stderr", "", "")
 	action := "serve"
 	if len(os.Args) > 1 && os.Args[1][0] != '-' {
 		action = os.Args[1]
@@ -136,30 +136,30 @@ func Main(args *Args) {
 	case "serve", "check":
 		hemi.SetDebugLevel(int32(common.DebugLevel))
 
-		if common.BaseDir == "" {
-			common.BaseDir = system.ExeDir
-		} else { // baseDir is specified.
-			dir, err := filepath.Abs(common.BaseDir)
+		if common.TopDir == "" {
+			common.TopDir = system.ExeDir
+		} else { // topDir is specified.
+			dir, err := filepath.Abs(common.TopDir)
 			if err != nil {
 				common.Crash(err.Error())
 			}
-			common.BaseDir = dir
+			common.TopDir = dir
 		}
-		common.BaseDir = filepath.ToSlash(common.BaseDir)
-		hemi.SetBaseDir(common.BaseDir)
+		common.TopDir = filepath.ToSlash(common.TopDir)
+		hemi.SetTopDir(common.TopDir)
 
 		setDir := func(pDir *string, name string, set func(string)) {
 			if dir := *pDir; dir == "" {
-				*pDir = common.BaseDir + "/data/" + name
+				*pDir = common.TopDir + "/data/" + name
 			} else if !filepath.IsAbs(dir) {
-				*pDir = common.BaseDir + "/" + dir
+				*pDir = common.TopDir + "/" + dir
 			}
 			*pDir = filepath.ToSlash(*pDir)
 			set(*pDir)
 		}
-		setDir(&common.LogsDir, "logs", hemi.SetLogsDir)
-		setDir(&common.TmpsDir, "tmps", hemi.SetTmpsDir)
-		setDir(&common.VarsDir, "vars", hemi.SetVarsDir)
+		setDir(&common.LogDir, "log", hemi.SetLogDir)
+		setDir(&common.TmpDir, "tmp", hemi.SetTmpDir)
+		setDir(&common.VarDir, "var", hemi.SetVarDir)
 
 		if action == "check" { // dry run
 			if _, err := hemi.NewStageFile(common.GetConfig()); err != nil {
@@ -184,9 +184,9 @@ func Main(args *Args) {
 		} else if common.DaemonMode { // start leader daemon and exit
 			newFile := func(file string, ext string, osFile *os.File) *os.File {
 				if file == "" {
-					file = common.LogsDir + "/" + common.Program + ext
+					file = common.LogDir + "/" + common.Program + ext
 				} else if !filepath.IsAbs(file) {
-					file = common.BaseDir + "/" + file
+					file = common.TopDir + "/" + file
 				}
 				if err := os.MkdirAll(filepath.Dir(file), 0755); err != nil {
 					common.Crash(err.Error())
@@ -200,8 +200,8 @@ func Main(args *Args) {
 				}
 				return osFile
 			}
-			stdout := newFile(common.OutFile, ".out", os.Stdout)
-			stderr := newFile(common.ErrFile, ".err", os.Stderr)
+			stdout := newFile(common.Stdout, ".out", os.Stdout)
+			stderr := newFile(common.Stderr, ".err", os.Stderr)
 			devNull, err := os.Open(os.DevNull)
 			if err != nil {
 				common.Crash(err.Error())

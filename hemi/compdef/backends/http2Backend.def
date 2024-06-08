@@ -5,7 +5,7 @@ http2Backend "h2b1" {
 	.readTimeout = 30s
 	.aliveTimeout = 5s
 	.maxStreamsPerConn = 1000
-	.saveContentFilesDir = %tmpsDir + "/web/backends/h2b"
+	.saveContentFilesDir = %tmpDir + "/web/backends/h2b"
 	.maxContentSize = 1T
 	.sendTimeout = 60s
 	.recvTimeout = 60s

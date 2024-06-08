@@ -5,7 +5,7 @@ http3Backend "h3b1" {
 	.readTimeout = 30s
 	.aliveTimeout = 5s
 	.maxStreamsPerConn = 1000
-	.saveContentFilesDir = %tmpsDir + "/web/backends/h3b"
+	.saveContentFilesDir = %tmpDir + "/web/backends/h3b"
 	.maxContentSize = 1T
 	.sendTimeout = 60s
 	.recvTimeout = 60s

@@ -170,94 +170,6 @@ func (g *quixGate) justClose(quicConn *quic.Conn) {
 	g.OnConnClosed()
 }
 
-// poolQUIXConn
-var poolQUIXConn sync.Pool
-
-func getQUIXConn(id int64, gate *quixGate, quicConn *quic.Conn) *QUIXConn {
-	var quixConn *QUIXConn
-	if x := poolQUIXConn.Get(); x == nil {
-		quixConn = new(QUIXConn)
-	} else {
-		quixConn = x.(*QUIXConn)
-	}
-	quixConn.onGet(id, gate, quicConn)
-	return quixConn
-}
-func putQUIXConn(quixConn *QUIXConn) {
-	quixConn.onPut()
-	poolQUIXConn.Put(quixConn)
-}
-
-// QUIXConn is a QUIX connection coming from QUIXRouter.
-type QUIXConn struct {
-	// Parent
-	ServerConn_
-	// Conn states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	quicConn *quic.Conn
-	// Conn states (zeros)
-	quixConn0
-}
-type quixConn0 struct { // for fast reset, entirely
-}
-
-func (c *QUIXConn) onGet(id int64, gate *quixGate, quicConn *quic.Conn) {
-	c.ServerConn_.OnGet(id, gate)
-	c.quicConn = quicConn
-}
-func (c *QUIXConn) onPut() {
-	c.quicConn = nil
-	c.quixConn0 = quixConn0{}
-	c.ServerConn_.OnPut()
-}
-
-func (c *QUIXConn) serve() { // runner
-	router := c.Server().(*QUIXRouter)
-	router.dispatch(c)
-	c.closeConn()
-	putQUIXConn(c)
-}
-
-func (c *QUIXConn) closeConn() error {
-	// TODO
-	return nil
-}
-
-func (c *QUIXConn) unsafeVariable(code int16, name string) (value []byte) {
-	return quixConnVariables[code](c)
-}
-
-// quixConnVariables
-var quixConnVariables = [...]func(*QUIXConn) []byte{ // keep sync with varCodes
-	// TODO
-	nil, // srcHost
-	nil, // srcPort
-	nil, // isTLS
-	nil, // isUDS
-}
-
-// QUIXStream
-type QUIXStream struct {
-	// Parent
-	// Stream states (non-zeros)
-	quicStream *quic.Stream
-	// Stream states (zeros)
-	quixStream0
-}
-type quixStream0 struct { // for fast reset, entirely
-}
-
-func (s *QUIXStream) Write(p []byte) (n int, err error) {
-	// TODO
-	return
-}
-func (s *QUIXStream) Read(p []byte) (n int, err error) {
-	// TODO
-	return
-}
-
 // QUIXDealet
 type QUIXDealet interface {
 	// Imports
@@ -384,4 +296,92 @@ func (c *quixCase) notContainMatch(conn *QUIXConn, value []byte) bool { // value
 }
 func (c *quixCase) notRegexpMatch(conn *QUIXConn, value []byte) bool { // value !~ patterns
 	return notRegexpMatch(value, c.regexps)
+}
+
+// poolQUIXConn
+var poolQUIXConn sync.Pool
+
+func getQUIXConn(id int64, gate *quixGate, quicConn *quic.Conn) *QUIXConn {
+	var quixConn *QUIXConn
+	if x := poolQUIXConn.Get(); x == nil {
+		quixConn = new(QUIXConn)
+	} else {
+		quixConn = x.(*QUIXConn)
+	}
+	quixConn.onGet(id, gate, quicConn)
+	return quixConn
+}
+func putQUIXConn(quixConn *QUIXConn) {
+	quixConn.onPut()
+	poolQUIXConn.Put(quixConn)
+}
+
+// QUIXConn is a QUIX connection coming from QUIXRouter.
+type QUIXConn struct {
+	// Parent
+	ServerConn_
+	// Conn states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	quicConn *quic.Conn
+	// Conn states (zeros)
+	quixConn0
+}
+type quixConn0 struct { // for fast reset, entirely
+}
+
+func (c *QUIXConn) onGet(id int64, gate *quixGate, quicConn *quic.Conn) {
+	c.ServerConn_.OnGet(id, gate)
+	c.quicConn = quicConn
+}
+func (c *QUIXConn) onPut() {
+	c.quicConn = nil
+	c.quixConn0 = quixConn0{}
+	c.ServerConn_.OnPut()
+}
+
+func (c *QUIXConn) serve() { // runner
+	router := c.Server().(*QUIXRouter)
+	router.dispatch(c)
+	c.closeConn()
+	putQUIXConn(c)
+}
+
+func (c *QUIXConn) closeConn() error {
+	// TODO
+	return nil
+}
+
+func (c *QUIXConn) unsafeVariable(code int16, name string) (value []byte) {
+	return quixConnVariables[code](c)
+}
+
+// quixConnVariables
+var quixConnVariables = [...]func(*QUIXConn) []byte{ // keep sync with varCodes
+	// TODO
+	nil, // srcHost
+	nil, // srcPort
+	nil, // isTLS
+	nil, // isUDS
+}
+
+// QUIXStream
+type QUIXStream struct {
+	// Parent
+	// Stream states (non-zeros)
+	quicStream *quic.Stream
+	// Stream states (zeros)
+	quixStream0
+}
+type quixStream0 struct { // for fast reset, entirely
+}
+
+func (s *QUIXStream) Write(p []byte) (n int, err error) {
+	// TODO
+	return
+}
+func (s *QUIXStream) Read(p []byte) (n int, err error) {
+	// TODO
+	return
 }

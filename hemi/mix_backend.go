@@ -264,6 +264,8 @@ func (n *Node_) closeConn(conn io.Closer) {
 
 // BackendConn_ is the parent for backend conns.
 type BackendConn_ struct {
+	// Conn states (stocks)
+	// Conn states (controlled)
 	// Conn states (non-zeros)
 	id      int64     // the conn id
 	backend Backend   // associated backend
@@ -293,11 +295,12 @@ func (c *BackendConn_) OnPut() {
 func (c *BackendConn_) ID() int64        { return c.id }
 func (c *BackendConn_) Backend() Backend { return c.backend }
 func (c *BackendConn_) Node() Node       { return c.node }
-func (c *BackendConn_) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
-}
 
 func (c *BackendConn_) IsTLS() bool { return c.node.IsTLS() }
 func (c *BackendConn_) IsUDS() bool { return c.node.IsUDS() }
+
+func (c *BackendConn_) MakeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+}
 
 func (c *BackendConn_) isAlive() bool { return time.Now().Before(c.expire) }

@@ -28,8 +28,8 @@ type Server interface {
 	ColonPort() string
 	ColonPortBytes() []byte
 	IsTLS() bool
-	IsUDS() bool
 	TLSConfig() *tls.Config
+	IsUDS() bool
 	MaxConnsPerGate() int32
 }
 
@@ -46,11 +46,11 @@ type Server_[G Gate] struct {
 	address           string        // hostname:port, /path/to/unix.sock
 	colonPort         string        // like: ":9876"
 	colonPortBytes    []byte        // []byte(colonPort)
-	udsColonPort      string        // uds doesn't have a port. use this as port if server is listening at uds
-	udsColonPortBytes []byte        // []byte(udsColonPort)
-	udsMode           bool          // is address a unix domain socket?
 	tlsMode           bool          // use tls to secure the transport?
 	tlsConfig         *tls.Config   // set if tls mode is true
+	udsMode           bool          // is address a unix domain socket?
+	udsColonPort      string        // uds doesn't have a port. use this as port if server is listening at uds
+	udsColonPortBytes []byte        // []byte(udsColonPort)
 	maxConnsPerGate   int32         // max concurrent connections allowed per gate
 	numGates          int32         // number of gates
 }
@@ -239,9 +239,10 @@ func (c *ServerConn_) OnPut() {
 func (c *ServerConn_) ID() int64      { return c.id }
 func (c *ServerConn_) Server() Server { return c.server }
 func (c *ServerConn_) Gate() Gate     { return c.gate }
-func (c *ServerConn_) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
-}
 
 func (c *ServerConn_) IsTLS() bool { return c.server.IsTLS() }
 func (c *ServerConn_) IsUDS() bool { return c.server.IsUDS() }
+
+func (c *ServerConn_) MakeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+}

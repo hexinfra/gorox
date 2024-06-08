@@ -7,6 +7,10 @@
 
 package hemi
 
+import (
+	"sync"
+)
+
 func init() {
 	RegisterQUIXDealet("quixProxy", func(name string, stage *Stage, router *QUIXRouter) QUIXDealet {
 		d := new(quixProxy)
@@ -59,4 +63,23 @@ func (d *quixProxy) OnPrepare() {
 func (d *quixProxy) Deal(conn *QUIXConn, stream *QUIXStream) (dealt bool) {
 	// TODO
 	return true
+}
+
+// poolBackendQConn
+var poolBackendQConn sync.Pool
+
+func getBackendQConn() {
+}
+func putBackendQConn() {
+}
+
+// backendQConn
+type backendQConn struct {
+}
+
+var poolBackendQStream sync.Pool
+
+func getBackendQStream() {
+}
+func putBackendQStream() {
 }

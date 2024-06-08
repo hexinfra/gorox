@@ -7,6 +7,10 @@
 
 package hemi
 
+import (
+	"sync"
+)
+
 func init() {
 	RegisterTCPSDealet("tcpsProxy", func(name string, stage *Stage, router *TCPSRouter) TCPSDealet {
 		d := new(tcpsProxy)
@@ -60,4 +64,45 @@ func (d *tcpsProxy) OnPrepare() {
 func (d *tcpsProxy) Deal(conn *TCPSConn) (dealt bool) {
 	// TODO
 	return true
+}
+
+// poolBackendTConn
+var poolBackendTConn sync.Pool
+
+func getBackendTConn(proxy *tcpsProxy, tConn *TConn) *backendTConn {
+	var conn *backendTConn
+	if x := poolBackendTConn.Get(); x == nil {
+		conn = new(backendTConn)
+	} else {
+		conn = x.(*backendTConn)
+	}
+	conn.onUse(proxy, tConn)
+	return conn
+}
+func putBackendTConn(conn *backendTConn) {
+	conn.onEnd()
+	poolBackendTConn.Put(conn)
+}
+
+// backendTConn
+type backendTConn struct {
+	// Conn states (stocks)
+	stockInput [8192]byte // for c.input
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	proxy *tcpsProxy
+	conn  *TConn
+	input []byte
+	// Conn states (zeros)
+}
+
+func (c *backendTConn) onUse(proxy *tcpsProxy, conn *TConn) {
+	c.proxy = proxy
+	c.conn = conn
+	c.input = c.stockInput[:]
+}
+func (c *backendTConn) onEnd() {
+	c.input = nil
+	c.conn = nil
+	c.proxy = nil
 }

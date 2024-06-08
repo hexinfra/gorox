@@ -24,7 +24,7 @@ import (
 )
 
 // WebServer
-type WebServer interface { // for *http[x23]Server
+type WebServer interface { // for *http[1-3]Server
 	// Imports
 	Server
 	contentSaver
@@ -38,7 +38,7 @@ type WebServer interface { // for *http[x23]Server
 	findApp(hostname []byte) *Webapp
 }
 
-// webServer_ is the parent for http[x23]Server.
+// webServer_ is the parent for http[1-3]Server.
 type webServer_[G Gate] struct {
 	// Parent
 	Server_[G]

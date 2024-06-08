@@ -7,6 +7,10 @@
 
 package hemi
 
+import (
+	"sync"
+)
+
 func init() {
 	RegisterUDPSDealet("udpsProxy", func(name string, stage *Stage, router *UDPSRouter) UDPSDealet {
 		d := new(udpsProxy)
@@ -59,4 +63,16 @@ func (d *udpsProxy) OnPrepare() {
 func (d *udpsProxy) Deal(conn *UDPSConn) (dealt bool) {
 	// TODO
 	return true
+}
+
+// poolBackendUConn
+var poolBackendUConn sync.Pool
+
+func getBackendUConn() {
+}
+func putBackendUConn() {
+}
+
+// backendUConn
+type backendUConn struct {
 }

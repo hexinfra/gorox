@@ -301,128 +301,6 @@ func (g *tcpsGate) justClose(netConn net.Conn) {
 	g.OnConnClosed()
 }
 
-// poolTCPSConn
-var poolTCPSConn sync.Pool
-
-func getTCPSConn(id int64, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) *TCPSConn {
-	var tcpsConn *TCPSConn
-	if x := poolTCPSConn.Get(); x == nil {
-		tcpsConn = new(TCPSConn)
-	} else {
-		tcpsConn = x.(*TCPSConn)
-	}
-	tcpsConn.onGet(id, gate, netConn, rawConn)
-	return tcpsConn
-}
-func putTCPSConn(tcpsConn *TCPSConn) {
-	tcpsConn.onPut()
-	poolTCPSConn.Put(tcpsConn)
-}
-
-// TCPSConn is a TCPS connection coming from TCPSRouter.
-type TCPSConn struct {
-	// Parent
-	ServerConn_
-	// Conn states (stocks)
-	stockInput  [8192]byte // for c.input
-	stockBuffer [256]byte  // a (fake) buffer to workaround Go's conservative escape analysis
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	netConn   net.Conn        // the connection (TCP/TLS/UDS)
-	rawConn   syscall.RawConn // for syscall, only when netConn is TCP
-	region    Region          // a region-based memory pool
-	input     []byte          // input buffer
-	closeSema atomic.Int32
-	// Conn states (zeros)
-	tcpsConn0
-}
-type tcpsConn0 struct { // for fast reset, entirely
-}
-
-func (c *TCPSConn) onGet(id int64, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.ServerConn_.OnGet(id, gate)
-	c.netConn = netConn
-	c.rawConn = rawConn
-	c.region.Init()
-	c.input = c.stockInput[:]
-	c.closeSema.Store(2)
-}
-func (c *TCPSConn) onPut() {
-	c.netConn = nil
-	c.rawConn = nil
-	c.region.Free()
-	if cap(c.input) != cap(c.stockInput) {
-		PutNK(c.input)
-		c.input = nil
-	}
-	c.tcpsConn0 = tcpsConn0{}
-	c.ServerConn_.OnPut()
-}
-
-func (c *TCPSConn) serve() { // runner
-	router := c.Server().(*TCPSRouter)
-	router.dispatch(c)
-	c.closeConn()
-	putTCPSConn(c)
-}
-
-func (c *TCPSConn) Recv() (p []byte, err error) { // p == nil means EOF
-	// TODO: deadline
-	n, err := c.netConn.Read(c.input)
-	if n > 0 {
-		p = c.input[:n]
-	}
-	if err != nil {
-		c._checkClose()
-	}
-	return
-}
-func (c *TCPSConn) Send(p []byte) (err error) { // if p is nil, send EOF
-	// TODO: deadline
-	if p == nil {
-		c.closeWrite()
-		c._checkClose()
-	} else {
-		_, err = c.netConn.Write(p)
-	}
-	return
-}
-func (c *TCPSConn) _checkClose() {
-	if c.closeSema.Add(-1) == 0 {
-		c.closeConn()
-	}
-}
-
-func (c *TCPSConn) closeWrite() {
-	if router := c.Server(); router.IsTLS() {
-		c.netConn.(*tls.Conn).CloseWrite()
-	} else if router.IsUDS() {
-		c.netConn.(*net.UnixConn).CloseWrite()
-	} else {
-		c.netConn.(*net.TCPConn).CloseWrite()
-	}
-}
-
-func (c *TCPSConn) closeConn() {
-	c.netConn.Close()
-	c.gate.OnConnClosed()
-}
-
-func (c *TCPSConn) unsafeVariable(code int16, name string) (value []byte) {
-	return tcpsConnVariables[code](c)
-}
-
-// tcpsConnVariables
-var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes
-	// TODO
-	nil, // srcHost
-	nil, // srcPort
-	nil, // isTLS
-	nil, // isUDS
-	nil, // serverName
-	nil, // nextProto
-}
-
 // TCPSDealet
 type TCPSDealet interface {
 	// Imports
@@ -553,4 +431,122 @@ func (c *tcpsCase) notContainMatch(conn *TCPSConn, value []byte) bool { // value
 }
 func (c *tcpsCase) notRegexpMatch(conn *TCPSConn, value []byte) bool { // value !~ patterns
 	return notRegexpMatch(value, c.regexps)
+}
+
+// poolTCPSConn
+var poolTCPSConn sync.Pool
+
+func getTCPSConn(id int64, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) *TCPSConn {
+	var tcpsConn *TCPSConn
+	if x := poolTCPSConn.Get(); x == nil {
+		tcpsConn = new(TCPSConn)
+	} else {
+		tcpsConn = x.(*TCPSConn)
+	}
+	tcpsConn.onGet(id, gate, netConn, rawConn)
+	return tcpsConn
+}
+func putTCPSConn(tcpsConn *TCPSConn) {
+	tcpsConn.onPut()
+	poolTCPSConn.Put(tcpsConn)
+}
+
+// TCPSConn is a TCPS connection coming from TCPSRouter.
+type TCPSConn struct {
+	// Parent
+	ServerConn_
+	// Conn states (stocks)
+	stockInput  [8192]byte // for c.input
+	stockBuffer [256]byte  // a (fake) buffer to workaround Go's conservative escape analysis
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	netConn   net.Conn        // the connection (TCP/TLS/UDS)
+	rawConn   syscall.RawConn // for syscall, only when netConn is TCP
+	region    Region          // a region-based memory pool
+	input     []byte          // input buffer
+	closeSema atomic.Int32
+	// Conn states (zeros)
+}
+
+func (c *TCPSConn) onGet(id int64, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) {
+	c.ServerConn_.OnGet(id, gate)
+	c.netConn = netConn
+	c.rawConn = rawConn
+	c.region.Init()
+	c.input = c.stockInput[:]
+	c.closeSema.Store(2)
+}
+func (c *TCPSConn) onPut() {
+	c.netConn = nil
+	c.rawConn = nil
+	c.region.Free()
+	if cap(c.input) != cap(c.stockInput) {
+		PutNK(c.input)
+		c.input = nil
+	}
+	c.ServerConn_.OnPut()
+}
+
+func (c *TCPSConn) serve() { // runner
+	router := c.Server().(*TCPSRouter)
+	router.dispatch(c)
+	c.closeConn()
+	putTCPSConn(c)
+}
+
+func (c *TCPSConn) Recv() (p []byte, err error) { // p == nil means EOF
+	// TODO: deadline
+	n, err := c.netConn.Read(c.input)
+	if n > 0 {
+		p = c.input[:n]
+	}
+	if err != nil {
+		c._checkClose()
+	}
+	return
+}
+func (c *TCPSConn) Send(p []byte) (err error) { // if p is nil, send EOF
+	// TODO: deadline
+	if p == nil {
+		c.closeWrite()
+		c._checkClose()
+	} else {
+		_, err = c.netConn.Write(p)
+	}
+	return
+}
+func (c *TCPSConn) _checkClose() {
+	if c.closeSema.Add(-1) == 0 {
+		c.closeConn()
+	}
+}
+
+func (c *TCPSConn) closeWrite() {
+	if router := c.Server(); router.IsTLS() {
+		c.netConn.(*tls.Conn).CloseWrite()
+	} else if router.IsUDS() {
+		c.netConn.(*net.UnixConn).CloseWrite()
+	} else {
+		c.netConn.(*net.TCPConn).CloseWrite()
+	}
+}
+
+func (c *TCPSConn) closeConn() {
+	c.netConn.Close()
+	c.gate.OnConnClosed()
+}
+
+func (c *TCPSConn) unsafeVariable(code int16, name string) (value []byte) {
+	return tcpsConnVariables[code](c)
+}
+
+// tcpsConnVariables
+var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes
+	// TODO
+	nil, // srcHost
+	nil, // srcPort
+	nil, // isTLS
+	nil, // isUDS
+	nil, // serverName
+	nil, // nextProto
 }

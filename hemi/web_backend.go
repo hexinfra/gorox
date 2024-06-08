@@ -19,10 +19,10 @@ type WebBackend interface { // for *HTTP[1-3]Backend
 	Backend
 	contentSaver
 	// Methods
-	SendTimeout() time.Duration // timeout to send the whole message
-	RecvTimeout() time.Duration // timeout to recv the whole message content
-	MaxContentSize() int64      // in response
-	MaxMemoryContentSize() int32
+	SendTimeout() time.Duration  // timeout to send the whole message
+	RecvTimeout() time.Duration  // timeout to recv the whole message content
+	MaxContentSize() int64       // in response
+	MaxMemoryContentSize() int32 // in response
 	MaxStreamsPerConn() int32
 	FetchStream() (backendStream, error)
 	StoreStream(stream backendStream)

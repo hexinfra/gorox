@@ -26,8 +26,8 @@ type Backend interface {
 	Stage() *Stage
 	CreateNode(name string) Node
 	DialTimeout() time.Duration
-	ReadTimeout() time.Duration  // timeout for a single read operation
 	WriteTimeout() time.Duration // timeout for a single write operation
+	ReadTimeout() time.Duration  // timeout for a single read operation
 	AliveTimeout() time.Duration
 	nextConnID() int64
 }
@@ -42,8 +42,8 @@ type Backend_[N Node] struct {
 	nodes compList[N] // nodes of this backend
 	// States
 	dialTimeout  time.Duration // dial remote timeout
-	readTimeout  time.Duration // read() timeout
 	writeTimeout time.Duration // write() timeout
+	readTimeout  time.Duration // read() timeout
 	aliveTimeout time.Duration // conn alive timeout
 	connID       atomic.Int64  // next conn id
 	balancer     string        // roundRobin, ipHash, random, ...
@@ -72,14 +72,6 @@ func (b *Backend_[N]) OnConfigure() {
 		return errors.New(".dialTimeout has an invalid value")
 	}, 10*time.Second)
 
-	// readTimeout
-	b.ConfigureDuration("readTimeout", &b.readTimeout, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".readTimeout has an invalid value")
-	}, 30*time.Second)
-
 	// writeTimeout
 	b.ConfigureDuration("writeTimeout", &b.writeTimeout, func(value time.Duration) error {
 		if value > 0 {
@@ -88,12 +80,20 @@ func (b *Backend_[N]) OnConfigure() {
 		return errors.New(".writeTimeout has an invalid value")
 	}, 30*time.Second)
 
+	// readTimeout
+	b.ConfigureDuration("readTimeout", &b.readTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".readTimeout has an invalid value")
+	}, 30*time.Second)
+
 	// aliveTimeout
 	b.ConfigureDuration("aliveTimeout", &b.aliveTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".readTimeout has an invalid value")
+		return errors.New(".aliveTimeout has an invalid value")
 	}, 5*time.Second)
 
 	// balancer
@@ -151,8 +151,8 @@ func (b *Backend_[N]) AddNode(node N) {
 
 func (b *Backend_[N]) Stage() *Stage               { return b.stage }
 func (b *Backend_[N]) DialTimeout() time.Duration  { return b.dialTimeout }
-func (b *Backend_[N]) ReadTimeout() time.Duration  { return b.readTimeout }
 func (b *Backend_[N]) WriteTimeout() time.Duration { return b.writeTimeout }
+func (b *Backend_[N]) ReadTimeout() time.Duration  { return b.readTimeout }
 func (b *Backend_[N]) AliveTimeout() time.Duration { return b.aliveTimeout }
 
 func (b *Backend_[N]) nextConnID() int64 { return b.connID.Add(1) }

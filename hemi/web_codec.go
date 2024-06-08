@@ -51,7 +51,7 @@ func (k *_webKeeper_) onConfigure(component Component, recvTimeout time.Duration
 
 	// recvTimeout
 	component.ConfigureDuration("recvTimeout", &k.recvTimeout, func(value time.Duration) error {
-		if value > 0 {
+		if value >= 0 {
 			return nil
 		}
 		return errors.New(".recvTimeout has an invalid value")
@@ -59,7 +59,7 @@ func (k *_webKeeper_) onConfigure(component Component, recvTimeout time.Duration
 
 	// sendTimeout
 	component.ConfigureDuration("sendTimeout", &k.sendTimeout, func(value time.Duration) error {
-		if value > 0 {
+		if value >= 0 {
 			return nil
 		}
 		return errors.New(".sendTimeout has an invalid value")

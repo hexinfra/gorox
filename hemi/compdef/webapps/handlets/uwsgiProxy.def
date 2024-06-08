@@ -1,3 +1,10 @@
 uwsgiProxy "up1" {
-	// TODO
+	.saveContentFilesDir = %tmpDir + "/web/uwsgi/up1"
+	.toBackend = "python-app"
+	.sendTimeout = 60s
+	.recvTimeout = 60s
+	.bufferClientContent = true
+	.bufferServerContent = true
+	.preferUnderscore = true
+	.withCacher = "cacher name"
 }

@@ -397,17 +397,17 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					</code>
 				</li>
 				<li>
-					<p>.sendTimeout 发送整个 http 数据超时时间。</p>
+					<p>.sendTimeout 发送整个 http 数据超时时间。0 意味着不限制时间</p>
 					<code>语法：.sendTimeout = Duration
 						默认值：60s
-						取值范围： (0s, 10m]
+						取值范围： [0s, 10m]
 					</code>
 				</li>
 				<li>
-					<p>.recvTimeout 接收整个 http 数据超时时间。</p>
+					<p>.recvTimeout 接收整个 http 数据超时时间。0 意味着不限制时间</p>
 					<code>语法：.recvTimeout = Durations
 						默认值：60s
-						取值范围： (0s, 10m]
+						取值范围： [0s, 10m]
 					</code>
 				</li>
 				<li>
@@ -1022,14 +1022,14 @@ stage {
 					</code>
 				</li>
 				<li>
-					<p>.sendTimeout 发送整个 cgi 数据包超时时间。0 意味着不设置超时时间。</p>
-					<code>语法：.sendTimeout = 60s
+					<p>.sendTimeout 发送整个 FCGI 数据包超时时间。0 意味着不限制时间。</p>
+					<code>语法：.sendTimeout = Duration
 						默认值：60s
 						取值范围： [0s, 10m]
 					</code>
 				</li>
 				<li>
-					<p>.recvTimeout 读取整个 cgi 数据包超时时间。0意味着不设置超时时间。</p>
+					<p>.recvTimeout 读取整个 FCGI 数据包超时时间。0 意味着不限制时间。</p>
 					<code>语法：.recvTimeout = Duration
 						默认值：60s
 						取值范围： [0s, 10m]
@@ -1418,11 +1418,13 @@ httpProxy {
 						默认值：-; 必填项 
 					</code>
 				</li>
-				<p>.tlsMode 是否开启 tls 协议（支持 https）</p>
-				<code>语法：.tlsMode = bool
-					默认值：false
-					取值范围： false | true
-				</code>
+				<li>
+					<p>.tlsMode 是否开启 tls 协议（支持 https）</p>
+					<code>语法：.tlsMode = bool
+						默认值：false
+						取值范围： false | true
+					</code>
+				</li>
 				<li>
 					<p>.readTimeout 本次读数据超时时间，超过时间则连接关闭。</p>
 					<code>语法：.readTimeout = Duration
@@ -1466,18 +1468,18 @@ httpProxy {
 					</code>
 				</li>
 				<li>
-					<p>.recvTimeout 接收整个数据包的超时时间。</p>
+					<p>.recvTimeout 接收整个数据包的超时时间。0 意味着不限制时间</p>
 					<code>语法：.recvTimeout = 120s
 						默认值：120s
-						取值范围： (0s, 10m]
+						取值范围： [0s, 10m]
 					</code>
 				</li>
 
 				<li>
-					<p>.sendTimeout 发送整个数据包的超时时间。</p>
+					<p>.sendTimeout 发送整个数据包的超时时间。0 意味着不限制时间</p>
 					<code>语法：.sendTimeout = 120s
 						默认值：120s
-						取值范围： (0s, 10m]
+						取值范围： [0s, 10m]
 					</code>
 				</li>
 

@@ -25,8 +25,8 @@ func Dial(dsn *DSN, timeout time.Duration) (*PgSQL, error) {
 
 type PgSQL struct {
 	dsn          *DSN
-	readTimeout  time.Duration
 	writeTimeout time.Duration
+	readTimeout  time.Duration
 }
 
 func (c *PgSQL) Close() error {

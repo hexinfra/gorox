@@ -26,8 +26,8 @@ func Dial(dsn *DSN, timeout time.Duration) (*MySQL, error) {
 
 type MySQL struct {
 	dsn          *DSN
-	readTimeout  time.Duration
 	writeTimeout time.Duration
+	readTimeout  time.Duration
 }
 
 func (c *MySQL) Close() error {

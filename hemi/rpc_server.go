@@ -49,20 +49,20 @@ func (s *hrpcServer) OnConfigure() {
 	// forServices
 	s.ConfigureStringList("forServices", &s.forServices, nil, []string{})
 
-	// sendTimeout
-	s.ConfigureDuration("sendTimeout", &s.sendTimeout, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".sendTimeout has an invalid value")
-	}, 60*time.Second)
-
 	// recvTimeout
 	s.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) error {
-		if value > 0 {
+		if value >= 0 {
 			return nil
 		}
 		return errors.New(".recvTimeout has an invalid value")
+	}, 60*time.Second)
+
+	// sendTimeout
+	s.ConfigureDuration("sendTimeout", &s.sendTimeout, func(value time.Duration) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".sendTimeout has an invalid value")
 	}, 60*time.Second)
 }
 func (s *hrpcServer) OnPrepare() {

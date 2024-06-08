@@ -22,8 +22,8 @@ func Dial(dsn *DSN, timeout time.Duration) (*Mongo, error) {
 
 type Mongo struct {
 	dsn          *DSN
-	readTimeout  time.Duration
 	writeTimeout time.Duration
+	readTimeout  time.Duration
 }
 
 func (c *Mongo) Close() error {

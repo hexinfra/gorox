@@ -401,7 +401,7 @@ func (s *QUIXStream) Read(p []byte) (n int, err error) {
 	return
 }
 
-// quixProxy passes QUIX connections to backend QUIX server.
+// quixProxy passes QUIX connections to QUIX backends.
 type quixProxy struct {
 	// Parent
 	QUIXDealet_

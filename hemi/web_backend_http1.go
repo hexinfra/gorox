@@ -30,8 +30,29 @@ func init() {
 // HTTP1Backend
 type HTTP1Backend struct {
 	// Parent
-	webBackend_[*http1Node]
+	Backend_[*http1Node]
+	// Mixins
+	_webKeeper_
 	// States
+}
+
+func (b *HTTP1Backend) onCreate(name string, stage *Stage) {
+	b.Backend_.OnCreate(name, stage)
+}
+
+func (b *HTTP1Backend) OnConfigure() {
+	b.Backend_.OnConfigure()
+	b._webKeeper_.onConfigure(b, 60*time.Second, 60*time.Second, 1000, TmpDir()+"/web/backends/"+b.name)
+
+	// sub components
+	b.ConfigureNodes()
+}
+func (b *HTTP1Backend) OnPrepare() {
+	b.Backend_.OnPrepare()
+	b._webKeeper_.onPrepare(b)
+
+	// sub components
+	b.PrepareNodes()
 }
 
 func (b *HTTP1Backend) CreateNode(name string) Node {

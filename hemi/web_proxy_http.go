@@ -24,7 +24,7 @@ func init() {
 	})
 }
 
-// httpProxy handlet passes web requests to backend web servers and cache responses.
+// httpProxy handlet passes web requests to web backends and caches responses.
 type httpProxy struct {
 	// Parent
 	Handlet_
@@ -34,7 +34,7 @@ type httpProxy struct {
 	backend WebBackend // the backend to pass to. can be *HTTP1Backend, *HTTP2Backend, or *HTTP3Backend
 	cacher  Cacher     // the cacher which is used by this proxy
 	// States
-	WebExchanProxyConfig
+	WebExchanProxyConfig // embeded
 }
 
 func (h *httpProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
@@ -97,18 +97,20 @@ func (h *httpProxy) OnConfigure() {
 		}
 	}
 
+	// bufferClientContent
+	h.ConfigureBool("bufferClientContent", &h.BufferClientContent, true)
 	// hostname
 	h.ConfigureBytes("hostname", &h.Hostname, nil, nil)
 	// colonPort
 	h.ConfigureBytes("colonPort", &h.ColonPort, nil, nil)
 	// inboundViaName
 	h.ConfigureBytes("inboundViaName", &h.InboundViaName, nil, bytesGorox)
-	// bufferClientContent
-	h.ConfigureBool("bufferClientContent", &h.BufferClientContent, true)
-	// bufferServerContent
-	h.ConfigureBool("bufferServerContent", &h.BufferServerContent, true)
 	// delRequestHeaders
 	h.ConfigureBytesList("delRequestHeaders", &h.DelRequestHeaders, nil, [][]byte{})
+	// bufferServerContent
+	h.ConfigureBool("bufferServerContent", &h.BufferServerContent, true)
+	// outboundViaName
+	h.ConfigureBytes("outboundViaName", &h.OutboundViaName, nil, nil)
 	// addResponseHeaders
 	h.ConfigureStringDict("addResponseHeaders", &h.AddResponseHeaders, nil, map[string]string{})
 	// delResponseHeaders
@@ -264,7 +266,7 @@ func ReverseProxyWebExchan(req Request, resp Response, backend WebBackend, cfg *
 	}
 }
 
-// sockProxy socklet passes web sockets to backend websocket servers.
+// sockProxy socklet passes web sockets to web backends.
 type sockProxy struct {
 	// Parent
 	Socklet_

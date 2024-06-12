@@ -24,36 +24,9 @@ type WebBackend interface { // for *HTTP[1-3]Backend
 	MaxContentSize() int64       // in response
 	MaxMemoryContentSize() int32 // in response
 	MaxStreamsPerConn() int32
+
 	FetchStream() (backendStream, error)
 	StoreStream(stream backendStream)
-}
-
-// webBackend_ is the parent for HTTP[1-3]Backend.
-type webBackend_[N Node] struct {
-	// Parent
-	Backend_[N]
-	// Mixins
-	_webKeeper_
-	// States
-}
-
-func (b *webBackend_[N]) onCreate(name string, stage *Stage) {
-	b.Backend_.OnCreate(name, stage)
-}
-
-func (b *webBackend_[N]) OnConfigure() {
-	b.Backend_.OnConfigure()
-	b._webKeeper_.onConfigure(b, 60*time.Second, 60*time.Second, 1000, TmpDir()+"/web/backends/"+b.name)
-
-	// sub components
-	b.ConfigureNodes()
-}
-func (b *webBackend_[N]) OnPrepare() {
-	b.Backend_.OnPrepare()
-	b._webKeeper_.onPrepare(b)
-
-	// sub components
-	b.PrepareNodes()
 }
 
 // backendStream is the backend-side web stream.

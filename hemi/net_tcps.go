@@ -10,7 +10,6 @@ package hemi
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"io"
 	"net"
 	"os"
@@ -566,7 +565,7 @@ var tcpsConnVariables = [...]func(*TCPSConn) []byte{ // keep sync with varCodes
 	nil, // nextProto
 }
 
-// tcpsProxy passes TCPS connections to backend TCPS server.
+// tcpsProxy passes TCPS connections to TCPS backends.
 type tcpsProxy struct {
 	// Parent
 	TCPSDealet_
@@ -613,38 +612,12 @@ func (d *tcpsProxy) Deal(conn *TCPSConn) (dealt bool) {
 	return true
 }
 
-/*
-// backendTConn
-type backendTConn struct {
-	// Conn states (stocks)
-	stockInput [8192]byte // for c.input
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	proxy *tcpsProxy
-	conn  *TConn
-	input []byte
-	// Conn states (zeros)
-}
-
-func (c *backendTConn) onUse(proxy *tcpsProxy, conn *TConn) {
-	c.proxy = proxy
-	c.conn = conn
-	c.input = c.stockInput[:]
-}
-func (c *backendTConn) onEnd() {
-	c.input = nil
-	c.conn = nil
-	c.proxy = nil
-}
-*/
-
 // TCPSBackend component.
 type TCPSBackend struct {
 	// Parent
 	Backend_[*tcpsNode]
 	// Mixins
 	// States
-	maxStreamsPerConn int32 // max streams of one conn. 0 means infinite
 }
 
 func (b *TCPSBackend) onCreate(name string, stage *Stage) {
@@ -653,14 +626,6 @@ func (b *TCPSBackend) onCreate(name string, stage *Stage) {
 
 func (b *TCPSBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
-
-	// maxStreamsPerConn
-	b.ConfigureInt32("maxStreamsPerConn", &b.maxStreamsPerConn, func(value int32) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".maxStreamsPerConn has an invalid value")
-	}, 1000)
 
 	// sub components
 	b.ConfigureNodes()
@@ -672,8 +637,6 @@ func (b *TCPSBackend) OnPrepare() {
 	b.PrepareNodes()
 }
 
-func (b *TCPSBackend) MaxStreamsPerConn() int32 { return b.maxStreamsPerConn }
-
 func (b *TCPSBackend) CreateNode(name string) Node {
 	node := new(tcpsNode)
 	node.onCreate(name, b)
@@ -684,14 +647,6 @@ func (b *TCPSBackend) CreateNode(name string) Node {
 func (b *TCPSBackend) Dial() (*TConn, error) {
 	node := b.nodes[b.nextIndex()]
 	return node.dial()
-}
-
-func (b *TCPSBackend) FetchConn() (*TConn, error) {
-	node := b.nodes[b.nextIndex()]
-	return node.fetchConn()
-}
-func (b *TCPSBackend) StoreConn(tConn *TConn) {
-	tConn.node.(*tcpsNode).storeConn(tConn)
 }
 
 // tcpsNode is a node in TCPSBackend.
@@ -724,10 +679,12 @@ func (n *tcpsNode) Maintain() { // runner
 		// TODO: health check, markDown, markUp()
 	})
 	n.markDown()
-	if size := n.closeFree(); size > 0 {
-		n.SubsAddn(-size)
-	}
-	n.WaitSubs() // conns. TODO: max timeout?
+	/*
+		if size := n.closeFree(); size > 0 {
+			n.SubsAddn(-size)
+		}
+		n.WaitSubs() // conns. TODO: max timeout?
+	*/
 	if DebugLevel() >= 2 {
 		Printf("tcpsNode=%s done\n", n.name)
 	}
@@ -814,81 +771,6 @@ func (n *tcpsNode) _dialTCP() (*TConn, error) {
 	return getTConn(connID, n, netConn, rawConn), nil
 }
 
-func (n *tcpsNode) fetchConn() (*TConn, error) {
-	tConn := n.pullConn()
-	down := n.isDown()
-	if tConn != nil {
-		if tConn.isAlive() && !tConn.reachLimit() && !down {
-			return tConn, nil
-		}
-		n.closeConn(tConn)
-	}
-	if down {
-		return nil, errNodeDown
-	}
-	return n.dial()
-}
-func (n *tcpsNode) storeConn(tConn *TConn) {
-	if tConn.IsBroken() || n.isDown() || !tConn.isAlive() {
-		if DebugLevel() >= 2 {
-			Printf("TConn[node=%s id=%d] closed\n", tConn.node.Name(), tConn.id)
-		}
-		n.closeConn(tConn)
-	} else {
-		if DebugLevel() >= 2 {
-			Printf("TConn[node=%s id=%d] pushed\n", tConn.node.Name(), tConn.id)
-		}
-		n.pushConn(tConn)
-	}
-}
-
-func (n *tcpsNode) pullConn() *TConn {
-	list := &n.connPool
-
-	list.Lock()
-	defer list.Unlock()
-
-	if list.qnty == 0 {
-		return nil
-	}
-	conn := list.head
-	list.head = conn.next
-	conn.next = nil
-	list.qnty--
-
-	return conn
-}
-func (n *tcpsNode) pushConn(conn *TConn) {
-	list := &n.connPool
-
-	list.Lock()
-	defer list.Unlock()
-
-	if list.qnty == 0 {
-		list.head = conn
-		list.tail = conn
-	} else { // >= 1
-		list.tail.next = conn
-		list.tail = conn
-	}
-	list.qnty++
-}
-func (n *tcpsNode) closeFree() int {
-	list := &n.connPool
-
-	list.Lock()
-	defer list.Unlock()
-
-	for conn := list.head; conn != nil; conn = conn.next {
-		conn.Close()
-	}
-	qnty := list.qnty
-	list.qnty = 0
-	list.head, list.tail = nil, nil
-
-	return qnty
-}
-
 // poolTConn
 var poolTConn sync.Pool
 
@@ -913,26 +795,28 @@ type TConn struct {
 	BackendConn_
 	// Assocs
 	next *TConn // the linked-list
+	// Conn states (stocks)
+	stockInput [8192]byte // for c.input
+	// Conn states (controlled)
 	// Conn states (non-zeros)
-	netConn    net.Conn        // *net.TCPConn, *tls.Conn, *net.UnixConn
-	rawConn    syscall.RawConn // for syscall. only usable when netConn is TCP/UDS
-	maxStreams int32           // how many streams are allowed on this conn?
+	input   []byte
+	netConn net.Conn        // *net.TCPConn, *tls.Conn, *net.UnixConn
+	rawConn syscall.RawConn // for syscall. only usable when netConn is TCP/UDS
 	// Conn states (zeros)
-	usedStreams atomic.Int32 // how many streams have been used?
-	writeBroken atomic.Bool  // write-side broken?
-	readBroken  atomic.Bool  // read-side broken?
+	writeBroken atomic.Bool // write-side broken?
+	readBroken  atomic.Bool // read-side broken?
 }
 
 func (c *TConn) onGet(id int64, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) {
 	c.BackendConn_.OnGet(id, node)
+	c.input = c.stockInput[:]
 	c.netConn = netConn
 	c.rawConn = rawConn
-	c.maxStreams = node.Backend().(*TCPSBackend).MaxStreamsPerConn()
 }
 func (c *TConn) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
-	c.usedStreams.Store(0)
+	c.input = nil
 	c.writeBroken.Store(false)
 	c.readBroken.Store(false)
 	c.BackendConn_.OnPut()
@@ -941,8 +825,6 @@ func (c *TConn) onPut() {
 func (c *TConn) TLSConn() *tls.Conn     { return c.netConn.(*tls.Conn) }
 func (c *TConn) UDSConn() *net.UnixConn { return c.netConn.(*net.UnixConn) }
 func (c *TConn) TCPConn() *net.TCPConn  { return c.netConn.(*net.TCPConn) }
-
-func (c *TConn) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }
 
 func (c *TConn) SetWriteDeadline(deadline time.Time) error {
 	if deadline.Sub(c.lastWrite) >= time.Second {

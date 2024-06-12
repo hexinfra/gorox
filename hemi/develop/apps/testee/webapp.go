@@ -15,9 +15,6 @@ func init() {
 	RegisterWebappInit("testee", func(webapp *Webapp) error {
 		return nil
 	})
-}
-
-func init() {
 	RegisterHandlet("testeeHandlet", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(testeeHandlet)
 		h.onCreate(name, stage, webapp)

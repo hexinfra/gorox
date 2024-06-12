@@ -418,7 +418,7 @@ var udpsConnVariables = [...]func(*UDPSConn) []byte{ // keep sync with varCodes
 	nil, // isUDS
 }
 
-// udpsProxy passes UDPS conns to backend UDPS server.
+// udpsProxy passes UDPS connections to UDPS backends.
 type udpsProxy struct {
 	// Parent
 	UDPSDealet_
@@ -501,14 +501,6 @@ func (b *UDPSBackend) Dial() (*UConn, error) {
 	return node.dial()
 }
 
-func (b *UDPSBackend) FetchConn() (*UConn, error) {
-	node := b.nodes[b.nextIndex()]
-	return node.fetchConn()
-}
-func (b *UDPSBackend) StoreConn(uConn *UConn) {
-	uConn.node.(*udpsNode).storeConn(uConn)
-}
-
 // udpsNode is a node in UDPSBackend.
 type udpsNode struct {
 	// Parent
@@ -543,14 +535,6 @@ func (n *udpsNode) Maintain() { // runner
 func (n *udpsNode) dial() (*UConn, error) {
 	// TODO. note: use n.IncSub()
 	return nil, nil
-}
-
-func (n *udpsNode) fetchConn() (*UConn, error) {
-	// TODO
-	return nil, nil
-}
-func (n *udpsNode) storeConn(uConn *UConn) {
-	// TODO
 }
 
 // poolUConn

@@ -704,7 +704,7 @@ $=	变量和给定值，是否后缀匹配。
 	</code>
 
 					<p>rule 例子</p>
-					<code class="pre">tcpsBackend "fpm" {
+					<code class="pre">fcgiBackend "fpm" {
 	.balancer = "roundRobin"
 	node {
 		.address = "127.0.0.1:9000"
@@ -935,7 +935,7 @@ webapp "main" {
 
 // 例子
 stage {
-	tcpsBackend "php-fpm" {
+	fcgiBackend "php-fpm" {
 		.balancer = "roundRobin"
 		node {
 			.address = "127.0.0.1:9000"
@@ -1052,7 +1052,7 @@ stage {
 				<li>
 					<p>完整的例子</p>
 					<code class="pre">stage {
-	tcpsBackend "php-fpm" {
+	fcgiBackend "php-fpm" {
 		.balancer = "roundRobin"
 		node {
 			.address = "127.0.0.1:9000"

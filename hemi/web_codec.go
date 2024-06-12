@@ -34,7 +34,7 @@ type webKeeper interface {
 	MaxStreamsPerConn() int32
 }
 
-// _webKeeper_ is a mixin for webServer_ and webBackend_.
+// _webKeeper_ is a mixin for webServer_ and HTTP[1-3]Backend.
 type _webKeeper_ struct {
 	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.

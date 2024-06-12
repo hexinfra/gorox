@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
 
-// PgSQL proxy dealet passes conns to backend PgSQL servers.
+// PgSQL proxy dealet passes connections to PgSQL backends.
 
 package pgsql
 

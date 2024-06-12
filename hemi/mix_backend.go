@@ -118,19 +118,16 @@ func (b *Backend_[N]) OnPrepare() {
 	b.numNodes = int64(len(b.nodes))
 }
 
-func (b *Backend_[N]) ConfigureNodes() {
-	b.nodes.walk(N.OnConfigure)
-}
-func (b *Backend_[N]) PrepareNodes() {
-	b.nodes.walk(N.OnPrepare)
-}
+func (b *Backend_[N]) ConfigureNodes() { b.nodes.walk(N.OnConfigure) }
+func (b *Backend_[N]) PrepareNodes()   { b.nodes.walk(N.OnPrepare) }
 
 func (b *Backend_[N]) Maintain() { // runner
 	for _, node := range b.nodes {
 		b.IncSub()
 		go node.Maintain()
 	}
-	<-b.ShutChan
+
+	<-b.ShutChan // waiting for shutdown signal
 
 	// Backend was told to shutdown. Tell its nodes to shutdown too
 	for _, node := range b.nodes {
@@ -158,6 +155,7 @@ func (b *Backend_[N]) AliveTimeout() time.Duration { return b.aliveTimeout }
 func (b *Backend_[N]) nextConnID() int64 { return b.connID.Add(1) }
 
 func (b *Backend_[N]) nextIndex() int64 { return b.indexGet() }
+
 func (b *Backend_[N]) nextIndexByRoundRobin() int64 {
 	index := b.nodeIndex.Add(1)
 	return index % b.numNodes
@@ -188,9 +186,9 @@ type Node_ struct {
 	// Assocs
 	backend Backend
 	// States
-	udsMode        bool        // uds or not
 	tlsMode        bool        // tls or not
 	tlsConfig      *tls.Config // TLS config if TLS is enabled
+	udsMode        bool        // uds or not
 	address        string      // hostname:port, /path/to/unix.sock
 	weight         int32       // 1, 22, 333, ...
 	keepAliveConns int32       // max conns to keep alive
@@ -208,6 +206,12 @@ func (n *Node_) OnShutdown() {
 }
 
 func (n *Node_) OnConfigure() {
+	// tlsMode
+	n.ConfigureBool("tlsMode", &n.tlsMode, false)
+	if n.tlsMode {
+		n.tlsConfig = new(tls.Config)
+	}
+
 	// address
 	if v, ok := n.Find("address"); ok {
 		if address, ok := v.String(); ok && address != "" {
@@ -222,12 +226,6 @@ func (n *Node_) OnConfigure() {
 		}
 	} else {
 		UseExitln("address is required in node")
-	}
-
-	// tlsMode
-	n.ConfigureBool("tlsMode", &n.tlsMode, false)
-	if n.tlsMode {
-		n.tlsConfig = new(tls.Config)
 	}
 
 	// weight

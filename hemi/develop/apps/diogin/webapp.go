@@ -15,9 +15,6 @@ func init() {
 	RegisterWebappInit("diogin", func(webapp *Webapp) error {
 		return nil
 	})
-}
-
-func init() {
 	RegisterHandlet("dioginHandlet", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(dioginHandlet)
 		h.onCreate(name, stage, webapp)

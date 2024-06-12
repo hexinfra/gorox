@@ -4,7 +4,6 @@ tcpsBackend "tb1" {
 	.writeTimeout = 30s
 	.readTimeout = 30s
 	.aliveTimeout = 5s
-	.maxStreamsPerConn = 1000
 	.balancer = "random"
 	node {
 		.address = "127.0.0.1:3080"

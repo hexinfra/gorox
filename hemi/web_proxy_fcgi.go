@@ -23,6 +23,8 @@ import (
 	"net"
 	"os"
 	"sync"
+	"sync/atomic"
+	"syscall"
 	"time"
 )
 
@@ -32,28 +34,27 @@ func init() {
 		h.onCreate(name, stage, webapp)
 		return h
 	})
+	RegisterBackend("fcgiBackend", func(name string, stage *Stage) Backend {
+		b := new(fcgiBackend)
+		b.onCreate(name, stage)
+		return b
+	})
 }
 
-// fcgiProxy handlet passes web requests to backend FCGI servers and cache responses.
+// fcgiProxy handlet passes web requests to FCGI backends and caches responses.
 type fcgiProxy struct {
 	// Parent
 	Handlet_
-	// Mixins
-	_contentSaver_ // so responses can save their large contents in local file system.
 	// Assocs
 	stage   *Stage       // current stage
 	webapp  *Webapp      // the webapp to which the proxy belongs
-	backend *TCPSBackend // the backend to pass to
+	backend *fcgiBackend // the backend to pass to
 	cacher  Cacher       // the cacher which is used by this proxy
 	// States
-	WebExchanProxyConfig
-	persistent       bool          // instructs FCGI server to keep conn?
-	preferUnderscore bool          // if header name "foo-bar" and "foo_bar" are both present, prefer "foo_bar" to "foo-bar"?
-	scriptFilename   []byte        // for SCRIPT_FILENAME
-	indexFile        []byte        // for indexFile
-	sendTimeout      time.Duration // timeout to send the whole request
-	recvTimeout      time.Duration // timeout to recv the whole response content
-	maxContentSize   int64         // max response content size allowed
+	WebExchanProxyConfig               // embeded
+	preferUnderscore     bool          // if header name "foo-bar" and "foo_bar" are both present, prefer "foo_bar" to "foo-bar"?
+	scriptFilename       []byte        // for SCRIPT_FILENAME
+	indexFile            []byte        // the file that will be used as index
 }
 
 func (h *fcgiProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
@@ -66,17 +67,15 @@ func (h *fcgiProxy) OnShutdown() {
 }
 
 func (h *fcgiProxy) OnConfigure() {
-	h._contentSaver_.onConfigure(h, TmpDir()+"/web/fcgi/"+h.name)
-
 	// toBackend
 	if v, ok := h.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
 			if backend := h.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
-			} else if tcpsBackend, ok := backend.(*TCPSBackend); ok {
-				h.backend = tcpsBackend
+			} else if fcgiBackend, ok := backend.(*fcgiBackend); ok {
+				h.backend = fcgiBackend
 			} else {
-				UseExitf("incorrect backend '%s' for fcgiProxy, must be TCPSBackend\n", name)
+				UseExitf("incorrect backend '%s' for fcgiProxy, must be fcgiBackend\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")
@@ -102,8 +101,7 @@ func (h *fcgiProxy) OnConfigure() {
 	h.ConfigureBool("bufferClientContent", &h.BufferClientContent, true)
 	// bufferServerContent
 	h.ConfigureBool("bufferServerContent", &h.BufferServerContent, true)
-	// persistent
-	h.ConfigureBool("persistent", &h.persistent, false)
+
 	// preferUnderscore
 	h.ConfigureBool("preferUnderscore", &h.preferUnderscore, false)
 	// scriptFilename
@@ -116,33 +114,8 @@ func (h *fcgiProxy) OnConfigure() {
 		}
 		return errors.New(".indexFile has an invalid value")
 	}, []byte("index.php"))
-
-	// sendTimeout
-	h.ConfigureDuration("sendTimeout", &h.sendTimeout, func(value time.Duration) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".sendTimeout has an invalid value")
-	}, 60*time.Second)
-
-	// recvTimeout
-	h.ConfigureDuration("recvTimeout", &h.recvTimeout, func(value time.Duration) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".recvTimeout has an invalid value")
-	}, 60*time.Second)
-
-	// maxContentSize
-	h.ConfigureInt64("maxContentSize", &h.maxContentSize, func(value int64) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".maxContentSize has an invalid value")
-	}, _1T)
 }
 func (h *fcgiProxy) OnPrepare() {
-	h._contentSaver_.onPrepare(h, 0755)
 }
 
 func (h *fcgiProxy) IsProxy() bool { return true }
@@ -163,26 +136,26 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 		}
 	}
 
-	var (
-		fcgiConn *TConn
-		fcgiErr  error
-	)
-	if h.persistent {
-		if fcgiConn, fcgiErr = h.backend.FetchConn(); fcgiErr == nil {
-			defer h.backend.StoreConn(fcgiConn)
-		}
-	} else {
-		if fcgiConn, fcgiErr = h.backend.Dial(); fcgiErr == nil {
-			defer fcgiConn.Close()
-		}
-	}
+	fcgiExchan, fcgiErr := h.backend.fetchExchan()
 	if fcgiErr != nil {
 		resp.SendBadGateway(nil)
 		return
 	}
-
-	fcgiExchan := getFCGIExchan(h, fcgiConn)
+	defer h.backend.storeExchan(fcgiExchan)
+	
+	/*
+	if h.persistent {
+		if conn, fcgiErr = h.backend.FetchConn(); fcgiErr == nil {
+			defer h.backend.StoreConn(conn)
+		}
+	} else {
+		if conn, fcgiErr = h.backend.Dial(); fcgiErr == nil {
+			defer conn.Close()
+		}
+	}
+	fcgiExchan := getFCGIExchan(h, conn)
 	defer putFCGIExchan(fcgiExchan)
+	*/
 
 	fcgiReq := &fcgiExchan.request
 	if !fcgiReq.proxyCopyHead(req, h) {
@@ -258,12 +231,273 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 	return
 }
 
-// poolFCGIExchan
-var poolFCGIExchan sync.Pool
+// fcgiBackend
+type fcgiBackend struct {
+	// Parent
+	Backend_[*fcgiNode]
+	// Mixins
+	_contentSaver_ // so responses can save their large contents in local file system.
+	// States
+	persistent           bool          // instructs FCGI server to keep conn?
+	sendTimeout          time.Duration // timeout to send the whole request
+	recvTimeout          time.Duration // timeout to recv the whole response content
+	maxContentSize       int64         // max response content size allowed
+	maxExchansPerConn int32 // max exchans of one conn. 0 means infinite
+}
 
-func getFCGIExchan(proxy *fcgiProxy, conn *TConn) *fcgiExchan {
+func (b *fcgiBackend) onCreate(name string, stage *Stage) {
+	b.Backend_.OnCreate(name, stage)
+}
+
+func (b *fcgiBackend) OnConfigure() {
+	b.Backend_.OnConfigure()
+	b._contentSaver_.onConfigure(b, TmpDir()+"/web/fcgi/"+b.name)
+
+	// persistent
+	b.ConfigureBool("persistent", &b.persistent, false)
+
+	// sendTimeout
+	b.ConfigureDuration("sendTimeout", &b.sendTimeout, func(value time.Duration) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".sendTimeout has an invalid value")
+	}, 60*time.Second)
+
+	// recvTimeout
+	b.ConfigureDuration("recvTimeout", &b.recvTimeout, func(value time.Duration) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".recvTimeout has an invalid value")
+	}, 60*time.Second)
+
+	// maxContentSize
+	b.ConfigureInt64("maxContentSize", &b.maxContentSize, func(value int64) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".maxContentSize has an invalid value")
+	}, _1T)
+
+	// maxExchansPerConn
+	b.ConfigureInt32("maxExchansPerConn", &b.maxExchansPerConn, func(value int32) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".maxExchansPerConn has an invalid value")
+	}, 1000)
+
+	// sub components
+	b.ConfigureNodes()
+}
+func (b *fcgiBackend) OnPrepare() {
+	b.Backend_.OnPrepare()
+	b._contentSaver_.onPrepare(b, 0755)
+
+	// sub components
+	b.PrepareNodes()
+}
+
+func (b *fcgiBackend) MaxExchansPerConn() int32 { return b.maxExchansPerConn }
+
+func (b *fcgiBackend) CreateNode(name string) Node {
+	node := new(fcgiNode)
+	node.onCreate(name, b)
+	b.AddNode(node)
+	return node
+}
+
+func (b *fcgiBackend) Dial() (*fcgiConn, error) {
+	node := b.nodes[b.nextIndex()]
+	return node.dial()
+}
+
+func (b *fcgiBackend) FetchConn() (*fcgiConn, error) {
+	node := b.nodes[b.nextIndex()]
+	return node.fetchConn()
+}
+func (b *fcgiBackend) StoreConn(fConn *fcgiConn) {
+	fConn.node.(*fcgiNode).storeConn(fConn)
+}
+
+// fcgiNode
+type fcgiNode struct {
+	// Parent
+	Node_
+	// Assocs
+	// States
+	connPool struct { // free list of conns in this node
+		sync.Mutex
+		head *fcgiExchan
+		tail *fcgiExchan
+		qnty int // size of the list
+	}
+}
+
+func (n *fcgiNode) onCreate(name string, backend *fcgiBackend) {
+	n.Node_.OnCreate(name, backend)
+}
+
+func (n *fcgiNode) OnConfigure() {
+	n.Node_.OnConfigure()
+}
+func (n *fcgiNode) OnPrepare() {
+	n.Node_.OnPrepare()
+}
+
+func (n *fcgiNode) Maintain() { // runner
+	n.Loop(time.Second, func(now time.Time) {
+		// TODO: health check, markDown, markUp()
+	})
+	n.markDown()
+	if size := n.closeFree(); size > 0 {
+		n.SubsAddn(-size)
+	}
+	n.WaitSubs() // conns. TODO: max timeout?
+	if DebugLevel() >= 2 {
+		Printf("fcgiNode=%s done\n", n.name)
+	}
+	n.backend.DecSub()
+}
+
+func (n *fcgiNode) dial() (*fcgiConn, error) {
+	if DebugLevel() >= 2 {
+		Printf("fcgiNode=%s dial %s\n", n.name, n.address)
+	}
+	var (
+		fConn *fcgiConn
+		err   error
+	)
+	if n.IsUDS() {
+		fConn, err = n._dialUDS()
+	} else {
+		fConn, err = n._dialTCP()
+	}
+	if err != nil {
+		return nil, errNodeDown
+	}
+	n.IncSub()
+	return fConn, err
+}
+func (n *fcgiNode) _dialUDS() (*fcgiConn, error) {
+	// TODO: dynamic address names?
+	netConn, err := net.DialTimeout("unix", n.address, n.backend.DialTimeout())
+	if err != nil {
+		n.markDown()
+		return nil, err
+	}
+	if DebugLevel() >= 2 {
+		Printf("fcgiNode=%s dial %s OK!\n", n.name, n.address)
+	}
+	connID := n.backend.nextConnID()
+	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
+	if err != nil {
+		netConn.Close()
+		return nil, err
+	}
+	return getFCGIConn(connID, n, netConn, rawConn), nil
+}
+func (n *fcgiNode) _dialTCP() (*fcgiConn, error) {
+	// TODO: dynamic address names?
+	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
+	if err != nil {
+		n.markDown()
+		return nil, err
+	}
+	if DebugLevel() >= 2 {
+		Printf("fcgiNode=%s dial %s OK!\n", n.name, n.address)
+	}
+	connID := n.backend.nextConnID()
+	rawConn, err := netConn.(*net.TCPConn).SyscallConn()
+	if err != nil {
+		netConn.Close()
+		return nil, err
+	}
+	return getFCGIConn(connID, n, netConn, rawConn), nil
+}
+
+func (n *fcgiNode) fetchConn() (*fcgiConn, error) {
+	fConn := n.pullConn()
+	down := n.isDown()
+	if fConn != nil {
+		if fConn.isAlive() && !fConn.reachLimit() && !down {
+			return fConn, nil
+		}
+		n.closeConn(fConn)
+	}
+	if down {
+		return nil, errNodeDown
+	}
+	return n.dial()
+}
+func (n *fcgiNode) storeConn(fConn *fcgiConn) {
+	if fConn.IsBroken() || n.isDown() || !fConn.isAlive() {
+		if DebugLevel() >= 2 {
+			Printf("fcgiConn[node=%s id=%d] closed\n", fConn.node.Name(), fConn.id)
+		}
+		n.closeConn(fConn)
+	} else {
+		if DebugLevel() >= 2 {
+			Printf("fcgiConn[node=%s id=%d] pushed\n", fConn.node.Name(), fConn.id)
+		}
+		n.pushConn(fConn)
+	}
+}
+
+func (n *fcgiNode) pullConn() *fcgiConn {
+	list := &n.connPool
+
+	list.Lock()
+	defer list.Unlock()
+
+	if list.qnty == 0 {
+		return nil
+	}
+	conn := list.head
+	list.head = conn.next
+	conn.next = nil
+	list.qnty--
+
+	return conn
+}
+func (n *fcgiNode) pushConn(conn *fcgiConn) {
+	list := &n.connPool
+
+	list.Lock()
+	defer list.Unlock()
+
+	if list.qnty == 0 {
+		list.head = conn
+		list.tail = conn
+	} else { // >= 1
+		list.tail.next = conn
+		list.tail = conn
+	}
+	list.qnty++
+}
+func (n *fcgiNode) closeFree() int {
+	list := &n.connPool
+
+	list.Lock()
+	defer list.Unlock()
+
+	for conn := list.head; conn != nil; conn = conn.next {
+		conn.Close()
+	}
+	qnty := list.qnty
+	list.qnty = 0
+	list.head, list.tail = nil, nil
+
+	return qnty
+}
+
+// poolFCGIConn
+var poolFCGIConn sync.Pool
+
+func getFCGIConn(id int64, node *fcgiNode, netConn net.Conn, rawConn syscall.RawConn) *fcgiConn {
 	var exchan *fcgiExchan
-	if x := poolFCGIExchan.Get(); x == nil {
+	if x := poolFCGIConn.Get(); x == nil {
 		exchan = new(fcgiExchan)
 		req, resp := &exchan.request, &exchan.response
 		req.exchan = exchan
@@ -272,16 +506,31 @@ func getFCGIExchan(proxy *fcgiProxy, conn *TConn) *fcgiExchan {
 	} else {
 		exchan = x.(*fcgiExchan)
 	}
-	exchan.onUse(proxy, conn)
+	exchan.onGet(proxy)
 	return exchan
 }
-func putFCGIExchan(exchan *fcgiExchan) {
-	exchan.onEnd()
-	poolFCGIExchan.Put(exchan)
+func putFCGIConn(exchan *fcgiExchan) {
+	exchan.onPut()
+	poolFCGIConn.Put(exchan)
 }
 
-// fcgiExchan
-type fcgiExchan struct {
+// fcgiConn
+type fcgiConn struct {
+	// Parent
+	BackendConn_
+	// Assocs
+	next     *fcgiConn    // the linked-list
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	proxy      *fcgiProxy      // associated proxy
+	netConn    net.Conn        // *net.TCPConn or *net.UnixConn
+	rawConn    syscall.RawConn // for syscall
+	persistent bool // persist the connection after current exchan? true by default
+	// Conn states (zeros)
+	usedExchans atomic.Int32 // how many exchans have been used?
+	broken      atomic.Bool  // is conn broken?
+
 	// Assocs
 	request  fcgiRequest  // the fcgi request
 	response fcgiResponse // the fcgi response
@@ -289,24 +538,42 @@ type fcgiExchan struct {
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Exchan states (controlled)
 	// Exchan states (non-zeros)
-	region Region     // a region-based memory pool
-	proxy  *fcgiProxy // associated proxy
-	conn   *TConn     // the connection used
+	region     Region          // a region-based memory pool
 	// Exchan states (zeros)
 }
 
-func (x *fcgiExchan) onUse(proxy *fcgiProxy, conn *TConn) {
+func (c *fcgiConn) onGet(proxy *fcgiProxy, id int64, node *fcgiNode, netConn net.Conn, rawConn syscall.RawConn) {
+	c.BackendConn_.OnGet(id, node)
+	c.proxy = proxy
+	c.netConn = netConn
+	c.rawConn = rawConn
+	c.persistent = true
+}
+func (c *fcgiConn) onPut() {
+	c.proxy = nil
+	c.netConn = nil
+	c.rawConn = nil
+	c.usedExchans.Store(0)
+	c.broken.Store(false)
+	c.BackendConn_.OnPut()
+}
+
+func (c *fcgiConn) reachLimit() bool { return c.usedExchans.Add(1) > c.maxExchans }
+
+func (c *fcgiConn) isBroken() bool { return c.broken.Load() }
+func (c *fcgiConn) markBroken()    { c.broken.Store(true) }
+
+// fcgiExchan
+type fcgiExchan = fcgiConn
+
+func (x *fcgiExchan) onUse() { // for non-zeros
 	x.region.Init()
-	x.proxy = proxy
-	x.conn = conn
 	x.request.onUse()
 	x.response.onUse()
 }
-func (x *fcgiExchan) onEnd() {
-	x.request.onEnd()
+func (x *fcgiExchan) onEnd() { // for zeros
 	x.response.onEnd()
-	x.conn = nil
-	x.proxy = nil
+	x.request.onEnd()
 	x.region.Free()
 }
 
@@ -314,19 +581,30 @@ func (x *fcgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
 func (x *fcgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }
 
 func (x *fcgiExchan) setWriteDeadline(deadline time.Time) error {
-	return x.conn.SetWriteDeadline(deadline)
+	conn := x
+	if deadline.Sub(conn.lastWrite) >= time.Second {
+		if err := conn.netConn.SetWriteDeadline(deadline); err != nil {
+			return err
+		}
+		conn.lastWrite = deadline
+	}
+	return nil
 }
 func (x *fcgiExchan) setReadDeadline(deadline time.Time) error {
-	return x.conn.SetReadDeadline(deadline)
+	conn := x
+	if deadline.Sub(conn.lastRead) >= time.Second {
+		if err := conn.netConn.SetReadDeadline(deadline); err != nil {
+			return err
+		}
+		conn.lastRead = deadline
+	}
+	return nil
 }
 
-func (x *fcgiExchan) write(p []byte) (int, error)                { return x.conn.Write(p) }
-func (x *fcgiExchan) writev(vector *net.Buffers) (int64, error)  { return x.conn.Writev(vector) }
-func (x *fcgiExchan) read(p []byte) (int, error)                 { return x.conn.Read(p) }
-func (x *fcgiExchan) readAtLeast(p []byte, min int) (int, error) { return x.conn.ReadAtLeast(p, min) }
-
-func (x *fcgiExchan) isBroken() bool { return x.conn.IsBroken() }
-func (x *fcgiExchan) markBroken()    { x.conn.MarkBroken() }
+func (x *fcgiExchan) write(p []byte) (int, error)                { return x.netConn.Write(p) }
+func (x *fcgiExchan) writev(vector *net.Buffers) (int64, error)  { return vector.WriteTo(x.netConn) }
+func (x *fcgiExchan) read(p []byte) (int, error)                 { return x.netConn.Read(p) }
+func (x *fcgiExchan) readAtLeast(p []byte, min int) (int, error) { return io.ReadAtLeast(x.netConn, p, min) }
 
 // fcgiRequest
 type fcgiRequest struct { // outgoing. needs building
@@ -721,7 +999,7 @@ var ( // fcgi request errors
 	fcgiWriteBroken  = errors.New("fcgi: write broken")
 )
 
-// fcgiResponse must implements the HResponse interface.
+// fcgiResponse must implements the backendResponse interface.
 type fcgiResponse struct { // incoming. needs parsing
 	// Assocs
 	exchan *fcgiExchan

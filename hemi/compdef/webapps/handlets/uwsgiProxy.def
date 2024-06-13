@@ -5,6 +5,5 @@ uwsgiProxy "up1" {
 	.recvTimeout = 60s
 	.bufferClientContent = true
 	.bufferServerContent = true
-	.preferUnderscore = true
 	.withCacher = "cacher name"
 }

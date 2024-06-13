@@ -1,7 +1,7 @@
 // Copyright (c) 2020-2024 Zhang Jingcheng <diogin@gmail.com>.
 // Copyright (c) 2022-2024 HexInfra Co., Ltd.
 // All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
+// Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
 // HTTP/1 backend implementation. See RFC 9112.
 
@@ -32,7 +32,7 @@ type HTTP1Backend struct {
 	// Parent
 	Backend_[*http1Node]
 	// Mixins
-	_webKeeper_
+	_webServend_
 	// States
 }
 
@@ -42,14 +42,14 @@ func (b *HTTP1Backend) onCreate(name string, stage *Stage) {
 
 func (b *HTTP1Backend) OnConfigure() {
 	b.Backend_.OnConfigure()
-	b._webKeeper_.onConfigure(b, 60*time.Second, 60*time.Second, 1000, TmpDir()+"/web/backends/"+b.name)
+	b._webServend_.onConfigure(b, 60*time.Second, 60*time.Second, 1000, TmpDir()+"/web/backends/"+b.name)
 
 	// sub components
 	b.ConfigureNodes()
 }
 func (b *HTTP1Backend) OnPrepare() {
 	b.Backend_.OnPrepare()
-	b._webKeeper_.onPrepare(b)
+	b._webServend_.onPrepare(b)
 
 	// sub components
 	b.PrepareNodes()
@@ -406,9 +406,9 @@ func (s *backend1Stream) setReadDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (c *backend1Stream) webKeeper() webKeeper { return c.WebBackend() }
-func (c *backend1Stream) webConn() webConn     { return c }
-func (c *backend1Stream) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
+func (c *backend1Stream) webServend() webServend { return c.WebBackend() }
+func (c *backend1Stream) webConn() webConn       { return c }
+func (c *backend1Stream) remoteAddr() net.Addr   { return c.netConn.RemoteAddr() }
 
 func (c *backend1Stream) write(p []byte) (int, error)               { return c.netConn.Write(p) }
 func (c *backend1Stream) writev(vector *net.Buffers) (int64, error) { return vector.WriteTo(c.netConn) }

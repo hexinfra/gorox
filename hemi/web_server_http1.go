@@ -1,7 +1,7 @@
 // Copyright (c) 2020-2024 Zhang Jingcheng <diogin@gmail.com>.
 // Copyright (c) 2022-2024 HexInfra Co., Ltd.
 // All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
+// Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
 // HTTP/1 server implementation. See RFC 9112.
 
@@ -602,9 +602,9 @@ func (s *server1Stream) setWriteDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (c *server1Stream) webKeeper() webKeeper { return c.WebServer() }
-func (c *server1Stream) webConn() webConn     { return c }
-func (c *server1Stream) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
+func (c *server1Stream) webServend() webServend { return c.WebServer() }
+func (c *server1Stream) webConn() webConn       { return c }
+func (c *server1Stream) remoteAddr() net.Addr   { return c.netConn.RemoteAddr() }
 
 func (c *server1Stream) read(p []byte) (int, error)     { return c.netConn.Read(p) }
 func (c *server1Stream) readFull(p []byte) (int, error) { return io.ReadFull(c.netConn, p) }
@@ -1043,7 +1043,7 @@ func (r *server1Request) cleanInput() {
 		if immeSize >= r.contentSize {
 			r.contentReceived = true
 			edge := r.pFore + int32(r.contentSize)
-			if immeSize > r.contentSize { // still has data, stream is pipelined
+			if immeSize > r.contentSize { // still has data, streams are pipelined
 				r.imme.set(r.pFore, edge)
 				r.inputNext = edge // mark the beginning of next request
 			}
@@ -1220,7 +1220,7 @@ func (r *server1Response) passBytes(p []byte) error { return r.passBytes1(p) }
 func (r *server1Response) finalizeHeaders() { // add at most 256 bytes
 	// date: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.iDate == 0 {
-		r.fieldsEdge += uint16(r.stream.webKeeper().Stage().Clock().writeDate1(r.fields[r.fieldsEdge:]))
+		r.fieldsEdge += uint16(r.stream.webServend().Stage().Clock().writeDate1(r.fields[r.fieldsEdge:]))
 	}
 	// expires: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.unixTimes.expires >= 0 {

@@ -1,7 +1,7 @@
 // Copyright (c) 2020-2024 Zhang Jingcheng <diogin@gmail.com>.
 // Copyright (c) 2022-2024 HexInfra Co., Ltd.
 // All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
+// Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
 // FCGI proxy implementation.
 
@@ -51,10 +51,9 @@ type fcgiProxy struct {
 	backend *fcgiBackend // the backend to pass to
 	cacher  Cacher       // the cacher which is used by this proxy
 	// States
-	WebExchanProxyConfig               // embeded
-	preferUnderscore     bool          // if header name "foo-bar" and "foo_bar" are both present, prefer "foo_bar" to "foo-bar"?
-	scriptFilename       []byte        // for SCRIPT_FILENAME
-	indexFile            []byte        // the file that will be used as index
+	WebExchanProxyConfig        // embeded
+	scriptFilename       []byte // for SCRIPT_FILENAME
+	indexFile            []byte // the file that will be used as index
 }
 
 func (h *fcgiProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
@@ -102,8 +101,6 @@ func (h *fcgiProxy) OnConfigure() {
 	// bufferServerContent
 	h.ConfigureBool("bufferServerContent", &h.BufferServerContent, true)
 
-	// preferUnderscore
-	h.ConfigureBool("preferUnderscore", &h.preferUnderscore, false)
 	// scriptFilename
 	h.ConfigureBytes("scriptFilename", &h.scriptFilename, nil, nil)
 
@@ -129,7 +126,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 	if hasContent && (h.BufferClientContent || req.IsVague()) { // including size 0
 		content = req.holdContent()
 		if content == nil { // take failed
-			// exchan is marked as broken
+			// stream is marked as broken
 			resp.SetStatus(StatusBadRequest)
 			resp.SendBytes(nil)
 			return
@@ -142,20 +139,6 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 		return
 	}
 	defer h.backend.storeExchan(fcgiExchan)
-	
-	/*
-	if h.persistent {
-		if conn, fcgiErr = h.backend.FetchConn(); fcgiErr == nil {
-			defer h.backend.StoreConn(conn)
-		}
-	} else {
-		if conn, fcgiErr = h.backend.Dial(); fcgiErr == nil {
-			defer conn.Close()
-		}
-	}
-	fcgiExchan := getFCGIExchan(h, conn)
-	defer putFCGIExchan(fcgiExchan)
-	*/
 
 	fcgiReq := &fcgiExchan.request
 	if !fcgiReq.proxyCopyHead(req, h) {
@@ -238,11 +221,11 @@ type fcgiBackend struct {
 	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
-	persistent           bool          // instructs FCGI server to keep conn?
-	sendTimeout          time.Duration // timeout to send the whole request
-	recvTimeout          time.Duration // timeout to recv the whole response content
-	maxContentSize       int64         // max response content size allowed
-	maxExchansPerConn int32 // max exchans of one conn. 0 means infinite
+	persistent        bool          // instructs FCGI server to keep conn?
+	sendTimeout       time.Duration // timeout to send the whole request
+	recvTimeout       time.Duration // timeout to recv the whole response content
+	maxContentSize    int64         // max response content size allowed
+	maxExchansPerConn int32         // max exchans of one conn. 0 means infinite
 }
 
 func (b *fcgiBackend) onCreate(name string, stage *Stage) {
@@ -308,18 +291,30 @@ func (b *fcgiBackend) CreateNode(name string) Node {
 	return node
 }
 
+func (b *fcgiBackend) fetchExchan() (*fcgiExchan, error) {
+	node := b.nodes[b.nextIndex()]
+	return node.fetchExchan()
+}
+func (b *fcgiBackend) storeExchan(exchan *fcgiExchan) {
+	node := exchan.conn.node.(*fcgiNode)
+	node.storeExchan(exchan)
+}
+
+/*
+if h.persistent {
+	if conn, fcgiErr = h.backend.FetchConn(); fcgiErr == nil {
+		defer h.backend.StoreConn(conn)
+	}
+} else {
+	if conn, fcgiErr = h.backend.Dial(); fcgiErr == nil {
+		defer conn.Close()
+	}
+}
 func (b *fcgiBackend) Dial() (*fcgiConn, error) {
 	node := b.nodes[b.nextIndex()]
 	return node.dial()
 }
-
-func (b *fcgiBackend) FetchConn() (*fcgiConn, error) {
-	node := b.nodes[b.nextIndex()]
-	return node.fetchConn()
-}
-func (b *fcgiBackend) StoreConn(fConn *fcgiConn) {
-	fConn.node.(*fcgiNode).storeConn(fConn)
-}
+*/
 
 // fcgiNode
 type fcgiNode struct {
@@ -329,8 +324,8 @@ type fcgiNode struct {
 	// States
 	connPool struct { // free list of conns in this node
 		sync.Mutex
-		head *fcgiExchan
-		tail *fcgiExchan
+		head *fcgiConn
+		tail *fcgiConn
 		qnty int // size of the list
 	}
 }
@@ -359,6 +354,41 @@ func (n *fcgiNode) Maintain() { // runner
 		Printf("fcgiNode=%s done\n", n.name)
 	}
 	n.backend.DecSub()
+}
+
+func (n *fcgiNode) fetchExchan() (*fcgiExchan, error) {
+	conn := n.pullConn()
+	down := n.isDown()
+	if conn != nil {
+		if conn.isAlive() && !conn.reachLimit() && !down {
+			return conn.fetchExchan()
+		}
+		n.closeConn(conn)
+	}
+	if down {
+		return nil, errNodeDown
+	}
+	var err error
+	if n.IsUDS() {
+		conn, err = n._dialUDS()
+	} else {
+		conn, err = n._dialTCP()
+	}
+	if err != nil {
+		return nil, errNodeDown
+	}
+	n.IncSub()
+	return conn.fetchExchan()
+}
+func (n *fcgiNode) storeExchan(exchan *fcgiExchan) {
+	conn := exchan.conn
+	conn.storeExchan(exchan)
+
+	if conn.isBroken() || n.isDown() || !conn.isAlive() || !conn.persistent {
+		n.closeConn(conn)
+	} else {
+		n.pushConn(conn)
+	}
 }
 
 func (n *fcgiNode) dial() (*fcgiConn, error) {
@@ -417,6 +447,7 @@ func (n *fcgiNode) _dialTCP() (*fcgiConn, error) {
 	return getFCGIConn(connID, n, netConn, rawConn), nil
 }
 
+/*
 func (n *fcgiNode) fetchConn() (*fcgiConn, error) {
 	fConn := n.pullConn()
 	down := n.isDown()
@@ -444,6 +475,7 @@ func (n *fcgiNode) storeConn(fConn *fcgiConn) {
 		n.pushConn(fConn)
 	}
 }
+*/
 
 func (n *fcgiNode) pullConn() *fcgiConn {
 	list := &n.connPool
@@ -496,22 +528,23 @@ func (n *fcgiNode) closeFree() int {
 var poolFCGIConn sync.Pool
 
 func getFCGIConn(id int64, node *fcgiNode, netConn net.Conn, rawConn syscall.RawConn) *fcgiConn {
-	var exchan *fcgiExchan
+	var conn *fcgiConn
 	if x := poolFCGIConn.Get(); x == nil {
-		exchan = new(fcgiExchan)
+		conn = new(fcgiConn)
+		exchan := &conn.exchan
 		req, resp := &exchan.request, &exchan.response
 		req.exchan = exchan
 		req.response = resp
 		resp.exchan = exchan
 	} else {
-		exchan = x.(*fcgiExchan)
+		conn = x.(*fcgiConn)
 	}
-	exchan.onGet(proxy)
-	return exchan
+	conn.onGet(id, node, netConn, rawConn)
+	return conn
 }
-func putFCGIConn(exchan *fcgiExchan) {
-	exchan.onPut()
-	poolFCGIConn.Put(exchan)
+func putFCGIConn(conn *fcgiConn) {
+	conn.onPut()
+	poolFCGIConn.Put(conn)
 }
 
 // fcgiConn
@@ -519,38 +552,27 @@ type fcgiConn struct {
 	// Parent
 	BackendConn_
 	// Assocs
-	next     *fcgiConn    // the linked-list
+	next *fcgiConn // the linked-list
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	proxy      *fcgiProxy      // associated proxy
 	netConn    net.Conn        // *net.TCPConn or *net.UnixConn
 	rawConn    syscall.RawConn // for syscall
-	persistent bool // persist the connection after current exchan? true by default
+	persistent bool            // persist the connection after current exchan? true by default
 	// Conn states (zeros)
 	usedExchans atomic.Int32 // how many exchans have been used?
 	broken      atomic.Bool  // is conn broken?
 
-	// Assocs
-	request  fcgiRequest  // the fcgi request
-	response fcgiResponse // the fcgi response
-	// Exchan states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
-	// Exchan states (controlled)
-	// Exchan states (non-zeros)
-	region     Region          // a region-based memory pool
-	// Exchan states (zeros)
+	exchan fcgiExchan
 }
 
-func (c *fcgiConn) onGet(proxy *fcgiProxy, id int64, node *fcgiNode, netConn net.Conn, rawConn syscall.RawConn) {
+func (c *fcgiConn) onGet(id int64, node *fcgiNode, netConn net.Conn, rawConn syscall.RawConn) {
 	c.BackendConn_.OnGet(id, node)
-	c.proxy = proxy
 	c.netConn = netConn
 	c.rawConn = rawConn
 	c.persistent = true
 }
 func (c *fcgiConn) onPut() {
-	c.proxy = nil
 	c.netConn = nil
 	c.rawConn = nil
 	c.usedExchans.Store(0)
@@ -558,15 +580,44 @@ func (c *fcgiConn) onPut() {
 	c.BackendConn_.OnPut()
 }
 
-func (c *fcgiConn) reachLimit() bool { return c.usedExchans.Add(1) > c.maxExchans }
+func (c *fcgiConn) reachLimit() bool {
+	return c.usedExchans.Add(1) > c.Backend().(*fcgiBackend).maxExchansPerConn
+}
+
+func (c *fcgiConn) fetchExchan() (*fcgiExchan, error) {
+	exchan := &c.exchan
+	exchan.onUse(c)
+	return exchan, nil
+}
+func (c *fcgiConn) storeExchan(exchan *fcgiExchan) {
+	exchan.onEnd()
+}
 
 func (c *fcgiConn) isBroken() bool { return c.broken.Load() }
 func (c *fcgiConn) markBroken()    { c.broken.Store(true) }
 
-// fcgiExchan
-type fcgiExchan = fcgiConn
+func (c *fcgiConn) Close() error {
+	netConn := c.netConn
+	putFCGIConn(c)
+	return netConn.Close()
+}
 
-func (x *fcgiExchan) onUse() { // for non-zeros
+// fcgiExchan
+type fcgiExchan struct {
+	// Assocs
+	conn     *fcgiConn
+	request  fcgiRequest  // the fcgi request
+	response fcgiResponse // the fcgi response
+	// Exchan states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
+	region Region // a region-based memory pool
+	// Exchan states (zeros)
+}
+
+func (x *fcgiExchan) onUse(conn *fcgiConn) { // for non-zeros
+	x.conn = conn
 	x.region.Init()
 	x.request.onUse()
 	x.response.onUse()
@@ -575,13 +626,14 @@ func (x *fcgiExchan) onEnd() { // for zeros
 	x.response.onEnd()
 	x.request.onEnd()
 	x.region.Free()
+	x.conn = nil
 }
 
 func (x *fcgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
 func (x *fcgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }
 
 func (x *fcgiExchan) setWriteDeadline(deadline time.Time) error {
-	conn := x
+	conn := x.conn
 	if deadline.Sub(conn.lastWrite) >= time.Second {
 		if err := conn.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
@@ -591,7 +643,7 @@ func (x *fcgiExchan) setWriteDeadline(deadline time.Time) error {
 	return nil
 }
 func (x *fcgiExchan) setReadDeadline(deadline time.Time) error {
-	conn := x
+	conn := x.conn
 	if deadline.Sub(conn.lastRead) >= time.Second {
 		if err := conn.netConn.SetReadDeadline(deadline); err != nil {
 			return err
@@ -601,10 +653,17 @@ func (x *fcgiExchan) setReadDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (x *fcgiExchan) write(p []byte) (int, error)                { return x.netConn.Write(p) }
-func (x *fcgiExchan) writev(vector *net.Buffers) (int64, error)  { return vector.WriteTo(x.netConn) }
-func (x *fcgiExchan) read(p []byte) (int, error)                 { return x.netConn.Read(p) }
-func (x *fcgiExchan) readAtLeast(p []byte, min int) (int, error) { return io.ReadAtLeast(x.netConn, p, min) }
+func (x *fcgiExchan) isBroken() bool { return x.conn.isBroken() }
+func (x *fcgiExchan) markBroken()    { x.conn.markBroken() }
+
+func (x *fcgiExchan) write(p []byte) (int, error) { return x.conn.netConn.Write(p) }
+func (x *fcgiExchan) writev(vector *net.Buffers) (int64, error) {
+	return vector.WriteTo(x.conn.netConn)
+}
+func (x *fcgiExchan) read(p []byte) (int, error) { return x.conn.netConn.Read(p) }
+func (x *fcgiExchan) readAtLeast(p []byte, min int) (int, error) {
+	return io.ReadAtLeast(x.conn.netConn, p, min)
+}
 
 // fcgiRequest
 type fcgiRequest struct { // outgoing. needs building
@@ -635,7 +694,7 @@ func (r *fcgiRequest) onUse() {
 	copy(r.paramsHeader[:], fcgiEmptyParams) // payloadLen (r.paramsHeader[4:6]) needs modification on using
 	copy(r.stdinHeader[:], fcgiEmptyStdin)   // payloadLen (r.stdinHeader[4:6]) needs modification for every stdin record on using
 	r.params = r.stockParams[:]
-	r.sendTimeout = r.exchan.proxy.sendTimeout
+	r.sendTimeout = r.exchan.conn.Backend().(*fcgiBackend).sendTimeout
 }
 func (r *fcgiRequest) onEnd() {
 	if cap(r.params) != cap(r.stockParams) {
@@ -727,11 +786,12 @@ func (r *fcgiRequest) _addMetaParam(name []byte, value []byte) bool { // like: R
 	return r._addParam(name, value, false)
 }
 func (r *fcgiRequest) _addHTTPParam(header *pair, name []byte, value []byte) bool { // like: HTTP_USER_AGENT
-	if !header.isUnderscore() || !r.exchan.proxy.preferUnderscore {
+	if header.isUnderscore() {
+		// TODO: got a "foo_bar" header and user prefer it. avoid name conflicts with header which is like "foo-bar"
+		return true
+	} else {
 		return r._addParam(name, value, true)
 	}
-	// TODO: got a "foo_bar" header and user prefer it. avoid name conflicts with header which is like "foo-bar"
-	return true
 }
 func (r *fcgiRequest) _addParam(name []byte, value []byte, http bool) bool { // into r.params
 	nameLen, valueLen := len(name), len(value)
@@ -939,7 +999,7 @@ func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
 }
 
 func (r *fcgiRequest) _setBeginRequest(p *[]byte) {
-	if r.exchan.proxy.persistent {
+	if r.exchan.conn.Backend().(*fcgiBackend).persistent {
 		*p = fcgiBeginKeepConn
 	} else {
 		*p = fcgiBeginDontKeep
@@ -979,7 +1039,7 @@ func (r *fcgiRequest) _beforeWrite() error {
 	if r.sendTime.IsZero() {
 		r.sendTime = now
 	}
-	return r.exchan.setWriteDeadline(now.Add(r.exchan.proxy.backend.WriteTimeout()))
+	return r.exchan.setWriteDeadline(now.Add(r.exchan.conn.backend.WriteTimeout()))
 }
 func (r *fcgiRequest) _slowCheck(err error) error {
 	if err == nil && r._tooSlow() {
@@ -1081,8 +1141,8 @@ func (r *fcgiResponse) onUse() {
 	r.input = r.stockInput[:]
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of header indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
-	r.recvTimeout = r.exchan.proxy.recvTimeout
-	r.maxContentSize = r.exchan.proxy.maxContentSize
+	r.recvTimeout = r.exchan.conn.Backend().(*fcgiBackend).recvTimeout
+	r.maxContentSize = r.exchan.conn.Backend().(*fcgiBackend).maxContentSize
 	r.status = StatusOK
 	r.headResult = StatusOK
 	r.bodyResult = StatusOK
@@ -1579,7 +1639,9 @@ func (r *fcgiResponse) forTrailers(callback func(trailer *pair, name []byte, val
 	return true
 }
 
-func (r *fcgiResponse) saveContentFilesDir() string { return r.exchan.proxy.SaveContentFilesDir() }
+func (r *fcgiResponse) saveContentFilesDir() string {
+	return r.exchan.conn.Backend().(*fcgiBackend).SaveContentFilesDir()
+}
 
 func (r *fcgiResponse) _newTempFile() (tempFile, error) { // to save content to
 	filesDir := r.saveContentFilesDir()
@@ -1593,7 +1655,7 @@ func (r *fcgiResponse) _beforeRead(toTime *time.Time) error {
 	if toTime.IsZero() {
 		*toTime = now
 	}
-	return r.exchan.setReadDeadline(now.Add(r.exchan.proxy.backend.ReadTimeout()))
+	return r.exchan.setReadDeadline(now.Add(r.exchan.conn.backend.ReadTimeout()))
 }
 func (r *fcgiResponse) _tooSlow() bool {
 	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout

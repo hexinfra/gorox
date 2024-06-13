@@ -1,7 +1,7 @@
 // Copyright (c) 2020-2024 Zhang Jingcheng <diogin@gmail.com>.
 // Copyright (c) 2022-2024 HexInfra Co., Ltd.
 // All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
+// Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
 // HTTP/2 backend implementation. See RFC 9113 and 7541.
 
@@ -31,7 +31,7 @@ type HTTP2Backend struct {
 	// Parent
 	Backend_[*http2Node]
 	// Mixins
-	_webKeeper_
+	_webServend_
 	// States
 }
 
@@ -41,14 +41,14 @@ func (b *HTTP2Backend) onCreate(name string, stage *Stage) {
 
 func (b *HTTP2Backend) OnConfigure() {
 	b.Backend_.OnConfigure()
-	b._webKeeper_.onConfigure(b, 60*time.Second, 60*time.Second, 1000, TmpDir()+"/web/backends/"+b.name)
+	b._webServend_.onConfigure(b, 60*time.Second, 60*time.Second, 1000, TmpDir()+"/web/backends/"+b.name)
 
 	// sub components
 	b.ConfigureNodes()
 }
 func (b *HTTP2Backend) OnPrepare() {
 	b.Backend_.OnPrepare()
-	b._webKeeper_.onPrepare(b)
+	b._webServend_.onPrepare(b)
 
 	// sub components
 	b.PrepareNodes()
@@ -327,9 +327,9 @@ func (s *backend2Stream) setReadDeadline(deadline time.Time) error { // for cont
 func (s *backend2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
 func (s *backend2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
-func (s *backend2Stream) webKeeper() webKeeper { return s.conn.WebBackend() }
-func (s *backend2Stream) webConn() webConn     { return s.conn }
-func (s *backend2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
+func (s *backend2Stream) webServend() webServend { return s.conn.WebBackend() }
+func (s *backend2Stream) webConn() webConn       { return s.conn }
+func (s *backend2Stream) remoteAddr() net.Addr   { return s.conn.netConn.RemoteAddr() }
 
 func (s *backend2Stream) write(p []byte) (int, error) { // for content i/o only?
 	return 0, nil

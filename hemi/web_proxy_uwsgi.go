@@ -1,7 +1,7 @@
 // Copyright (c) 2020-2024 Zhang Jingcheng <diogin@gmail.com>.
 // Copyright (c) 2022-2024 HexInfra Co., Ltd.
 // All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
+// Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
 // uwsgi proxy implementation.
 
@@ -107,9 +107,9 @@ type uwsgiBackend struct {
 	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
-	sendTimeout         time.Duration // timeout to send the whole request
-	recvTimeout         time.Duration // timeout to recv the whole response content
-	maxContentSize      int64         // max response content size allowed
+	sendTimeout    time.Duration // timeout to send the whole request
+	recvTimeout    time.Duration // timeout to recv the whole response content
+	maxContentSize int64         // max response content size allowed
 }
 
 func (b *uwsgiBackend) onCreate(name string, stage *Stage) {
@@ -187,10 +187,10 @@ func (n *uwsgiNode) Maintain() { // runner
 	})
 	n.markDown()
 	/*
-	if size := n.closeFree(); size > 0 {
-		n.SubsAddn(-size)
-	}
-	n.WaitSubs() // conns. TODO: max timeout?
+		if size := n.closeFree(); size > 0 {
+			n.SubsAddn(-size)
+		}
+		n.WaitSubs() // conns. TODO: max timeout?
 	*/
 	if DebugLevel() >= 2 {
 		Printf("uwsgiNode=%s done\n", n.name)
@@ -233,7 +233,9 @@ func (n *uwsgiNode) _dialUDS() (*uwsgiConn, error) {
 		netConn.Close()
 		return nil, err
 	}
-	return getUWSGIConn(connID, n, netConn, rawConn), nil
+	_, _ = connID, rawConn
+	return nil, nil
+	//return getUWSGIConn(connID, n, netConn, rawConn), nil
 }
 func (n *uwsgiNode) _dialTCP() (*uwsgiConn, error) {
 	// TODO: dynamic address names?
@@ -251,13 +253,15 @@ func (n *uwsgiNode) _dialTCP() (*uwsgiConn, error) {
 		netConn.Close()
 		return nil, err
 	}
-	return getUWSGIConn(connID, n, netConn, rawConn), nil
+	_, _ = connID, rawConn
+	return nil, nil
+	//return getUWSGIConn(connID, n, netConn, rawConn), nil
 }
 
 // poolUWSGIConn
 var poolUWSGIConn sync.Pool
 
-func getUWSGIConn(proxy *uwsgiProxy, tConn *TConn) *uwsgiConn {
+func getUWSGIConn(tConn *TConn) *uwsgiConn {
 	var conn *uwsgiConn
 	if x := poolUWSGIConn.Get(); x == nil {
 		conn = new(uwsgiConn)
@@ -268,7 +272,7 @@ func getUWSGIConn(proxy *uwsgiProxy, tConn *TConn) *uwsgiConn {
 	} else {
 		conn = x.(*uwsgiConn)
 	}
-	conn.onUse(proxy, tConn)
+	conn.onUse(tConn)
 	return conn
 }
 func putUWSGIConn(conn *uwsgiConn) {
@@ -287,15 +291,13 @@ type uwsgiConn struct {
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	region Region      // a region-based memory pool
-	proxy  *uwsgiProxy // associated proxy
-	conn   *TConn      // associated conn
+	region Region // a region-based memory pool
+	conn   *TConn // associated conn
 	// Conn states (zeros)
 }
 
-func (x *uwsgiConn) onUse(proxy *uwsgiProxy, conn *TConn) {
+func (x *uwsgiConn) onUse(conn *TConn) {
 	x.region.Init()
-	x.proxy = proxy
 	x.conn = conn
 	x.region.Init()
 	x.request.onUse()
@@ -305,7 +307,6 @@ func (x *uwsgiConn) onEnd() {
 	x.request.onEnd()
 	x.response.onEnd()
 	x.conn = nil
-	x.proxy = nil
 	x.region.Free()
 }
 
@@ -315,7 +316,7 @@ func (x *uwsgiConn) unsafeMake(size int) []byte { return x.region.Make(size) }
 // uwsgiRequest
 type uwsgiRequest struct { // outgoing. needs building
 	// Assocs
-	conn   *uwsgiConn
+	conn     *uwsgiConn
 	response *uwsgiResponse
 }
 

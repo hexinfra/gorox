@@ -8,6 +8,5 @@ fcgiProxy "fp1" {
 	.persistent = true
 	.bufferClientContent = true
 	.bufferServerContent = true
-	.preferUnderscore = true
 	.withCacher = "cacher name"
 }

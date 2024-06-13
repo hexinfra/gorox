@@ -1,7 +1,7 @@
 // Copyright (c) 2020-2024 Zhang Jingcheng <diogin@gmail.com>.
 // Copyright (c) 2022-2024 HexInfra Co., Ltd.
 // All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
+// Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
 // General Web incoming and outgoing messages implementation. See RFC 9110 and 9111.
 
@@ -19,8 +19,8 @@ import (
 	"time"
 )
 
-// webKeeper collects shared methods between WebServer or WebBackend.
-type webKeeper interface {
+// webServend collects shared methods between WebServer or WebBackend.
+type webServend interface {
 	// Imports
 	contentSaver
 	// Methods
@@ -34,8 +34,8 @@ type webKeeper interface {
 	MaxStreamsPerConn() int32
 }
 
-// _webKeeper_ is a mixin for webServer_ and HTTP[1-3]Backend.
-type _webKeeper_ struct {
+// _webServend_ is a mixin for webServer_ and HTTP[1-3]Backend.
+type _webServend_ struct {
 	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
@@ -46,11 +46,11 @@ type _webKeeper_ struct {
 	maxStreamsPerConn    int32         // max streams of one conn. 0 means infinite
 }
 
-func (k *_webKeeper_) onConfigure(component Component, recvTimeout time.Duration, sendTimeout time.Duration, defaultMaxStreams int32, defaultDir string) {
-	k._contentSaver_.onConfigure(component, defaultDir)
+func (s *_webServend_) onConfigure(component Component, recvTimeout time.Duration, sendTimeout time.Duration, defaultMaxStreams int32, defaultDir string) {
+	s._contentSaver_.onConfigure(component, defaultDir)
 
 	// recvTimeout
-	component.ConfigureDuration("recvTimeout", &k.recvTimeout, func(value time.Duration) error {
+	component.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) error {
 		if value >= 0 {
 			return nil
 		}
@@ -58,7 +58,7 @@ func (k *_webKeeper_) onConfigure(component Component, recvTimeout time.Duration
 	}, recvTimeout)
 
 	// sendTimeout
-	component.ConfigureDuration("sendTimeout", &k.sendTimeout, func(value time.Duration) error {
+	component.ConfigureDuration("sendTimeout", &s.sendTimeout, func(value time.Duration) error {
 		if value >= 0 {
 			return nil
 		}
@@ -66,7 +66,7 @@ func (k *_webKeeper_) onConfigure(component Component, recvTimeout time.Duration
 	}, sendTimeout)
 
 	// maxContentSize
-	component.ConfigureInt64("maxContentSize", &k.maxContentSize, func(value int64) error {
+	component.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
 		if value > 0 {
 			return nil
 		}
@@ -74,7 +74,7 @@ func (k *_webKeeper_) onConfigure(component Component, recvTimeout time.Duration
 	}, _1T)
 
 	// maxMemoryContentSize
-	component.ConfigureInt32("maxMemoryContentSize", &k.maxMemoryContentSize, func(value int32) error {
+	component.ConfigureInt32("maxMemoryContentSize", &s.maxMemoryContentSize, func(value int32) error {
 		if value > 0 && value <= _1G { // DO NOT CHANGE THIS, otherwise integer overflow may occur
 			return nil
 		}
@@ -82,22 +82,22 @@ func (k *_webKeeper_) onConfigure(component Component, recvTimeout time.Duration
 	}, _16M)
 
 	// maxStreamsPerConn
-	component.ConfigureInt32("maxStreamsPerConn", &k.maxStreamsPerConn, func(value int32) error {
+	component.ConfigureInt32("maxStreamsPerConn", &s.maxStreamsPerConn, func(value int32) error {
 		if value >= 0 {
 			return nil
 		}
 		return errors.New(".maxStreamsPerConn has an invalid value")
 	}, defaultMaxStreams)
 }
-func (k *_webKeeper_) onPrepare(component Component) {
-	k._contentSaver_.onPrepare(component, 0755)
+func (s *_webServend_) onPrepare(component Component) {
+	s._contentSaver_.onPrepare(component, 0755)
 }
 
-func (k *_webKeeper_) RecvTimeout() time.Duration  { return k.recvTimeout }
-func (k *_webKeeper_) SendTimeout() time.Duration  { return k.sendTimeout }
-func (k *_webKeeper_) MaxContentSize() int64       { return k.maxContentSize }
-func (k *_webKeeper_) MaxMemoryContentSize() int32 { return k.maxMemoryContentSize }
-func (k *_webKeeper_) MaxStreamsPerConn() int32    { return k.maxStreamsPerConn }
+func (s *_webServend_) RecvTimeout() time.Duration  { return s.recvTimeout }
+func (s *_webServend_) SendTimeout() time.Duration  { return s.sendTimeout }
+func (s *_webServend_) MaxContentSize() int64       { return s.maxContentSize }
+func (s *_webServend_) MaxMemoryContentSize() int32 { return s.maxMemoryContentSize }
+func (s *_webServend_) MaxStreamsPerConn() int32    { return s.maxStreamsPerConn }
 
 // webConn collects shared methods between *server[1-3]Conn and *backend[1-3]Conn.
 type webConn interface {
@@ -138,7 +138,7 @@ func (c *_webConn_) markBroken()    { c.broken.Store(true) }
 
 // webStream collects shared methods between *server[1-3]Stream and *backend[1-3]Stream.
 type webStream interface {
-	webKeeper() webKeeper
+	webServend() webServend
 	webConn() webConn
 
 	remoteAddr() net.Addr
@@ -268,9 +268,9 @@ func (r *webIn_) onUse(httpVersion uint8, asResponse bool) { // for non-zeros
 	} else {
 		// HTTP/1 supports request pipelining, so input related are not set here.
 	}
-	keeper := r.stream.webKeeper()
-	r.recvTimeout = keeper.RecvTimeout()
-	r.maxContentSize = keeper.MaxContentSize()
+	servend := r.stream.webServend()
+	r.recvTimeout = servend.RecvTimeout()
+	r.maxContentSize = servend.MaxContentSize()
 	r.contentSize = -1 // no content
 	r.httpVersion = httpVersion
 	r.asResponse = asResponse
@@ -1025,7 +1025,7 @@ func (r *webIn_) _dropContent() { // if message content is not received, this wi
 }
 func (r *webIn_) _recvContent(retain bool) any { // to []byte (for small content <= 64K1) or tempFile (for large content > 64K1, or vague content)
 	if r.contentSize > 0 && r.contentSize <= _64K1 { // (0, 64K1]. save to []byte. must be received in a timeout
-		if err := r.stream.setReadDeadline(time.Now().Add(r.stream.webKeeper().ReadTimeout())); err != nil {
+		if err := r.stream.setReadDeadline(time.Now().Add(r.stream.webServend().ReadTimeout())); err != nil {
 			return err
 		}
 		// Since content is small, r.bodyWindow and tempFile are not needed.
@@ -1451,7 +1451,7 @@ func (r *webIn_) arrayCopy(p []byte) bool { // callers don't guarantee the inten
 		if edge < r.arrayEdge { // overflow
 			return false
 		}
-		if edge > r.stream.webKeeper().MaxMemoryContentSize() {
+		if edge > r.stream.webServend().MaxMemoryContentSize() {
 			return false
 		}
 		if !r._growArray(int32(len(p))) {
@@ -1521,7 +1521,7 @@ func (r *webIn_) _growArray(size int32) bool { // stock(<4K)->4K->16K->64K1->(12
 }
 
 func (r *webIn_) saveContentFilesDir() string {
-	return r.stream.webKeeper().SaveContentFilesDir()
+	return r.stream.webServend().SaveContentFilesDir()
 }
 
 func (r *webIn_) _newTempFile(retain bool) (tempFile, error) { // to save content to
@@ -1539,7 +1539,7 @@ func (r *webIn_) _beforeRead(toTime *time.Time) error {
 	if toTime.IsZero() {
 		*toTime = now
 	}
-	return r.stream.setReadDeadline(now.Add(r.stream.webKeeper().ReadTimeout()))
+	return r.stream.setReadDeadline(now.Add(r.stream.webServend().ReadTimeout()))
 }
 func (r *webIn_) _tooSlow() bool { // reports whether the speed of incoming content is too slow
 	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
@@ -1614,7 +1614,7 @@ type webOut0 struct { // for fast reset, entirely
 
 func (r *webOut_) onUse(httpVersion uint8, asRequest bool) { // for non-zeros
 	r.fields = r.stockFields[:]
-	r.sendTimeout = r.stream.webKeeper().SendTimeout()
+	r.sendTimeout = r.stream.webServend().SendTimeout()
 	r.contentSize = -1 // not set
 	r.httpVersion = httpVersion
 	r.asRequest = asRequest
@@ -1973,7 +1973,7 @@ func (r *webOut_) _beforeWrite() error {
 	if r.sendTime.IsZero() { // only once
 		r.sendTime = now
 	}
-	return r.stream.setWriteDeadline(now.Add(r.stream.webKeeper().WriteTimeout()))
+	return r.stream.setWriteDeadline(now.Add(r.stream.webServend().WriteTimeout()))
 }
 func (r *webOut_) _slowCheck(err error) error {
 	if err == nil && r._tooSlow() {

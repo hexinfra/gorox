@@ -1,7 +1,7 @@
 // Copyright (c) 2020-2024 Zhang Jingcheng <diogin@gmail.com>.
 // Copyright (c) 2022-2024 HexInfra Co., Ltd.
 // All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
+// Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
 // HTTP/2 server implementation. See RFC 9113 and 7541.
 
@@ -1140,9 +1140,9 @@ func (s *server2Stream) setWriteDeadline(deadline time.Time) error { // for cont
 func (s *server2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
 func (s *server2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
-func (s *server2Stream) webKeeper() webKeeper { return s.conn.WebServer() }
-func (s *server2Stream) webConn() webConn     { return s.conn }
-func (s *server2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
+func (s *server2Stream) webServend() webServend { return s.conn.WebServer() }
+func (s *server2Stream) webConn() webConn       { return s.conn }
+func (s *server2Stream) remoteAddr() net.Addr   { return s.conn.netConn.RemoteAddr() }
 
 func (s *server2Stream) read(p []byte) (int, error) { // for content i/o only
 	// TODO
@@ -1266,7 +1266,7 @@ func (r *server2Response) finalizeHeaders() { // add at most 256 bytes
 	/*
 		// date: Sun, 06 Nov 1994 08:49:37 GMT
 		if r.iDate == 0 {
-			r.fieldsEdge += uint16(r.stream.webKeeper().Stage().Clock().writeDate1(r.fields[r.fieldsEdge:]))
+			r.fieldsEdge += uint16(r.stream.webServend().Stage().Clock().writeDate1(r.fields[r.fieldsEdge:]))
 		}
 	*/
 }

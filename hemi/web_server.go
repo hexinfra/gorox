@@ -1,7 +1,7 @@
 // Copyright (c) 2020-2024 Zhang Jingcheng <diogin@gmail.com>.
 // Copyright (c) 2022-2024 HexInfra Co., Ltd.
 // All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
+// Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
 // General Web server implementation. See RFC 9110 and 9111.
 
@@ -51,7 +51,7 @@ type webServer_[G Gate] struct {
 	// Parent
 	Server_[G]
 	// Mixins
-	_webKeeper_
+	_webServend_
 	// Assocs
 	defaultApp *Webapp // default webapp if not found
 	// States
@@ -71,7 +71,7 @@ func (s *webServer_[G]) onCreate(name string, stage *Stage) {
 
 func (s *webServer_[G]) onConfigure() {
 	s.Server_.OnConfigure()
-	s._webKeeper_.onConfigure(s, 120*time.Second, 120*time.Second, 1000, TmpDir()+"/web/servers/"+s.name)
+	s._webServend_.onConfigure(s, 120*time.Second, 120*time.Second, 1000, TmpDir()+"/web/servers/"+s.name)
 
 	// webapps
 	s.ConfigureStringList("webapps", &s.webapps, nil, []string{})
@@ -96,7 +96,7 @@ func (s *webServer_[G]) onConfigure() {
 }
 func (s *webServer_[G]) onPrepare() {
 	s.Server_.OnPrepare()
-	s._webKeeper_.onPrepare(s)
+	s._webServend_.onPrepare(s)
 }
 
 func (s *webServer_[G]) bindApps() {

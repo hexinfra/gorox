@@ -1,7 +1,7 @@
 // Copyright (c) 2020-2024 Zhang Jingcheng <diogin@gmail.com>.
 // Copyright (c) 2022-2024 HexInfra Co., Ltd.
 // All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be found in the LICENSE.md file.
+// Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
 // HTTP/3 backend implementation. See RFC 9114 and 9204.
 
@@ -31,7 +31,7 @@ type HTTP3Backend struct {
 	// Parent
 	Backend_[*http3Node]
 	// Mixins
-	_webKeeper_
+	_webServend_
 	// States
 }
 
@@ -41,14 +41,14 @@ func (b *HTTP3Backend) onCreate(name string, stage *Stage) {
 
 func (b *HTTP3Backend) OnConfigure() {
 	b.Backend_.OnConfigure()
-	b._webKeeper_.onConfigure(b, 60*time.Second, 60*time.Second, 1000, TmpDir()+"/web/backends/"+b.name)
+	b._webServend_.onConfigure(b, 60*time.Second, 60*time.Second, 1000, TmpDir()+"/web/backends/"+b.name)
 
 	// sub components
 	b.ConfigureNodes()
 }
 func (b *HTTP3Backend) OnPrepare() {
 	b.Backend_.OnPrepare()
-	b._webKeeper_.onPrepare(b)
+	b._webServend_.onPrepare(b)
 
 	// sub components
 	b.PrepareNodes()
@@ -283,9 +283,9 @@ func (s *backend3Stream) setReadDeadline(deadline time.Time) error { // for cont
 func (s *backend3Stream) isBroken() bool { return false } // TODO
 func (s *backend3Stream) markBroken()    {}               // TODO
 
-func (s *backend3Stream) webKeeper() webKeeper { return s.conn.WebBackend() }
-func (s *backend3Stream) webConn() webConn     { return s.conn }
-func (s *backend3Stream) remoteAddr() net.Addr { return nil } // TODO
+func (s *backend3Stream) webServend() webServend { return s.conn.WebBackend() }
+func (s *backend3Stream) webConn() webConn       { return s.conn }
+func (s *backend3Stream) remoteAddr() net.Addr   { return nil } // TODO
 
 func (s *backend3Stream) write(p []byte) (int, error) { // for content i/o only?
 	return 0, nil

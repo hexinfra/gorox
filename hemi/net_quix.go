@@ -506,7 +506,7 @@ func (b *QUIXBackend) StoreStream(qStream *QStream) {
 // quixNode is a node in QUIXBackend.
 type quixNode struct {
 	// Parent
-	Node_
+	Node_[*QUIXBackend]
 	// Assocs
 	// States
 }
@@ -581,7 +581,7 @@ type QConn struct {
 func (c *QConn) onGet(id int64, node *quixNode, quicConn *quic.Conn) {
 	c.BackendConn_.OnGet(id, node)
 	c.quicConn = quicConn
-	c.maxStreams = node.Backend().(*QUIXBackend).MaxStreamsPerConn()
+	c.maxStreams = node.backend.MaxStreamsPerConn()
 }
 func (c *QConn) onPut() {
 	c.quicConn = nil

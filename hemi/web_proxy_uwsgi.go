@@ -165,7 +165,7 @@ func (b *uwsgiBackend) CreateNode(name string) Node {
 // uwsgiNode
 type uwsgiNode struct {
 	// Parent
-	Node_
+	Node_[*uwsgiBackend]
 	// Assocs
 	// States
 }

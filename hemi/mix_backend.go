@@ -180,11 +180,11 @@ type Node interface {
 }
 
 // Node_ is the parent for all backend nodes.
-type Node_ struct {
+type Node_[B Backend] struct {
 	// Parent
 	Component_
 	// Assocs
-	backend Backend
+	backend B
 	// States
 	tlsMode        bool        // tls or not
 	tlsConfig      *tls.Config // TLS config if TLS is enabled
@@ -196,16 +196,16 @@ type Node_ struct {
 	health         any         // TODO
 }
 
-func (n *Node_) OnCreate(name string, backend Backend) {
+func (n *Node_[B]) OnCreate(name string, backend B) {
 	n.MakeComp(name)
 	n.backend = backend
 	n.health = nil // TODO
 }
-func (n *Node_) OnShutdown() {
+func (n *Node_[B]) OnShutdown() {
 	close(n.ShutChan) // notifies Maintain() which close conns
 }
 
-func (n *Node_) OnConfigure() {
+func (n *Node_[B]) OnConfigure() {
 	// tlsMode
 	n.ConfigureBool("tlsMode", &n.tlsMode, false)
 	if n.tlsMode {
@@ -244,18 +244,18 @@ func (n *Node_) OnConfigure() {
 		return errors.New("bad keepAliveConns in node")
 	}, 10)
 }
-func (n *Node_) OnPrepare() {
+func (n *Node_[B]) OnPrepare() {
 }
 
-func (n *Node_) Backend() Backend { return n.backend }
-func (n *Node_) IsTLS() bool      { return n.tlsMode }
-func (n *Node_) IsUDS() bool      { return n.udsMode }
+func (n *Node_[B]) Backend() Backend { return n.backend }
+func (n *Node_[B]) IsTLS() bool      { return n.tlsMode }
+func (n *Node_[B]) IsUDS() bool      { return n.udsMode }
 
-func (n *Node_) markDown()    { n.down.Store(true) }
-func (n *Node_) markUp()      { n.down.Store(false) }
-func (n *Node_) isDown() bool { return n.down.Load() }
+func (n *Node_[B]) markDown()    { n.down.Store(true) }
+func (n *Node_[B]) markUp()      { n.down.Store(false) }
+func (n *Node_[B]) isDown() bool { return n.down.Load() }
 
-func (n *Node_) closeConn(conn io.Closer) {
+func (n *Node_[B]) closeConn(conn io.Closer) {
 	conn.Close()
 	n.DecSub()
 }

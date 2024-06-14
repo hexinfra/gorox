@@ -70,7 +70,7 @@ func (b *RedisBackend) StoreConn(redisConn *RedisConn) {
 // redisNode is a node in RedisBackend.
 type redisNode struct {
 	// Parent
-	Node_
+	Node_[*RedisBackend]
 	// Assocs
 }
 

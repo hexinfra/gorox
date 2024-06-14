@@ -74,7 +74,7 @@ func (b *HTTP1Backend) StoreStream(stream backendStream) {
 // http1Node is a node in HTTP1Backend.
 type http1Node struct {
 	// Parent
-	Node_
+	Node_[*HTTP1Backend]
 	// Assocs
 	// States
 	connPool struct {

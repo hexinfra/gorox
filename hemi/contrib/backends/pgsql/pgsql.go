@@ -22,9 +22,8 @@ type PgSQLBackend struct {
 // pgsqlNode is a node in PgSQLBackend.
 type pgsqlNode struct {
 	// Parent
-	Node_
+	Node_[*PgSQLBackend]
 	// Assocs
-	backend *PgSQLBackend
 }
 
 func (n *pgsqlNode) Maintain() { // runner

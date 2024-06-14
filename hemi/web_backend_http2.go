@@ -73,7 +73,7 @@ func (b *HTTP2Backend) StoreStream(stream backendStream) {
 // http2Node
 type http2Node struct {
 	// Parent
-	Node_
+	Node_[*HTTP2Backend]
 	// Assocs
 	// States
 }

@@ -504,7 +504,7 @@ func (b *UDPSBackend) Dial() (*UConn, error) {
 // udpsNode is a node in UDPSBackend.
 type udpsNode struct {
 	// Parent
-	Node_
+	Node_[*UDPSBackend]
 	// Assocs
 	// States
 }

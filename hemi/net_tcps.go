@@ -652,7 +652,7 @@ func (b *TCPSBackend) Dial() (*TConn, error) {
 // tcpsNode is a node in TCPSBackend.
 type tcpsNode struct {
 	// Parent
-	Node_
+	Node_[*TCPSBackend]
 	// Assocs
 	// States
 	connPool struct { // free list of conns in this node

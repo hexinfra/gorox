@@ -319,7 +319,7 @@ func (b *fcgiBackend) Dial() (*fcgiConn, error) {
 // fcgiNode
 type fcgiNode struct {
 	// Parent
-	Node_
+	Node_[*fcgiBackend]
 	// Assocs
 	// States
 	connPool struct { // free list of conns in this node

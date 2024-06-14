@@ -73,7 +73,7 @@ func (b *HTTP3Backend) StoreStream(stream backendStream) {
 // http3Node
 type http3Node struct {
 	// Parent
-	Node_
+	Node_[*HTTP3Backend]
 	// Assocs
 	// States
 }

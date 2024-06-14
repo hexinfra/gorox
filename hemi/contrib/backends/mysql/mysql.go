@@ -22,9 +22,8 @@ type MySQLBackend struct {
 // mysqlNode is a node in MySQLBackend.
 type mysqlNode struct {
 	// Parent
-	Node_
+	Node_[*MySQLBackend]
 	// Assocs
-	backend *MySQLBackend
 }
 
 func (n *mysqlNode) Maintain() { // runner

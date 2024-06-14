@@ -73,13 +73,20 @@ type socksGate struct {
 	// Parent
 	Gate_
 	// Assocs
+	server *socksServer
 	// States
 	listener *net.TCPListener
 }
 
 func (g *socksGate) init(id int32, server *socksServer) {
-	g.Gate_.Init(id, server)
+	g.Gate_.Init(id, server.MaxConnsPerGate())
+	g.server = server
 }
+
+func (g *socksGate) Server() Server  { return g.server }
+func (g *socksGate) Address() string { return g.server.Address() }
+func (g *socksGate) IsTLS() bool     { return g.server.IsTLS() }
+func (g *socksGate) IsUDS() bool     { return g.server.IsUDS() }
 
 func (g *socksGate) Open() error {
 	listenConfig := new(net.ListenConfig)
@@ -154,18 +161,27 @@ type socksConn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
+	server  *socksServer
+	gate    *socksGate
 	tcpConn *net.TCPConn
 	// Conn states (zeros)
 }
 
 func (c *socksConn) onGet(id int64, gate *socksGate, tcpConn *net.TCPConn) {
-	c.ServerConn_.OnGet(id, gate)
+	c.ServerConn_.OnGet(id)
+	c.server = gate.server
+	c.gate = gate
 	c.tcpConn = tcpConn
 }
 func (c *socksConn) onPut() {
 	c.tcpConn = nil
+	c.server = nil
+	c.gate = nil
 	c.ServerConn_.OnPut()
 }
+
+func (c *socksConn) IsTLS() bool { return c.server.IsTLS() }
+func (c *socksConn) IsUDS() bool { return c.server.IsUDS() }
 
 func (c *socksConn) serve() { // runner
 	defer putSocksConn(c)
@@ -176,5 +192,5 @@ func (c *socksConn) serve() { // runner
 
 func (c *socksConn) closeConn() {
 	c.tcpConn.Close()
-	c.Gate().OnConnClosed()
+	c.gate.OnConnClosed()
 }

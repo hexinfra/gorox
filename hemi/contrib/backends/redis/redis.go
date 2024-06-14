@@ -70,12 +70,14 @@ func (b *RedisBackend) StoreConn(redisConn *RedisConn) {
 // redisNode is a node in RedisBackend.
 type redisNode struct {
 	// Parent
-	Node_[*RedisBackend]
+	Node_
 	// Assocs
+	backend *RedisBackend
 }
 
 func (n *redisNode) onCreate(name string, backend *RedisBackend) {
-	n.Node_.OnCreate(name, backend)
+	n.Node_.OnCreate(name)
+	n.backend = backend
 }
 
 func (n *redisNode) OnConfigure() {
@@ -124,19 +126,27 @@ type RedisConn struct {
 	// Parent
 	BackendConn_
 	// Conn states (non-zeros)
+	backend *RedisBackend
+	node    *redisNode
 	netConn net.Conn
 	rawConn syscall.RawConn
 	// Conn states (zeros)
 }
 
 func (c *RedisConn) onGet(id int64, node *redisNode, netConn net.Conn, rawConn syscall.RawConn) {
-	c.BackendConn_.OnGet(id, node)
+	c.BackendConn_.OnGet(id, node.backend.AliveTimeout())
+
+	c.backend = node.backend
+	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
 }
 func (c *RedisConn) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
+	c.node = nil
+	c.backend = nil
+
 	c.BackendConn_.OnPut()
 }
 

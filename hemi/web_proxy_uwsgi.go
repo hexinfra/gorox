@@ -165,13 +165,15 @@ func (b *uwsgiBackend) CreateNode(name string) Node {
 // uwsgiNode
 type uwsgiNode struct {
 	// Parent
-	Node_[*uwsgiBackend]
+	Node_
 	// Assocs
+	backend *uwsgiBackend
 	// States
 }
 
 func (n *uwsgiNode) onCreate(name string, backend *uwsgiBackend) {
-	n.Node_.OnCreate(name, backend)
+	n.Node_.OnCreate(name)
+	n.backend = backend
 }
 
 func (n *uwsgiNode) OnConfigure() {
@@ -291,8 +293,10 @@ type uwsgiConn struct {
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	region Region // a region-based memory pool
-	conn   *TConn // associated conn
+	backend *uwsgiBackend
+	node    *uwsgiNode
+	region  Region // a region-based memory pool
+	conn    *TConn // associated conn
 	// Conn states (zeros)
 }
 

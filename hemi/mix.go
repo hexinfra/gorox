@@ -289,35 +289,6 @@ func (s *_shutdownable_) Loop(interval time.Duration, callback func(now time.Tim
 	}
 }
 
-/*
-// _connPool_
-type _connPool_[T any] struct {
-	freeList struct{
-		sync.Mutex
-		head T
-		tail T
-		qnty int
-	}
-}
-
-func (p *_connPool_[T]) pullConn() T {
-	list := &p.freeList
-
-	list.Lock()
-	defer list.Unlock()
-
-	if list.qnty == 0 {
-		return nil
-	}
-	conn := list.head
-	list.head = conn.next
-	conn.setNext(nil)
-	list.qnty--
-
-	return conn
-}
-*/
-
 // logcfg
 type logcfg struct {
 	logFile string

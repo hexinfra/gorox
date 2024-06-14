@@ -121,12 +121,19 @@ type hrpcGate struct {
 	// Parent
 	Gate_
 	// Assocs
+	server *hrpcServer
 	// States
 }
 
 func (g *hrpcGate) init(id int32, server *hrpcServer) {
-	g.Gate_.Init(id, server)
+	g.Gate_.Init(id, server.MaxConnsPerGate())
+	g.server = server
 }
+
+func (g *hrpcGate) Server() Server  { return g.server }
+func (g *hrpcGate) Address() string { return g.server.Address() }
+func (g *hrpcGate) IsTLS() bool     { return g.server.IsTLS() }
+func (g *hrpcGate) IsUDS() bool     { return g.server.IsUDS() }
 
 func (g *hrpcGate) Open() error {
 	// TODO
@@ -154,16 +161,29 @@ func (g *hrpcGate) serve() { // runner
 type hrpcConn struct {
 	// Parent
 	ServerConn_
+	server *hrpcServer
+	gate   *hrpcGate
 }
 
 func (c *hrpcConn) onGet(id int64, gate *hrpcGate) {
-	c.ServerConn_.OnGet(id, gate)
+	c.ServerConn_.OnGet(id)
+	c.server = gate.server
+	c.gate = gate
 }
 func (c *hrpcConn) onPut() {
+	c.server = nil
+	c.gate = nil
 	c.ServerConn_.OnPut()
 }
 
-func (c *hrpcConn) rpcServer() *hrpcServer { return c.Server().(*hrpcServer) }
+func (c *hrpcConn) IsTLS() bool { return c.server.IsTLS() }
+func (c *hrpcConn) IsUDS() bool { return c.server.IsUDS() }
+
+func (c *hrpcConn) MakeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+}
+
+//func (c *hrpcConn) rpcServer() *hrpcServer { return c.server }
 
 // Service is the HRPC service.
 type Service struct {

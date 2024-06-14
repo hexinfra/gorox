@@ -154,13 +154,20 @@ type quixGate struct {
 	// Parent
 	Gate_
 	// Assocs
+	router *QUIXRouter
 	// States
 	listener *quic.Listener // the real gate. set after open
 }
 
 func (g *quixGate) init(id int32, router *QUIXRouter) {
-	g.Gate_.Init(id, router)
+	g.Gate_.Init(id, router.MaxConnsPerGate())
+	g.router = router
 }
+
+func (g *quixGate) Server() Server  { return g.router }
+func (g *quixGate) Address() string { return g.router.Address() }
+func (g *quixGate) IsTLS() bool     { return g.router.IsTLS() }
+func (g *quixGate) IsUDS() bool     { return g.router.IsUDS() }
 
 func (g *quixGate) Open() error {
 	// TODO
@@ -177,7 +184,7 @@ func (g *quixGate) serve() { // runner
 	for !g.IsShut() {
 		time.Sleep(time.Second)
 	}
-	g.server.DecSub()
+	g.router.DecSub()
 }
 
 func (g *quixGate) justClose(quicConn *quic.Conn) {
@@ -339,6 +346,8 @@ type QUIXConn struct {
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Conn states (controlled)
 	// Conn states (non-zeros)
+	router   *QUIXRouter
+	gate     *quixGate
 	quicConn *quic.Conn
 	// Conn states (zeros)
 	quixConn0
@@ -347,18 +356,28 @@ type quixConn0 struct { // for fast reset, entirely
 }
 
 func (c *QUIXConn) onGet(id int64, gate *quixGate, quicConn *quic.Conn) {
-	c.ServerConn_.OnGet(id, gate)
+	c.ServerConn_.OnGet(id)
+	c.router = gate.router
+	c.gate = gate
 	c.quicConn = quicConn
 }
 func (c *QUIXConn) onPut() {
 	c.quicConn = nil
 	c.quixConn0 = quixConn0{}
+	c.gate = nil
+	c.router = nil
 	c.ServerConn_.OnPut()
 }
 
+func (c *QUIXConn) IsTLS() bool { return c.router.IsTLS() }
+func (c *QUIXConn) IsUDS() bool { return c.router.IsUDS() }
+
+func (c *QUIXConn) MakeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.router.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+}
+
 func (c *QUIXConn) serve() { // runner
-	router := c.Server().(*QUIXRouter)
-	router.dispatch(c)
+	c.router.dispatch(c)
 	c.closeConn()
 	putQUIXConn(c)
 }
@@ -506,13 +525,15 @@ func (b *QUIXBackend) StoreStream(qStream *QStream) {
 // quixNode is a node in QUIXBackend.
 type quixNode struct {
 	// Parent
-	Node_[*QUIXBackend]
+	Node_
 	// Assocs
+	backend *QUIXBackend
 	// States
 }
 
 func (n *quixNode) onCreate(name string, backend *QUIXBackend) {
-	n.Node_.OnCreate(name, backend)
+	n.Node_.OnCreate(name)
+	n.backend = backend
 }
 
 func (n *quixNode) OnConfigure() {
@@ -571,6 +592,8 @@ type QConn struct {
 	// Parent
 	BackendConn_
 	// Conn states (non-zeros)
+	backend    *QUIXBackend
+	node       *quixNode
 	quicConn   *quic.Conn
 	maxStreams int32 // how many streams are allowed on this connection?
 	// Conn states (zeros)
@@ -579,7 +602,9 @@ type QConn struct {
 }
 
 func (c *QConn) onGet(id int64, node *quixNode, quicConn *quic.Conn) {
-	c.BackendConn_.OnGet(id, node)
+	c.BackendConn_.OnGet(id, node.backend.aliveTimeout)
+	c.backend = node.backend
+	c.node = node
 	c.quicConn = quicConn
 	c.maxStreams = node.backend.MaxStreamsPerConn()
 }
@@ -587,7 +612,16 @@ func (c *QConn) onPut() {
 	c.quicConn = nil
 	c.usedStreams.Store(0)
 	c.broken.Store(false)
+	c.node = nil
+	c.backend = nil
 	c.BackendConn_.OnPut()
+}
+
+func (c *QConn) IsTLS() bool { return c.node.IsTLS() }
+func (c *QConn) IsUDS() bool { return c.node.IsUDS() }
+
+func (c *QConn) MakeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *QConn) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }

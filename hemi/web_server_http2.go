@@ -93,13 +93,20 @@ type http2Gate struct {
 	// Parent
 	Gate_
 	// Assocs
+	server *http2Server
 	// States
 	listener net.Listener // the real gate. set after open
 }
 
 func (g *http2Gate) init(id int32, server *http2Server) {
-	g.Gate_.Init(id, server)
+	g.Gate_.Init(id, server.MaxConnsPerGate())
+	g.server = server
 }
+
+func (g *http2Gate) Server() Server  { return g.server }
+func (g *http2Gate) Address() string { return g.server.Address() }
+func (g *http2Gate) IsTLS() bool     { return g.server.IsTLS() }
+func (g *http2Gate) IsUDS() bool     { return g.server.IsUDS() }
 
 func (g *http2Gate) Open() error {
 	if g.IsUDS() {
@@ -284,6 +291,8 @@ type server2Conn struct {
 	// Conn states (controlled)
 	outFrame http2OutFrame // used by c.serve() to send special out frames. immediately reset after use
 	// Conn states (non-zeros)
+	server         Server
+	gate           Gate
 	netConn        net.Conn            // the connection (TCP/TLS)
 	rawConn        syscall.RawConn     // for syscall. only usable when netConn is TCP
 	buffer         *http2Buffer        // http2Buffer in use, for receiving incoming frames
@@ -319,8 +328,10 @@ type server2Conn0 struct { // for fast reset, entirely
 }
 
 func (c *server2Conn) onGet(id int64, gate Gate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.ServerConn_.OnGet(id, gate)
+	c.ServerConn_.OnGet(id)
 	c._webConn_.onGet()
+	c.server = gate.Server()
+	c.gate = gate
 	c.netConn = netConn
 	c.rawConn = rawConn
 	if c.buffer == nil {
@@ -352,11 +363,20 @@ func (c *server2Conn) onPut() {
 	c.vector = nil
 	c.fixedVector = [2][]byte{}
 	c.server2Conn0 = server2Conn0{}
+	c.server = nil
+	c.gate = nil
 	c._webConn_.onPut()
 	c.ServerConn_.OnPut()
 }
 
-func (c *server2Conn) WebServer() WebServer { return c.Server().(WebServer) }
+func (c *server2Conn) IsTLS() bool { return c.server.IsTLS() }
+func (c *server2Conn) IsUDS() bool { return c.server.IsUDS() }
+
+func (c *server2Conn) MakeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+}
+
+func (c *server2Conn) WebServer() WebServer { return c.server.(WebServer) }
 
 func (c *server2Conn) serve() { // runner
 	Printf("========================== conn=%d start =========================\n", c.id)
@@ -436,7 +456,7 @@ serve:
 
 func (c *server2Conn) handshake() error {
 	// Set deadline for the first request headers
-	if err := c.setReadDeadline(time.Now().Add(c.Server().ReadTimeout())); err != nil {
+	if err := c.setReadDeadline(time.Now().Add(c.server.ReadTimeout())); err != nil {
 		return err
 	}
 	if err := c._growFrame(uint32(len(http2BytesPrism))); err != nil {
@@ -864,7 +884,7 @@ func (c *server2Conn) recvFrame() (*http2InFrame, error) {
 			}
 		}
 		// Got a new headers. Set deadline for next headers
-		if err := c.setReadDeadline(time.Now().Add(c.Server().ReadTimeout())); err != nil {
+		if err := c.setReadDeadline(time.Now().Add(c.server.ReadTimeout())); err != nil {
 			return nil, err
 		}
 	}

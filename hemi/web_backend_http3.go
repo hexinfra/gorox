@@ -73,13 +73,15 @@ func (b *HTTP3Backend) StoreStream(stream backendStream) {
 // http3Node
 type http3Node struct {
 	// Parent
-	Node_[*HTTP3Backend]
+	Node_
 	// Assocs
+	backend *HTTP3Backend
 	// States
 }
 
 func (n *http3Node) onCreate(name string, backend *HTTP3Backend) {
-	n.Node_.OnCreate(name, backend)
+	n.Node_.OnCreate(name)
+	n.backend = backend
 }
 
 func (n *http3Node) OnConfigure() {
@@ -154,6 +156,8 @@ type backend3Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
+	backend  *HTTP3Backend
+	node     *http3Node
 	quicConn *quic.Conn // the underlying quic connection
 	// Conn states (zeros)
 	nStreams      atomic.Int32                           // concurrent streams
@@ -164,8 +168,11 @@ type backend3Conn0 struct { // for fast reset, entirely
 }
 
 func (c *backend3Conn) onGet(id int64, node *http3Node, quicConn *quic.Conn) {
-	c.BackendConn_.OnGet(id, node)
+	c.BackendConn_.OnGet(id, node.backend.aliveTimeout)
 	c._webConn_.onGet()
+
+	c.backend = node.backend
+	c.node = node
 	c.quicConn = quicConn
 }
 func (c *backend3Conn) onPut() {
@@ -173,12 +180,22 @@ func (c *backend3Conn) onPut() {
 	c.nStreams.Store(0)
 	c.streams = [http3MaxActiveStreams]*backend3Stream{}
 	c.backend3Conn0 = backend3Conn0{}
+	c.node = nil
+	c.backend = nil
+
 	c._webConn_.onPut()
 	c.BackendConn_.OnPut()
 }
 
-func (c *backend3Conn) WebBackend() WebBackend { return c.Backend().(WebBackend) }
-func (c *backend3Conn) http3Node() *http3Node  { return c.Node().(*http3Node) }
+func (c *backend3Conn) IsTLS() bool { return c.node.IsTLS() }
+func (c *backend3Conn) IsUDS() bool { return c.node.IsUDS() }
+
+func (c *backend3Conn) MakeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+}
+
+func (c *backend3Conn) WebBackend() WebBackend { return c.backend }
+func (c *backend3Conn) http3Node() *http3Node  { return c.node }
 
 func (c *backend3Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.WebBackend().MaxStreamsPerConn()

@@ -296,8 +296,7 @@ func (b *fcgiBackend) fetchExchan() (*fcgiExchan, error) {
 	return node.fetchExchan()
 }
 func (b *fcgiBackend) storeExchan(exchan *fcgiExchan) {
-	node := exchan.conn.node.(*fcgiNode)
-	node.storeExchan(exchan)
+	exchan.conn.node.storeExchan(exchan)
 }
 
 /*
@@ -319,8 +318,9 @@ func (b *fcgiBackend) Dial() (*fcgiConn, error) {
 // fcgiNode
 type fcgiNode struct {
 	// Parent
-	Node_[*fcgiBackend]
+	Node_
 	// Assocs
+	backend *fcgiBackend
 	// States
 	connPool struct { // free list of conns in this node
 		sync.Mutex
@@ -331,7 +331,8 @@ type fcgiNode struct {
 }
 
 func (n *fcgiNode) onCreate(name string, backend *fcgiBackend) {
-	n.Node_.OnCreate(name, backend)
+	n.Node_.OnCreate(name)
+	n.backend = backend
 }
 
 func (n *fcgiNode) OnConfigure() {
@@ -556,6 +557,8 @@ type fcgiConn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
+	backend    *fcgiBackend
+	node       *fcgiNode
 	netConn    net.Conn        // *net.TCPConn or *net.UnixConn
 	rawConn    syscall.RawConn // for syscall
 	persistent bool            // persist the connection after current exchan? true by default
@@ -567,7 +570,10 @@ type fcgiConn struct {
 }
 
 func (c *fcgiConn) onGet(id int64, node *fcgiNode, netConn net.Conn, rawConn syscall.RawConn) {
-	c.BackendConn_.OnGet(id, node)
+	c.BackendConn_.OnGet(id, node.backend.aliveTimeout)
+
+	c.backend = node.backend
+	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
 	c.persistent = true
@@ -577,11 +583,21 @@ func (c *fcgiConn) onPut() {
 	c.rawConn = nil
 	c.usedExchans.Store(0)
 	c.broken.Store(false)
+	c.node = nil
+	c.backend = nil
+
 	c.BackendConn_.OnPut()
 }
 
+func (c *fcgiConn) IsTLS() bool { return c.node.IsTLS() }
+func (c *fcgiConn) IsUDS() bool { return c.node.IsUDS() }
+
+func (c *fcgiConn) MakeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+}
+
 func (c *fcgiConn) reachLimit() bool {
-	return c.usedExchans.Add(1) > c.Backend().(*fcgiBackend).maxExchansPerConn
+	return c.usedExchans.Add(1) > c.backend.maxExchansPerConn
 }
 
 func (c *fcgiConn) fetchExchan() (*fcgiExchan, error) {
@@ -694,7 +710,7 @@ func (r *fcgiRequest) onUse() {
 	copy(r.paramsHeader[:], fcgiEmptyParams) // payloadLen (r.paramsHeader[4:6]) needs modification on using
 	copy(r.stdinHeader[:], fcgiEmptyStdin)   // payloadLen (r.stdinHeader[4:6]) needs modification for every stdin record on using
 	r.params = r.stockParams[:]
-	r.sendTimeout = r.exchan.conn.Backend().(*fcgiBackend).sendTimeout
+	r.sendTimeout = r.exchan.conn.backend.sendTimeout
 }
 func (r *fcgiRequest) onEnd() {
 	if cap(r.params) != cap(r.stockParams) {
@@ -999,7 +1015,7 @@ func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
 }
 
 func (r *fcgiRequest) _setBeginRequest(p *[]byte) {
-	if r.exchan.conn.Backend().(*fcgiBackend).persistent {
+	if r.exchan.conn.backend.persistent {
 		*p = fcgiBeginKeepConn
 	} else {
 		*p = fcgiBeginDontKeep
@@ -1141,8 +1157,8 @@ func (r *fcgiResponse) onUse() {
 	r.input = r.stockInput[:]
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of header indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
-	r.recvTimeout = r.exchan.conn.Backend().(*fcgiBackend).recvTimeout
-	r.maxContentSize = r.exchan.conn.Backend().(*fcgiBackend).maxContentSize
+	r.recvTimeout = r.exchan.conn.backend.recvTimeout
+	r.maxContentSize = r.exchan.conn.backend.maxContentSize
 	r.status = StatusOK
 	r.headResult = StatusOK
 	r.bodyResult = StatusOK
@@ -1640,7 +1656,7 @@ func (r *fcgiResponse) forTrailers(callback func(trailer *pair, name []byte, val
 }
 
 func (r *fcgiResponse) saveContentFilesDir() string {
-	return r.exchan.conn.Backend().(*fcgiBackend).SaveContentFilesDir()
+	return r.exchan.conn.backend.SaveContentFilesDir()
 }
 
 func (r *fcgiResponse) _newTempFile() (tempFile, error) { // to save content to

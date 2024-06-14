@@ -174,17 +174,14 @@ type Node interface {
 	Component
 	// Methods
 	Maintain() // runner
-	Backend() Backend
 	IsTLS() bool
 	IsUDS() bool
 }
 
 // Node_ is the parent for all backend nodes.
-type Node_[B Backend] struct {
+type Node_ struct {
 	// Parent
 	Component_
-	// Assocs
-	backend B
 	// States
 	tlsMode        bool        // tls or not
 	tlsConfig      *tls.Config // TLS config if TLS is enabled
@@ -196,16 +193,15 @@ type Node_[B Backend] struct {
 	health         any         // TODO
 }
 
-func (n *Node_[B]) OnCreate(name string, backend B) {
+func (n *Node_) OnCreate(name string) {
 	n.MakeComp(name)
-	n.backend = backend
 	n.health = nil // TODO
 }
-func (n *Node_[B]) OnShutdown() {
+func (n *Node_) OnShutdown() {
 	close(n.ShutChan) // notifies Maintain() which close conns
 }
 
-func (n *Node_[B]) OnConfigure() {
+func (n *Node_) OnConfigure() {
 	// tlsMode
 	n.ConfigureBool("tlsMode", &n.tlsMode, false)
 	if n.tlsMode {
@@ -244,18 +240,17 @@ func (n *Node_[B]) OnConfigure() {
 		return errors.New("bad keepAliveConns in node")
 	}, 10)
 }
-func (n *Node_[B]) OnPrepare() {
+func (n *Node_) OnPrepare() {
 }
 
-func (n *Node_[B]) Backend() Backend { return n.backend }
-func (n *Node_[B]) IsTLS() bool      { return n.tlsMode }
-func (n *Node_[B]) IsUDS() bool      { return n.udsMode }
+func (n *Node_) IsTLS() bool { return n.tlsMode }
+func (n *Node_) IsUDS() bool { return n.udsMode }
 
-func (n *Node_[B]) markDown()    { n.down.Store(true) }
-func (n *Node_[B]) markUp()      { n.down.Store(false) }
-func (n *Node_[B]) isDown() bool { return n.down.Load() }
+func (n *Node_) markDown()    { n.down.Store(true) }
+func (n *Node_) markUp()      { n.down.Store(false) }
+func (n *Node_) isDown() bool { return n.down.Load() }
 
-func (n *Node_[B]) closeConn(conn io.Closer) {
+func (n *Node_) closeConn(conn io.Closer) {
 	conn.Close()
 	n.DecSub()
 }
@@ -265,40 +260,25 @@ type BackendConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id      int64     // the conn id
-	backend Backend   // associated backend
-	node    Node      // associated node
-	expire  time.Time // when the conn is considered expired
+	id     int64     // the conn id
+	expire time.Time // when the conn is considered expired
 	// Conn states (zeros)
 	counter   atomic.Int64 // can be used to generate a random number
 	lastWrite time.Time    // deadline of last write operation
 	lastRead  time.Time    // deadline of last read operation
 }
 
-func (c *BackendConn_) OnGet(id int64, node Node) {
+func (c *BackendConn_) OnGet(id int64, aliveTimeout time.Duration) {
 	c.id = id
-	c.backend = node.Backend()
-	c.node = node
-	c.expire = time.Now().Add(c.backend.AliveTimeout())
+	c.expire = time.Now().Add(aliveTimeout)
 }
 func (c *BackendConn_) OnPut() {
-	c.backend = nil
-	c.node = nil
 	c.expire = time.Time{}
 	c.counter.Store(0)
 	c.lastWrite = time.Time{}
 	c.lastRead = time.Time{}
 }
 
-func (c *BackendConn_) ID() int64        { return c.id }
-func (c *BackendConn_) Backend() Backend { return c.backend }
-func (c *BackendConn_) Node() Node       { return c.node }
-
-func (c *BackendConn_) IsTLS() bool { return c.node.IsTLS() }
-func (c *BackendConn_) IsUDS() bool { return c.node.IsUDS() }
-
-func (c *BackendConn_) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
-}
+func (c *BackendConn_) ID() int64 { return c.id }
 
 func (c *BackendConn_) isAlive() bool { return time.Now().Before(c.expire) }

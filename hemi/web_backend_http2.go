@@ -73,13 +73,15 @@ func (b *HTTP2Backend) StoreStream(stream backendStream) {
 // http2Node
 type http2Node struct {
 	// Parent
-	Node_[*HTTP2Backend]
+	Node_
 	// Assocs
+	backend *HTTP2Backend
 	// States
 }
 
 func (n *http2Node) onCreate(name string, backend *HTTP2Backend) {
-	n.Node_.OnCreate(name, backend)
+	n.Node_.OnCreate(name)
+	n.backend = backend
 }
 
 func (n *http2Node) OnConfigure() {
@@ -168,6 +170,8 @@ type backend2Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
+	backend *HTTP2Backend
+	node    *http2Node
 	netConn net.Conn // the connection (TCP/TLS)
 	rawConn syscall.RawConn
 	// Conn states (zeros)
@@ -179,8 +183,11 @@ type backend2Conn0 struct { // for fast reset, entirely
 }
 
 func (c *backend2Conn) onGet(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.BackendConn_.OnGet(id, node)
+	c.BackendConn_.OnGet(id, node.backend.aliveTimeout)
 	c._webConn_.onGet()
+
+	c.backend = node.backend
+	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
 }
@@ -190,12 +197,22 @@ func (c *backend2Conn) onPut() {
 	c.nStreams.Store(0)
 	c.streams = [http2MaxActiveStreams]*backend2Stream{}
 	c.backend2Conn0 = backend2Conn0{}
+	c.node = nil
+	c.backend = nil
+
 	c._webConn_.onPut()
 	c.BackendConn_.OnPut()
 }
 
-func (c *backend2Conn) WebBackend() WebBackend { return c.Backend().(WebBackend) }
-func (c *backend2Conn) http2Node() *http2Node  { return c.Node().(*http2Node) }
+func (c *backend2Conn) IsTLS() bool { return c.node.IsTLS() }
+func (c *backend2Conn) IsUDS() bool { return c.node.IsUDS() }
+
+func (c *backend2Conn) MakeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+}
+
+func (c *backend2Conn) WebBackend() WebBackend { return c.backend }
+func (c *backend2Conn) http2Node() *http2Node  { return c.node }
 
 func (c *backend2Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.WebBackend().MaxStreamsPerConn()

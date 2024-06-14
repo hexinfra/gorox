@@ -22,8 +22,9 @@ type MongoBackend struct {
 // mongoNode is a node in MongoBackend.
 type mongoNode struct {
 	// Parent
-	Node_[*MongoBackend]
+	Node_
 	// Assocs
+	backend *MongoBackend
 }
 
 func (n *mongoNode) Maintain() { // runner

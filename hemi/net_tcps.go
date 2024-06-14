@@ -167,13 +167,20 @@ type tcpsGate struct {
 	// Parent
 	Gate_
 	// Assocs
+	router *TCPSRouter
 	// States
 	listener net.Listener // the real gate. set after open
 }
 
 func (g *tcpsGate) init(id int32, router *TCPSRouter) {
-	g.Gate_.Init(id, router)
+	g.Gate_.Init(id, router.MaxConnsPerGate())
+	g.router = router
 }
+
+func (g *tcpsGate) Server() Server  { return g.router }
+func (g *tcpsGate) Address() string { return g.router.Address() }
+func (g *tcpsGate) IsTLS() bool     { return g.router.IsTLS() }
+func (g *tcpsGate) IsUDS() bool     { return g.router.IsUDS() }
 
 func (g *tcpsGate) Open() error {
 	if g.IsUDS() {
@@ -226,7 +233,7 @@ func (g *tcpsGate) serveTLS() { // runner
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {
-			tlsConn := tls.Server(tcpConn, g.server.TLSConfig())
+			tlsConn := tls.Server(tcpConn, g.router.TLSConfig())
 			if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
 				g.justClose(tlsConn)
 				continue
@@ -240,7 +247,7 @@ func (g *tcpsGate) serveTLS() { // runner
 	if DebugLevel() >= 2 {
 		Printf("tcpsGate=%d TLS done\n", g.id)
 	}
-	g.server.DecSub()
+	g.router.DecSub()
 }
 func (g *tcpsGate) serveUDS() { // runner
 	listener := g.listener.(*net.UnixListener)
@@ -272,7 +279,7 @@ func (g *tcpsGate) serveUDS() { // runner
 	if DebugLevel() >= 2 {
 		Printf("tcpsGate=%d TCP done\n", g.id)
 	}
-	g.server.DecSub()
+	g.router.DecSub()
 }
 func (g *tcpsGate) serveTCP() { // runner
 	listener := g.listener.(*net.TCPListener)
@@ -307,7 +314,7 @@ func (g *tcpsGate) serveTCP() { // runner
 	if DebugLevel() >= 2 {
 		Printf("tcpsGate=%d TCP done\n", g.id)
 	}
-	g.server.DecSub()
+	g.router.DecSub()
 }
 
 func (g *tcpsGate) justClose(netConn net.Conn) {
@@ -474,6 +481,8 @@ type TCPSConn struct {
 	stockBuffer [256]byte  // a (fake) buffer to workaround Go's conservative escape analysis
 	// Conn states (controlled)
 	// Conn states (non-zeros)
+	router    *TCPSRouter
+	gate      *tcpsGate
 	netConn   net.Conn        // the connection (TCP/TLS/UDS)
 	rawConn   syscall.RawConn // for syscall, only when netConn is TCP
 	region    Region          // a region-based memory pool
@@ -483,7 +492,9 @@ type TCPSConn struct {
 }
 
 func (c *TCPSConn) onGet(id int64, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.ServerConn_.OnGet(id, gate)
+	c.ServerConn_.OnGet(id)
+	c.router = gate.router
+	c.gate = gate
 	c.netConn = netConn
 	c.rawConn = rawConn
 	c.region.Init()
@@ -498,12 +509,20 @@ func (c *TCPSConn) onPut() {
 		PutNK(c.input)
 		c.input = nil
 	}
+	c.gate = nil
+	c.router = nil
 	c.ServerConn_.OnPut()
 }
 
+func (c *TCPSConn) IsTLS() bool { return c.router.IsTLS() }
+func (c *TCPSConn) IsUDS() bool { return c.router.IsUDS() }
+
+func (c *TCPSConn) MakeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.router.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+}
+
 func (c *TCPSConn) serve() { // runner
-	router := c.Server().(*TCPSRouter)
-	router.dispatch(c)
+	c.router.dispatch(c)
 	c.closeConn()
 	putTCPSConn(c)
 }
@@ -536,9 +555,9 @@ func (c *TCPSConn) _checkClose() {
 }
 
 func (c *TCPSConn) closeWrite() {
-	if router := c.Server(); router.IsTLS() {
+	if c.router.IsTLS() {
 		c.netConn.(*tls.Conn).CloseWrite()
-	} else if router.IsUDS() {
+	} else if c.router.IsUDS() {
 		c.netConn.(*net.UnixConn).CloseWrite()
 	} else {
 		c.netConn.(*net.TCPConn).CloseWrite()
@@ -652,8 +671,9 @@ func (b *TCPSBackend) Dial() (*TConn, error) {
 // tcpsNode is a node in TCPSBackend.
 type tcpsNode struct {
 	// Parent
-	Node_[*TCPSBackend]
+	Node_
 	// Assocs
+	backend *TCPSBackend
 	// States
 	connPool struct { // free list of conns in this node
 		sync.Mutex
@@ -664,7 +684,8 @@ type tcpsNode struct {
 }
 
 func (n *tcpsNode) onCreate(name string, backend *TCPSBackend) {
-	n.Node_.OnCreate(name, backend)
+	n.Node_.OnCreate(name)
+	n.backend = backend
 }
 
 func (n *tcpsNode) OnConfigure() {
@@ -799,6 +820,8 @@ type TConn struct {
 	stockInput [8192]byte // for c.input
 	// Conn states (controlled)
 	// Conn states (non-zeros)
+	backend *TCPSBackend
+	node    *tcpsNode
 	input   []byte
 	netConn net.Conn        // *net.TCPConn, *tls.Conn, *net.UnixConn
 	rawConn syscall.RawConn // for syscall. only usable when netConn is TCP/UDS
@@ -808,7 +831,9 @@ type TConn struct {
 }
 
 func (c *TConn) onGet(id int64, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) {
-	c.BackendConn_.OnGet(id, node)
+	c.BackendConn_.OnGet(id, node.backend.aliveTimeout)
+	c.backend = node.backend
+	c.node = node
 	c.input = c.stockInput[:]
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -819,7 +844,16 @@ func (c *TConn) onPut() {
 	c.input = nil
 	c.writeBroken.Store(false)
 	c.readBroken.Store(false)
+	c.node = nil
+	c.backend = nil
 	c.BackendConn_.OnPut()
+}
+
+func (c *TConn) IsTLS() bool { return c.node.IsTLS() }
+func (c *TConn) IsUDS() bool { return c.node.IsUDS() }
+
+func (c *TConn) MakeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *TConn) TLSConn() *tls.Conn     { return c.netConn.(*tls.Conn) }

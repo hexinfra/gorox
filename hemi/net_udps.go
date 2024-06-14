@@ -161,12 +161,19 @@ type udpsGate struct {
 	// Parent
 	Gate_
 	// Assocs
+	router *UDPSRouter
 	// States
 }
 
 func (g *udpsGate) init(id int32, router *UDPSRouter) {
-	g.Gate_.Init(id, router)
+	g.Gate_.Init(id, router.MaxConnsPerGate())
+	g.router = router
 }
+
+func (g *udpsGate) Server() Server  { return g.router }
+func (g *udpsGate) Address() string { return g.router.Address() }
+func (g *udpsGate) IsTLS() bool     { return g.router.IsTLS() }
+func (g *udpsGate) IsUDS() bool     { return g.router.IsUDS() }
 
 func (g *udpsGate) Open() error {
 	// TODO
@@ -191,7 +198,7 @@ func (g *udpsGate) serveTLS() { // runner
 	for !g.shut.Load() {
 		time.Sleep(time.Second)
 	}
-	g.server.DecSub()
+	g.router.DecSub()
 }
 func (g *udpsGate) serveUDS() { // runner
 	// TODO
@@ -201,7 +208,7 @@ func (g *udpsGate) serveUDP() { // runner
 	for !g.shut.Load() {
 		time.Sleep(time.Second)
 	}
-	g.server.DecSub()
+	g.router.DecSub()
 }
 
 func (g *udpsGate) justClose(pktConn net.PacketConn) {
@@ -367,25 +374,37 @@ type UDPSConn struct {
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Conn states (controlled)
 	// Conn states (non-zeros)
+	router  *UDPSRouter
+	gate    *udpsGate
 	pktConn net.PacketConn
 	rawConn syscall.RawConn
 	// Conn states (zeros)
 }
 
 func (c *UDPSConn) onGet(id int64, gate *udpsGate, pktConn net.PacketConn, rawConn syscall.RawConn) {
-	c.ServerConn_.OnGet(id, gate)
+	c.ServerConn_.OnGet(id)
+	c.router = gate.router
+	c.gate = gate
 	c.pktConn = pktConn
 	c.rawConn = rawConn
 }
 func (c *UDPSConn) onPut() {
 	c.pktConn = nil
 	c.rawConn = nil
+	c.router = nil
+	c.gate = nil
 	c.ServerConn_.OnPut()
 }
 
+func (c *UDPSConn) IsTLS() bool { return c.router.IsTLS() }
+func (c *UDPSConn) IsUDS() bool { return c.router.IsUDS() }
+
+func (c *UDPSConn) MakeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.router.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+}
+
 func (c *UDPSConn) serve() { // runner
-	router := c.Server().(*UDPSRouter)
-	router.dispatch(c)
+	c.router.dispatch(c)
 	c.closeConn()
 	putUDPSConn(c)
 }
@@ -398,8 +417,8 @@ func (c *UDPSConn) Close() error {
 
 func (c *UDPSConn) closeConn() {
 	// TODO: tls, uds?
-	if router := c.Server(); router.IsTLS() {
-	} else if router.IsUDS() {
+	if c.router.IsTLS() {
+	} else if c.router.IsUDS() {
 	} else {
 	}
 	c.pktConn.Close()
@@ -504,13 +523,15 @@ func (b *UDPSBackend) Dial() (*UConn, error) {
 // udpsNode is a node in UDPSBackend.
 type udpsNode struct {
 	// Parent
-	Node_[*UDPSBackend]
+	Node_
 	// Assocs
+	backend *UDPSBackend
 	// States
 }
 
 func (n *udpsNode) onCreate(name string, backend *UDPSBackend) {
-	n.Node_.OnCreate(name, backend)
+	n.Node_.OnCreate(name)
+	n.backend = backend
 }
 
 func (n *udpsNode) OnConfigure() {
@@ -560,6 +581,8 @@ type UConn struct {
 	// Parent
 	BackendConn_
 	// Conn states (non-zeros)
+	backend *UDPSBackend
+	node    *udpsNode
 	netConn net.PacketConn
 	rawConn syscall.RawConn // for syscall
 	// Conn states (zeros)
@@ -567,7 +590,9 @@ type UConn struct {
 }
 
 func (c *UConn) onGet(id int64, node *udpsNode, netConn net.PacketConn, rawConn syscall.RawConn) {
-	c.BackendConn_.OnGet(id, node)
+	c.BackendConn_.OnGet(id, node.backend.aliveTimeout)
+	c.backend = node.backend
+	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
 }
@@ -575,7 +600,16 @@ func (c *UConn) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
 	c.broken.Store(false)
+	c.node = nil
+	c.backend = nil
 	c.BackendConn_.OnPut()
+}
+
+func (c *UConn) IsTLS() bool { return c.node.IsTLS() }
+func (c *UConn) IsUDS() bool { return c.node.IsUDS() }
+
+func (c *UConn) MakeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *UConn) SetWriteDeadline(deadline time.Time) error {

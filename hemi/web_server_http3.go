@@ -68,13 +68,20 @@ type http3Gate struct {
 	// Parent
 	Gate_
 	// Assocs
+	server *http3Server
 	// States
 	listener *quic.Listener // the real gate. set after open
 }
 
 func (g *http3Gate) init(id int32, server *http3Server) {
-	g.Gate_.Init(id, server)
+	g.Gate_.Init(id, server.MaxConnsPerGate())
+	g.server = server
 }
+
+func (g *http3Gate) Server() Server  { return g.server }
+func (g *http3Gate) Address() string { return g.server.Address() }
+func (g *http3Gate) IsTLS() bool     { return g.server.IsTLS() }
+func (g *http3Gate) IsUDS() bool     { return g.server.IsUDS() }
 
 func (g *http3Gate) Open() error {
 	listener := quic.NewListener(g.Address())
@@ -148,6 +155,8 @@ type server3Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
+	server   *http3Server
+	gate     *http3Gate
 	quicConn *quic.Conn        // the quic connection
 	buffer   *http3Buffer      // ...
 	table    http3DynamicTable // ...
@@ -162,8 +171,10 @@ type server3Conn0 struct { // for fast reset, entirely
 }
 
 func (c *server3Conn) onGet(id int64, gate *http3Gate, quicConn *quic.Conn) {
-	c.ServerConn_.OnGet(id, gate)
+	c.ServerConn_.OnGet(id)
 	c._webConn_.onGet()
+	c.server = gate.server
+	c.gate = gate
 	c.quicConn = quicConn
 	if c.buffer == nil {
 		c.buffer = getHTTP3Buffer()
@@ -176,11 +187,20 @@ func (c *server3Conn) onPut() {
 	// c.table is reserved
 	c.streams = [http3MaxActiveStreams]*server3Stream{}
 	c.server3Conn0 = server3Conn0{}
+	c.server = nil
+	c.gate = nil
 	c._webConn_.onPut()
 	c.ServerConn_.OnPut()
 }
 
-func (c *server3Conn) WebServer() WebServer { return c.Server().(WebServer) }
+func (c *server3Conn) IsTLS() bool { return c.server.IsTLS() }
+func (c *server3Conn) IsUDS() bool { return c.server.IsUDS() }
+
+func (c *server3Conn) MakeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+}
+
+func (c *server3Conn) WebServer() WebServer { return c.server }
 
 func (c *server3Conn) serve() { // runner
 	// TODO

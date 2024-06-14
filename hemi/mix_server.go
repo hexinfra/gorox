@@ -179,30 +179,25 @@ type Gate_ struct {
 	// Mixins
 	_subsWaiter_ // for conns
 	// Assocs
-	server Server
 	// States
 	id       int32        // gate id
+	maxConns int32        // max concurrent conns allowed
 	shut     atomic.Bool  // is gate shut?
 	numConns atomic.Int32 // TODO: false sharing
 }
 
-func (g *Gate_) Init(id int32, server Server) {
-	g.server = server
+func (g *Gate_) Init(id int32, maxConns int32) {
 	g.id = id
+	g.maxConns = maxConns
 	g.shut.Store(false)
 	g.numConns.Store(0)
 }
-
-func (g *Gate_) Server() Server  { return g.server }
-func (g *Gate_) Address() string { return g.server.Address() }
-func (g *Gate_) IsTLS() bool     { return g.server.IsTLS() }
-func (g *Gate_) IsUDS() bool     { return g.server.IsUDS() }
 
 func (g *Gate_) ID() int32        { return g.id }
 func (g *Gate_) IsShut() bool     { return g.shut.Load() }
 func (g *Gate_) MarkShut()        { g.shut.Store(true) }
 func (g *Gate_) DecConns() int32  { return g.numConns.Add(-1) }
-func (g *Gate_) ReachLimit() bool { return g.numConns.Add(1) > g.server.MaxConnsPerGate() }
+func (g *Gate_) ReachLimit() bool { return g.numConns.Add(1) > g.maxConns }
 
 func (g *Gate_) OnConnClosed() {
 	g.DecConns()
@@ -214,35 +209,20 @@ type ServerConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id     int64  // the conn id
-	server Server // associated server
-	gate   Gate   // associated gate
+	id int64 // the conn id
 	// Conn states (zeros)
 	counter   atomic.Int64 // can be used to generate a random number
 	lastRead  time.Time    // deadline of last read operation
 	lastWrite time.Time    // deadline of last write operation
 }
 
-func (c *ServerConn_) OnGet(id int64, gate Gate) {
+func (c *ServerConn_) OnGet(id int64) {
 	c.id = id
-	c.server = gate.Server()
-	c.gate = gate
 }
 func (c *ServerConn_) OnPut() {
-	c.server = nil
-	c.gate = nil
 	c.counter.Store(0)
 	c.lastRead = time.Time{}
 	c.lastWrite = time.Time{}
 }
 
-func (c *ServerConn_) ID() int64      { return c.id }
-func (c *ServerConn_) Server() Server { return c.server }
-func (c *ServerConn_) Gate() Gate     { return c.gate }
-
-func (c *ServerConn_) IsTLS() bool { return c.server.IsTLS() }
-func (c *ServerConn_) IsUDS() bool { return c.server.IsUDS() }
-
-func (c *ServerConn_) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
-}
+func (c *ServerConn_) ID() int64 { return c.id }

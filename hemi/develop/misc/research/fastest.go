@@ -1,4 +1,4 @@
-// This is the fastest result that a web server written in Go (with package net) can achieve.
+// This is the fastest result that an http server written in Go (with package net) can achieve.
 
 package main
 

@@ -12,7 +12,7 @@ NAMING
 
     as mixin types:
 
-      webServer_
+      httpServer_
       _client_
 
 

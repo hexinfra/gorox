@@ -58,10 +58,10 @@ func (c *redisCacher) Maintain() { // runner
 	c.stage.DecSub()
 }
 
-func (c *redisCacher) Set(key []byte, wobject *Wobject) {
+func (c *redisCacher) Set(key []byte, hobject *Hobject) {
 	// TODO
 }
-func (c *redisCacher) Get(key []byte) (wobject *Wobject) {
+func (c *redisCacher) Get(key []byte) (hobject *Hobject) {
 	// TODO
 	return
 }

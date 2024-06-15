@@ -19,7 +19,7 @@ FCGI_BEGIN_REQUEST=1: 启动一个请求
       reserved [5]byte // 0
   } beginRequest;
 
-FCGI_PARAMS=4: 承载 name-value 列表，由 web server 发给 fcgi server，流式
+FCGI_PARAMS=4: 承载 name-value 列表，由 http server 发给 fcgi server，流式
 
   PARAMS 类型的 record，其 content 按以下编码：
 
@@ -30,12 +30,12 @@ FCGI_PARAMS=4: 承载 name-value 列表，由 web server 发给 fcgi server，�
 
   某个 name/value 的长度 <= 127 时，编码为 1 字节，否则编码为 4 字节。
 
-FCGI_STDIN=5: 承载请求内容，由 web server 发给 fcgi server，流式
+FCGI_STDIN=5: 承载请求内容，由 http server 发给 fcgi server，流式
 
-FCGI_STDOUT=6: 承载响应内容，由 fcgi server 发给 web server，流式
-FCGI_STDERR=7: 承载响应错误，由 fcgi server 发给 web server，流式
+FCGI_STDOUT=6: 承载响应内容，由 fcgi server 发给 http server，流式
+FCGI_STDERR=7: 承载响应错误，由 fcgi server 发给 http server，流式
 
-FCGI_END_REQUEST=3: 告诉 web server 响应结束
+FCGI_END_REQUEST=3: 告诉 http server 响应结束
 
   typedef struct {
       appStatus      uint32

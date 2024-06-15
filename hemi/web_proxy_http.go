@@ -24,17 +24,17 @@ func init() {
 	})
 }
 
-// httpProxy handlet passes web requests to web backends and caches responses.
+// httpProxy handlet passes http requests to http backends and caches responses.
 type httpProxy struct {
 	// Parent
 	Handlet_
 	// Assocs
-	stage   *Stage     // current stage
-	webapp  *Webapp    // the webapp to which the proxy belongs
-	backend WebBackend // the backend to pass to. can be *HTTP1Backend, *HTTP2Backend, or *HTTP3Backend
-	cacher  Cacher     // the cacher which is used by this proxy
+	stage   *Stage      // current stage
+	webapp  *Webapp     // the webapp to which the proxy belongs
+	backend HTTPBackend // the backend to pass to. can be *HTTP1Backend, *HTTP2Backend, or *HTTP3Backend
+	cacher  Cacher      // the cacher which is used by this proxy
 	// States
-	WebExchanProxyConfig // embeded
+	HTTPExchanProxyConfig // embeded
 }
 
 func (h *httpProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
@@ -53,7 +53,7 @@ func (h *httpProxy) OnConfigure() {
 			if backend := h.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
 			} else {
-				h.backend = backend.(WebBackend)
+				h.backend = backend.(HTTPBackend)
 			}
 		} else {
 			UseExitln("invalid toBackend")
@@ -124,12 +124,12 @@ func (h *httpProxy) IsProxy() bool { return true }
 func (h *httpProxy) IsCache() bool { return h.cacher != nil }
 
 func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
-	ReverseProxyWebExchan(req, resp, h.backend, &h.WebExchanProxyConfig)
+	ReverseProxyWebExchan(req, resp, h.backend, &h.HTTPExchanProxyConfig)
 	return true
 }
 
 // WebExchanProxyConfig
-type WebExchanProxyConfig struct {
+type HTTPExchanProxyConfig struct {
 	BufferClientContent bool
 	Hostname            []byte
 	ColonPort           []byte
@@ -144,7 +144,7 @@ type WebExchanProxyConfig struct {
 	DelResponseHeaders  [][]byte
 }
 
-func ReverseProxyWebExchan(req Request, resp Response, backend WebBackend, cfg *WebExchanProxyConfig) {
+func ReverseProxyWebExchan(req Request, resp Response, backend HTTPBackend, cfg *HTTPExchanProxyConfig) {
 	var content any
 	hasContent := req.HasContent()
 	if hasContent && cfg.BufferClientContent { // including size 0
@@ -177,7 +177,7 @@ func ReverseProxyWebExchan(req Request, resp Response, backend WebBackend, cfg *
 		if backErr == nil && hasTrailers {
 			if !backReq.proxyCopyTail(req, cfg) {
 				backStream.markBroken()
-				backErr = webOutTrailerFailed
+				backErr = httpOutTrailerFailed
 			} else if backErr = backReq.endVague(); backErr != nil {
 				backStream.markBroken()
 			}
@@ -211,7 +211,7 @@ func ReverseProxyWebExchan(req Request, resp Response, backend WebBackend, cfg *
 		if backResp.Status() >= StatusOK {
 			// Only HTTP/1 cares this. But the code is general between all HTTP versions.
 			if backResp.KeepAlive() == 0 {
-				backStream.webConn().setPersistent(false)
+				backStream.httpConn().setPersistent(false)
 			}
 			break
 		}
@@ -266,14 +266,14 @@ func ReverseProxyWebExchan(req Request, resp Response, backend WebBackend, cfg *
 	}
 }
 
-// sockProxy socklet passes web sockets to web backends.
+// sockProxy socklet passes http sockets to http backends.
 type sockProxy struct {
 	// Parent
 	Socklet_
 	// Assocs
-	stage   *Stage     // current stage
-	webapp  *Webapp    // the webapp to which the proxy belongs
-	backend WebBackend // the backend to pass to. can be *HTTP1Backend, *HTTP2Backend, or *HTTP3Backend
+	stage   *Stage      // current stage
+	webapp  *Webapp     // the webapp to which the proxy belongs
+	backend HTTPBackend // the backend to pass to. can be *HTTP1Backend, *HTTP2Backend, or *HTTP3Backend
 	// States
 }
 
@@ -293,7 +293,7 @@ func (s *sockProxy) OnConfigure() {
 			if backend := s.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
 			} else {
-				s.backend = backend.(WebBackend)
+				s.backend = backend.(HTTPBackend)
 			}
 		} else {
 			UseExitln("invalid toBackend")
@@ -314,9 +314,9 @@ func (s *sockProxy) Serve(req Request, sock Socket) {
 }
 
 // WebSocketProxyConfig
-type WebSocketProxyConfig struct {
+type HTTPSocketProxyConfig struct {
 	// TODO
 }
 
-func ReverseProxyWebSocket(req Request, sock Socket, backend WebBackend, cfg *WebSocketProxyConfig) {
+func ReverseProxyWebSocket(req Request, sock Socket, backend HTTPBackend, cfg *HTTPSocketProxyConfig) {
 }

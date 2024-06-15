@@ -41,7 +41,7 @@ func init() {
 	})
 }
 
-// fcgiProxy handlet passes web requests to FCGI backends and caches responses.
+// fcgiProxy handlet passes http requests to FCGI backends and caches responses.
 type fcgiProxy struct {
 	// Parent
 	Handlet_
@@ -51,9 +51,9 @@ type fcgiProxy struct {
 	backend *fcgiBackend // the backend to pass to
 	cacher  Cacher       // the cacher which is used by this proxy
 	// States
-	WebExchanProxyConfig        // embeded
-	scriptFilename       []byte // for SCRIPT_FILENAME
-	indexFile            []byte // the file that will be used as index
+	HTTPExchanProxyConfig        // embeded
+	scriptFilename        []byte // for SCRIPT_FILENAME
+	indexFile             []byte // the file that will be used as index
 }
 
 func (h *fcgiProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
@@ -198,7 +198,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 		}
 	}
 
-	if !resp.proxyCopyHead(fcgiResp, &h.WebExchanProxyConfig) {
+	if !resp.proxyCopyHead(fcgiResp, &h.HTTPExchanProxyConfig) {
 		fcgiExchan.markBroken()
 		return
 	}
@@ -234,7 +234,7 @@ func (b *fcgiBackend) onCreate(name string, stage *Stage) {
 
 func (b *fcgiBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
-	b._contentSaver_.onConfigure(b, TmpDir()+"/web/fcgi/"+b.name)
+	b._contentSaver_.onConfigure(b, TmpDir()+"/web/backends/"+b.name)
 
 	// persistent
 	b.ConfigureBool("persistent", &b.persistent, false)
@@ -1115,8 +1115,8 @@ type fcgiResponse0 struct { // for fast reset, entirely
 	imme            span     // immediate bytes in r.input that belongs to content, not headers
 	hasExtra        [8]bool  // see pairXXX for indexes
 	inputEdge       int32    // edge position of r.input
-	receiving       int8     // currently receiving. see webSectionXXX
-	contentTextKind int8     // kind of current r.contentText. see webContentTextXXX
+	receiving       int8     // currently receiving. see httpSectionXXX
+	contentTextKind int8     // kind of current r.contentText. see httpContentTextXXX
 	receivedSize    int64    // bytes of currently received content
 	indexes         struct { // indexes of some selected singleton headers, for fast accessing
 		contentType  uint8
@@ -1185,7 +1185,7 @@ func (r *fcgiResponse) onEnd() {
 	r.recvTime = time.Time{}
 	r.bodyTime = time.Time{}
 
-	if r.contentTextKind == webContentTextPool {
+	if r.contentTextKind == httpContentTextPool {
 		PutNK(r.contentText)
 	}
 	r.contentText = nil // other content text kinds are only references, just reset.
@@ -1309,7 +1309,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 		r.pBack = r.pFore // now r.pBack is at header-field
 		for {
 			b := r.input[r.pFore]
-			if t := webTchar[b]; t == 1 {
+			if t := httpTchar[b]; t == 1 {
 				// Fast path, do nothing
 			} else if t == 2 { // A-Z
 				b += 0x20 // to lower
@@ -1392,7 +1392,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 		// r.pFore is now at the next header or end of headers.
 		header.hash, header.flags = 0, 0 // reset for next header
 	}
-	r.receiving = webSectionContent
+	r.receiving = httpSectionContent
 	// Skip end of headers
 	r.pFore++
 	// Now the head is received, and r.pFore is at the beginning of content (if exists).

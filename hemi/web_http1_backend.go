@@ -32,7 +32,7 @@ type HTTP1Backend struct {
 	// Parent
 	Backend_[*http1Node]
 	// Mixins
-	_webServend_
+	_httpServend_
 	// States
 }
 
@@ -42,14 +42,14 @@ func (b *HTTP1Backend) onCreate(name string, stage *Stage) {
 
 func (b *HTTP1Backend) OnConfigure() {
 	b.Backend_.OnConfigure()
-	b._webServend_.onConfigure(b, 60*time.Second, 60*time.Second, 1000, TmpDir()+"/web/backends/"+b.name)
+	b._httpServend_.onConfigure(b, 60*time.Second, 60*time.Second, 1000, TmpDir()+"/web/backends/"+b.name)
 
 	// sub components
 	b.ConfigureNodes()
 }
 func (b *HTTP1Backend) OnPrepare() {
 	b.Backend_.OnPrepare()
-	b._webServend_.onPrepare(b)
+	b._httpServend_.onPrepare(b)
 
 	// sub components
 	b.PrepareNodes()
@@ -67,7 +67,7 @@ func (b *HTTP1Backend) FetchStream() (backendStream, error) {
 	return node.fetchStream()
 }
 func (b *HTTP1Backend) StoreStream(stream backendStream) {
-	node := stream.webConn().(*backend1Conn).http1Node()
+	node := stream.httpConn().(*backend1Conn).http1Node()
 	node.storeStream(stream)
 }
 
@@ -295,7 +295,7 @@ type backend1Conn struct {
 	// Parent
 	BackendConn_
 	// Mixins
-	_webConn_
+	_httpConn_
 	// Assocs
 	next *backend1Conn // the linked-list
 	// Conn states (stocks)
@@ -308,7 +308,7 @@ type backend1Conn struct {
 	// Conn states (zeros)
 
 	// Mixins
-	_webStream_
+	_httpStream_
 	// Assocs
 	request  backend1Request  // the backend-side http/1 request
 	response backend1Response // the backend-side http/1 response
@@ -321,7 +321,7 @@ type backend1Conn struct {
 
 func (c *backend1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
 	c.BackendConn_.OnGet(id, node.backend.aliveTimeout)
-	c._webConn_.onGet()
+	c._httpConn_.onGet()
 
 	c.backend = node.backend
 	c.node = node
@@ -334,7 +334,7 @@ func (c *backend1Conn) onPut() {
 	c.node = nil
 	c.backend = nil
 
-	c._webConn_.onPut()
+	c._httpConn_.onPut()
 	c.BackendConn_.OnPut()
 }
 
@@ -345,11 +345,11 @@ func (c *backend1Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *backend1Conn) WebBackend() WebBackend { return c.backend }
-func (c *backend1Conn) http1Node() *http1Node  { return c.node }
+func (c *backend1Conn) HTTPBackend() HTTPBackend { return c.backend }
+func (c *backend1Conn) http1Node() *http1Node    { return c.node }
 
 func (c *backend1Conn) reachLimit() bool {
-	return c.usedStreams.Add(1) > c.WebBackend().MaxStreamsPerConn()
+	return c.usedStreams.Add(1) > c.HTTPBackend().MaxStreamsPerConn()
 }
 
 func (c *backend1Conn) fetchStream() (backendStream, error) {
@@ -371,7 +371,7 @@ func (c *backend1Conn) Close() error {
 type backend1Stream = backend1Conn
 
 func (s *backend1Stream) onUse() { // for non-zeros
-	s._webStream_.onUse()
+	s._httpStream_.onUse()
 
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
@@ -384,7 +384,7 @@ func (s *backend1Stream) onEnd() { // for zeros
 		s.socket = nil
 	}
 
-	s._webStream_.onEnd()
+	s._httpStream_.onEnd()
 }
 
 func (s *backend1Stream) Request() backendRequest   { return &s.request }
@@ -421,9 +421,9 @@ func (s *backend1Stream) setReadDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (c *backend1Stream) webServend() webServend { return c.WebBackend() }
-func (c *backend1Stream) webConn() webConn       { return c }
-func (c *backend1Stream) remoteAddr() net.Addr   { return c.netConn.RemoteAddr() }
+func (c *backend1Stream) httpServend() httpServend { return c.HTTPBackend() }
+func (c *backend1Stream) httpConn() httpConn       { return c }
+func (c *backend1Stream) remoteAddr() net.Addr     { return c.netConn.RemoteAddr() }
 
 func (c *backend1Stream) write(p []byte) (int, error)               { return c.netConn.Write(p) }
 func (c *backend1Stream) writev(vector *net.Buffers) (int64, error) { return vector.WriteTo(c.netConn) }
@@ -463,7 +463,7 @@ func (r *backend1Request) setMethodURI(method []byte, uri []byte, hasContent boo
 	}
 }
 func (r *backend1Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
-	if r.stream.webConn().IsTLS() {
+	if r.stream.httpConn().IsTLS() {
 		if bytes.Equal(colonPort, bytesColonPort443) {
 			colonPort = nil
 		}
@@ -595,7 +595,7 @@ func (r *backend1Response) recvHead() { // control + headers
 	}
 	r.cleanInput()
 	if DebugLevel() >= 2 {
-		Printf("[backend1Stream=%d]<======= [%s]\n", r.stream.webConn().ID(), r.input[r.head.from:r.head.edge])
+		Printf("[backend1Stream=%d]<======= [%s]\n", r.stream.httpConn().ID(), r.input[r.head.from:r.head.edge])
 	}
 }
 func (r *backend1Response) _recvControl() bool { // HTTP-version SP status-code SP [ reason-phrase ] CRLF
@@ -671,7 +671,7 @@ func (r *backend1Response) _recvControl() bool { // HTTP-version SP status-code 
 			return false
 		}
 	}
-	r.receiving = webSectionHeaders
+	r.receiving = httpSectionHeaders
 	// Skip '\n'
 	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
@@ -708,7 +708,7 @@ func (r *backend1Response) cleanInput() {
 			}
 			r.receivedSize = r.contentSize
 			r.contentText = r.input[r.pFore : r.pFore+int32(r.contentSize)] // exact.
-			r.contentTextKind = webContentTextInput
+			r.contentTextKind = httpContentTextInput
 		}
 	} else { // vague mode
 		// We don't know the size of vague content. Let chunked receivers to decide & clean r.input.

@@ -55,10 +55,10 @@ func (c *memCacher) Maintain() { // runner
 	c.stage.DecSub()
 }
 
-func (c *memCacher) Set(key []byte, wobject *Wobject) {
+func (c *memCacher) Set(key []byte, hobject *Hobject) {
 	// TODO
 }
-func (c *memCacher) Get(key []byte) (wobject *Wobject) {
+func (c *memCacher) Get(key []byte) (hobject *Hobject) {
 	// TODO
 	return
 }

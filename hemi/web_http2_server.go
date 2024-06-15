@@ -35,23 +35,23 @@ func init() {
 // http2Server is the HTTP/2 server.
 type http2Server struct {
 	// Parent
-	webServer_[*http2Gate]
+	httpServer_[*http2Gate]
 	// States
 	tlsEnableHTTP1 bool // enable switching to HTTP/1.1 for TLS?
 }
 
 func (s *http2Server) onCreate(name string, stage *Stage) {
-	s.webServer_.onCreate(name, stage)
+	s.httpServer_.onCreate(name, stage)
 }
 
 func (s *http2Server) OnConfigure() {
-	s.webServer_.onConfigure()
+	s.httpServer_.onConfigure()
 
 	// tlsEnableHTTP1
 	s.ConfigureBool("tlsEnableHTTP1", &s.tlsEnableHTTP1, true)
 }
 func (s *http2Server) OnPrepare() {
-	s.webServer_.onPrepare()
+	s.httpServer_.onPrepare()
 
 	if s.IsTLS() {
 		var nextProtos []string
@@ -286,7 +286,7 @@ type server2Conn struct {
 	// Parent
 	ServerConn_
 	// Mixins
-	_webConn_
+	_httpConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	outFrame http2OutFrame // used by c.serve() to send special out frames. immediately reset after use
@@ -329,7 +329,7 @@ type server2Conn0 struct { // for fast reset, entirely
 
 func (c *server2Conn) onGet(id int64, gate Gate, netConn net.Conn, rawConn syscall.RawConn) {
 	c.ServerConn_.OnGet(id)
-	c._webConn_.onGet()
+	c._httpConn_.onGet()
 	c.server = gate.Server()
 	c.gate = gate
 	c.netConn = netConn
@@ -365,7 +365,7 @@ func (c *server2Conn) onPut() {
 	c.server2Conn0 = server2Conn0{}
 	c.server = nil
 	c.gate = nil
-	c._webConn_.onPut()
+	c._httpConn_.onPut()
 	c.ServerConn_.OnPut()
 }
 
@@ -376,7 +376,7 @@ func (c *server2Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *server2Conn) WebServer() WebServer { return c.server.(WebServer) }
+func (c *server2Conn) HTTPServer() HTTPServer { return c.server.(HTTPServer) }
 
 func (c *server2Conn) serve() { // runner
 	Printf("========================== conn=%d start =========================\n", c.id)
@@ -593,7 +593,7 @@ func (c *server2Conn) processHeadersFrame(inFrame *http2InFrame) error {
 			return http2ErrorProtocol
 		}
 		req = &stream.request
-		req.receiving = webSectionTrailers
+		req.receiving = httpSectionTrailers
 		if !c._decodeFields(inFrame.effective(), req.joinTrailers) {
 			return http2ErrorCompression
 		}
@@ -1083,7 +1083,7 @@ func putServer2Stream(stream *server2Stream) {
 // server2Stream is the server-side HTTP/2 stream.
 type server2Stream struct {
 	// Mixins
-	_webStream_
+	_httpStream_
 	// Assocs
 	request  server2Request  // the http/2 request.
 	response server2Response // the http/2 response.
@@ -1105,7 +1105,7 @@ type server2Stream0 struct { // for fast reset, entirely
 }
 
 func (s *server2Stream) onUse(conn *server2Conn, id uint32, outWindow int32) { // for non-zeros
-	s._webStream_.onUse()
+	s._httpStream_.onUse()
 	s.conn = conn
 	s.id = id
 	s.inWindow = _64K1 // max size of r.bodyWindow
@@ -1122,7 +1122,7 @@ func (s *server2Stream) onEnd() { // for zeros
 	}
 	s.conn = nil
 	s.server2Stream0 = server2Stream0{}
-	s._webStream_.onEnd()
+	s._httpStream_.onEnd()
 }
 
 func (s *server2Stream) execute() { // runner
@@ -1160,9 +1160,9 @@ func (s *server2Stream) setWriteDeadline(deadline time.Time) error { // for cont
 func (s *server2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
 func (s *server2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
-func (s *server2Stream) webServend() webServend { return s.conn.WebServer() }
-func (s *server2Stream) webConn() webConn       { return s.conn }
-func (s *server2Stream) remoteAddr() net.Addr   { return s.conn.netConn.RemoteAddr() }
+func (s *server2Stream) httpServend() httpServend { return s.conn.HTTPServer() }
+func (s *server2Stream) httpConn() httpConn       { return s.conn }
+func (s *server2Stream) remoteAddr() net.Addr     { return s.conn.netConn.RemoteAddr() }
 
 func (s *server2Stream) read(p []byte) (int, error) { // for content i/o only
 	// TODO

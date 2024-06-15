@@ -34,17 +34,17 @@ func init() {
 // http1Server is the HTTP/1 server.
 type http1Server struct {
 	// Parent
-	webServer_[*http1Gate]
+	httpServer_[*http1Gate]
 	// States
 	tlsEnableHTTP2 bool // enable switching to HTTP/2 for TLS?
 }
 
 func (s *http1Server) onCreate(name string, stage *Stage) {
-	s.webServer_.onCreate(name, stage)
+	s.httpServer_.onCreate(name, stage)
 }
 
 func (s *http1Server) OnConfigure() {
-	s.webServer_.onConfigure()
+	s.httpServer_.onConfigure()
 
 	if DebugLevel() >= 2 { // remove this condition after HTTP/2 server has been fully implemented
 		// tlsEnableHTTP2
@@ -52,7 +52,7 @@ func (s *http1Server) OnConfigure() {
 	}
 }
 func (s *http1Server) OnPrepare() {
-	s.webServer_.onPrepare()
+	s.httpServer_.onPrepare()
 
 	if s.IsTLS() {
 		var nextProtos []string
@@ -294,7 +294,7 @@ type server1Conn struct {
 	// Parent
 	ServerConn_
 	// Mixins
-	_webConn_
+	_httpConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -306,7 +306,7 @@ type server1Conn struct {
 	// Conn states (zeros)
 
 	// Mixins
-	_webStream_
+	_httpStream_
 	// Assocs
 	request  server1Request  // the server-side http/1 request.
 	response server1Response // the server-side http/1 response.
@@ -319,7 +319,7 @@ type server1Conn struct {
 
 func (c *server1Conn) onGet(id int64, gate Gate, netConn net.Conn, rawConn syscall.RawConn) {
 	c.ServerConn_.OnGet(id)
-	c._webConn_.onGet()
+	c._httpConn_.onGet()
 	c.server = gate.Server()
 	c.gate = gate
 
@@ -342,7 +342,7 @@ func (c *server1Conn) onPut() {
 	c.gate = nil
 	c.server = nil
 
-	c._webConn_.onPut()
+	c._httpConn_.onPut()
 	c.ServerConn_.OnPut()
 }
 
@@ -353,7 +353,7 @@ func (c *server1Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *server1Conn) WebServer() WebServer { return c.server.(WebServer) }
+func (c *server1Conn) HTTPServer() HTTPServer { return c.server.(HTTPServer) }
 
 func (c *server1Conn) serve() { // runner
 	defer putServer1Conn(c)
@@ -404,7 +404,7 @@ func (c *server1Conn) serve() { // runner
 type server1Stream = server1Conn
 
 func (s *server1Stream) onUse() { // for non-zeros
-	s._webStream_.onUse()
+	s._httpStream_.onUse()
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
 }
@@ -415,7 +415,7 @@ func (s *server1Stream) onEnd() { // for zeros
 		s.socket.onEnd()
 		s.socket = nil
 	}
-	s._webStream_.onEnd()
+	s._httpStream_.onEnd()
 }
 
 func (s *server1Stream) execute() {
@@ -475,8 +475,8 @@ func (s *server1Stream) execute() {
 	resp.webapp = webapp
 
 	if !req.upgradeSocket { // exchan mode
-		if req.formKind != webFormNotForm {
-			if req.formKind == webFormMultipart { // we allow a larger content size for uploading through multipart/form-data (large files are written to disk).
+		if req.formKind != httpFormNotForm {
+			if req.formKind == httpFormMultipart { // we allow a larger content size for uploading through multipart/form-data (large files are written to disk).
 				req.maxContentSize = webapp.maxUpfileSize
 			} else { // application/x-www-form-urlencoded is limited in a smaller size.
 				req.maxContentSize = int64(server.MaxMemoryContentSize())
@@ -564,7 +564,7 @@ func (s *server1Stream) serveAbnormal(req *server1Request, resp *server1Response
 		conn.closeSafe = false
 	}
 	var content []byte
-	if errorPage, ok := webErrorPages[status]; !ok {
+	if errorPage, ok := serverErrorPages[status]; !ok {
 		content = http1Controls[status]
 	} else if req.failReason == "" {
 		content = errorPage
@@ -622,9 +622,9 @@ func (s *server1Stream) setWriteDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (c *server1Stream) webServend() webServend { return c.WebServer() }
-func (c *server1Stream) webConn() webConn       { return c }
-func (c *server1Stream) remoteAddr() net.Addr   { return c.netConn.RemoteAddr() }
+func (c *server1Stream) httpServend() httpServend { return c.HTTPServer() }
+func (c *server1Stream) httpConn() httpConn       { return c }
+func (c *server1Stream) remoteAddr() net.Addr     { return c.netConn.RemoteAddr() }
 
 func (c *server1Stream) read(p []byte) (int, error)     { return c.netConn.Read(p) }
 func (c *server1Stream) readFull(p []byte) (int, error) { return io.ReadFull(c.netConn, p) }
@@ -659,7 +659,7 @@ func (r *server1Request) recvHead() { // control + headers
 	}
 	r.cleanInput()
 	if DebugLevel() >= 2 {
-		Printf("[server1Stream=%d]<------- [%s]\n", r.stream.webConn().ID(), r.input[r.head.from:r.head.edge])
+		Printf("[server1Stream=%d]<------- [%s]\n", r.stream.httpConn().ID(), r.input[r.head.from:r.head.edge])
 	}
 }
 func (r *server1Request) _recvControl() bool { // method SP request-target SP HTTP-version CRLF
@@ -669,7 +669,7 @@ func (r *server1Request) _recvControl() bool { // method SP request-target SP HT
 	// token = 1*tchar
 	hash := uint16(0)
 	for {
-		if b := r.input[r.pFore]; webTchar[b] != 0 {
+		if b := r.input[r.pFore]; httpTchar[b] != 0 {
 			hash += uint16(b)
 			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
@@ -698,7 +698,7 @@ func (r *server1Request) _recvControl() bool { // method SP request-target SP HT
 	// request-target = absolute-form / origin-form / authority-form / asterisk-form
 	if b := r.input[r.pFore]; b != '*' && r.methodCode != MethodCONNECT { // absolute-form / origin-form
 		if b != '/' { // absolute-form
-			r.targetForm = webTargetAbsolute
+			r.targetForm = httpTargetAbsolute
 			// absolute-form = absolute-URI
 			// absolute-URI = scheme ":" hier-part [ "?" query ]
 			// scheme = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
@@ -775,7 +775,7 @@ func (r *server1Request) _recvControl() bool { // method SP request-target SP HT
 				return false
 			}
 			if b == ' ' { // ends of request-target
-				// Don't treat this as webTargetAsterisk! r.uri is empty but we fetch it through r.URI() or like which gives '/' if uri is empty.
+				// Don't treat this as httpTargetAsterisk! r.uri is empty but we fetch it through r.URI() or like which gives '/' if uri is empty.
 				if r.methodCode == MethodOPTIONS {
 					// OPTIONS http://www.example.org:8001 HTTP/1.1
 					r.asteriskOptions = true
@@ -819,7 +819,7 @@ func (r *server1Request) _recvControl() bool { // method SP request-target SP HT
 			b := r.input[r.pFore]
 			switch state {
 			case 1: // in path
-				if webPchar[b] == 1 { // excluding '?'
+				if httpPchar[b] == 1 { // excluding '?'
 					r.arrayPush(b)
 				} else if b == '%' {
 					state = 0x1f // '1' means from state 1, 'f' means first HEXDIG
@@ -847,7 +847,7 @@ func (r *server1Request) _recvControl() bool { // method SP request-target SP HT
 						return false
 					}
 					state = 3
-				} else if webPchar[b] > 0 { // including '?'
+				} else if httpPchar[b] > 0 { // including '?'
 					if b == '+' {
 						b = ' ' // application/x-www-form-urlencoded encodes ' ' as '+'
 					}
@@ -870,7 +870,7 @@ func (r *server1Request) _recvControl() bool { // method SP request-target SP HT
 					query.hash = 0 // reset for next query
 					query.nameFrom = r.arrayEdge
 					state = 2
-				} else if webPchar[b] > 0 { // including '?'
+				} else if httpPchar[b] > 0 { // including '?'
 					if b == '+' {
 						b = ' ' // application/x-www-form-urlencoded encodes ' ' as '+'
 					}
@@ -935,7 +935,7 @@ func (r *server1Request) _recvControl() bool { // method SP request-target SP HT
 		}
 		r.cleanPath()
 	} else if b == '*' { // OPTIONS *, asterisk-form
-		r.targetForm = webTargetAsterisk
+		r.targetForm = httpTargetAsterisk
 		// RFC 7230 (section 5.3.4):
 		// The asterisk-form of request-target is only used for a server-wide
 		// OPTIONS request (Section 4.3.7 of [RFC7231]).
@@ -957,7 +957,7 @@ func (r *server1Request) _recvControl() bool { // method SP request-target SP HT
 		// If the request-target is in authority-form or asterisk-form, the
 		// effective request URI's combined path and query component is empty.
 	} else { // r.methodCode == MethodCONNECT, authority-form
-		r.targetForm = webTargetAuthority
+		r.targetForm = httpTargetAuthority
 		// RFC 7230 (section 5.3.3. authority-form:
 		// The authority-form of request-target is only used for CONNECT
 		// requests (Section 4.3.6 of [RFC7231]).
@@ -1033,7 +1033,7 @@ beforeVersion: // r.pFore is at ' '.
 		r.headResult, r.failReason = StatusBadRequest, "bad eol of start line"
 		return false
 	}
-	r.receiving = webSectionHeaders
+	r.receiving = httpSectionHeaders
 	// Skip '\n'
 	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
@@ -1069,7 +1069,7 @@ func (r *server1Request) cleanInput() {
 			}
 			r.receivedSize = r.contentSize        // content is received entirely.
 			r.contentText = r.input[r.pFore:edge] // exact.
-			r.contentTextKind = webContentTextInput
+			r.contentTextKind = httpContentTextInput
 		}
 		if r.contentSize == 0 {
 			r.formReceived = true // no content means no form, so mark it as "received"
@@ -1180,7 +1180,7 @@ func (r *server1Response) AddDirectoryRedirection() bool {
 		return false
 	}
 }
-func (r *server1Response) setConnectionClose() { r.stream.webConn().setPersistent(false) }
+func (r *server1Response) setConnectionClose() { r.stream.httpConn().setPersistent(false) }
 
 func (r *server1Response) AddCookie(cookie *Cookie) bool {
 	if cookie.name == "" || cookie.invalid {
@@ -1240,7 +1240,7 @@ func (r *server1Response) passBytes(p []byte) error { return r.passBytes1(p) }
 func (r *server1Response) finalizeHeaders() { // add at most 256 bytes
 	// date: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.iDate == 0 {
-		r.fieldsEdge += uint16(r.stream.webServend().Stage().Clock().writeDate1(r.fields[r.fieldsEdge:]))
+		r.fieldsEdge += uint16(r.stream.httpServend().Stage().Clock().writeDate1(r.fields[r.fieldsEdge:]))
 	}
 	// expires: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.unixTimes.expires >= 0 {
@@ -1250,7 +1250,7 @@ func (r *server1Response) finalizeHeaders() { // add at most 256 bytes
 	if r.unixTimes.lastModified >= 0 {
 		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesLastModified, r.unixTimes.lastModified))
 	}
-	conn := r.stream.webConn()
+	conn := r.stream.httpConn()
 	if r.contentSize != -1 { // with content
 		if !r.forbidFraming {
 			if !r.isVague() { // content-length: >=0\r\n

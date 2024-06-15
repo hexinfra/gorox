@@ -1,5 +1,5 @@
 fcgiProxy "fp1" {
-	.saveContentFilesDir = %tmpDir + "/web/fcgi/fp1"
+	.saveContentFilesDir = %tmpDir + "/web/backends/fp1"
 	.toBackend = "php-fpm"
 	.sendTimeout = 60s
 	.recvTimeout = 60s

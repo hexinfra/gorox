@@ -1,1 +1,1 @@
-Local cacher stores cached wobjects in local file system.
+Local cacher stores cached hobjects in local file system.

@@ -31,7 +31,7 @@ type HTTP2Backend struct {
 	// Parent
 	Backend_[*http2Node]
 	// Mixins
-	_webServend_
+	_httpServend_
 	// States
 }
 
@@ -41,14 +41,14 @@ func (b *HTTP2Backend) onCreate(name string, stage *Stage) {
 
 func (b *HTTP2Backend) OnConfigure() {
 	b.Backend_.OnConfigure()
-	b._webServend_.onConfigure(b, 60*time.Second, 60*time.Second, 1000, TmpDir()+"/web/backends/"+b.name)
+	b._httpServend_.onConfigure(b, 60*time.Second, 60*time.Second, 1000, TmpDir()+"/web/backends/"+b.name)
 
 	// sub components
 	b.ConfigureNodes()
 }
 func (b *HTTP2Backend) OnPrepare() {
 	b.Backend_.OnPrepare()
-	b._webServend_.onPrepare(b)
+	b._httpServend_.onPrepare(b)
 
 	// sub components
 	b.PrepareNodes()
@@ -66,7 +66,7 @@ func (b *HTTP2Backend) FetchStream() (backendStream, error) {
 	return node.fetchStream()
 }
 func (b *HTTP2Backend) StoreStream(stream backendStream) {
-	node := stream.webConn().(*backend2Conn).http2Node()
+	node := stream.httpConn().(*backend2Conn).http2Node()
 	node.storeStream(stream)
 }
 
@@ -166,7 +166,7 @@ type backend2Conn struct {
 	// Parent
 	BackendConn_
 	// Mixins
-	_webConn_
+	_httpConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -184,7 +184,7 @@ type backend2Conn0 struct { // for fast reset, entirely
 
 func (c *backend2Conn) onGet(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
 	c.BackendConn_.OnGet(id, node.backend.aliveTimeout)
-	c._webConn_.onGet()
+	c._httpConn_.onGet()
 
 	c.backend = node.backend
 	c.node = node
@@ -200,7 +200,7 @@ func (c *backend2Conn) onPut() {
 	c.node = nil
 	c.backend = nil
 
-	c._webConn_.onPut()
+	c._httpConn_.onPut()
 	c.BackendConn_.OnPut()
 }
 
@@ -211,11 +211,11 @@ func (c *backend2Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *backend2Conn) WebBackend() WebBackend { return c.backend }
-func (c *backend2Conn) http2Node() *http2Node  { return c.node }
+func (c *backend2Conn) HTTPBackend() HTTPBackend { return c.backend }
+func (c *backend2Conn) http2Node() *http2Node    { return c.node }
 
 func (c *backend2Conn) reachLimit() bool {
-	return c.usedStreams.Add(1) > c.WebBackend().MaxStreamsPerConn()
+	return c.usedStreams.Add(1) > c.HTTPBackend().MaxStreamsPerConn()
 }
 
 func (c *backend2Conn) fetchStream() (backendStream, error) {
@@ -290,7 +290,7 @@ func putBackend2Stream(stream *backend2Stream) {
 // backend2Stream
 type backend2Stream struct {
 	// Mixins
-	_webStream_
+	_httpStream_
 	// Assocs
 	request  backend2Request
 	response backend2Response
@@ -304,7 +304,7 @@ type backend2Stream struct {
 }
 
 func (s *backend2Stream) onUse(conn *backend2Conn, id uint32) { // for non-zeros
-	s._webStream_.onUse()
+	s._httpStream_.onUse()
 	s.conn = conn
 	s.id = id
 	s.request.onUse(Version2)
@@ -318,7 +318,7 @@ func (s *backend2Stream) onEnd() { // for zeros
 		s.socket = nil
 	}
 	s.conn = nil
-	s._webStream_.onEnd()
+	s._httpStream_.onEnd()
 }
 
 func (s *backend2Stream) Request() backendRequest   { return &s.request }
@@ -344,9 +344,9 @@ func (s *backend2Stream) setReadDeadline(deadline time.Time) error { // for cont
 func (s *backend2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
 func (s *backend2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 
-func (s *backend2Stream) webServend() webServend { return s.conn.WebBackend() }
-func (s *backend2Stream) webConn() webConn       { return s.conn }
-func (s *backend2Stream) remoteAddr() net.Addr   { return s.conn.netConn.RemoteAddr() }
+func (s *backend2Stream) httpServend() httpServend { return s.conn.HTTPBackend() }
+func (s *backend2Stream) httpConn() httpConn       { return s.conn }
+func (s *backend2Stream) remoteAddr() net.Addr     { return s.conn.netConn.RemoteAddr() }
 
 func (s *backend2Stream) write(p []byte) (int, error) { // for content i/o only?
 	return 0, nil

@@ -55,7 +55,7 @@ type Server_[G Gate] struct {
 	numGates          int32         // number of gates
 }
 
-func (s *Server_[G]) OnCreate(name string, stage *Stage) { // exported
+func (s *Server_[G]) OnCreate(name string, stage *Stage) {
 	s.MakeComp(name)
 	s.stage = stage
 }
@@ -132,15 +132,13 @@ func (s *Server_[G]) OnPrepare() {
 	}
 }
 
-func (s *Server_[G]) Stage() *Stage { return s.stage }
-
 func (s *Server_[G]) AddGate(gate G)  { s.gates = append(s.gates, gate) }
 func (s *Server_[G]) NumGates() int32 { return s.numGates }
 
+func (s *Server_[G]) Stage() *Stage               { return s.stage }
 func (s *Server_[G]) ReadTimeout() time.Duration  { return s.readTimeout }
 func (s *Server_[G]) WriteTimeout() time.Duration { return s.writeTimeout }
-
-func (s *Server_[G]) Address() string { return s.address }
+func (s *Server_[G]) Address() string             { return s.address }
 func (s *Server_[G]) ColonPort() string {
 	if s.udsMode {
 		return s.udsColonPort
@@ -178,7 +176,6 @@ type Gate interface {
 type Gate_ struct {
 	// Mixins
 	_subsWaiter_ // for conns
-	// Assocs
 	// States
 	id       int32        // gate id
 	maxConns int32        // max concurrent conns allowed

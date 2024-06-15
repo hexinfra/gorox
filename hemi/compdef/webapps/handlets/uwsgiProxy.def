@@ -1,5 +1,5 @@
 uwsgiProxy "up1" {
-	.saveContentFilesDir = %tmpDir + "/web/uwsgi/up1"
+	.saveContentFilesDir = %tmpDir + "/web/backends/up1"
 	.toBackend = "python-app"
 	.sendTimeout = 60s
 	.recvTimeout = 60s

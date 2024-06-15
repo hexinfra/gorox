@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// General Web backend implementation. See RFC 9110 and 9111.
+// General HTTP backend implementation. See RFC 9110 and 9111.
 
 package hemi
 
@@ -13,8 +13,8 @@ import (
 	"time"
 )
 
-// WebBackend
-type WebBackend interface { // for *HTTP[1-3]Backend
+// HTTPBackend
+type HTTPBackend interface { // for *HTTP[1-3]Backend
 	// Imports
 	Backend
 	contentSaver
@@ -29,7 +29,7 @@ type WebBackend interface { // for *HTTP[1-3]Backend
 	StoreStream(stream backendStream)
 }
 
-// backendStream is the backend-side web stream.
+// backendStream is the backend-side http stream.
 type backendStream interface { // for *backend[1-3]Stream
 	Request() backendRequest
 	Response() backendResponse
@@ -38,20 +38,20 @@ type backendStream interface { // for *backend[1-3]Stream
 	ExecuteExchan() error
 	ExecuteSocket() error
 
-	webConn() webConn
+	httpConn() httpConn
 	isBroken() bool
 	markBroken()
 }
 
-// backendRequest is the backend-side web request.
+// backendRequest is the backend-side http request.
 type backendRequest interface { // for *backend[1-3]Request
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool
 	proxyCopyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
-	proxyCopyHead(req Request, cfg *WebExchanProxyConfig) bool
+	proxyCopyHead(req Request, cfg *HTTPExchanProxyConfig) bool
 	proxyPass(req Request) error
 	proxyPost(content any, hasTrailers bool) error
-	proxyCopyTail(req Request, cfg *WebExchanProxyConfig) bool
+	proxyCopyTail(req Request, cfg *HTTPExchanProxyConfig) bool
 	isVague() bool
 	endVague() error
 }
@@ -59,7 +59,7 @@ type backendRequest interface { // for *backend[1-3]Request
 // backendRequest_ is the parent for backend[1-3]Request.
 type backendRequest_ struct { // outgoing. needs building
 	// Parent
-	webOut_ // outgoing web message
+	httpOut_ // outgoing http message
 	// Assocs
 	response backendResponse // the corresponding response
 	// Stream states (stocks)
@@ -83,13 +83,13 @@ type backendRequest0 struct { // for fast reset, entirely
 
 func (r *backendRequest_) onUse(httpVersion uint8) { // for non-zeros
 	const asRequest = true
-	r.webOut_.onUse(httpVersion, asRequest)
+	r.httpOut_.onUse(httpVersion, asRequest)
 	r.unixTimes.ifModifiedSince = -1   // not set
 	r.unixTimes.ifUnmodifiedSince = -1 // not set
 }
 func (r *backendRequest_) onEnd() { // for zeros
 	r.backendRequest0 = backendRequest0{}
-	r.webOut_.onEnd()
+	r.httpOut_.onEnd()
 }
 
 func (r *backendRequest_) Response() backendResponse { return r.response }
@@ -118,7 +118,7 @@ func (r *backendRequest_) doSend() error { // revising is not supported in backe
 func (r *backendRequest_) beforeEcho() {} // revising is not supported in backend side.
 func (r *backendRequest_) doEcho() error { // revising is not supported in backend side.
 	if r.stream.isBroken() {
-		return webOutWriteBroken
+		return httpOutWriteBroken
 	}
 	r.chain.PushTail(&r.piece)
 	defer r.chain.free()
@@ -126,7 +126,7 @@ func (r *backendRequest_) doEcho() error { // revising is not supported in backe
 }
 func (r *backendRequest_) endVague() error { // revising is not supported in backend side.
 	if r.stream.isBroken() {
-		return webOutWriteBroken
+		return httpOutWriteBroken
 	}
 	return r.shell.finalizeVague()
 }
@@ -230,12 +230,12 @@ func (r *backendRequest_) proxyPass(req Request) error { // sync content to back
 		if !req.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 			return r.shell.addTrailer(name, value)
 		}) {
-			return webOutTrailerFailed
+			return httpOutTrailerFailed
 		}
 	}
 	return nil
 }
-func (r *backendRequest_) proxyCopyHead(req Request, cfg *WebExchanProxyConfig) bool {
+func (r *backendRequest_) proxyCopyHead(req Request, cfg *HTTPExchanProxyConfig) bool {
 	req.delHopHeaders()
 
 	// copy control (:method, :path, :authority, :scheme)
@@ -277,7 +277,7 @@ func (r *backendRequest_) proxyCopyHead(req Request, cfg *WebExchanProxyConfig) 
 	}
 	if r.httpVersion >= Version2 {
 		var scheme []byte
-		if r.stream.webConn().IsTLS() {
+		if r.stream.httpConn().IsTLS() {
 			scheme = bytesSchemeHTTPS
 		} else {
 			scheme = bytesSchemeHTTP
@@ -325,13 +325,13 @@ func (r *backendRequest_) proxyCopyHead(req Request, cfg *WebExchanProxyConfig) 
 
 	return true
 }
-func (r *backendRequest_) proxyCopyTail(req Request, cfg *WebExchanProxyConfig) bool {
+func (r *backendRequest_) proxyCopyTail(req Request, cfg *HTTPExchanProxyConfig) bool {
 	return req.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.shell.addTrailer(name, value)
 	})
 }
 
-// backendResponse is the backend-side web response.
+// backendResponse is the backend-side http response.
 type backendResponse interface { // for *backend[1-3]Response
 	KeepAlive() int8
 	HeadResult() int16
@@ -355,7 +355,7 @@ type backendResponse interface { // for *backend[1-3]Response
 // backendResponse_ is the parent for backend[1-3]Response.
 type backendResponse_ struct { // incoming. needs parsing
 	// Parent
-	webIn_ // incoming web message
+	httpIn_ // incoming http message
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -402,12 +402,12 @@ type backendResponse0 struct { // for fast reset, entirely
 
 func (r *backendResponse_) onUse(httpVersion uint8) { // for non-zeros
 	const asResponse = true
-	r.webIn_.onUse(httpVersion, asResponse)
+	r.httpIn_.onUse(httpVersion, asResponse)
 }
 func (r *backendResponse_) onEnd() { // for zeros
 	r.backendResponse0 = backendResponse0{}
 
-	r.webIn_.onEnd()
+	r.httpIn_.onEnd()
 }
 
 func (r *backendResponse_) reuse() {
@@ -670,7 +670,7 @@ func (r *backendResponse_) checkTransferEncoding(pairs []pair, from uint8, edge 
 	if r.status == StatusNotModified {
 		// TODO
 	}
-	return r.webIn_.checkTransferEncoding(pairs, from, edge)
+	return r.httpIn_.checkTransferEncoding(pairs, from, edge)
 }
 func (r *backendResponse_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { // Upgrade = #protocol
 	if r.httpVersion >= Version2 {
@@ -730,7 +730,7 @@ func (r *backendResponse_) applyTrailer(index uint8) bool {
 	return true
 }
 
-// backendSocket is the backend-side web socket.
+// backendSocket is the backend-side http socket.
 type backendSocket interface { // for *backend[1-3]Socket
 	Read(p []byte) (int, error)
 	Write(p []byte) (int, error)
@@ -740,14 +740,14 @@ type backendSocket interface { // for *backend[1-3]Socket
 // backendSocket_ is the parent for backend[1-3]Socket.
 type backendSocket_ struct {
 	// Parent
-	webSocket_
+	httpSocket_
 	// Assocs
 	// Stream states (zeros)
 }
 
 func (s *backendSocket_) onUse() {
-	s.webSocket_.onUse()
+	s.httpSocket_.onUse()
 }
 func (s *backendSocket_) onEnd() {
-	s.webSocket_.onEnd()
+	s.httpSocket_.onEnd()
 }

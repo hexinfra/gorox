@@ -31,7 +31,7 @@ type HTTP3Backend struct {
 	// Parent
 	Backend_[*http3Node]
 	// Mixins
-	_webServend_
+	_httpServend_
 	// States
 }
 
@@ -41,14 +41,14 @@ func (b *HTTP3Backend) onCreate(name string, stage *Stage) {
 
 func (b *HTTP3Backend) OnConfigure() {
 	b.Backend_.OnConfigure()
-	b._webServend_.onConfigure(b, 60*time.Second, 60*time.Second, 1000, TmpDir()+"/web/backends/"+b.name)
+	b._httpServend_.onConfigure(b, 60*time.Second, 60*time.Second, 1000, TmpDir()+"/web/backends/"+b.name)
 
 	// sub components
 	b.ConfigureNodes()
 }
 func (b *HTTP3Backend) OnPrepare() {
 	b.Backend_.OnPrepare()
-	b._webServend_.onPrepare(b)
+	b._httpServend_.onPrepare(b)
 
 	// sub components
 	b.PrepareNodes()
@@ -66,7 +66,7 @@ func (b *HTTP3Backend) FetchStream() (backendStream, error) {
 	return node.fetchStream()
 }
 func (b *HTTP3Backend) StoreStream(stream backendStream) {
-	node := stream.webConn().(*backend3Conn).http3Node()
+	node := stream.httpConn().(*backend3Conn).http3Node()
 	node.storeStream(stream)
 }
 
@@ -152,7 +152,7 @@ type backend3Conn struct {
 	// Parent
 	BackendConn_
 	// Mixins
-	_webConn_
+	_httpConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -169,7 +169,7 @@ type backend3Conn0 struct { // for fast reset, entirely
 
 func (c *backend3Conn) onGet(id int64, node *http3Node, quicConn *quic.Conn) {
 	c.BackendConn_.OnGet(id, node.backend.aliveTimeout)
-	c._webConn_.onGet()
+	c._httpConn_.onGet()
 
 	c.backend = node.backend
 	c.node = node
@@ -183,7 +183,7 @@ func (c *backend3Conn) onPut() {
 	c.node = nil
 	c.backend = nil
 
-	c._webConn_.onPut()
+	c._httpConn_.onPut()
 	c.BackendConn_.OnPut()
 }
 
@@ -194,11 +194,11 @@ func (c *backend3Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *backend3Conn) WebBackend() WebBackend { return c.backend }
-func (c *backend3Conn) http3Node() *http3Node  { return c.node }
+func (c *backend3Conn) HTTPBackend() HTTPBackend { return c.backend }
+func (c *backend3Conn) http3Node() *http3Node    { return c.node }
 
 func (c *backend3Conn) reachLimit() bool {
-	return c.usedStreams.Add(1) > c.WebBackend().MaxStreamsPerConn()
+	return c.usedStreams.Add(1) > c.HTTPBackend().MaxStreamsPerConn()
 }
 
 func (c *backend3Conn) fetchStream() (backendStream, error) {
@@ -245,7 +245,7 @@ func putBackend3Stream(stream *backend3Stream) {
 // backend3Stream
 type backend3Stream struct {
 	// Mixins
-	_webStream_
+	_httpStream_
 	// Assocs
 	request  backend3Request
 	response backend3Response
@@ -259,7 +259,7 @@ type backend3Stream struct {
 }
 
 func (s *backend3Stream) onUse(conn *backend3Conn, quicStream *quic.Stream) { // for non-zeros
-	s._webStream_.onUse()
+	s._httpStream_.onUse()
 	s.conn = conn
 	s.quicStream = quicStream
 	s.request.onUse(Version3)
@@ -274,7 +274,7 @@ func (s *backend3Stream) onEnd() { // for zeros
 	}
 	s.conn = nil
 	s.quicStream = nil
-	s._webStream_.onEnd()
+	s._httpStream_.onEnd()
 }
 
 func (s *backend3Stream) Request() backendRequest   { return &s.request }
@@ -300,9 +300,9 @@ func (s *backend3Stream) setReadDeadline(deadline time.Time) error { // for cont
 func (s *backend3Stream) isBroken() bool { return false } // TODO
 func (s *backend3Stream) markBroken()    {}               // TODO
 
-func (s *backend3Stream) webServend() webServend { return s.conn.WebBackend() }
-func (s *backend3Stream) webConn() webConn       { return s.conn }
-func (s *backend3Stream) remoteAddr() net.Addr   { return nil } // TODO
+func (s *backend3Stream) httpServend() httpServend { return s.conn.HTTPBackend() }
+func (s *backend3Stream) httpConn() httpConn       { return s.conn }
+func (s *backend3Stream) remoteAddr() net.Addr     { return nil } // TODO
 
 func (s *backend3Stream) write(p []byte) (int, error) { // for content i/o only?
 	return 0, nil

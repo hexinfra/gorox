@@ -66,10 +66,10 @@ func (c *localCacher) Maintain() { // runner
 	c.stage.DecSub()
 }
 
-func (c *localCacher) Set(key []byte, wobject *Wobject) {
+func (c *localCacher) Set(key []byte, hobject *Hobject) {
 	// TODO
 }
-func (c *localCacher) Get(key []byte) (wobject *Wobject) {
+func (c *localCacher) Get(key []byte) (hobject *Hobject) {
 	// TODO
 	return
 }

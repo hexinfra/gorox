@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// General Web server implementation. See RFC 9110 and 9111.
+// General HTTP server implementation. See RFC 9110 and 9111.
 
 package hemi
 
@@ -31,8 +31,8 @@ func init() {
 	})
 }
 
-// WebServer
-type WebServer interface { // for *http[1-3]Server
+// HTTPServer
+type HTTPServer interface { // for *http[1-3]Server
 	// Imports
 	Server
 	contentSaver
@@ -42,16 +42,17 @@ type WebServer interface { // for *http[1-3]Server
 	MaxContentSize() int64
 	MaxMemoryContentSize() int32
 	MaxStreamsPerConn() int32
+
 	bindApps()
 	findApp(hostname []byte) *Webapp
 }
 
-// webServer_ is the parent for http[1-3]Server.
-type webServer_[G Gate] struct {
+// httpServer_ is the parent for http[1-3]Server.
+type httpServer_[G Gate] struct {
 	// Parent
 	Server_[G]
 	// Mixins
-	_webServend_
+	_httpServend_
 	// Assocs
 	defaultApp *Webapp // default webapp if not found
 	// States
@@ -63,15 +64,15 @@ type webServer_[G Gate] struct {
 	adjustScheme bool                   // use https scheme for TLS and http scheme for others?
 }
 
-func (s *webServer_[G]) onCreate(name string, stage *Stage) {
+func (s *httpServer_[G]) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
 
 	s.forceScheme = -1 // not forced
 }
 
-func (s *webServer_[G]) onConfigure() {
+func (s *httpServer_[G]) onConfigure() {
 	s.Server_.OnConfigure()
-	s._webServend_.onConfigure(s, 120*time.Second, 120*time.Second, 1000, TmpDir()+"/web/servers/"+s.name)
+	s._httpServend_.onConfigure(s, 120*time.Second, 120*time.Second, 1000, TmpDir()+"/web/servers/"+s.name)
 
 	// webapps
 	s.ConfigureStringList("webapps", &s.webapps, nil, []string{})
@@ -94,12 +95,12 @@ func (s *webServer_[G]) onConfigure() {
 	// adjustScheme
 	s.ConfigureBool("adjustScheme", &s.adjustScheme, true)
 }
-func (s *webServer_[G]) onPrepare() {
+func (s *httpServer_[G]) onPrepare() {
 	s.Server_.OnPrepare()
-	s._webServend_.onPrepare(s)
+	s._httpServend_.onPrepare(s)
 }
 
-func (s *webServer_[G]) bindApps() {
+func (s *httpServer_[G]) bindApps() {
 	for _, appName := range s.webapps {
 		webapp := s.stage.Webapp(appName)
 		if webapp == nil {
@@ -118,7 +119,7 @@ func (s *webServer_[G]) bindApps() {
 			}
 			s.tlsConfig.Certificates = append(s.tlsConfig.Certificates, certificate)
 		}
-		webapp.bindServer(s.shell.(WebServer))
+		webapp.bindServer(s.shell.(HTTPServer))
 		if webapp.isDefault {
 			s.defaultApp = webapp
 		}
@@ -136,7 +137,7 @@ func (s *webServer_[G]) bindApps() {
 		}
 	}
 }
-func (s *webServer_[G]) findApp(hostname []byte) *Webapp {
+func (s *httpServer_[G]) findApp(hostname []byte) *Webapp {
 	// TODO: use hash table?
 	for _, exactMap := range s.exactApps {
 		if bytes.Equal(hostname, exactMap.hostname) {
@@ -161,7 +162,7 @@ func (s *webServer_[G]) findApp(hostname []byte) *Webapp {
 // serverRequest_ is the parent for server[1-3]Request.
 type serverRequest_ struct { // incoming. needs parsing
 	// Parent
-	webIn_ // incoming web message
+	httpIn_ // incoming http message
 	// Stream states (stocks)
 	stockUpfiles [2]Upfile // for r.upfiles. 96B
 	// Stream states (controlled)
@@ -178,7 +179,7 @@ type serverRequest_ struct { // incoming. needs parsing
 }
 type serverRequest0 struct { // for fast reset, entirely
 	gotInput        bool     // got some input from client? for request timeout handling
-	targetForm      int8     // request-target form. see webTargetXXX
+	targetForm      int8     // request-target form. see httpTargetXXX
 	asteriskOptions bool     // true if method and uri is: OPTIONS *
 	schemeCode      uint8    // SchemeHTTP, SchemeHTTPS
 	methodCode      uint32   // known method code. 0: unknown method
@@ -244,7 +245,7 @@ type serverRequest0 struct { // for fast reset, entirely
 
 func (r *serverRequest_) onUse(httpVersion uint8) { // for non-zeros
 	const asResponse = false
-	r.webIn_.onUse(httpVersion, asResponse)
+	r.httpIn_.onUse(httpVersion, asResponse)
 
 	r.upfiles = r.stockUpfiles[0:0:cap(r.stockUpfiles)] // use append()
 }
@@ -272,12 +273,12 @@ func (r *serverRequest_) onEnd() { // for zeros
 	r.formWindow = nil // if r.formWindow is fetched from pool, it's put into pool on return. so just set as nil
 	r.serverRequest0 = serverRequest0{}
 
-	r.webIn_.onEnd()
+	r.httpIn_.onEnd()
 }
 
 func (r *serverRequest_) Webapp() *Webapp { return r.webapp }
 
-func (r *serverRequest_) IsAbsoluteForm() bool    { return r.targetForm == webTargetAbsolute }
+func (r *serverRequest_) IsAbsoluteForm() bool    { return r.targetForm == httpTargetAbsolute }
 func (r *serverRequest_) IsAsteriskOptions() bool { return r.asteriskOptions }
 
 func (r *serverRequest_) SchemeCode() uint8    { return r.schemeCode }
@@ -294,7 +295,7 @@ func (r *serverRequest_) IsPOST() bool         { return r.methodCode == MethodPO
 func (r *serverRequest_) IsPUT() bool          { return r.methodCode == MethodPUT }
 func (r *serverRequest_) IsDELETE() bool       { return r.methodCode == MethodDELETE }
 func (r *serverRequest_) recognizeMethod(method []byte, hash uint16) {
-	if m := webMethodTable[webMethodFind(hash)]; m.hash == hash && bytes.Equal(webMethodBytes[m.from:m.edge], method) {
+	if m := httpMethodTable[httpMethodFind(hash)]; m.hash == hash && bytes.Equal(httpMethodBytes[m.from:m.edge], method) {
 		r.methodCode = m.code
 	}
 }
@@ -619,7 +620,7 @@ func (r *serverRequest_) examineHead() bool {
 			return false
 		}
 		if r.nContentCodings > 0 { // have content-encoding
-			if r.nContentCodings > 1 || r.contentCodings[0] != webCodingGzip {
+			if r.nContentCodings > 1 || r.contentCodings[0] != httpCodingGzip {
 				r.headResult, r.failReason = StatusUnsupportedMediaType, "currently only gzip content coding is supported in request"
 				return false
 			}
@@ -638,7 +639,7 @@ func (r *serverRequest_) examineHead() bool {
 			contentType := header.dataAt(r.input)
 			bytesToLower(contentType)
 			if bytes.Equal(contentType, bytesURLEncodedForm) {
-				r.formKind = webFormURLEncoded
+				r.formKind = httpFormURLEncoded
 			} else if bytes.Equal(contentType, bytesMultipartForm) { // multipart/form-data; boundary=xxxxxx
 				for i := header.params.from; i < header.params.edge; i++ {
 					param := &r.extras[i]
@@ -650,16 +651,16 @@ func (r *serverRequest_) examineHead() bool {
 						// bchars := bcharsnospace / " "
 						// bcharsnospace := DIGIT / ALPHA / "'" / "(" / ")" / "+" / "_" / "," / "-" / "." / "/" / ":" / "=" / "?"
 						r.boundary = boundary
-						r.formKind = webFormMultipart
+						r.formKind = httpFormMultipart
 						break
 					}
 				}
-				if r.formKind != webFormMultipart {
+				if r.formKind != httpFormMultipart {
 					r.headResult, r.failReason = StatusBadRequest, "bad boundary"
 					return false
 				}
 			}
-			if r.formKind != webFormNotForm && r.nContentCodings > 0 {
+			if r.formKind != httpFormNotForm && r.nContentCodings > 0 {
 				r.headResult, r.failReason = StatusUnsupportedMediaType, "a form with content coding is not supported yet"
 				return false
 			}
@@ -1184,7 +1185,7 @@ func (r *serverRequest_) parseAuthority(from int32, edge int32, save bool) bool 
 		}
 	} else { // IPv4address or reg-name
 		for fore < edge {
-			if b := r.input[fore]; webHchar[b] == 1 {
+			if b := r.input[fore]; httpHchar[b] == 1 {
 				fore++
 			} else if b == ':' {
 				break
@@ -1240,7 +1241,7 @@ func (r *serverRequest_) parseCookie(cookieString span) bool { // cookie-string 
 					return false
 				}
 				state = 1
-			} else if webTchar[b] != 0 {
+			} else if httpTchar[b] != 0 {
 				cookie.hash += uint16(b)
 			} else {
 				r.headResult, r.failReason = StatusBadRequest, "invalid cookie name"
@@ -1535,20 +1536,20 @@ func (r *serverRequest_) unsetHost() { // used by proxies
 func (r *serverRequest_) HasContent() bool { return r.contentSize >= 0 || r.IsVague() }
 func (r *serverRequest_) Content() string  { return string(r.UnsafeContent()) }
 func (r *serverRequest_) UnsafeContent() []byte {
-	if r.formKind == webFormMultipart { // loading multipart form into memory is not allowed!
+	if r.formKind == httpFormMultipart { // loading multipart form into memory is not allowed!
 		return nil
 	}
 	return r.unsafeContent()
 }
 
 func (r *serverRequest_) parseHTMLForm() { // to populate r.forms and r.upfiles
-	if r.formKind == webFormNotForm || r.formReceived {
+	if r.formKind == httpFormNotForm || r.formReceived {
 		return
 	}
 	r.formReceived = true
 	r.forms.from = uint8(len(r.primes))
 	r.forms.edge = r.forms.from
-	if r.formKind == webFormURLEncoded { // application/x-www-form-urlencoded
+	if r.formKind == httpFormURLEncoded { // application/x-www-form-urlencoded
 		r._loadURLEncodedForm()
 	} else { // multipart/form-data
 		r._recvMultipartForm()
@@ -1581,7 +1582,7 @@ func (r *serverRequest_) _loadURLEncodedForm() { // into memory entirely
 					return
 				}
 				state = 3
-			} else if webPchar[b] > 0 { // including '?'
+			} else if httpPchar[b] > 0 { // including '?'
 				if b == '+' {
 					b = ' ' // application/x-www-form-urlencoded encodes ' ' as '+'
 				}
@@ -1602,7 +1603,7 @@ func (r *serverRequest_) _loadURLEncodedForm() { // into memory entirely
 				form.hash = 0 // reset for next form
 				form.nameFrom = r.arrayEdge
 				state = 2
-			} else if webPchar[b] > 0 { // including '?'
+			} else if httpPchar[b] > 0 { // including '?'
 				if b == '+' {
 					b = ' ' // application/x-www-form-urlencoded encodes ' ' as '+'
 				}
@@ -1646,7 +1647,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 	r.pBack, r.pFore = 0, 0
 	r.consumedSize = r.receivedSize
 	if r.contentReceived { // (0, 64K1)
-		// r.contentText is set, r.contentTextKind == webContentTextInput. r.formWindow refers to the exact r.contentText.
+		// r.contentText is set, r.contentTextKind == httpContentTextInput. r.formWindow refers to the exact r.contentText.
 		r.formWindow = r.contentText
 		r.formEdge = int32(len(r.formWindow))
 	} else { // content is not received
@@ -1654,7 +1655,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 		switch content := r._recvContent(true).(type) { // retain
 		case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 			r.contentText = content
-			r.contentTextKind = webContentTextPool         // so r.contentText can be freed on end
+			r.contentTextKind = httpContentTextPool        // so r.contentText can be freed on end
 			r.formWindow = r.contentText[0:r.receivedSize] // r.formWindow refers to the exact r.content.
 			r.formEdge = int32(r.receivedSize)
 		case tempFile: // [0, r.webapp.maxUpfileSize]. case happens when sized content > 64K1, or content is vague.
@@ -1749,7 +1750,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 			r.pBack = r.pFore // now r.formWindow is used for receiving field-name and onward
 			for {             // field name
 				b := r.formWindow[r.pFore]
-				if t := webTchar[b]; t == 1 {
+				if t := httpTchar[b]; t == 1 {
 					// Fast path, do nothing
 				} else if t == 2 { // A-Z
 					r.formWindow[r.pFore] = b + 0x20 // to lower
@@ -1851,7 +1852,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 							return
 						}
 						nameBuffer := r.stream.buffer256() // enough for tempName
-						m := r.stream.webConn().MakeTempName(nameBuffer, r.recvTime.Unix())
+						m := r.stream.httpConn().MakeTempName(nameBuffer, r.recvTime.Unix())
 						if !r.arrayCopy(nameBuffer[:m]) { // add "391384576"
 							r.stream.markBroken()
 							return
@@ -2273,7 +2274,7 @@ var serverRequestVariables = [...]func(*serverRequest_) []byte{ // keep sync wit
 // serverResponse_ is the parent for server[1-3]Response.
 type serverResponse_ struct { // outgoing. needs building
 	// Parent
-	webOut_ // outgoing web message
+	httpOut_ // outgoing http message
 	// Assocs
 	request Request // related request
 	// Stream states (stocks)
@@ -2301,7 +2302,7 @@ type serverResponse0 struct { // for fast reset, entirely
 
 func (r *serverResponse_) onUse(httpVersion uint8) { // for non-zeros
 	const asRequest = false
-	r.webOut_.onUse(httpVersion, asRequest)
+	r.httpOut_.onUse(httpVersion, asRequest)
 	r.status = StatusOK
 	r.unixTimes.expires = -1      // not set
 	r.unixTimes.lastModified = -1 // not set
@@ -2309,7 +2310,7 @@ func (r *serverResponse_) onUse(httpVersion uint8) { // for non-zeros
 func (r *serverResponse_) onEnd() { // for zeros
 	r.webapp = nil
 	r.serverResponse0 = serverResponse0{}
-	r.webOut_.onEnd()
+	r.httpOut_.onEnd()
 }
 
 func (r *serverResponse_) Request() Request { return r.request }
@@ -2327,7 +2328,7 @@ func (r *serverResponse_) SetStatus(status int16) error {
 		}
 		return nil
 	} else { // 1xx are not allowed to set through SetStatus()
-		return webOutUnknownStatus
+		return httpOutUnknownStatus
 	}
 }
 func (r *serverResponse_) Status() int16 { return r.status }
@@ -2397,7 +2398,7 @@ func (r *serverResponse_) sendError(status int16, content []byte) error {
 		return err
 	}
 	if content == nil {
-		content = webErrorPages[status]
+		content = serverErrorPages[status]
 	}
 	r.piece.SetText(content)
 	r.chain.PushTail(&r.piece)
@@ -2405,7 +2406,7 @@ func (r *serverResponse_) sendError(status int16, content []byte) error {
 	return r.shell.sendChain()
 }
 
-var webErrorPages = func() map[int16][]byte {
+var serverErrorPages = func() map[int16][]byte {
 	const template = `<!doctype html>
 <html lang="en">
 <head>
@@ -2460,7 +2461,7 @@ func (r *serverResponse_) doSend() error {
 		if contentSize, ok := r.chain.Size(); ok {
 			r.contentSize = contentSize
 		} else {
-			return webOutTooLarge
+			return httpOutTooLarge
 		}
 	}
 	return r.shell.sendChain()
@@ -2478,7 +2479,7 @@ func (r *serverResponse_) beforeEcho() {
 }
 func (r *serverResponse_) doEcho() error {
 	if r.stream.isBroken() {
-		return webOutWriteBroken
+		return httpOutWriteBroken
 	}
 	r.chain.PushTail(&r.piece)
 	defer r.chain.free()
@@ -2496,7 +2497,7 @@ func (r *serverResponse_) doEcho() error {
 }
 func (r *serverResponse_) endVague() error {
 	if r.stream.isBroken() {
-		return webOutWriteBroken
+		return httpOutWriteBroken
 	}
 	if r.hasRevisers {
 		resp := r.shell.(Response)
@@ -2596,12 +2597,12 @@ func (r *serverResponse_) proxyPass(resp backendResponse) error { // sync conten
 		if !resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 			return r.shell.addTrailer(name, value)
 		}) {
-			return webOutTrailerFailed
+			return httpOutTrailerFailed
 		}
 	}
 	return nil
 }
-func (r *serverResponse_) proxyCopyHead(resp backendResponse, cfg *WebExchanProxyConfig) bool {
+func (r *serverResponse_) proxyCopyHead(resp backendResponse, cfg *HTTPExchanProxyConfig) bool {
 	resp.delHopHeaders()
 
 	// copy control (:status)
@@ -2622,7 +2623,7 @@ func (r *serverResponse_) proxyCopyHead(resp backendResponse, cfg *WebExchanProx
 
 	return true
 }
-func (r *serverResponse_) proxyCopyTail(resp backendResponse, cfg *WebExchanProxyConfig) bool {
+func (r *serverResponse_) proxyCopyTail(resp backendResponse, cfg *HTTPExchanProxyConfig) bool {
 	return resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.shell.addTrailer(name, value)
 	})
@@ -2636,17 +2637,17 @@ func (r *serverResponse_) hookReviser(reviser Reviser) {
 // serverSocket_ is the parent for server[1-3]Socket.
 type serverSocket_ struct {
 	// Parent
-	webSocket_
+	httpSocket_
 	// Assocs
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
 func (s *serverSocket_) onUse() {
-	s.webSocket_.onUse()
+	s.httpSocket_.onUse()
 }
 func (s *serverSocket_) onEnd() {
-	s.webSocket_.onEnd()
+	s.httpSocket_.onEnd()
 }
 
 // Webapp is the Web application.
@@ -2656,7 +2657,7 @@ type Webapp struct {
 	// Assocs
 	stage    *Stage            // current stage
 	stater   Stater            // the stater which is used by this webapp
-	servers  []WebServer       // bound web servers. may be empty
+	servers  []HTTPServer      // bound http servers. may be empty
 	handlets compDict[Handlet] // defined handlets. indexed by name
 	revisers compDict[Reviser] // defined revisers. indexed by name
 	socklets compDict[Socklet] // defined socklets. indexed by name
@@ -2673,7 +2674,7 @@ type Webapp struct {
 	maxUpfileSize   int64             // max content size that uploads files through multipart/form-data
 	settings        map[string]string // webapp settings defined and used by users
 	settingsLock    sync.RWMutex      // protects settings
-	isDefault       bool              // is this webapp the default webapp of its belonging web servers?
+	isDefault       bool              // is this webapp the default webapp of its belonging http servers?
 	exactHostnames  [][]byte          // like: ("example.com")
 	suffixHostnames [][]byte          // like: ("*.example.com")
 	prefixHostnames [][]byte          // like: ("www.example.*")
@@ -2914,7 +2915,7 @@ func (a *Webapp) createRule(name string) *Rule {
 	return rule
 }
 
-func (a *Webapp) bindServer(server WebServer) { a.servers = append(a.servers, server) }
+func (a *Webapp) bindServer(server HTTPServer) { a.servers = append(a.servers, server) }
 
 func (a *Webapp) Handlet(name string) Handlet { return a.handlets[name] }
 func (a *Webapp) Reviser(name string) Reviser { return a.revisers[name] }
@@ -2991,7 +2992,7 @@ func (a *Webapp) dispatchSocket(req Request, sock Socket) {
 	sock.Close()
 }
 
-// Request is the server-side web request.
+// Request is the server-side http request.
 type Request interface { // for *server[1-3]Request
 	RemoteAddr() net.Addr
 	Webapp() *Webapp
@@ -3149,7 +3150,7 @@ type Request interface { // for *server[1-3]Request
 	unsafeVariable(code int16, name string) (value []byte)
 }
 
-// Upfile is a file uploaded by web client.
+// Upfile is a file uploaded by http client.
 type Upfile struct { // 48 bytes
 	hash     uint16 // hash of name, to support fast comparison
 	flags    uint8  // see upfile flags
@@ -3251,7 +3252,7 @@ func (u *Upfile) MoveTo(path string) error {
 	return nil
 }
 
-// Response is the server-side web response.
+// Response is the server-side http response.
 type Response interface { // for *server[1-3]Response
 	Request() Request
 
@@ -3316,8 +3317,8 @@ type Response interface { // for *server[1-3]Response
 	proxyPass1xx(resp backendResponse) bool
 	proxyPass(resp backendResponse) error
 	proxyPost(content any, hasTrailers bool) error
-	proxyCopyHead(resp backendResponse, cfg *WebExchanProxyConfig) bool
-	proxyCopyTail(resp backendResponse, cfg *WebExchanProxyConfig) bool
+	proxyCopyHead(resp backendResponse, cfg *HTTPExchanProxyConfig) bool
+	proxyCopyTail(resp backendResponse, cfg *HTTPExchanProxyConfig) bool
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
 }
@@ -3347,7 +3348,7 @@ func (c *Cookie) Set(name string, value string) bool {
 		return false
 	}
 	for i := 0; i < len(name); i++ {
-		if b := name[i]; webKchar[b] == 0 {
+		if b := name[i]; httpKchar[b] == 0 {
 			c.invalid = true
 			return false
 		}
@@ -3356,7 +3357,7 @@ func (c *Cookie) Set(name string, value string) bool {
 	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
 	for i := 0; i < len(value); i++ {
 		b := value[i]
-		if webKchar[b] == 1 {
+		if httpKchar[b] == 1 {
 			continue
 		}
 		if b == ' ' || b == ',' {
@@ -3481,7 +3482,7 @@ func (c *Cookie) writeTo(p []byte) int {
 	return i
 }
 
-// Handle is a function which handles web request and gives web response.
+// Handle is a function which handles http request and gives http response.
 type Handle func(req Request, resp Response)
 
 // Mapper performs request mapping in handlets. Mappers are not components.
@@ -3538,14 +3539,14 @@ func (h *Handlet_) Dispatch(req Request, resp Response, notFound Handle) {
 	}
 }
 
-// Cacher component is the interface to storages of Web caching. See RFC 9111.
+// Cacher component is the interface to storages of HTTP caching. See RFC 9111.
 type Cacher interface {
 	// Imports
 	Component
 	// Methods
 	Maintain() // runner
-	Set(key []byte, wobject *Wobject)
-	Get(key []byte) (wobject *Wobject)
+	Set(key []byte, hobject *Hobject)
+	Get(key []byte) (hobject *Hobject)
 	Del(key []byte) bool
 }
 
@@ -3557,8 +3558,8 @@ type Cacher_ struct {
 	// States
 }
 
-// Wobject is a Web object in Cacher.
-type Wobject struct {
+// Hobject is an HTTP object in Cacher.
+type Hobject struct {
 	// TODO
 	uri      []byte
 	headers  any
@@ -3598,7 +3599,7 @@ type Reviser_ struct {
 func (r *Reviser_) ID() uint8      { return r.id }
 func (r *Reviser_) setID(id uint8) { r.id = id }
 
-// Socket is the server-side web socket.
+// Socket is the server-side http socket.
 type Socket interface { // for *server[1-3]Socket
 	Read(p []byte) (int, error)
 	Write(p []byte) (int, error)
@@ -3940,7 +3941,7 @@ func (r *Rule) notExistMatch(req Request, value []byte) bool { // value !e
 	return pathInfo == nil
 }
 
-// staticHandlet is the classic web handlet for static files and directories.
+// staticHandlet is the classic http handlet for static files and directories.
 type staticHandlet struct {
 	// Parent
 	Handlet_

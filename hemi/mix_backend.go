@@ -36,7 +36,6 @@ type Backend interface {
 type Backend_[N Node] struct {
 	// Parent
 	Component_
-	// Mixins
 	// Assocs
 	stage *Stage      // current stage
 	nodes compList[N] // nodes of this backend
@@ -60,7 +59,7 @@ func (b *Backend_[N]) OnCreate(name string, stage *Stage) {
 	b.healthCheck = nil // TODO
 }
 func (b *Backend_[N]) OnShutdown() {
-	close(b.ShutChan) // notifies Maintain() which shutdown sub components
+	close(b.ShutChan) // notifies Maintain() which will shutdown sub components
 }
 
 func (b *Backend_[N]) OnConfigure() {
@@ -107,11 +106,11 @@ func (b *Backend_[N]) OnConfigure() {
 func (b *Backend_[N]) OnPrepare() {
 	switch b.balancer {
 	case "roundRobin":
-		b.indexGet = b.nextIndexByRoundRobin
-	case "ipHash":
-		b.indexGet = b.nextIndexByIPHash
+		b.indexGet = b._nextIndexByRoundRobin
 	case "random":
-		b.indexGet = b.nextIndexByRandom
+		b.indexGet = b._nextIndexByRandom
+	case "ipHash":
+		b.indexGet = b._nextIndexByIPHash
 	default:
 		BugExitln("unknown balancer")
 	}
@@ -138,6 +137,7 @@ func (b *Backend_[N]) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("backend=%s done\n", b.Name())
 	}
+
 	b.stage.DecSub()
 }
 
@@ -156,16 +156,16 @@ func (b *Backend_[N]) nextConnID() int64 { return b.connID.Add(1) }
 
 func (b *Backend_[N]) nextIndex() int64 { return b.indexGet() }
 
-func (b *Backend_[N]) nextIndexByRoundRobin() int64 {
+func (b *Backend_[N]) _nextIndexByRoundRobin() int64 {
 	index := b.nodeIndex.Add(1)
 	return index % b.numNodes
 }
-func (b *Backend_[N]) nextIndexByIPHash() int64 {
+func (b *Backend_[N]) _nextIndexByRandom() int64 {
+	return rand.Int63n(b.numNodes)
+}
+func (b *Backend_[N]) _nextIndexByIPHash() int64 {
 	// TODO
 	return 0
-}
-func (b *Backend_[N]) nextIndexByRandom() int64 {
-	return rand.Int63n(b.numNodes)
 }
 
 // Node is a member of backend.
@@ -198,7 +198,7 @@ func (n *Node_) OnCreate(name string) {
 	n.health = nil // TODO
 }
 func (n *Node_) OnShutdown() {
-	close(n.ShutChan) // notifies Maintain() which close conns
+	close(n.ShutChan) // notifies Maintain() which will close conns
 }
 
 func (n *Node_) OnConfigure() {

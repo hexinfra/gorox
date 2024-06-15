@@ -1,1 +1,1 @@
-Memory cacher stores wobjects in memory.
+Memory cacher stores hobjects in memory.

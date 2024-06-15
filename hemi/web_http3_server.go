@@ -29,20 +29,20 @@ func init() {
 // http3Server is the HTTP/3 server.
 type http3Server struct {
 	// Parent
-	webServer_[*http3Gate]
+	httpServer_[*http3Gate]
 	// States
 }
 
 func (s *http3Server) onCreate(name string, stage *Stage) {
-	s.webServer_.onCreate(name, stage)
+	s.httpServer_.onCreate(name, stage)
 	s.tlsConfig = new(tls.Config) // tls mode is always enabled
 }
 
 func (s *http3Server) OnConfigure() {
-	s.webServer_.onConfigure()
+	s.httpServer_.onConfigure()
 }
 func (s *http3Server) OnPrepare() {
-	s.webServer_.onPrepare()
+	s.httpServer_.onPrepare()
 }
 
 func (s *http3Server) Serve() { // runner
@@ -151,7 +151,7 @@ type server3Conn struct {
 	// Parent
 	ServerConn_
 	// Mixins
-	_webConn_
+	_httpConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -172,7 +172,7 @@ type server3Conn0 struct { // for fast reset, entirely
 
 func (c *server3Conn) onGet(id int64, gate *http3Gate, quicConn *quic.Conn) {
 	c.ServerConn_.OnGet(id)
-	c._webConn_.onGet()
+	c._httpConn_.onGet()
 	c.server = gate.server
 	c.gate = gate
 	c.quicConn = quicConn
@@ -189,7 +189,7 @@ func (c *server3Conn) onPut() {
 	c.server3Conn0 = server3Conn0{}
 	c.server = nil
 	c.gate = nil
-	c._webConn_.onPut()
+	c._httpConn_.onPut()
 	c.ServerConn_.OnPut()
 }
 
@@ -200,7 +200,7 @@ func (c *server3Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *server3Conn) WebServer() WebServer { return c.server }
+func (c *server3Conn) HTTPServer() HTTPServer { return c.server }
 
 func (c *server3Conn) serve() { // runner
 	// TODO
@@ -254,7 +254,7 @@ func putServer3Stream(stream *server3Stream) {
 // server3Stream is the server-side HTTP/3 stream.
 type server3Stream struct {
 	// Mixins
-	_webStream_
+	_httpStream_
 	// Assocs
 	request  server3Request  // the http/3 request.
 	response server3Response // the http/3 response.
@@ -274,7 +274,7 @@ type server3Stream0 struct { // for fast reset, entirely
 }
 
 func (s *server3Stream) onUse(conn *server3Conn, quicStream *quic.Stream) { // for non-zeros
-	s._webStream_.onUse()
+	s._httpStream_.onUse()
 	s.conn = conn
 	s.quicStream = quicStream
 	s.request.onUse(Version3)
@@ -290,7 +290,7 @@ func (s *server3Stream) onEnd() { // for zeros
 	s.conn = nil
 	s.quicStream = nil
 	s.server3Stream0 = server3Stream0{}
-	s._webStream_.onEnd()
+	s._httpStream_.onEnd()
 }
 
 func (s *server3Stream) execute() { // runner
@@ -325,9 +325,9 @@ func (s *server3Stream) setWriteDeadline(deadline time.Time) error { // for cont
 func (s *server3Stream) isBroken() bool { return false } // TODO
 func (s *server3Stream) markBroken()    {}               // TODO
 
-func (s *server3Stream) webServend() webServend { return s.conn.WebServer() }
-func (s *server3Stream) webConn() webConn       { return s.conn }
-func (s *server3Stream) remoteAddr() net.Addr   { return nil } // TODO
+func (s *server3Stream) httpServend() httpServend { return s.conn.HTTPServer() }
+func (s *server3Stream) httpConn() httpConn       { return s.conn }
+func (s *server3Stream) remoteAddr() net.Addr     { return nil } // TODO
 
 func (s *server3Stream) read(p []byte) (int, error) { // for content i/o only
 	return 0, nil

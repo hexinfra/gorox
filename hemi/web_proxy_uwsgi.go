@@ -30,7 +30,7 @@ func init() {
 	})
 }
 
-// uwsgiProxy handlet passes web requests to uWSGI backends and caches responses.
+// uwsgiProxy handlet passes http requests to uWSGI backends and caches responses.
 type uwsgiProxy struct {
 	// Parent
 	Handlet_
@@ -40,7 +40,7 @@ type uwsgiProxy struct {
 	backend *uwsgiBackend // the backend to pass to
 	cacher  Cacher        // the cacher which is used by this proxy
 	// States
-	WebExchanProxyConfig // embeded
+	HTTPExchanProxyConfig // embeded
 }
 
 func (h *uwsgiProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
@@ -118,7 +118,7 @@ func (b *uwsgiBackend) onCreate(name string, stage *Stage) {
 
 func (b *uwsgiBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
-	b._contentSaver_.onConfigure(b, TmpDir()+"/web/uwsgi/"+b.name)
+	b._contentSaver_.onConfigure(b, TmpDir()+"/web/backends/"+b.name)
 
 	// sendTimeout
 	b.ConfigureDuration("sendTimeout", &b.sendTimeout, func(value time.Duration) error {

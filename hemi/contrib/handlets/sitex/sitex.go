@@ -37,7 +37,7 @@ type Sitex struct {
 	hostnameSites map[string]*Site // hostname -> site, for routing
 }
 
-func (h *Sitex) OnCreate(name string, stage *Stage, webapp *Webapp) { // exported
+func (h *Sitex) OnCreate(name string, stage *Stage, webapp *Webapp) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.webapp = webapp

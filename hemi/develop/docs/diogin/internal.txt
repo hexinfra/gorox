@@ -14,11 +14,11 @@ THE WEB PICTURE
                   ^                                           ^
   [REVISERS]      |    -------pass/post----->                 |
                   |                                           |
-  webIn_          | webStream                webOut_          | webStream
+  httpIn_         | httpStream               httpOut_         | httpStream
   ^ - stream -----+                          ^ - stream ------+
   |                                          |
   | - shell ------+                          | - shell -------+
-  |               | webIn                    |                | webOut
+  |               | httpIn                   |                | httpOut
   +-serverRequest_|                          +-backendRequest_|
     ^             |                             ^             |
     |             v                             |             v
@@ -26,7 +26,7 @@ THE WEB PICTURE
                             \           /
                   \          \         /
         1/2/3      \          \       /             1/2/3
-     [webServer]   [Handlet]/[httpProxy]         [webBackend]
+    [httpServer]   [Handlet]/[httpProxy]        [httpBackend]
         1/2/3      /          /       \             1/2/3
                   /          /         \
                             /           \
@@ -34,11 +34,11 @@ THE WEB PICTURE
                    ^                                           ^
   [REVISERS]       |   <------pass/post------                  |
                    |                                           |
-  webOut_          | webStream               webIn_            | webStream
+  httpOut_         | httpStream              httpIn_           | httpStream
   ^ - stream ------+                         ^ - stream -------+
   |                                          |
   | - shell -------+                         | - shell --------+
-  |                | webOut                  |                 | webIn
+  |                | httpOut                 |                 | httpIn
   +-serverResponse_|                         +-backendResponse_|
     ^              |                            ^              |
     |              v                            |              v
@@ -59,8 +59,8 @@ NOTES
   * adding headers to outgoing messages: insert + append.
   * deleting headers from outgoing messages: remove + delete.
 
-WEB SERVER -> WEB PROXY -> WEB BACKEND
---------------------------------------
+HTTP SERVER -> HTTP PROXY -> HTTP BACKEND
+-----------------------------------------
 
   * we support HTTP/1.x in server side, but we don't support HTTP/1.0 in backend side.
   * we support revisers in server side, but we don't support revisers in backend side.

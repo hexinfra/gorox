@@ -22,21 +22,21 @@ const ( // version codes
 )
 
 var ( // version strings and byteses
-	stringHTTP1_0     = "HTTP/1.0"
-	stringHTTP1_1     = "HTTP/1.1"
-	stringHTTP2       = "HTTP/2"
-	stringHTTP3       = "HTTP/3"
-	bytesHTTP1_0      = []byte(stringHTTP1_0)
-	bytesHTTP1_1      = []byte(stringHTTP1_1)
-	bytesHTTP2        = []byte(stringHTTP2)
-	bytesHTTP3        = []byte(stringHTTP3)
-	webVersionStrings = [...]string{
+	stringHTTP1_0      = "HTTP/1.0"
+	stringHTTP1_1      = "HTTP/1.1"
+	stringHTTP2        = "HTTP/2"
+	stringHTTP3        = "HTTP/3"
+	bytesHTTP1_0       = []byte(stringHTTP1_0)
+	bytesHTTP1_1       = []byte(stringHTTP1_1)
+	bytesHTTP2         = []byte(stringHTTP2)
+	bytesHTTP3         = []byte(stringHTTP3)
+	httpVersionStrings = [...]string{
 		Version1_0: stringHTTP1_0,
 		Version1_1: stringHTTP1_1,
 		Version2:   stringHTTP2,
 		Version3:   stringHTTP3,
 	}
-	webVersionByteses = [...][]byte{
+	httpVersionByteses = [...][]byte{
 		Version1_0: bytesHTTP1_0,
 		Version1_1: bytesHTTP1_1,
 		Version2:   bytesHTTP2,
@@ -76,8 +76,8 @@ const ( // method codes
 )
 
 var ( // method hash table
-	webMethodBytes = []byte("GET HEAD POST PUT DELETE CONNECT OPTIONS TRACE")
-	webMethodTable = [8]struct {
+	httpMethodBytes = []byte("GET HEAD POST PUT DELETE CONNECT OPTIONS TRACE")
+	httpMethodTable = [8]struct {
 		hash uint16
 		from uint8
 		edge uint8
@@ -92,7 +92,7 @@ var ( // method hash table
 		6: {435, 18, 24, MethodDELETE},
 		7: {367, 41, 46, MethodTRACE},
 	}
-	webMethodFind = func(hash uint16) int { return (2610 / int(hash)) % 8 }
+	httpMethodFind = func(hash uint16) int { return (2610 / int(hash)) % 8 }
 )
 
 const ( // status codes
@@ -164,35 +164,35 @@ const ( // status codes
 	StatusNetworkAuthenticationRequired = 511
 )
 
-const ( // misc web types
-	webTargetOrigin    = 0 // must be 0
-	webTargetAbsolute  = 1 // scheme "://" hostname [ ":" port ] path-abempty [ "?" query ]
-	webTargetAuthority = 2 // hostname:port, /path/to/unix.sock
-	webTargetAsterisk  = 3 // *
+const ( // misc http types
+	httpTargetOrigin    = 0 // must be 0
+	httpTargetAbsolute  = 1 // scheme "://" hostname [ ":" port ] path-abempty [ "?" query ]
+	httpTargetAuthority = 2 // hostname:port, /path/to/unix.sock
+	httpTargetAsterisk  = 3 // *
 
-	webSectionControl  = 0 // must be 0
-	webSectionHeaders  = 1
-	webSectionContent  = 2
-	webSectionTrailers = 3
+	httpSectionControl  = 0 // must be 0
+	httpSectionHeaders  = 1
+	httpSectionContent  = 2
+	httpSectionTrailers = 3
 
-	webCodingIdentity = 0 // must be 0
-	webCodingCompress = 1
-	webCodingDeflate  = 2 // this is in fact zlib format
-	webCodingGzip     = 3
-	webCodingBrotli   = 4
-	webCodingUnknown  = 5
+	httpCodingIdentity = 0 // must be 0
+	httpCodingCompress = 1
+	httpCodingDeflate  = 2 // this is in fact zlib format
+	httpCodingGzip     = 3
+	httpCodingBrotli   = 4
+	httpCodingUnknown  = 5
 
-	webFormNotForm    = 0 // must be 0
-	webFormURLEncoded = 1 // application/x-www-form-urlencoded
-	webFormMultipart  = 2 // multipart/form-data
+	httpFormNotForm    = 0 // must be 0
+	httpFormURLEncoded = 1 // application/x-www-form-urlencoded
+	httpFormMultipart  = 2 // multipart/form-data
 
-	webContentTextNone  = 0 // must be 0
-	webContentTextInput = 1 // refers to r.input
-	webContentTextPool  = 2 // fetched from pool
-	webContentTextMake  = 3 // direct make
+	httpContentTextNone  = 0 // must be 0
+	httpContentTextInput = 1 // refers to r.input
+	httpContentTextPool  = 2 // fetched from pool
+	httpContentTextMake  = 3 // direct make
 )
 
-const ( // hashes of web fields. value is calculated by adding all ASCII values.
+const ( // hashes of http fields. value is calculated by adding all ASCII values.
 	// Pseudo headers
 	hashAuthority = 1059 // :authority
 	hashMethod    = 699  // :method
@@ -257,7 +257,7 @@ const ( // hashes of web fields. value is calculated by adding all ASCII values.
 	hashWWWAuthenticate   = 1681
 )
 
-var ( // byteses of web fields.
+var ( // byteses of http fields.
 	// Pseudo headers
 	bytesAuthority = []byte(":authority")
 	bytesMethod    = []byte(":method")
@@ -322,13 +322,13 @@ var ( // byteses of web fields.
 	bytesWWWAuthenticate   = []byte("www-authenticate")
 )
 
-const ( // hashes of misc web strings & byteses.
+const ( // hashes of misc http strings & byteses.
 	hashBoundary = 868
 	hashFilename = 833
 	hashName     = 417
 )
 
-var ( // misc web strings & byteses.
+var ( // misc http strings & byteses.
 	// Strings
 	stringColonPort80  = ":80"
 	stringColonPort443 = ":443"
@@ -372,7 +372,7 @@ var ( // misc web strings & byteses.
 	bytesFixedResponseHeaders = []byte("server gorox")
 )
 
-var webTchar = [256]int8{ // tchar = ALPHA / DIGIT / "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"
+var httpTchar = [256]int8{ // tchar = ALPHA / DIGIT / "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~"
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, //   !   # $ % & '     * +   - .
@@ -390,7 +390,7 @@ var webTchar = [256]int8{ // tchar = ALPHA / DIGIT / "!" / "#" / "$" / "%" / "&"
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 }
-var webPchar = [256]int8{ // pchar = ALPHA / DIGIT / "!" / "$" / "&" / "'" / "(" / ")" / "*" / "+" / "," / "-" / "." / ":" / ";" / "=" / "@" / "_" / "~" / pct-encoded. '/' is pchar to improve performance.
+var httpPchar = [256]int8{ // pchar = ALPHA / DIGIT / "!" / "$" / "&" / "'" / "(" / ")" / "*" / "+" / "," / "-" / "." / ":" / ";" / "=" / "@" / "_" / "~" / pct-encoded. '/' is pchar to improve performance.
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 1, 0, 0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, //   !     $   & ' ( ) * + , - . /
@@ -408,7 +408,7 @@ var webPchar = [256]int8{ // pchar = ALPHA / DIGIT / "!" / "$" / "&" / "'" / "("
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 }
-var webKchar = [256]int8{ // cookie-octet = 0x21 / 0x23-0x2B / 0x2D-0x3A / 0x3C-0x5B / 0x5D-0x7E
+var httpKchar = [256]int8{ // cookie-octet = 0x21 / 0x23-0x2B / 0x2D-0x3A / 0x3C-0x5B / 0x5D-0x7E
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, //   !   # $ % & ' ( ) * +   - . /
@@ -426,7 +426,7 @@ var webKchar = [256]int8{ // cookie-octet = 0x21 / 0x23-0x2B / 0x2D-0x3A / 0x3C-
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 }
-var webHchar = [256]int8{ // for hostname
+var httpHchar = [256]int8{ // for hostname
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, //                           - .
@@ -445,7 +445,7 @@ var webHchar = [256]int8{ // for hostname
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 }
 
-var webHuffmanCodes = [256]uint32{ // 1K, for huffman encoding
+var httpHuffmanCodes = [256]uint32{ // 1K, for huffman encoding
 	0x00001ff8, 0x007fffd8, 0x0fffffe2, 0x0fffffe3, 0x0fffffe4, 0x0fffffe5, 0x0fffffe6, 0x0fffffe7,
 	0x0fffffe8, 0x00ffffea, 0x3ffffffc, 0x0fffffe9, 0x0fffffea, 0x3ffffffd, 0x0fffffeb, 0x0fffffec,
 	0x0fffffed, 0x0fffffee, 0x0fffffef, 0x0ffffff0, 0x0ffffff1, 0x0ffffff2, 0x3ffffffe, 0x0ffffff3,
@@ -479,7 +479,7 @@ var webHuffmanCodes = [256]uint32{ // 1K, for huffman encoding
 	0x03ffffeb, 0x07ffffe6, 0x03ffffec, 0x03ffffed, 0x07ffffe7, 0x07ffffe8, 0x07ffffe9, 0x07ffffea,
 	0x07ffffeb, 0x0ffffffe, 0x07ffffec, 0x07ffffed, 0x07ffffee, 0x07ffffef, 0x07fffff0, 0x03ffffee,
 }
-var webHuffmanSizes = [256]uint8{ // 256B, for huffman encoding
+var httpHuffmanSizes = [256]uint8{ // 256B, for huffman encoding
 	0x0d, 0x17, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x18, 0x1e, 0x1c, 0x1c, 0x1e, 0x1c, 0x1c,
 	0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1e, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c, 0x1c,
 	0x06, 0x0a, 0x0a, 0x0c, 0x0d, 0x06, 0x08, 0x0b, 0x0a, 0x0a, 0x08, 0x0b, 0x08, 0x06, 0x06, 0x06,
@@ -497,7 +497,7 @@ var webHuffmanSizes = [256]uint8{ // 256B, for huffman encoding
 	0x14, 0x18, 0x14, 0x15, 0x16, 0x15, 0x15, 0x17, 0x16, 0x16, 0x19, 0x19, 0x18, 0x18, 0x1a, 0x17,
 	0x1a, 0x1b, 0x1a, 0x1a, 0x1b, 0x1b, 0x1b, 0x1b, 0x1b, 0x1c, 0x1b, 0x1b, 0x1b, 0x1b, 0x1b, 0x1a,
 }
-var webHuffmanTable = [256][16]struct{ next, sym, emit, end byte }{ // 16K, for huffman decoding
+var httpHuffmanTable = [256][16]struct{ next, sym, emit, end byte }{ // 16K, for huffman decoding
 	// TODO
 	0x00: {
 		{0x04, 0x00, 0, 0}, {0x05, 0x00, 0, 0}, {0x07, 0x00, 0, 0}, {0x08, 0x00, 0, 0},
@@ -2252,7 +2252,7 @@ var defaultFdesc = &fdesc{
 	hasComment: false,
 }
 
-// fdesc describes a web field.
+// fdesc describes an http field.
 type fdesc struct {
 	hash       uint16 // name hash
 	allowQuote bool   // allow data quote or not

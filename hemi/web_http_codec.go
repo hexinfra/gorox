@@ -1998,8 +1998,8 @@ var ( // http outgoing message errors
 	httpOutTrailerFailed = errors.New("add trailer failed")
 )
 
-// httpSocket_
-type httpSocket_ struct {
+// webSocket_
+type webSocket_ struct {
 	// Assocs
 	shell interface { // *server[1-3]Socket, *backend[1-3]Socket
 		Read(p []byte) (int, error)
@@ -2011,19 +2011,19 @@ type httpSocket_ struct {
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
-	httpSocket0 // all values must be zero by default in this struct!
+	webSocket0 // all values must be zero by default in this struct!
 }
-type httpSocket0 struct { // for fast reset, entirely
-}
-
-func (s *httpSocket_) onUse() {
-}
-func (s *httpSocket_) onEnd() {
+type webSocket0 struct { // for fast reset, entirely
 }
 
-func (s *httpSocket_) example() {
+func (s *webSocket_) onUse() {
+}
+func (s *webSocket_) onEnd() {
 }
 
-var ( // http socket errors
-	httpSocketWriteBroken = errors.New("write broken")
+func (s *webSocket_) example() {
+}
+
+var ( // websocket errors
+	webSocketWriteBroken = errors.New("write broken")
 )

@@ -730,7 +730,7 @@ func (r *backendResponse_) applyTrailer(index uint8) bool {
 	return true
 }
 
-// backendSocket is the backend-side http socket.
+// backendSocket is the backend-side websocket.
 type backendSocket interface { // for *backend[1-3]Socket
 	Read(p []byte) (int, error)
 	Write(p []byte) (int, error)
@@ -740,14 +740,14 @@ type backendSocket interface { // for *backend[1-3]Socket
 // backendSocket_ is the parent for backend[1-3]Socket.
 type backendSocket_ struct {
 	// Parent
-	httpSocket_
+	webSocket_
 	// Assocs
 	// Stream states (zeros)
 }
 
 func (s *backendSocket_) onUse() {
-	s.httpSocket_.onUse()
+	s.webSocket_.onUse()
 }
 func (s *backendSocket_) onEnd() {
-	s.httpSocket_.onEnd()
+	s.webSocket_.onEnd()
 }

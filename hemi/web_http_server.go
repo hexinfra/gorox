@@ -2637,17 +2637,17 @@ func (r *serverResponse_) hookReviser(reviser Reviser) {
 // serverSocket_ is the parent for server[1-3]Socket.
 type serverSocket_ struct {
 	// Parent
-	httpSocket_
+	webSocket_
 	// Assocs
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
 func (s *serverSocket_) onUse() {
-	s.httpSocket_.onUse()
+	s.webSocket_.onUse()
 }
 func (s *serverSocket_) onEnd() {
-	s.httpSocket_.onEnd()
+	s.webSocket_.onEnd()
 }
 
 // Webapp is the Web application.
@@ -3599,7 +3599,7 @@ type Reviser_ struct {
 func (r *Reviser_) ID() uint8      { return r.id }
 func (r *Reviser_) setID(id uint8) { r.id = id }
 
-// Socket is the server-side http socket.
+// Socket is the server-side websocket.
 type Socket interface { // for *server[1-3]Socket
 	Read(p []byte) (int, error)
 	Write(p []byte) (int, error)

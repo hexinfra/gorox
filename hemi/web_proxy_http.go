@@ -124,11 +124,11 @@ func (h *httpProxy) IsProxy() bool { return true }
 func (h *httpProxy) IsCache() bool { return h.cacher != nil }
 
 func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
-	ReverseProxyWebExchan(req, resp, h.backend, &h.HTTPExchanProxyConfig)
+	ReverseProxyHTTPExchan(req, resp, h.backend, &h.HTTPExchanProxyConfig)
 	return true
 }
 
-// WebExchanProxyConfig
+// HTTPExchanProxyConfig
 type HTTPExchanProxyConfig struct {
 	BufferClientContent bool
 	Hostname            []byte
@@ -144,7 +144,7 @@ type HTTPExchanProxyConfig struct {
 	DelResponseHeaders  [][]byte
 }
 
-func ReverseProxyWebExchan(req Request, resp Response, backend HTTPBackend, cfg *HTTPExchanProxyConfig) {
+func ReverseProxyHTTPExchan(req Request, resp Response, backend HTTPBackend, cfg *HTTPExchanProxyConfig) {
 	var content any
 	hasContent := req.HasContent()
 	if hasContent && cfg.BufferClientContent { // including size 0
@@ -266,7 +266,7 @@ func ReverseProxyWebExchan(req Request, resp Response, backend HTTPBackend, cfg 
 	}
 }
 
-// sockProxy socklet passes http sockets to http backends.
+// sockProxy socklet passes websockets to http backends.
 type sockProxy struct {
 	// Parent
 	Socklet_
@@ -314,9 +314,9 @@ func (s *sockProxy) Serve(req Request, sock Socket) {
 }
 
 // WebSocketProxyConfig
-type HTTPSocketProxyConfig struct {
+type WebSocketProxyConfig struct {
 	// TODO
 }
 
-func ReverseProxyWebSocket(req Request, sock Socket, backend HTTPBackend, cfg *HTTPSocketProxyConfig) {
+func ReverseProxyWebSocket(req Request, sock Socket, backend HTTPBackend, cfg *WebSocketProxyConfig) {
 }

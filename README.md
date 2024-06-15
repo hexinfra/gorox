@@ -179,7 +179,7 @@ A typical deployment architecture using Gorox might looks like this:
              +------------+
 +------------| edgeProxy1 |--------------+ gorox cluster
 |            +--+---+--+--+              |
-|    web        |   |  |        tcp      |
+|   http        |   |  |        tcp      |
 |      +--------+   |  +--------+        |
 |      |            |           |        |
 |      v           rpc          v        |

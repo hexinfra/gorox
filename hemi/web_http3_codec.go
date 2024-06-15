@@ -99,7 +99,7 @@ func (r *httpOut_) writeBytes3(p []byte) error {
 
 // HTTP/3 websocket
 
-func (s *httpSocket_) example3() {
+func (s *webSocket_) example3() {
 }
 
 // HTTP/3 protocol

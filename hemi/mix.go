@@ -146,7 +146,7 @@ var varCodes = map[string]int16{ // TODO
 
 	// udps conn vars
 
-	// web request vars
+	// http request vars
 	"method":      0, // GET, POST, ...
 	"scheme":      1, // http, https
 	"authority":   2, // example.com, example.org:8080

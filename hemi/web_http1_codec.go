@@ -913,7 +913,7 @@ func (r *httpOut_) writeBytes1(p []byte) error {
 
 // HTTP/1 websocket
 
-func (s *httpSocket_) example1() {
+func (s *webSocket_) example1() {
 	// TODO
 }
 

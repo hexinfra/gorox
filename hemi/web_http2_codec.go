@@ -110,7 +110,7 @@ func (r *httpOut_) writeBytes2(p []byte) error {
 
 // HTTP/2 websocket
 
-func (s *httpSocket_) example2() {
+func (s *webSocket_) example2() {
 }
 
 // HTTP/2 protocol

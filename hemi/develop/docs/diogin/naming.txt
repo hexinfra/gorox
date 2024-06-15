@@ -20,7 +20,7 @@ COMPONENTS
 ==========
 
   stage [*]
-    fixture (clock, fcache, namer, ...)
+    fixture (clock, fcache, resolv, ...)
     backend (http1Backend, tcpsBackend, ...)
       node [*]
     router (quixRouter, tcpsRouter, udpsRouter)

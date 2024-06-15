@@ -9,7 +9,7 @@ package leader
 
 import (
 	"github.com/hexinfra/gorox/hemi"
-	"github.com/hexinfra/gorox/hemi/common/msgx"
+	"github.com/hexinfra/gorox/hemi/library/msgx"
 )
 
 func myroxClient() { // runner

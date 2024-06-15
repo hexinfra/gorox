@@ -9,7 +9,7 @@ import (
 	"fmt"
 
 	"github.com/hexinfra/gorox/hemi"
-	"github.com/hexinfra/gorox/hemi/common/system"
+	"github.com/hexinfra/gorox/hemi/library/system"
 )
 
 func Main() {

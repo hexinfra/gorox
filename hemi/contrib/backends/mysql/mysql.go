@@ -10,7 +10,7 @@ package mysql
 import (
 	. "github.com/hexinfra/gorox/hemi"
 
-	_ "github.com/hexinfra/gorox/hemi/common/drivers/rdbms/mysql"
+	_ "github.com/hexinfra/gorox/hemi/library/drivers/rdbms/mysql"
 )
 
 // MySQLBackend is a group of mysql nodes.

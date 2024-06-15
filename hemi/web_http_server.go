@@ -2602,7 +2602,7 @@ func (r *serverResponse_) proxyPass(resp backendResponse) error { // sync conten
 	}
 	return nil
 }
-func (r *serverResponse_) proxyCopyHead(resp backendResponse, cfg *HTTPExchanProxyConfig) bool {
+func (r *serverResponse_) proxyCopyHead(resp backendResponse, cfg *WebExchanProxyConfig) bool {
 	resp.delHopHeaders()
 
 	// copy control (:status)
@@ -2623,7 +2623,7 @@ func (r *serverResponse_) proxyCopyHead(resp backendResponse, cfg *HTTPExchanPro
 
 	return true
 }
-func (r *serverResponse_) proxyCopyTail(resp backendResponse, cfg *HTTPExchanProxyConfig) bool {
+func (r *serverResponse_) proxyCopyTail(resp backendResponse, cfg *WebExchanProxyConfig) bool {
 	return resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.shell.addTrailer(name, value)
 	})
@@ -3317,8 +3317,8 @@ type Response interface { // for *server[1-3]Response
 	proxyPass1xx(resp backendResponse) bool
 	proxyPass(resp backendResponse) error
 	proxyPost(content any, hasTrailers bool) error
-	proxyCopyHead(resp backendResponse, cfg *HTTPExchanProxyConfig) bool
-	proxyCopyTail(resp backendResponse, cfg *HTTPExchanProxyConfig) bool
+	proxyCopyHead(resp backendResponse, cfg *WebExchanProxyConfig) bool
+	proxyCopyTail(resp backendResponse, cfg *WebExchanProxyConfig) bool
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
 }

@@ -22,7 +22,7 @@ import (
 
 const ( // list of components
 	compStage      = 1 + iota // stage
-	compFixture               // clock, fcache, namer, ...
+	compFixture               // clock, fcache, resolv, ...
 	compBackend               // http1Backend, quixBackend, udpsBackend, ...
 	compNode                  // node
 	compQUIXRouter            // quixRouter
@@ -337,7 +337,7 @@ type Stage struct {
 	// Assocs
 	clock       *clockFixture         // for fast accessing
 	fcache      *fcacheFixture        // for fast accessing
-	namer       *namerFixture         // for fast accessing
+	resolv      *resolvFixture        // for fast accessing
 	fixtures    compDict[fixture]     // indexed by sign
 	backends    compDict[Backend]     // indexed by backendName
 	quixRouters compDict[*QUIXRouter] // indexed by routerName
@@ -364,11 +364,11 @@ func (s *Stage) onCreate() {
 
 	s.clock = createClock(s)
 	s.fcache = createFcache(s)
-	s.namer = createNamer(s)
+	s.resolv = createResolv(s)
 	s.fixtures = make(compDict[fixture])
 	s.fixtures[signClock] = s.clock
 	s.fixtures[signFcache] = s.fcache
-	s.fixtures[signNamer] = s.namer
+	s.fixtures[signResolv] = s.resolv
 	s.backends = make(compDict[Backend])
 	s.quixRouters = make(compDict[*QUIXRouter])
 	s.tcpsRouters = make(compDict[*TCPSRouter])
@@ -426,7 +426,7 @@ func (s *Stage) OnShutdown() {
 	s.WaitSubs()
 
 	s.IncSub()
-	s.namer.OnShutdown()
+	s.resolv.OnShutdown()
 	s.WaitSubs()
 
 	s.IncSub()
@@ -634,7 +634,7 @@ func (s *Stage) createCronjob(sign string, name string) Cronjob {
 
 func (s *Stage) Clock() *clockFixture               { return s.clock }
 func (s *Stage) Fcache() *fcacheFixture             { return s.fcache }
-func (s *Stage) Namer() *namerFixture               { return s.namer }
+func (s *Stage) Resolv() *resolvFixture             { return s.resolv }
 func (s *Stage) Fixture(sign string) fixture        { return s.fixtures[sign] }
 func (s *Stage) Backend(name string) Backend        { return s.backends[name] }
 func (s *Stage) QUIXRouter(name string) *QUIXRouter { return s.quixRouters[name] }
@@ -724,8 +724,8 @@ func (s *Stage) bindServerServices() {
 		Println("bind services to rpc servers")
 	}
 	for _, server := range s.servers {
-		if rpcServer, ok := server.(*hrpcServer); ok {
-			rpcServer.BindServices()
+		if hrpcServer, ok := server.(*hrpcServer); ok {
+			hrpcServer.BindServices()
 		}
 	}
 }
@@ -903,7 +903,7 @@ func (s *Stage) Quit() {
 // fixture component.
 //
 // Fixtures only exist in internal, and are created by stage.
-// Some critical functions, like clock and namer, are implemented as fixtures.
+// Some critical functions, like clock and resolv, are implemented as fixtures.
 //
 // Fixtures are singletons in stage.
 type fixture interface {

@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/hexinfra/gorox/hemi"
-	"github.com/hexinfra/gorox/hemi/common/msgx"
+	"github.com/hexinfra/gorox/hemi/library/msgx"
 	"github.com/hexinfra/gorox/hemi/procmgr/common"
 )
 

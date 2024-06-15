@@ -10,7 +10,7 @@ package mongo
 import (
 	. "github.com/hexinfra/gorox/hemi"
 
-	_ "github.com/hexinfra/gorox/hemi/common/drivers/mongo"
+	_ "github.com/hexinfra/gorox/hemi/library/drivers/mongo"
 )
 
 // MongoBackend is a group of mongo nodes.

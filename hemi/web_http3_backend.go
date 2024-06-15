@@ -15,7 +15,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hexinfra/gorox/hemi/common/quic"
+	"github.com/hexinfra/gorox/hemi/library/quic"
 )
 
 func init() {

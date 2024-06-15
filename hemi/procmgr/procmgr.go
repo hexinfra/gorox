@@ -14,7 +14,7 @@ import (
 	"path/filepath"
 
 	"github.com/hexinfra/gorox/hemi"
-	"github.com/hexinfra/gorox/hemi/common/system"
+	"github.com/hexinfra/gorox/hemi/library/system"
 	"github.com/hexinfra/gorox/hemi/procmgr/client"
 	"github.com/hexinfra/gorox/hemi/procmgr/common"
 	"github.com/hexinfra/gorox/hemi/procmgr/leader"

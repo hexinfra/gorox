@@ -8,7 +8,7 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/hexinfra/gorox/hemi/common/system"
+	"github.com/hexinfra/gorox/hemi/library/system"
 
 	. "github.com/hexinfra/gorox/hemi"
 )

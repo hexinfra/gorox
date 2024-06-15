@@ -9,7 +9,7 @@ package leader
 
 import (
 	"github.com/hexinfra/gorox/hemi"
-	"github.com/hexinfra/gorox/hemi/common/msgx"
+	"github.com/hexinfra/gorox/hemi/library/msgx"
 	"github.com/hexinfra/gorox/hemi/procmgr/common"
 
 	_ "github.com/hexinfra/gorox/hemi/procmgr/leader/webui"

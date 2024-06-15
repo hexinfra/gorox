@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// Backends for net, rpc, and web.
+// General backends for net, rpc, and web.
 
 package hemi
 
@@ -155,7 +155,6 @@ func (b *Backend_[N]) AliveTimeout() time.Duration { return b.aliveTimeout }
 func (b *Backend_[N]) nextConnID() int64 { return b.connID.Add(1) }
 
 func (b *Backend_[N]) nextIndex() int64 { return b.indexGet() }
-
 func (b *Backend_[N]) _nextIndexByRoundRobin() int64 {
 	index := b.nodeIndex.Add(1)
 	return index % b.numNodes

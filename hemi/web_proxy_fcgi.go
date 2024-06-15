@@ -51,9 +51,9 @@ type fcgiProxy struct {
 	backend *fcgiBackend // the backend to pass to
 	cacher  Cacher       // the cacher which is used by this proxy
 	// States
-	HTTPExchanProxyConfig        // embeded
-	scriptFilename        []byte // for SCRIPT_FILENAME
-	indexFile             []byte // the file that will be used as index
+	WebExchanProxyConfig        // embeded
+	scriptFilename       []byte // for SCRIPT_FILENAME
+	indexFile            []byte // the file that will be used as index
 }
 
 func (h *fcgiProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
@@ -198,7 +198,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 		}
 	}
 
-	if !resp.proxyCopyHead(fcgiResp, &h.HTTPExchanProxyConfig) {
+	if !resp.proxyCopyHead(fcgiResp, &h.WebExchanProxyConfig) {
 		fcgiExchan.markBroken()
 		return
 	}

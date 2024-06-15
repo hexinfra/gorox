@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// Servers for net, rpc, and web.
+// General servers for net, rpc, and web.
 
 package hemi
 

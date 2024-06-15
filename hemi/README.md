@@ -9,10 +9,10 @@ Layout
 
 Hemi contains these directories:
 
-  * common/   - Place general purpose libraries,
-  * compdef/  - Definitions of components,
+  * comdefs/  - Definitions of components,
   * contrib/  - Place optional components,
   * develop/  - A prototype application used to develop Hemi,
+  * library/  - Place general purpose libraries,
   * procmgr/  - A process manager for programs using Hemi,
   * toolkit/  - Place useful commands.
 
@@ -49,7 +49,7 @@ The logical architecture of a stage in Hemi engine looks like this:
    |     |                   node                      |     |
    |     |                  <conn>                     |     |
    |     +-----------+---------------+-----------------+     |
-   |     |   clock   |     fcache    |      namer      |     |
+   |     |   clock   |     fcache    |     resolv      |     |
 prepare  +-----------+---------------+-----------------+     v
                               stage
 

@@ -48,10 +48,10 @@ type backendRequest interface { // for *backend[1-3]Request
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool
 	proxyCopyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
-	proxyCopyHead(req Request, cfg *HTTPExchanProxyConfig) bool
+	proxyCopyHead(req Request, cfg *WebExchanProxyConfig) bool
 	proxyPass(req Request) error
 	proxyPost(content any, hasTrailers bool) error
-	proxyCopyTail(req Request, cfg *HTTPExchanProxyConfig) bool
+	proxyCopyTail(req Request, cfg *WebExchanProxyConfig) bool
 	isVague() bool
 	endVague() error
 }
@@ -235,7 +235,7 @@ func (r *backendRequest_) proxyPass(req Request) error { // sync content to back
 	}
 	return nil
 }
-func (r *backendRequest_) proxyCopyHead(req Request, cfg *HTTPExchanProxyConfig) bool {
+func (r *backendRequest_) proxyCopyHead(req Request, cfg *WebExchanProxyConfig) bool {
 	req.delHopHeaders()
 
 	// copy control (:method, :path, :authority, :scheme)
@@ -325,7 +325,7 @@ func (r *backendRequest_) proxyCopyHead(req Request, cfg *HTTPExchanProxyConfig)
 
 	return true
 }
-func (r *backendRequest_) proxyCopyTail(req Request, cfg *HTTPExchanProxyConfig) bool {
+func (r *backendRequest_) proxyCopyTail(req Request, cfg *WebExchanProxyConfig) bool {
 	return req.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.shell.addTrailer(name, value)
 	})

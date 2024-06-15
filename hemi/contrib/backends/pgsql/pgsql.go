@@ -10,7 +10,7 @@ package pgsql
 import (
 	. "github.com/hexinfra/gorox/hemi"
 
-	_ "github.com/hexinfra/gorox/hemi/common/drivers/rdbms/pgsql"
+	_ "github.com/hexinfra/gorox/hemi/library/drivers/rdbms/pgsql"
 )
 
 // PgSQLBackend is a group of pgsql nodes.

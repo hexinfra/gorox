@@ -34,7 +34,7 @@ type httpProxy struct {
 	backend HTTPBackend // the backend to pass to. can be *HTTP1Backend, *HTTP2Backend, or *HTTP3Backend
 	cacher  Cacher      // the cacher which is used by this proxy
 	// States
-	HTTPExchanProxyConfig // embeded
+	WebExchanProxyConfig // embeded
 }
 
 func (h *httpProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
@@ -124,12 +124,12 @@ func (h *httpProxy) IsProxy() bool { return true }
 func (h *httpProxy) IsCache() bool { return h.cacher != nil }
 
 func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
-	ReverseProxyHTTPExchan(req, resp, h.backend, &h.HTTPExchanProxyConfig)
+	WebExchanReverseProxy(req, resp, h.backend, &h.WebExchanProxyConfig)
 	return true
 }
 
-// HTTPExchanProxyConfig
-type HTTPExchanProxyConfig struct {
+// WebExchanProxyConfig
+type WebExchanProxyConfig struct {
 	BufferClientContent bool
 	Hostname            []byte
 	ColonPort           []byte
@@ -144,7 +144,7 @@ type HTTPExchanProxyConfig struct {
 	DelResponseHeaders  [][]byte
 }
 
-func ReverseProxyHTTPExchan(req Request, resp Response, backend HTTPBackend, cfg *HTTPExchanProxyConfig) {
+func WebExchanReverseProxy(req Request, resp Response, backend HTTPBackend, cfg *WebExchanProxyConfig) {
 	var content any
 	hasContent := req.HasContent()
 	if hasContent && cfg.BufferClientContent { // including size 0
@@ -318,5 +318,5 @@ type WebSocketProxyConfig struct {
 	// TODO
 }
 
-func ReverseProxyWebSocket(req Request, sock Socket, backend HTTPBackend, cfg *WebSocketProxyConfig) {
+func WebSocketReverseProxy(req Request, sock Socket, backend HTTPBackend, cfg *WebSocketProxyConfig) {
 }

@@ -20,7 +20,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/hexinfra/gorox/hemi/common/system"
+	"github.com/hexinfra/gorox/hemi/library/system"
 )
 
 func init() {

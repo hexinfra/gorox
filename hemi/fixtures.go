@@ -19,7 +19,7 @@ import (
 func init() {
 	registerFixture(signClock)
 	registerFixture(signFcache)
-	registerFixture(signNamer)
+	registerFixture(signResolv)
 }
 
 const signClock = "clock"
@@ -545,17 +545,17 @@ func (e *fcacheEntry) decRef() {
 	}
 }
 
-const signNamer = "namer"
+const signResolv = "resolv"
 
-func createNamer(stage *Stage) *namerFixture {
-	namer := new(namerFixture)
-	namer.onCreate(stage)
-	namer.setShell(namer)
-	return namer
+func createResolv(stage *Stage) *resolvFixture {
+	resolv := new(resolvFixture)
+	resolv.onCreate(stage)
+	resolv.setShell(resolv)
+	return resolv
 }
 
-// namerFixture resolves names.
-type namerFixture struct {
+// resolvFixture resolves names.
+type resolvFixture struct {
 	// Parent
 	Component_
 	// Assocs
@@ -563,35 +563,35 @@ type namerFixture struct {
 	// States
 }
 
-func (f *namerFixture) onCreate(stage *Stage) {
-	f.MakeComp(signNamer)
+func (f *resolvFixture) onCreate(stage *Stage) {
+	f.MakeComp(signResolv)
 	f.stage = stage
 }
-func (f *namerFixture) OnShutdown() {
+func (f *resolvFixture) OnShutdown() {
 	close(f.ShutChan) // notifies run()
 }
 
-func (f *namerFixture) OnConfigure() {
+func (f *resolvFixture) OnConfigure() {
 }
-func (f *namerFixture) OnPrepare() {
+func (f *resolvFixture) OnPrepare() {
 }
 
-func (f *namerFixture) run() { // runner
+func (f *resolvFixture) run() { // runner
 	f.Loop(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if DebugLevel() >= 2 {
-		Println("namer done")
+		Println("resolv done")
 	}
 	f.stage.DecSub()
 }
 
-func (f *namerFixture) Register(name string, addresses []string) bool {
+func (f *resolvFixture) Register(name string, addresses []string) bool {
 	// TODO
 	return false
 }
 
-func (f *namerFixture) Resolve(name string) (address string) {
+func (f *resolvFixture) Resolve(name string) (address string) {
 	// TODO
 	return ""
 }

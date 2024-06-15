@@ -46,11 +46,11 @@ type _httpServend_ struct {
 	maxStreamsPerConn    int32         // max streams of one conn. 0 means infinite
 }
 
-func (s *_httpServend_) onConfigure(component Component, recvTimeout time.Duration, sendTimeout time.Duration, defaultMaxStreams int32, defaultDir string) {
-	s._contentSaver_.onConfigure(component, defaultDir)
+func (s *_httpServend_) onConfigure(servend Component, recvTimeout time.Duration, sendTimeout time.Duration, defaultMaxStreams int32, defaultDir string) {
+	s._contentSaver_.onConfigure(servend, defaultDir)
 
 	// recvTimeout
-	component.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) error {
+	servend.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) error {
 		if value >= 0 {
 			return nil
 		}
@@ -58,7 +58,7 @@ func (s *_httpServend_) onConfigure(component Component, recvTimeout time.Durati
 	}, recvTimeout)
 
 	// sendTimeout
-	component.ConfigureDuration("sendTimeout", &s.sendTimeout, func(value time.Duration) error {
+	servend.ConfigureDuration("sendTimeout", &s.sendTimeout, func(value time.Duration) error {
 		if value >= 0 {
 			return nil
 		}
@@ -66,7 +66,7 @@ func (s *_httpServend_) onConfigure(component Component, recvTimeout time.Durati
 	}, sendTimeout)
 
 	// maxContentSize
-	component.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
+	servend.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
 		if value > 0 {
 			return nil
 		}
@@ -74,7 +74,7 @@ func (s *_httpServend_) onConfigure(component Component, recvTimeout time.Durati
 	}, _1T)
 
 	// maxMemoryContentSize
-	component.ConfigureInt32("maxMemoryContentSize", &s.maxMemoryContentSize, func(value int32) error {
+	servend.ConfigureInt32("maxMemoryContentSize", &s.maxMemoryContentSize, func(value int32) error {
 		if value > 0 && value <= _1G { // DO NOT CHANGE THIS, otherwise integer overflow may occur
 			return nil
 		}
@@ -82,15 +82,15 @@ func (s *_httpServend_) onConfigure(component Component, recvTimeout time.Durati
 	}, _16M)
 
 	// maxStreamsPerConn
-	component.ConfigureInt32("maxStreamsPerConn", &s.maxStreamsPerConn, func(value int32) error {
+	servend.ConfigureInt32("maxStreamsPerConn", &s.maxStreamsPerConn, func(value int32) error {
 		if value >= 0 {
 			return nil
 		}
 		return errors.New(".maxStreamsPerConn has an invalid value")
 	}, defaultMaxStreams)
 }
-func (s *_httpServend_) onPrepare(component Component) {
-	s._contentSaver_.onPrepare(component, 0755)
+func (s *_httpServend_) onPrepare(servend Component) {
+	s._contentSaver_.onPrepare(servend, 0755)
 }
 
 func (s *_httpServend_) RecvTimeout() time.Duration  { return s.recvTimeout }

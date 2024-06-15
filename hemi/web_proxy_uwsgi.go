@@ -40,7 +40,7 @@ type uwsgiProxy struct {
 	backend *uwsgiBackend // the backend to pass to
 	cacher  Cacher        // the cacher which is used by this proxy
 	// States
-	HTTPExchanProxyConfig // embeded
+	WebExchanProxyConfig // embeded
 }
 
 func (h *uwsgiProxy) onCreate(name string, stage *Stage, webapp *Webapp) {

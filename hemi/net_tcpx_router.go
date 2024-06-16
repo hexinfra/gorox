@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// TCPX (TCP/TLS/UDS) router and reverse proxy.
+// TCPX (TCP/TLS/UDS) router.
 
 package hemi
 
@@ -20,14 +20,6 @@ import (
 
 	"github.com/hexinfra/gorox/hemi/library/system"
 )
-
-func init() {
-	RegisterTCPXDealet("tcpxProxy", func(name string, stage *Stage, router *TCPXRouter) TCPXDealet {
-		d := new(tcpxProxy)
-		d.onCreate(name, stage, router)
-		return d
-	})
-}
 
 // TCPXRouter
 type TCPXRouter struct {
@@ -578,51 +570,4 @@ type TCPXDealet_ struct {
 	// Parent
 	Component_
 	// States
-}
-
-// tcpxProxy passes TCPX connections to TCPX backends.
-type tcpxProxy struct {
-	// Parent
-	TCPXDealet_
-	// Assocs
-	stage   *Stage       // current stage
-	router  *TCPXRouter  // the router to which the dealet belongs
-	backend *TCPXBackend // the backend to pass to
-	// States
-}
-
-func (d *tcpxProxy) onCreate(name string, stage *Stage, router *TCPXRouter) {
-	d.MakeComp(name)
-	d.stage = stage
-	d.router = router
-}
-func (d *tcpxProxy) OnShutdown() {
-	d.router.DecSub()
-}
-
-func (d *tcpxProxy) OnConfigure() {
-	// toBackend
-	if v, ok := d.Find("toBackend"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if backend := d.stage.Backend(name); backend == nil {
-				UseExitf("unknown backend: '%s'\n", name)
-			} else if tcpxBackend, ok := backend.(*TCPXBackend); ok {
-				d.backend = tcpxBackend
-			} else {
-				UseExitf("incorrect backend '%s' for tcpxProxy\n", name)
-			}
-		} else {
-			UseExitln("invalid toBackend")
-		}
-	} else {
-		UseExitln("toBackend is required for tcpxProxy proxy")
-	}
-}
-func (d *tcpxProxy) OnPrepare() {
-	// Currently nothing.
-}
-
-func (d *tcpxProxy) Deal(conn *TCPXConn) (dealt bool) {
-	// TODO
-	return true
 }

@@ -8,7 +8,7 @@ used as a:
 
   * Web Reverse Proxy (HTTP, TLS, WebSocket, Caching, Load Balancing)
   * Layer 7 Reverse Proxy (Various Protocols, with or without Load Balancing)
-  * Layer 4 Reverse Proxy (TCP, UDP, QUIC, UDS, Load Balancing)
+  * Layer 4 Reverse Proxy (TCP, UDP, QUIC, TLS, UDS, Load Balancing)
   * Web Server (HTTP, TLS, WebSocket, static, FCGI, uwsgi)
   * Web Application Server for Go (Frameworks, Applications)
   * RPC Framework for Go (Server, Client)
@@ -70,7 +70,7 @@ On succeed, a "gorox" or "gorox.exe" binary will be generated.
 
 Now, you can try to change some webapps under "apps/examples/", and build again.
 To follow the Gorox convention, put your new web applications under "apps/" and
-your new rpc services under "svcs/".
+your new RPC services under "svcs/".
 
 Start and stop Gorox
 --------------------

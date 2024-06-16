@@ -471,32 +471,34 @@ type TCPSConn struct {
 	gate      *tcpsGate
 	netConn   net.Conn        // the connection (TCP/TLS/UDS)
 	rawConn   syscall.RawConn // for syscall, only when netConn is TCP
-	region    Region          // a region-based memory pool
 	input     []byte          // input buffer
+	region    Region          // a region-based memory pool
 	closeSema atomic.Int32
 	// Conn states (zeros)
 }
 
 func (c *TCPSConn) onGet(id int64, gate *tcpsGate, netConn net.Conn, rawConn syscall.RawConn) {
 	c.ServerConn_.OnGet(id)
+
 	c.router = gate.router
 	c.gate = gate
 	c.netConn = netConn
 	c.rawConn = rawConn
-	c.region.Init()
 	c.input = c.stockInput[:]
+	c.region.Init()
 	c.closeSema.Store(2)
 }
 func (c *TCPSConn) onPut() {
-	c.netConn = nil
-	c.rawConn = nil
 	c.region.Free()
 	if cap(c.input) != cap(c.stockInput) {
 		PutNK(c.input)
 		c.input = nil
 	}
+	c.netConn = nil
+	c.rawConn = nil
 	c.gate = nil
 	c.router = nil
+
 	c.ServerConn_.OnPut()
 }
 

@@ -145,12 +145,6 @@ func (n *tcpsNode) Maintain() { // runner
 		// TODO: health check, markDown, markUp()
 	})
 	n.markDown()
-	/*
-		if size := n.closeFree(); size > 0 {
-			n.SubsAddn(-size)
-		}
-		n.WaitSubs() // conns. TODO: max timeout?
-	*/
 	if DebugLevel() >= 2 {
 		Printf("tcpsNode=%s done\n", n.name)
 	}
@@ -175,7 +169,6 @@ func (n *tcpsNode) dial() (*TConn, error) { // some protocols don't support or n
 	if err != nil {
 		return nil, errNodeDown
 	}
-	n.IncSub()
 	return tConn, err
 }
 func (n *tcpsNode) _dialTLS() (*TConn, error) {
@@ -267,9 +260,9 @@ type TConn struct {
 	// Conn states (non-zeros)
 	backend *TCPSBackend
 	node    *tcpsNode
-	input   []byte
 	netConn net.Conn        // *net.TCPConn, *tls.Conn, *net.UnixConn
 	rawConn syscall.RawConn // for syscall. only usable when netConn is TCP/UDS
+	input   []byte
 	// Conn states (zeros)
 	writeBroken atomic.Bool // write-side broken?
 	readBroken  atomic.Bool // read-side broken?
@@ -277,20 +270,23 @@ type TConn struct {
 
 func (c *TConn) onGet(id int64, node *tcpsNode, netConn net.Conn, rawConn syscall.RawConn) {
 	c.BackendConn_.OnGet(id, node.backend.aliveTimeout)
+
 	c.backend = node.backend
 	c.node = node
-	c.input = c.stockInput[:]
 	c.netConn = netConn
 	c.rawConn = rawConn
+	c.input = c.stockInput[:]
 }
 func (c *TConn) onPut() {
+	c.input = nil
 	c.netConn = nil
 	c.rawConn = nil
-	c.input = nil
-	c.writeBroken.Store(false)
-	c.readBroken.Store(false)
 	c.node = nil
 	c.backend = nil
+
+	c.writeBroken.Store(false)
+	c.readBroken.Store(false)
+
 	c.BackendConn_.OnPut()
 }
 

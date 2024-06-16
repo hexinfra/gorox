@@ -1,11 +1,7 @@
 fcgiProxy "fp1" {
-	.saveContentFilesDir = %tmpDir + "/web/backends/fp1"
 	.toBackend = "php-fpm"
-	.sendTimeout = 60s
-	.recvTimeout = 60s
 	.scriptFilename = ""
 	.indexFile = "index.php"
-	.persistent = true
 	.bufferClientContent = true
 	.bufferServerContent = true
 	.withCacher = "cacher name"

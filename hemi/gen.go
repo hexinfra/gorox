@@ -130,7 +130,7 @@ type varHolder interface {
 }
 
 var varCodes = map[string]int16{ // TODO
-	// general conn vars for quix, tcps, and udps
+	// general conn vars for quix, tcpx, and udpx
 	"srcHost": 0,
 	"srcPort": 1,
 	"isTLS":   2,
@@ -138,11 +138,11 @@ var varCodes = map[string]int16{ // TODO
 
 	// quix conn vars
 
-	// tcps conn vars
+	// tcpx conn vars
 	"serverName": 4,
 	"nextProto":  5,
 
-	// udps conn vars
+	// udpx conn vars
 
 	// http request vars
 	"method":      0, // GET, POST, ...

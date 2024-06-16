@@ -244,10 +244,10 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 			c.parseBackend(current, stage)
 		case compQUIXRouter:
 			c.parseQUIXRouter(stage)
-		case compTCPSRouter:
-			c.parseTCPSRouter(stage)
-		case compUDPSRouter:
-			c.parseUDPSRouter(stage)
+		case compTCPXRouter:
+			c.parseTCPXRouter(stage)
+		case compUDPXRouter:
+			c.parseUDPXRouter(stage)
 		case compStater:
 			c.parseStater(current, stage)
 		case compCacher:
@@ -315,19 +315,19 @@ func (c *config) parseNode(backend Backend) { // node <name> {}
 func (c *config) parseQUIXRouter(stage *Stage) { // quixRouter <name> {}
 	parseComponentR(c, stage, stage.createQUIXRouter, compQUIXDealet, c.parseQUIXDealet, c.parseQUIXCase)
 }
-func (c *config) parseTCPSRouter(stage *Stage) { // tcpsRouter <name> {}
-	parseComponentR(c, stage, stage.createTCPSRouter, compTCPSDealet, c.parseTCPSDealet, c.parseTCPSCase)
+func (c *config) parseTCPXRouter(stage *Stage) { // tcpxRouter <name> {}
+	parseComponentR(c, stage, stage.createTCPXRouter, compTCPXDealet, c.parseTCPXDealet, c.parseTCPXCase)
 }
-func (c *config) parseUDPSRouter(stage *Stage) { // udpsRouter <name> {}
-	parseComponentR(c, stage, stage.createUDPSRouter, compUDPSDealet, c.parseUDPSDealet, c.parseUDPSCase)
+func (c *config) parseUDPXRouter(stage *Stage) { // udpxRouter <name> {}
+	parseComponentR(c, stage, stage.createUDPXRouter, compUDPXDealet, c.parseUDPXDealet, c.parseUDPXCase)
 }
 func (c *config) parseQUIXDealet(sign *token, router *QUIXRouter, kase *quixCase) { // qqqDealet <name> {}, qqqDealet {}
 	parseComponent1(c, sign, router, router.createDealet, kase, kase.addDealet)
 }
-func (c *config) parseTCPSDealet(sign *token, router *TCPSRouter, kase *tcpsCase) { // tttDealet <name> {}, tttDealet {}
+func (c *config) parseTCPXDealet(sign *token, router *TCPXRouter, kase *tcpxCase) { // tttDealet <name> {}, tttDealet {}
 	parseComponent1(c, sign, router, router.createDealet, kase, kase.addDealet)
 }
-func (c *config) parseUDPSDealet(sign *token, router *UDPSRouter, kase *udpsCase) { // uuuDealet <name> {}, uuuDealet {}
+func (c *config) parseUDPXDealet(sign *token, router *UDPXRouter, kase *udpxCase) { // uuuDealet <name> {}, uuuDealet {}
 	parseComponent1(c, sign, router, router.createDealet, kase, kase.addDealet)
 }
 func (c *config) parseQUIXCase(router *QUIXRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
@@ -366,7 +366,7 @@ func (c *config) parseQUIXCase(router *QUIXRouter) { // case <name> {}, case <na
 		}
 	}
 }
-func (c *config) parseTCPSCase(router *TCPSRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
+func (c *config) parseTCPXCase(router *TCPXRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
 	kase := router.createCase(c.newName()) // use a temp name by default
 	kase.setParent(router)
 	c.forward()
@@ -395,14 +395,14 @@ func (c *config) parseTCPSCase(router *TCPSRouter) { // case <name> {}, case <na
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
-		case compTCPSDealet:
-			c.parseTCPSDealet(current, router, kase)
+		case compTCPXDealet:
+			c.parseTCPXDealet(current, router, kase)
 		default:
 			panic(fmt.Errorf("unknown component '%s' in quixCase\n", current.text))
 		}
 	}
 }
-func (c *config) parseUDPSCase(router *UDPSRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
+func (c *config) parseUDPXCase(router *UDPXRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
 	kase := router.createCase(c.newName()) // use a temp name by default
 	kase.setParent(router)
 	c.forward()
@@ -431,8 +431,8 @@ func (c *config) parseUDPSCase(router *UDPSRouter) { // case <name> {}, case <na
 			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
-		case compUDPSDealet:
-			c.parseUDPSDealet(current, router, kase)
+		case compUDPXDealet:
+			c.parseUDPXDealet(current, router, kase)
 		default:
 			panic(fmt.Errorf("unknown component '%s' in quixCase\n", current.text))
 		}

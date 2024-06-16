@@ -553,7 +553,8 @@ type fcgiConn struct {
 	// Parent
 	BackendConn_
 	// Assocs
-	next *fcgiConn // the linked-list
+	next   *fcgiConn  // the linked-list
+	exchan fcgiExchan // a fcgi connection has exactly one stream
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -565,8 +566,6 @@ type fcgiConn struct {
 	// Conn states (zeros)
 	usedExchans atomic.Int32 // how many exchans have been used?
 	broken      atomic.Bool  // is conn broken?
-
-	exchan fcgiExchan
 }
 
 func (c *fcgiConn) onGet(id int64, node *fcgiNode, netConn net.Conn, rawConn syscall.RawConn) {
@@ -579,10 +578,10 @@ func (c *fcgiConn) onGet(id int64, node *fcgiNode, netConn net.Conn, rawConn sys
 	c.persistent = true
 }
 func (c *fcgiConn) onPut() {
-	c.netConn = nil
-	c.rawConn = nil
 	c.usedExchans.Store(0)
 	c.broken.Store(false)
+	c.netConn = nil
+	c.rawConn = nil
 	c.node = nil
 	c.backend = nil
 

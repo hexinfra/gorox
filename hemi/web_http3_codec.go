@@ -102,7 +102,7 @@ func (r *httpOut_) writeBytes3(p []byte) error {
 func (s *webSocket_) example3() {
 }
 
-// HTTP/3 protocol
+//////////////////////////////////////// HTTP/3 protocol elements ////////////////////////////////////////
 
 const ( // HTTP/2 sizes and limits for both of our HTTP/3 server and HTTP/3 backend
 	http3MaxActiveStreams = 127

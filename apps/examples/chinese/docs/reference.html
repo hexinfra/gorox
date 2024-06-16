@@ -105,22 +105,22 @@ article table.none tr td {
 		<li><a href="#stage-http2Backend">stage &gt; http2Backend</a></li>
 		<li><a href="#stage-http3Backend">stage &gt; http3Backend</a></li>
 		<li><a href="#stage-quixBackend">stage &gt; quixBackend</a></li>
-		<li><a href="#stage-tcpsBackend">stage &gt; tcpsBackend</a></li>
-		<li><a href="#stage-udpsBackend">stage &gt; udpsBackend</a></li>
+		<li><a href="#stage-tcpxBackend">stage &gt; tcpxBackend</a></li>
+		<li><a href="#stage-udpxBackend">stage &gt; udpxBackend</a></li>
 		<li>stage &gt; quixRouter</li>
 		<li>stage &gt; quixRouter &gt; case</li>
 		<li>stage &gt; quixRouter &gt; [case &gt;] quixProxy</li>
-		<li>stage &gt; tcpsRouter</li>
-		<li>stage &gt; tcpsRouter &gt; case</li>
-		<li>stage &gt; tcpsRouter &gt; [case &gt;] echoDealet</li>
-		<li>stage &gt; tcpsRouter &gt; [case &gt;] helloDealet</li>
-		<li>stage &gt; tcpsRouter &gt; [case &gt;] tcpsProxy</li>
-		<li>stage &gt; tcpsRouter &gt; [case &gt;] mysqlViewer</li>
-		<li>stage &gt; tcpsRouter &gt; [case &gt;] redisViewer</li>
-		<li>stage &gt; udpsRouter</li>
-		<li>stage &gt; udpsRouter &gt; case</li>
-		<li>stage &gt; udpsRouter &gt; [case &gt;] dnsDealet</li>
-		<li>stage &gt; udpsRouter &gt; [case &gt;] udpsProxy</li>
+		<li>stage &gt; tcpxRouter</li>
+		<li>stage &gt; tcpxRouter &gt; case</li>
+		<li>stage &gt; tcpxRouter &gt; [case &gt;] echoDealet</li>
+		<li>stage &gt; tcpxRouter &gt; [case &gt;] helloDealet</li>
+		<li>stage &gt; tcpxRouter &gt; [case &gt;] tcpxProxy</li>
+		<li>stage &gt; tcpxRouter &gt; [case &gt;] mysqlViewer</li>
+		<li>stage &gt; tcpxRouter &gt; [case &gt;] redisViewer</li>
+		<li>stage &gt; udpxRouter</li>
+		<li>stage &gt; udpxRouter &gt; case</li>
+		<li>stage &gt; udpxRouter &gt; [case &gt;] dnsDealet</li>
+		<li>stage &gt; udpxRouter &gt; [case &gt;] udpxProxy</li>
 		<li>stage &gt; localStater</li>
 		<li>stage &gt; redisStater</li>
 		<li><a href="#stage-localCacher">stage &gt; localCacher</a></li>
@@ -441,14 +441,14 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 				<li>TODO</li>
 			</ul>
 		</li>
-		<li id="stage-tcpsBackend">
-			<h4>stage &gt; tcpsBackend</h4>
+		<li id="stage-tcpxBackend">
+			<h4>stage &gt; tcpxBackend</h4>
 			<ul>
 				<li>TODO</li>
 			</ul>
 		</li>
-		<li id="stage-udpsBackend">
-			<h4>stage &gt; udpsBackend</h4>
+		<li id="stage-udpxBackend">
+			<h4>stage &gt; udpxBackend</h4>
 			<ul>
 				<li>TODO</li>
 			</ul>
@@ -966,19 +966,11 @@ stage {
 </code>
 			<ul>
 				<li>
-					<p>.saveContentFilesDir 保存文件的路径，如果配置路径不存在，会自动创建，权限0755。</p>
-					<code>语法： .saveContentFilesDir = "path"  
-						默认值：%tmpDir + "/web/backends/fpm"
-					</code>
-				</li>
-
-				<li>
 					<p>.toBackend 配置反向代理的名称。</p>
 					<code>语法：  .toBackend = "backendName"
 						默认值：- ; 必填项
 					</code>
 				</li>
-
 				<li>
 					<p>.withCacher 选择使用 cacher 的名字。</p>
 					<code>语法： .withCacher = "cacherName"
@@ -1001,13 +993,6 @@ stage {
 					</code>
 				</li>
 				<li>
-					<p>.persistent gorox 和 FCGI 服务器之间是否保存长连接？</p>
-					<code>语法：.persistent = false
-						默认值： false
-						取值范围：false | true
-					</code>
-				</li>
-				<li>
 					<p>.bufferClientContent 是否开启客户端缓冲区？</p>
 					<code>语法：.bufferClientContent = true
 						默认值： true
@@ -1022,31 +1007,10 @@ stage {
 					</code>
 				</li>
 				<li>
-					<p>.sendTimeout 发送整个 FCGI 数据包超时时间。0 意味着不限制时间。</p>
-					<code>语法：.sendTimeout = Duration
-						默认值：60s
-						取值范围： [0s, 10m]
-					</code>
-				</li>
-				<li>
-					<p>.recvTimeout 读取整个 FCGI 数据包超时时间。0 意味着不限制时间。</p>
-					<code>语法：.recvTimeout = Duration
-						默认值：60s
-						取值范围： [0s, 10m]
-					</code>
-				</li>
-				<li>
 					<p>.maxContentSize cgi 内容体最大限制</p>
 					<code>语法：.maxContentSize = 128M
 						默认值：1T
 						取值范围： [0, +]
-					</code>
-				</li>
-				<li>
-					<p>.preferUnderscore 当 header 同时存在"foo-bar"与"foo_bar", 优先选择"foo_bar"</p>
-					<code>语法：.preferUnderscore = false
-						默认值：false
-						取值范围： false | true
 					</code>
 				</li>
 				<li>
@@ -1067,12 +1031,8 @@ stage {
 
 		fcgiProxy "php-fpm" {
 			.toBackend = "php-fpm"
-			.sendTimeout = 60s
-			.recvTimeout = 60s
 			.scriptFilename = ""
 			.indexFile = "index.php"
-			.persistent = true
-			.preferUnderscore = true
 		}
 
 		rule $path ~= "\.php$" {

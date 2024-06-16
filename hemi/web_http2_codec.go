@@ -113,7 +113,7 @@ func (r *httpOut_) writeBytes2(p []byte) error {
 func (s *webSocket_) example2() {
 }
 
-// HTTP/2 protocol
+//////////////////////////////////////// HTTP/2 protocol elements ////////////////////////////////////////
 
 const ( // HTTP/2 sizes and limits for both of our HTTP/2 server and HTTP/2 backend
 	http2MaxFrameSize     = _16K

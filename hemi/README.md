@@ -37,8 +37,8 @@ The logical architecture of a stage in Hemi engine looks like this:
    |     +---+--------+--------------+-----------------+     |
    |     |   |        |    rpc[+]    |     web[+]      |     |
    |     | s | [quix] |    server    |     server      |     |
-   |     | e | [tcps] | <gate><conn> |  <gate><conn>   |     |
-   |     | r | [udps] +--------------+-----------------+     |
+   |     | e | [tcpx] | <gate><conn> |  <gate><conn>   |     |
+   |     | r | [udpx] +--------------+-----------------+     |
    |     | v | router |              |webapp(*) handlet|     |
    |     | e |        |  service(*)  | socklet reviser |     |
    |     | r | dealet |              |     rule        |     |

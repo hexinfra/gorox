@@ -1,0 +1,12 @@
+udpxRouter "um1" {
+	.address         = string,required
+	.tlsMode         = false
+	.readTimeout     = 60s
+	.writeTimeout    = 60s
+	.numGates        = runtime.NumCPU()
+	.maxConnsPerGate = 10000
+
+	// dealets
+
+	// cases
+}

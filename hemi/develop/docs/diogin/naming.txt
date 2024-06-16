@@ -21,10 +21,10 @@ COMPONENTS
 
   stage [*]
     fixture (clock, fcache, resolv, ...)
-    backend (http1Backend, tcpsBackend, ...)
+    backend (http1Backend, tcpxBackend, ...)
       node [*]
-    router (quixRouter, tcpsRouter, udpsRouter)
-      dealet (quixProxy, tcpsProxy, udpsProxy, ...)
+    router (quixRouter, tcpxRouter, udpxRouter)
+      dealet (quixProxy, tcpxProxy, udpxProxy, ...)
       case [*]
     stater (localStater, redisStater, ...)
     cacher (localCacher, redisCacher, ...)

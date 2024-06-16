@@ -917,7 +917,7 @@ func (s *webSocket_) example1() {
 	// TODO
 }
 
-// HTTP/1 protocol
+//////////////////////////////////////// HTTP/1 protocol elements ////////////////////////////////////////
 
 var http1Template = [16]byte{'H', 'T', 'T', 'P', '/', '1', '.', '1', ' ', 'x', 'x', 'x', ' ', '?', '\r', '\n'}
 var http1Controls = [...][]byte{ // size: 512*24B=12K. keep sync with http2Control and http3Control!

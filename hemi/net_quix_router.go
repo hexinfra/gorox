@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// QUIX (UDP/UDS) router.
+// QUIX (UDP/UDS) router and reverse proxy.
 
 package hemi
 
@@ -14,6 +14,14 @@ import (
 
 	"github.com/hexinfra/gorox/hemi/library/quic"
 )
+
+func init() {
+	RegisterQUIXDealet("quixProxy", func(name string, stage *Stage, router *QUIXRouter) QUIXDealet {
+		d := new(quixProxy)
+		d.onCreate(name, stage, router)
+		return d
+	})
+}
 
 // QUIXRouter
 type QUIXRouter struct {
@@ -177,19 +185,97 @@ func (g *quixGate) justClose(quicConn *quic.Conn) {
 	g.OnConnClosed()
 }
 
-// QUIXDealet
-type QUIXDealet interface {
-	// Imports
-	Component
-	// Methods
-	Deal(conn *QUIXConn, stream *QUIXStream) (dealt bool)
+// poolQUIXConn
+var poolQUIXConn sync.Pool
+
+func getQUIXConn(id int64, gate *quixGate, quicConn *quic.Conn) *QUIXConn {
+	var quixConn *QUIXConn
+	if x := poolQUIXConn.Get(); x == nil {
+		quixConn = new(QUIXConn)
+	} else {
+		quixConn = x.(*QUIXConn)
+	}
+	quixConn.onGet(id, gate, quicConn)
+	return quixConn
+}
+func putQUIXConn(quixConn *QUIXConn) {
+	quixConn.onPut()
+	poolQUIXConn.Put(quixConn)
 }
 
-// QUIXDealet_
-type QUIXDealet_ struct {
+// QUIXConn is a QUIX connection coming from QUIXRouter.
+type QUIXConn struct {
 	// Parent
-	Component_
-	// States
+	ServerConn_
+	// Conn states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	router   *QUIXRouter
+	gate     *quixGate
+	quicConn *quic.Conn
+	// Conn states (zeros)
+}
+
+func (c *QUIXConn) onGet(id int64, gate *quixGate, quicConn *quic.Conn) {
+	c.ServerConn_.OnGet(id)
+	c.router = gate.router
+	c.gate = gate
+	c.quicConn = quicConn
+}
+func (c *QUIXConn) onPut() {
+	c.quicConn = nil
+	c.gate = nil
+	c.router = nil
+	c.ServerConn_.OnPut()
+}
+
+func (c *QUIXConn) IsTLS() bool { return c.router.IsTLS() }
+func (c *QUIXConn) IsUDS() bool { return c.router.IsUDS() }
+
+func (c *QUIXConn) MakeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.router.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+}
+
+func (c *QUIXConn) serve() { // runner
+	c.router.dispatch(c)
+	c.closeConn()
+	putQUIXConn(c)
+}
+
+func (c *QUIXConn) closeConn() error {
+	// TODO
+	return nil
+}
+
+func (c *QUIXConn) unsafeVariable(code int16, name string) (value []byte) {
+	return quixConnVariables[code](c)
+}
+
+// quixConnVariables
+var quixConnVariables = [...]func(*QUIXConn) []byte{ // keep sync with varCodes
+	// TODO
+	nil, // srcHost
+	nil, // srcPort
+	nil, // isTLS
+	nil, // isUDS
+}
+
+// QUIXStream
+type QUIXStream struct {
+	// Parent
+	// Stream states (non-zeros)
+	quicStream *quic.Stream
+	// Stream states (zeros)
+}
+
+func (s *QUIXStream) Write(p []byte) (n int, err error) {
+	// TODO
+	return
+}
+func (s *QUIXStream) Read(p []byte) (n int, err error) {
+	// TODO
+	return
 }
 
 // quixCase
@@ -305,102 +391,63 @@ func (c *quixCase) notRegexpMatch(conn *QUIXConn, value []byte) bool { // value 
 	return notRegexpMatch(value, c.regexps)
 }
 
-// poolQUIXConn
-var poolQUIXConn sync.Pool
+// QUIXDealet
+type QUIXDealet interface {
+	// Imports
+	Component
+	// Methods
+	Deal(conn *QUIXConn, stream *QUIXStream) (dealt bool)
+}
 
-func getQUIXConn(id int64, gate *quixGate, quicConn *quic.Conn) *QUIXConn {
-	var quixConn *QUIXConn
-	if x := poolQUIXConn.Get(); x == nil {
-		quixConn = new(QUIXConn)
+// QUIXDealet_
+type QUIXDealet_ struct {
+	// Parent
+	Component_
+	// States
+}
+
+// quixProxy passes QUIX connections to QUIX backends.
+type quixProxy struct {
+	// Parent
+	QUIXDealet_
+	// Assocs
+	stage   *Stage // current stage
+	router  *QUIXRouter
+	backend *QUIXBackend // the backend to pass to
+	// States
+}
+
+func (d *quixProxy) onCreate(name string, stage *Stage, router *QUIXRouter) {
+	d.MakeComp(name)
+	d.stage = stage
+	d.router = router
+}
+func (d *quixProxy) OnShutdown() {
+	d.router.DecSub()
+}
+
+func (d *quixProxy) OnConfigure() {
+	// toBackend
+	if v, ok := d.Find("toBackend"); ok {
+		if name, ok := v.String(); ok && name != "" {
+			if backend := d.stage.Backend(name); backend == nil {
+				UseExitf("unknown backend: '%s'\n", name)
+			} else if quixBackend, ok := backend.(*QUIXBackend); ok {
+				d.backend = quixBackend
+			} else {
+				UseExitf("incorrect backend '%s' for quixProxy\n", name)
+			}
+		} else {
+			UseExitln("invalid toBackend")
+		}
 	} else {
-		quixConn = x.(*QUIXConn)
+		UseExitln("toBackend is required for quixProxy")
 	}
-	quixConn.onGet(id, gate, quicConn)
-	return quixConn
 }
-func putQUIXConn(quixConn *QUIXConn) {
-	quixConn.onPut()
-	poolQUIXConn.Put(quixConn)
+func (d *quixProxy) OnPrepare() {
 }
 
-// QUIXConn is a QUIX connection coming from QUIXRouter.
-type QUIXConn struct {
-	// Parent
-	ServerConn_
-	// Conn states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	router   *QUIXRouter
-	gate     *quixGate
-	quicConn *quic.Conn
-	// Conn states (zeros)
-	quixConn0
-}
-type quixConn0 struct { // for fast reset, entirely
-}
-
-func (c *QUIXConn) onGet(id int64, gate *quixGate, quicConn *quic.Conn) {
-	c.ServerConn_.OnGet(id)
-	c.router = gate.router
-	c.gate = gate
-	c.quicConn = quicConn
-}
-func (c *QUIXConn) onPut() {
-	c.quicConn = nil
-	c.quixConn0 = quixConn0{}
-	c.gate = nil
-	c.router = nil
-	c.ServerConn_.OnPut()
-}
-
-func (c *QUIXConn) IsTLS() bool { return c.router.IsTLS() }
-func (c *QUIXConn) IsUDS() bool { return c.router.IsUDS() }
-
-func (c *QUIXConn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.router.Stage().ID()), c.id, unixTime, c.counter.Add(1))
-}
-
-func (c *QUIXConn) serve() { // runner
-	c.router.dispatch(c)
-	c.closeConn()
-	putQUIXConn(c)
-}
-
-func (c *QUIXConn) closeConn() error {
+func (d *quixProxy) Deal(conn *QUIXConn, stream *QUIXStream) (dealt bool) {
 	// TODO
-	return nil
-}
-
-func (c *QUIXConn) unsafeVariable(code int16, name string) (value []byte) {
-	return quixConnVariables[code](c)
-}
-
-// quixConnVariables
-var quixConnVariables = [...]func(*QUIXConn) []byte{ // keep sync with varCodes
-	// TODO
-	nil, // srcHost
-	nil, // srcPort
-	nil, // isTLS
-	nil, // isUDS
-}
-
-// QUIXStream
-type QUIXStream struct {
-	// Parent
-	// Stream states (non-zeros)
-	quicStream *quic.Stream
-	// Stream states (zeros)
-	quixStream0
-}
-type quixStream0 struct { // for fast reset, entirely
-}
-
-func (s *QUIXStream) Write(p []byte) (n int, err error) {
-	// TODO
-	return
-}
-func (s *QUIXStream) Read(p []byte) (n int, err error) {
-	// TODO
-	return
+	return true
 }

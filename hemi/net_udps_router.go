@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// UDPS (UDP/TLS/UDS) router.
+// UDPS (UDP/TLS/UDS) router and reverse proxy.
 
 package hemi
 
@@ -14,6 +14,14 @@ import (
 	"syscall"
 	"time"
 )
+
+func init() {
+	RegisterUDPSDealet("udpsProxy", func(name string, stage *Stage, router *UDPSRouter) UDPSDealet {
+		d := new(udpsProxy)
+		d.onCreate(name, stage, router)
+		return d
+	})
+}
 
 // UDPSRouter
 type UDPSRouter struct {
@@ -202,19 +210,93 @@ func (g *udpsGate) justClose(pktConn net.PacketConn) {
 	g.OnConnClosed()
 }
 
-// UDPSDealet
-type UDPSDealet interface {
-	// Imports
-	Component
-	// Methods
-	Deal(conn *UDPSConn) (dealt bool)
+// poolUDPSConn
+var poolUDPSConn sync.Pool
+
+func getUDPSConn(id int64, gate *udpsGate, pktConn net.PacketConn, rawConn syscall.RawConn) *UDPSConn {
+	var udpsConn *UDPSConn
+	if x := poolUDPSConn.Get(); x == nil {
+		udpsConn = new(UDPSConn)
+	} else {
+		udpsConn = x.(*UDPSConn)
+	}
+	udpsConn.onGet(id, gate, pktConn, rawConn)
+	return udpsConn
+}
+func putUDPSConn(udpsConn *UDPSConn) {
+	udpsConn.onPut()
+	poolUDPSConn.Put(udpsConn)
 }
 
-// UDPSDealet_
-type UDPSDealet_ struct {
+// UDPSConn
+type UDPSConn struct {
 	// Parent
-	Component_
-	// States
+	ServerConn_
+	// Conn states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	router  *UDPSRouter
+	gate    *udpsGate
+	pktConn net.PacketConn
+	rawConn syscall.RawConn
+	// Conn states (zeros)
+}
+
+func (c *UDPSConn) onGet(id int64, gate *udpsGate, pktConn net.PacketConn, rawConn syscall.RawConn) {
+	c.ServerConn_.OnGet(id)
+	c.router = gate.router
+	c.gate = gate
+	c.pktConn = pktConn
+	c.rawConn = rawConn
+}
+func (c *UDPSConn) onPut() {
+	c.pktConn = nil
+	c.rawConn = nil
+	c.router = nil
+	c.gate = nil
+	c.ServerConn_.OnPut()
+}
+
+func (c *UDPSConn) IsTLS() bool { return c.router.IsTLS() }
+func (c *UDPSConn) IsUDS() bool { return c.router.IsUDS() }
+
+func (c *UDPSConn) MakeTempName(p []byte, unixTime int64) int {
+	return makeTempName(p, int64(c.router.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+}
+
+func (c *UDPSConn) serve() { // runner
+	c.router.dispatch(c)
+	c.closeConn()
+	putUDPSConn(c)
+}
+
+func (c *UDPSConn) Close() error {
+	pktConn := c.pktConn
+	putUDPSConn(c)
+	return pktConn.Close()
+}
+
+func (c *UDPSConn) closeConn() {
+	// TODO: tls, uds?
+	if c.router.IsTLS() {
+	} else if c.router.IsUDS() {
+	} else {
+	}
+	c.pktConn.Close()
+}
+
+func (c *UDPSConn) unsafeVariable(code int16, name string) (value []byte) {
+	return udpsConnVariables[code](c)
+}
+
+// udpsConnVariables
+var udpsConnVariables = [...]func(*UDPSConn) []byte{ // keep sync with varCodes
+	// TODO
+	nil, // srcHost
+	nil, // srcPort
+	nil, // isTLS
+	nil, // isUDS
 }
 
 // udpsCase
@@ -334,91 +416,63 @@ func (c *udpsCase) notRegexpMatch(conn *UDPSConn, value []byte) bool { // value 
 	return notRegexpMatch(value, c.regexps)
 }
 
-// poolUDPSConn
-var poolUDPSConn sync.Pool
-
-func getUDPSConn(id int64, gate *udpsGate, pktConn net.PacketConn, rawConn syscall.RawConn) *UDPSConn {
-	var udpsConn *UDPSConn
-	if x := poolUDPSConn.Get(); x == nil {
-		udpsConn = new(UDPSConn)
-	} else {
-		udpsConn = x.(*UDPSConn)
-	}
-	udpsConn.onGet(id, gate, pktConn, rawConn)
-	return udpsConn
-}
-func putUDPSConn(udpsConn *UDPSConn) {
-	udpsConn.onPut()
-	poolUDPSConn.Put(udpsConn)
+// UDPSDealet
+type UDPSDealet interface {
+	// Imports
+	Component
+	// Methods
+	Deal(conn *UDPSConn) (dealt bool)
 }
 
-// UDPSConn
-type UDPSConn struct {
+// UDPSDealet_
+type UDPSDealet_ struct {
 	// Parent
-	ServerConn_
-	// Conn states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
-	// Conn states (controlled)
-	// Conn states (non-zeros)
+	Component_
+	// States
+}
+
+// udpsProxy passes UDPS connections to UDPS backends.
+type udpsProxy struct {
+	// Parent
+	UDPSDealet_
+	// Assocs
+	stage   *Stage // current stage
 	router  *UDPSRouter
-	gate    *udpsGate
-	pktConn net.PacketConn
-	rawConn syscall.RawConn
-	// Conn states (zeros)
+	backend *UDPSBackend // the backend to pass to
+	// States
 }
 
-func (c *UDPSConn) onGet(id int64, gate *udpsGate, pktConn net.PacketConn, rawConn syscall.RawConn) {
-	c.ServerConn_.OnGet(id)
-	c.router = gate.router
-	c.gate = gate
-	c.pktConn = pktConn
-	c.rawConn = rawConn
+func (d *udpsProxy) onCreate(name string, stage *Stage, router *UDPSRouter) {
+	d.MakeComp(name)
+	d.stage = stage
+	d.router = router
 }
-func (c *UDPSConn) onPut() {
-	c.pktConn = nil
-	c.rawConn = nil
-	c.router = nil
-	c.gate = nil
-	c.ServerConn_.OnPut()
+func (d *udpsProxy) OnShutdown() {
+	d.router.DecSub()
 }
 
-func (c *UDPSConn) IsTLS() bool { return c.router.IsTLS() }
-func (c *UDPSConn) IsUDS() bool { return c.router.IsUDS() }
-
-func (c *UDPSConn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.router.Stage().ID()), c.id, unixTime, c.counter.Add(1))
-}
-
-func (c *UDPSConn) serve() { // runner
-	c.router.dispatch(c)
-	c.closeConn()
-	putUDPSConn(c)
-}
-
-func (c *UDPSConn) Close() error {
-	pktConn := c.pktConn
-	putUDPSConn(c)
-	return pktConn.Close()
-}
-
-func (c *UDPSConn) closeConn() {
-	// TODO: tls, uds?
-	if c.router.IsTLS() {
-	} else if c.router.IsUDS() {
+func (d *udpsProxy) OnConfigure() {
+	// toBackend
+	if v, ok := d.Find("toBackend"); ok {
+		if name, ok := v.String(); ok && name != "" {
+			if backend := d.stage.Backend(name); backend == nil {
+				UseExitf("unknown backend: '%s'\n", name)
+			} else if udpsBackend, ok := backend.(*UDPSBackend); ok {
+				d.backend = udpsBackend
+			} else {
+				UseExitf("incorrect backend '%s' for udpsProxy\n", name)
+			}
+		} else {
+			UseExitln("invalid toBackend")
+		}
 	} else {
+		UseExitln("toBackend is required for udpsProxy")
 	}
-	c.pktConn.Close()
+}
+func (d *udpsProxy) OnPrepare() {
 }
 
-func (c *UDPSConn) unsafeVariable(code int16, name string) (value []byte) {
-	return udpsConnVariables[code](c)
-}
-
-// udpsConnVariables
-var udpsConnVariables = [...]func(*UDPSConn) []byte{ // keep sync with varCodes
+func (d *udpsProxy) Deal(conn *UDPSConn) (dealt bool) {
 	// TODO
-	nil, // srcHost
-	nil, // srcPort
-	nil, // isTLS
-	nil, // isUDS
+	return true
 }

@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// General HTTP server implementation. See RFC 9110 and 9111.
+// General HTTP server implementation. See RFC 9110.
 
 package hemi
 
@@ -3861,34 +3861,6 @@ func (h *Handlet_) Dispatch(req Request, resp Response, notFound Handle) {
 	} else {
 		notFound(req, resp)
 	}
-}
-
-// Cacher component is the interface to storages of HTTP caching. See RFC 9111.
-type Cacher interface {
-	// Imports
-	Component
-	// Methods
-	Maintain() // runner
-	Set(key []byte, hobject *Hobject)
-	Get(key []byte) (hobject *Hobject)
-	Del(key []byte) bool
-}
-
-// Cacher_
-type Cacher_ struct {
-	// Parent
-	Component_
-	// Assocs
-	// States
-}
-
-// Hobject is an HTTP object in Cacher.
-type Hobject struct {
-	// TODO
-	uri      []byte
-	headers  any
-	content  any
-	trailers any
 }
 
 // Reviser component revises incoming requests and outgoing responses.

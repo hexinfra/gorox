@@ -143,6 +143,23 @@ func (n *http1Node) fetchStream() (backendStream, error) {
 	n.IncSub()
 	return conn.fetchStream()
 }
+func (n *http1Node) storeStream(stream backendStream) {
+	conn := stream.(*backend1Stream).conn
+	conn.storeStream(stream)
+
+	if conn.isBroken() || n.isDown() || !conn.isAlive() || !conn.isPersistent() {
+		n.closeConn(conn)
+		if DebugLevel() >= 2 {
+			Printf("Backend1Conn[node=%s id=%d] closed\n", conn.node.Name(), conn.id)
+		}
+	} else {
+		n.pushConn(conn)
+		if DebugLevel() >= 2 {
+			Printf("Backend1Conn[node=%s id=%d] pushed\n", conn.node.Name(), conn.id)
+		}
+	}
+}
+
 func (n *http1Node) _dialTLS() (*backend1Conn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
@@ -200,22 +217,6 @@ func (n *http1Node) _dialTCP() (*backend1Conn, error) {
 		return nil, err
 	}
 	return getBackend1Conn(connID, n, netConn, rawConn), nil
-}
-func (n *http1Node) storeStream(stream backendStream) {
-	conn := stream.(*backend1Stream).conn
-	conn.storeStream(stream)
-
-	if conn.isBroken() || n.isDown() || !conn.isAlive() || !conn.isPersistent() {
-		n.closeConn(conn)
-		if DebugLevel() >= 2 {
-			Printf("Backend1Conn[node=%s id=%d] closed\n", conn.node.Name(), conn.id)
-		}
-	} else {
-		n.pushConn(conn)
-		if DebugLevel() >= 2 {
-			Printf("Backend1Conn[node=%s id=%d] pushed\n", conn.node.Name(), conn.id)
-		}
-	}
 }
 
 func (n *http1Node) pullConn() *backend1Conn {
@@ -402,6 +403,13 @@ func (s *backend1Stream) ExecuteSocket() error { // upgrade: websocket
 	return nil
 }
 
+func (s *backend1Stream) httpServend() httpServend { return s.conn.HTTPBackend() }
+func (s *backend1Stream) httpConn() httpConn       { return s.conn }
+func (s *backend1Stream) remoteAddr() net.Addr     { return s.conn.netConn.RemoteAddr() }
+
+func (s *backend1Stream) markBroken()    { s.conn.markBroken() }
+func (s *backend1Stream) isBroken() bool { return s.conn.isBroken() }
+
 func (s *backend1Stream) setWriteDeadline(deadline time.Time) error {
 	conn := s.conn
 	if deadline.Sub(conn.lastWrite) >= time.Second {
@@ -422,13 +430,6 @@ func (s *backend1Stream) setReadDeadline(deadline time.Time) error {
 	}
 	return nil
 }
-
-func (s *backend1Stream) markBroken()    { s.conn.markBroken() }
-func (s *backend1Stream) isBroken() bool { return s.conn.isBroken() }
-
-func (s *backend1Stream) httpServend() httpServend { return s.conn.HTTPBackend() }
-func (s *backend1Stream) httpConn() httpConn       { return s.conn }
-func (s *backend1Stream) remoteAddr() net.Addr     { return s.conn.netConn.RemoteAddr() }
 
 func (s *backend1Stream) write(p []byte) (int, error) { return s.conn.netConn.Write(p) }
 func (s *backend1Stream) writev(vector *net.Buffers) (int64, error) {

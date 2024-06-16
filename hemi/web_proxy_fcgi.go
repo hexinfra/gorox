@@ -648,6 +648,9 @@ func (x *fcgiExchan) onEnd() { // for zeros
 func (x *fcgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
 func (x *fcgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }
 
+func (x *fcgiExchan) markBroken()    { x.conn.markBroken() }
+func (x *fcgiExchan) isBroken() bool { return x.conn.isBroken() }
+
 func (x *fcgiExchan) setWriteDeadline(deadline time.Time) error {
 	conn := x.conn
 	if deadline.Sub(conn.lastWrite) >= time.Second {
@@ -668,9 +671,6 @@ func (x *fcgiExchan) setReadDeadline(deadline time.Time) error {
 	}
 	return nil
 }
-
-func (x *fcgiExchan) markBroken()    { x.conn.markBroken() }
-func (x *fcgiExchan) isBroken() bool { return x.conn.isBroken() }
 
 func (x *fcgiExchan) write(p []byte) (int, error) { return x.conn.netConn.Write(p) }
 func (x *fcgiExchan) writev(vector *net.Buffers) (int64, error) {

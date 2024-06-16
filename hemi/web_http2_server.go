@@ -1150,19 +1150,19 @@ func (s *server2Stream) executeSocket() { // see RFC 8441: https://datatracker.i
 	// TODO
 }
 
+func (s *server2Stream) httpServend() httpServend { return s.conn.HTTPServer() }
+func (s *server2Stream) httpConn() httpConn       { return s.conn }
+func (s *server2Stream) remoteAddr() net.Addr     { return s.conn.netConn.RemoteAddr() }
+
+func (s *server2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
+func (s *server2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
+
 func (s *server2Stream) setReadDeadline(deadline time.Time) error { // for content i/o only
 	return nil
 }
 func (s *server2Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only
 	return nil
 }
-
-func (s *server2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
-func (s *server2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
-
-func (s *server2Stream) httpServend() httpServend { return s.conn.HTTPServer() }
-func (s *server2Stream) httpConn() httpConn       { return s.conn }
-func (s *server2Stream) remoteAddr() net.Addr     { return s.conn.netConn.RemoteAddr() }
 
 func (s *server2Stream) read(p []byte) (int, error) { // for content i/o only
 	// TODO

@@ -151,6 +151,9 @@ func (c *UConn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
+func (c *UConn) markBroken()    { c.broken.Store(true) }
+func (c *UConn) isBroken() bool { return c.broken.Load() }
+
 func (c *UConn) SetWriteDeadline(deadline time.Time) error {
 	if deadline.Sub(c.lastWrite) >= time.Second {
 		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
@@ -174,9 +177,6 @@ func (c *UConn) WriteTo(p []byte, addr net.Addr) (n int, err error) {
 	return c.netConn.WriteTo(p, addr)
 }
 func (c *UConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) { return c.netConn.ReadFrom(p) }
-
-func (c *UConn) markBroken()    { c.broken.Store(true) }
-func (c *UConn) isBroken() bool { return c.broken.Load() }
 
 func (c *UConn) Close() error {
 	netConn := c.netConn

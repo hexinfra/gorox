@@ -289,19 +289,19 @@ func (s *backend3Stream) ExecuteSocket() error { // see RFC 9220
 	return nil
 }
 
+func (s *backend3Stream) httpServend() httpServend { return s.conn.HTTPBackend() }
+func (s *backend3Stream) httpConn() httpConn       { return s.conn }
+func (s *backend3Stream) remoteAddr() net.Addr     { return nil } // TODO
+
+func (s *backend3Stream) markBroken()    {}               // TODO
+func (s *backend3Stream) isBroken() bool { return false } // TODO
+
 func (s *backend3Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only?
 	return nil
 }
 func (s *backend3Stream) setReadDeadline(deadline time.Time) error { // for content i/o only?
 	return nil
 }
-
-func (s *backend3Stream) markBroken()    {}               // TODO
-func (s *backend3Stream) isBroken() bool { return false } // TODO
-
-func (s *backend3Stream) httpServend() httpServend { return s.conn.HTTPBackend() }
-func (s *backend3Stream) httpConn() httpConn       { return s.conn }
-func (s *backend3Stream) remoteAddr() net.Addr     { return nil } // TODO
 
 func (s *backend3Stream) write(p []byte) (int, error) { // for content i/o only?
 	return 0, nil

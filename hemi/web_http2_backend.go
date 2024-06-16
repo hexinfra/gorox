@@ -333,19 +333,19 @@ func (s *backend2Stream) ExecuteSocket() error { // see RFC 8441: https://datatr
 	return nil
 }
 
+func (s *backend2Stream) httpServend() httpServend { return s.conn.HTTPBackend() }
+func (s *backend2Stream) httpConn() httpConn       { return s.conn }
+func (s *backend2Stream) remoteAddr() net.Addr     { return s.conn.netConn.RemoteAddr() }
+
+func (s *backend2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
+func (s *backend2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
+
 func (s *backend2Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only?
 	return nil
 }
 func (s *backend2Stream) setReadDeadline(deadline time.Time) error { // for content i/o only?
 	return nil
 }
-
-func (s *backend2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
-func (s *backend2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
-
-func (s *backend2Stream) httpServend() httpServend { return s.conn.HTTPBackend() }
-func (s *backend2Stream) httpConn() httpConn       { return s.conn }
-func (s *backend2Stream) remoteAddr() net.Addr     { return s.conn.netConn.RemoteAddr() }
 
 func (s *backend2Stream) write(p []byte) (int, error) { // for content i/o only?
 	return 0, nil

@@ -68,12 +68,6 @@ type tcpsNode struct {
 	// Assocs
 	backend *TCPSBackend
 	// States
-	connPool struct { // free list of conns in this node
-		sync.Mutex
-		head *TConn // head element
-		tail *TConn // tail element
-		qnty int    // size of the list
-	}
 }
 
 func (n *tcpsNode) onCreate(name string, backend *TCPSBackend) {
@@ -200,8 +194,6 @@ func putTConn(tConn *TConn) {
 type TConn struct {
 	// Parent
 	BackendConn_
-	// Assocs
-	next *TConn // the linked-list
 	// Conn states (stocks)
 	stockInput [8192]byte // for c.input
 	// Conn states (controlled)
@@ -249,33 +241,6 @@ func (c *TConn) TLSConn() *tls.Conn     { return c.netConn.(*tls.Conn) }
 func (c *TConn) UDSConn() *net.UnixConn { return c.netConn.(*net.UnixConn) }
 func (c *TConn) TCPConn() *net.TCPConn  { return c.netConn.(*net.TCPConn) }
 
-func (c *TConn) SetWriteDeadline(deadline time.Time) error {
-	if deadline.Sub(c.lastWrite) >= time.Second {
-		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
-			return err
-		}
-		c.lastWrite = deadline
-	}
-	return nil
-}
-func (c *TConn) SetReadDeadline(deadline time.Time) error {
-	if deadline.Sub(c.lastRead) >= time.Second {
-		if err := c.netConn.SetReadDeadline(deadline); err != nil {
-			return err
-		}
-		c.lastRead = deadline
-	}
-	return nil
-}
-
-func (c *TConn) Write(p []byte) (n int, err error)         { return c.netConn.Write(p) }
-func (c *TConn) Writev(vector *net.Buffers) (int64, error) { return vector.WriteTo(c.netConn) }
-func (c *TConn) Read(p []byte) (n int, err error)          { return c.netConn.Read(p) }
-func (c *TConn) ReadFull(p []byte) (n int, err error)      { return io.ReadFull(c.netConn, p) }
-func (c *TConn) ReadAtLeast(p []byte, min int) (n int, err error) {
-	return io.ReadAtLeast(c.netConn, p, min)
-}
-
 func (c *TConn) ProxyPass(conn *TCPSConn) error {
 	var (
 		p   []byte
@@ -307,6 +272,33 @@ func (c *TConn) MarkBroken() {
 func (c *TConn) markWriteBroken() { c.writeBroken.Store(true) }
 func (c *TConn) markReadBroken()  { c.readBroken.Store(true) }
 func (c *TConn) IsBroken() bool   { return c.writeBroken.Load() || c.readBroken.Load() }
+
+func (c *TConn) SetWriteDeadline(deadline time.Time) error {
+	if deadline.Sub(c.lastWrite) >= time.Second {
+		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
+			return err
+		}
+		c.lastWrite = deadline
+	}
+	return nil
+}
+func (c *TConn) SetReadDeadline(deadline time.Time) error {
+	if deadline.Sub(c.lastRead) >= time.Second {
+		if err := c.netConn.SetReadDeadline(deadline); err != nil {
+			return err
+		}
+		c.lastRead = deadline
+	}
+	return nil
+}
+
+func (c *TConn) Write(p []byte) (n int, err error)         { return c.netConn.Write(p) }
+func (c *TConn) Writev(vector *net.Buffers) (int64, error) { return vector.WriteTo(c.netConn) }
+func (c *TConn) Read(p []byte) (n int, err error)          { return c.netConn.Read(p) }
+func (c *TConn) ReadFull(p []byte) (n int, err error)      { return io.ReadFull(c.netConn, p) }
+func (c *TConn) ReadAtLeast(p []byte, min int) (n int, err error) {
+	return io.ReadAtLeast(c.netConn, p, min)
+}
 
 func (c *TConn) CloseWrite() error {
 	if c.IsTLS() {

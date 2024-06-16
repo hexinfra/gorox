@@ -146,6 +146,9 @@ type httpStream interface {
 	buffer256() []byte
 	unsafeMake(size int) []byte
 
+	isBroken() bool // returns true if either side of the stream is broken
+	markBroken()    // mark stream as broken
+
 	setReadDeadline(deadline time.Time) error
 	setWriteDeadline(deadline time.Time) error
 
@@ -153,9 +156,6 @@ type httpStream interface {
 	readFull(p []byte) (int, error)
 	write(p []byte) (int, error)
 	writev(vector *net.Buffers) (int64, error)
-
-	isBroken() bool // returns true if either side of the stream is broken
-	markBroken()    // mark stream as broken
 }
 
 // _httpStream_ is a mixin for server[1-3]Stream and backend[1-3]Stream.

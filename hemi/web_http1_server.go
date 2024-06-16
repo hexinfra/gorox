@@ -609,6 +609,13 @@ func (s *server1Stream) executeSocket() { // upgrade: websocket
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nConnection: close\r\n\r\n"))
 }
 
+func (s *server1Stream) httpServend() httpServend { return s.conn.HTTPServer() }
+func (s *server1Stream) httpConn() httpConn       { return s.conn }
+func (s *server1Stream) remoteAddr() net.Addr     { return s.conn.netConn.RemoteAddr() }
+
+func (s *server1Stream) markBroken()    { s.conn.markBroken() }
+func (s *server1Stream) isBroken() bool { return s.conn.isBroken() }
+
 func (s *server1Stream) setReadDeadline(deadline time.Time) error {
 	conn := s.conn
 	if deadline.Sub(conn.lastRead) >= time.Second {
@@ -629,13 +636,6 @@ func (s *server1Stream) setWriteDeadline(deadline time.Time) error {
 	}
 	return nil
 }
-
-func (s *server1Stream) markBroken()    { s.conn.markBroken() }
-func (s *server1Stream) isBroken() bool { return s.conn.isBroken() }
-
-func (s *server1Stream) httpServend() httpServend { return s.conn.HTTPServer() }
-func (s *server1Stream) httpConn() httpConn       { return s.conn }
-func (s *server1Stream) remoteAddr() net.Addr     { return s.conn.netConn.RemoteAddr() }
 
 func (s *server1Stream) read(p []byte) (int, error)     { return s.conn.netConn.Read(p) }
 func (s *server1Stream) readFull(p []byte) (int, error) { return io.ReadFull(s.conn.netConn, p) }

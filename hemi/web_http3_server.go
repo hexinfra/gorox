@@ -211,17 +211,6 @@ func (c *server3Conn) receive() { // runner
 	// TODO
 }
 
-func (c *server3Conn) setReadDeadline(deadline time.Time) error {
-	// TODO
-	return nil
-}
-func (c *server3Conn) setWriteDeadline(deadline time.Time) error {
-	// TODO
-	return nil
-}
-
-func (c *server3Conn) write(p []byte) (int, error) { return 0, nil } // TODO
-
 func (c *server3Conn) closeConn() {
 	c.quicConn.Close()
 	c.gate.OnConnClosed()
@@ -315,19 +304,19 @@ func (s *server3Stream) executeSocket() { // see RFC 9220
 	// TODO
 }
 
+func (s *server3Stream) httpServend() httpServend { return s.conn.HTTPServer() }
+func (s *server3Stream) httpConn() httpConn       { return s.conn }
+func (s *server3Stream) remoteAddr() net.Addr     { return nil } // TODO
+
+func (s *server3Stream) markBroken()    {}               // TODO
+func (s *server3Stream) isBroken() bool { return false } // TODO
+
 func (s *server3Stream) setReadDeadline(deadline time.Time) error { // for content i/o only
 	return nil
 }
 func (s *server3Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only
 	return nil
 }
-
-func (s *server3Stream) markBroken()    {}               // TODO
-func (s *server3Stream) isBroken() bool { return false } // TODO
-
-func (s *server3Stream) httpServend() httpServend { return s.conn.HTTPServer() }
-func (s *server3Stream) httpConn() httpConn       { return s.conn }
-func (s *server3Stream) remoteAddr() net.Addr     { return nil } // TODO
 
 func (s *server3Stream) read(p []byte) (int, error) { // for content i/o only
 	return 0, nil

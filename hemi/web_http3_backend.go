@@ -66,8 +66,8 @@ func (b *HTTP3Backend) FetchStream() (backendStream, error) {
 	return node.fetchStream()
 }
 func (b *HTTP3Backend) StoreStream(stream backendStream) {
-	node := stream.httpConn().(*backend3Conn).http3Node()
-	node.storeStream(stream)
+	conn := stream.httpConn().(*backend3Conn)
+	conn.node.storeStream(stream)
 }
 
 // http3Node
@@ -195,7 +195,6 @@ func (c *backend3Conn) MakeTempName(p []byte, unixTime int64) int {
 }
 
 func (c *backend3Conn) HTTPBackend() HTTPBackend { return c.backend }
-func (c *backend3Conn) http3Node() *http3Node    { return c.node }
 
 func (c *backend3Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.HTTPBackend().MaxStreamsPerConn()
@@ -297,8 +296,8 @@ func (s *backend3Stream) setReadDeadline(deadline time.Time) error { // for cont
 	return nil
 }
 
-func (s *backend3Stream) isBroken() bool { return false } // TODO
 func (s *backend3Stream) markBroken()    {}               // TODO
+func (s *backend3Stream) isBroken() bool { return false } // TODO
 
 func (s *backend3Stream) httpServend() httpServend { return s.conn.HTTPBackend() }
 func (s *backend3Stream) httpConn() httpConn       { return s.conn }

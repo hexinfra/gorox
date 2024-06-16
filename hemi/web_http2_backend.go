@@ -66,8 +66,8 @@ func (b *HTTP2Backend) FetchStream() (backendStream, error) {
 	return node.fetchStream()
 }
 func (b *HTTP2Backend) StoreStream(stream backendStream) {
-	node := stream.httpConn().(*backend2Conn).http2Node()
-	node.storeStream(stream)
+	conn := stream.httpConn().(*backend2Conn)
+	conn.node.storeStream(stream)
 }
 
 // http2Node
@@ -212,7 +212,6 @@ func (c *backend2Conn) MakeTempName(p []byte, unixTime int64) int {
 }
 
 func (c *backend2Conn) HTTPBackend() HTTPBackend { return c.backend }
-func (c *backend2Conn) http2Node() *http2Node    { return c.node }
 
 func (c *backend2Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.HTTPBackend().MaxStreamsPerConn()
@@ -341,8 +340,8 @@ func (s *backend2Stream) setReadDeadline(deadline time.Time) error { // for cont
 	return nil
 }
 
-func (s *backend2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
 func (s *backend2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
+func (s *backend2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
 
 func (s *backend2Stream) httpServend() httpServend { return s.conn.HTTPBackend() }
 func (s *backend2Stream) httpConn() httpConn       { return s.conn }

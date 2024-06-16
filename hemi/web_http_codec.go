@@ -107,8 +107,8 @@ type httpConn interface {
 	MakeTempName(p []byte, unixTime int64) int
 	isPersistent() bool
 	setPersistent(persistent bool)
-	isBroken() bool
 	markBroken()
+	isBroken() bool
 }
 
 // _httpConn_ is a mixin for server[1-3]Conn and backend[1-3]Conn.
@@ -133,8 +133,8 @@ func (c *_httpConn_) onPut() {
 func (c *_httpConn_) isPersistent() bool            { return c.persistent }
 func (c *_httpConn_) setPersistent(persistent bool) { c.persistent = persistent }
 
-func (c *_httpConn_) isBroken() bool { return c.broken.Load() }
 func (c *_httpConn_) markBroken()    { c.broken.Store(true) }
+func (c *_httpConn_) isBroken() bool { return c.broken.Load() }
 
 // httpStream collects shared methods between *server[1-3]Stream and *backend[1-3]Stream.
 type httpStream interface {

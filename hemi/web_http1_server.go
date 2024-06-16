@@ -271,7 +271,8 @@ func getServer1Conn(id int64, gate Gate, netConn net.Conn, rawConn syscall.RawCo
 	var serverConn *server1Conn
 	if x := poolServer1Conn.Get(); x == nil {
 		serverConn = new(server1Conn)
-		stream := serverConn
+		stream := &serverConn.stream
+		stream.conn = serverConn
 		req, resp := &stream.request, &stream.response
 		req.shell = req
 		req.stream = stream
@@ -295,6 +296,8 @@ type server1Conn struct {
 	ServerConn_
 	// Mixins
 	_httpConn_
+	// Assocs
+	stream server1Stream // an http/1 connection has exactly one stream
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -304,41 +307,32 @@ type server1Conn struct {
 	rawConn   syscall.RawConn // for syscall, only when netConn is UDS/TCP
 	closeSafe bool            // if false, send a FIN first to avoid TCP's RST following immediate close(). true by default
 	// Conn states (zeros)
-
-	// Mixins
-	_httpStream_
-	// Assocs
-	request  server1Request  // the server-side http/1 request.
-	response server1Response // the server-side http/1 response.
-	socket   *server1Socket  // the server-side http/1 socket.
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
 }
 
 func (c *server1Conn) onGet(id int64, gate Gate, netConn net.Conn, rawConn syscall.RawConn) {
 	c.ServerConn_.OnGet(id)
 	c._httpConn_.onGet()
+
 	c.server = gate.Server()
 	c.gate = gate
-
-	req := &c.request
-	req.input = req.stockInput[:] // input is conn scoped but put in stream scoped request for convenience
 	c.netConn = netConn
 	c.rawConn = rawConn
 	c.closeSafe = true
+
+	req := &c.stream.request
+	req.input = req.stockInput[:] // input is conn scoped but put in stream scoped request for convenience
 }
 func (c *server1Conn) onPut() {
-	c.netConn = nil
-	c.rawConn = nil
-	req := &c.request
+	req := &c.stream.request
 	if cap(req.input) != cap(req.stockInput) { // fetched from pool
 		// req.input is conn scoped but put in stream scoped c.request for convenience
 		PutNK(req.input)
 		req.input = nil
 	}
 	req.inputNext, req.inputEdge = 0, 0 // inputNext and inputEdge are conn scoped but put in stream scoped request for convenience
+
+	c.netConn = nil
+	c.rawConn = nil
 	c.gate = nil
 	c.server = nil
 
@@ -358,7 +352,7 @@ func (c *server1Conn) HTTPServer() HTTPServer { return c.server.(HTTPServer) }
 func (c *server1Conn) serve() { // runner
 	defer putServer1Conn(c)
 
-	stream := c
+	stream := &c.stream
 	for c.persistent { // each queued stream
 		stream.onUse()
 		stream.execute()
@@ -401,10 +395,23 @@ func (c *server1Conn) serve() { // runner
 }
 
 // server1Stream is the server-side HTTP/1 stream.
-type server1Stream = server1Conn
+type server1Stream struct {
+	// Mixins
+	_httpStream_
+	// Assocs
+	conn     *server1Conn
+	request  server1Request  // the server-side http/1 request.
+	response server1Response // the server-side http/1 response.
+	socket   *server1Socket  // the server-side http/1 websocket.
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
+}
 
 func (s *server1Stream) onUse() { // for non-zeros
 	s._httpStream_.onUse()
+
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
 }
@@ -415,6 +422,7 @@ func (s *server1Stream) onEnd() { // for zeros
 		s.socket.onEnd()
 		s.socket = nil
 	}
+
 	s._httpStream_.onEnd()
 }
 
@@ -434,7 +442,7 @@ func (s *server1Stream) execute() {
 		return
 	}
 
-	conn := s
+	conn := s.conn
 	server := conn.server.(*http1Server)
 	// RFC 9112:
 	// If the server's configuration provides for a fixed URI scheme, or a
@@ -522,7 +530,7 @@ func (s *server1Stream) execute() {
 }
 
 func (s *server1Stream) writeContinue() bool { // 100 continue
-	conn := s
+	conn := s.conn
 	// This is an interim response, write directly.
 	if s.setWriteDeadline(time.Now().Add(conn.server.WriteTimeout())) == nil {
 		if _, err := s.write(http1BytesContinue); err == nil {
@@ -548,7 +556,7 @@ func (s *server1Stream) executeExchan(webapp *Webapp, req *server1Request, resp 
 	}
 }
 func (s *server1Stream) serveAbnormal(req *server1Request, resp *server1Response) { // 4xx & 5xx
-	conn := s
+	conn := s.conn
 	if DebugLevel() >= 2 {
 		Printf("server=%s gate=%d conn=%d headResult=%d\n", conn.server.Name(), conn.gate.ID(), conn.id, s.request.headResult)
 	}
@@ -602,7 +610,7 @@ func (s *server1Stream) executeSocket() { // upgrade: websocket
 }
 
 func (s *server1Stream) setReadDeadline(deadline time.Time) error {
-	conn := s
+	conn := s.conn
 	if deadline.Sub(conn.lastRead) >= time.Second {
 		if err := conn.netConn.SetReadDeadline(deadline); err != nil {
 			return err
@@ -612,7 +620,7 @@ func (s *server1Stream) setReadDeadline(deadline time.Time) error {
 	return nil
 }
 func (s *server1Stream) setWriteDeadline(deadline time.Time) error {
-	conn := s
+	conn := s.conn
 	if deadline.Sub(conn.lastWrite) >= time.Second {
 		if err := conn.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
@@ -622,15 +630,18 @@ func (s *server1Stream) setWriteDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (c *server1Stream) httpServend() httpServend { return c.HTTPServer() }
-func (c *server1Stream) httpConn() httpConn       { return c }
-func (c *server1Stream) remoteAddr() net.Addr     { return c.netConn.RemoteAddr() }
+func (s *server1Stream) markBroken()    { s.conn.markBroken() }
+func (s *server1Stream) isBroken() bool { return s.conn.isBroken() }
 
-func (c *server1Stream) read(p []byte) (int, error)     { return c.netConn.Read(p) }
-func (c *server1Stream) readFull(p []byte) (int, error) { return io.ReadFull(c.netConn, p) }
-func (c *server1Stream) write(p []byte) (int, error)    { return c.netConn.Write(p) }
-func (c *server1Stream) writev(vector *net.Buffers) (int64, error) {
-	return vector.WriteTo(c.netConn)
+func (s *server1Stream) httpServend() httpServend { return s.conn.HTTPServer() }
+func (s *server1Stream) httpConn() httpConn       { return s.conn }
+func (s *server1Stream) remoteAddr() net.Addr     { return s.conn.netConn.RemoteAddr() }
+
+func (s *server1Stream) read(p []byte) (int, error)     { return s.conn.netConn.Read(p) }
+func (s *server1Stream) readFull(p []byte) (int, error) { return io.ReadFull(s.conn.netConn, p) }
+func (s *server1Stream) write(p []byte) (int, error)    { return s.conn.netConn.Write(p) }
+func (s *server1Stream) writev(vector *net.Buffers) (int64, error) {
+	return vector.WriteTo(s.conn.netConn)
 }
 
 // server1Request is the server-side HTTP/1 request.

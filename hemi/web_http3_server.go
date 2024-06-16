@@ -322,8 +322,8 @@ func (s *server3Stream) setWriteDeadline(deadline time.Time) error { // for cont
 	return nil
 }
 
-func (s *server3Stream) isBroken() bool { return false } // TODO
 func (s *server3Stream) markBroken()    {}               // TODO
+func (s *server3Stream) isBroken() bool { return false } // TODO
 
 func (s *server3Stream) httpServend() httpServend { return s.conn.HTTPServer() }
 func (s *server3Stream) httpConn() httpConn       { return s.conn }

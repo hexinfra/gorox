@@ -1157,8 +1157,8 @@ func (s *server2Stream) setWriteDeadline(deadline time.Time) error { // for cont
 	return nil
 }
 
-func (s *server2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
 func (s *server2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
+func (s *server2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
 
 func (s *server2Stream) httpServend() httpServend { return s.conn.HTTPServer() }
 func (s *server2Stream) httpConn() httpConn       { return s.conn }

@@ -609,8 +609,8 @@ func (c *fcgiConn) storeExchan(exchan *fcgiExchan) {
 	exchan.onEnd()
 }
 
-func (c *fcgiConn) isBroken() bool { return c.broken.Load() }
 func (c *fcgiConn) markBroken()    { c.broken.Store(true) }
+func (c *fcgiConn) isBroken() bool { return c.broken.Load() }
 
 func (c *fcgiConn) Close() error {
 	netConn := c.netConn
@@ -621,7 +621,7 @@ func (c *fcgiConn) Close() error {
 // fcgiExchan
 type fcgiExchan struct {
 	// Assocs
-	conn     *fcgiConn
+	conn     *fcgiConn    // the fcgi conn
 	request  fcgiRequest  // the fcgi request
 	response fcgiResponse // the fcgi response
 	// Exchan states (stocks)
@@ -669,8 +669,8 @@ func (x *fcgiExchan) setReadDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (x *fcgiExchan) isBroken() bool { return x.conn.isBroken() }
 func (x *fcgiExchan) markBroken()    { x.conn.markBroken() }
+func (x *fcgiExchan) isBroken() bool { return x.conn.isBroken() }
 
 func (x *fcgiExchan) write(p []byte) (int, error) { return x.conn.netConn.Write(p) }
 func (x *fcgiExchan) writev(vector *net.Buffers) (int64, error) {

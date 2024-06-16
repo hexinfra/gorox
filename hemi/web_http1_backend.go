@@ -67,8 +67,8 @@ func (b *HTTP1Backend) FetchStream() (backendStream, error) {
 	return node.fetchStream()
 }
 func (b *HTTP1Backend) StoreStream(stream backendStream) {
-	node := stream.httpConn().(*backend1Conn).http1Node()
-	node.storeStream(stream)
+	conn := stream.httpConn().(*backend1Conn)
+	conn.node.storeStream(stream)
 }
 
 // http1Node is a node in HTTP1Backend.
@@ -202,7 +202,7 @@ func (n *http1Node) _dialTCP() (*backend1Conn, error) {
 	return getBackend1Conn(connID, n, netConn, rawConn), nil
 }
 func (n *http1Node) storeStream(stream backendStream) {
-	conn := stream.(*backend1Stream)
+	conn := stream.(*backend1Stream).conn
 	conn.storeStream(stream)
 
 	if conn.isBroken() || n.isDown() || !conn.isAlive() || !conn.isPersistent() {
@@ -272,7 +272,8 @@ func getBackend1Conn(id int64, node *http1Node, netConn net.Conn, rawConn syscal
 	var conn *backend1Conn
 	if x := poolBackend1Conn.Get(); x == nil {
 		conn = new(backend1Conn)
-		stream := conn
+		stream := &conn.stream
+		stream.conn = conn
 		req, resp := &stream.request, &stream.response
 		req.shell = req
 		req.stream = stream
@@ -297,7 +298,8 @@ type backend1Conn struct {
 	// Mixins
 	_httpConn_
 	// Assocs
-	next *backend1Conn // the linked-list
+	next   *backend1Conn  // the linked-list
+	stream backend1Stream // an http/1 connection has exactly one stream
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -306,17 +308,6 @@ type backend1Conn struct {
 	netConn net.Conn        // the connection (TCP/TLS/UDS)
 	rawConn syscall.RawConn // used when netConn is TCP or UDS
 	// Conn states (zeros)
-
-	// Mixins
-	_httpStream_
-	// Assocs
-	request  backend1Request  // the backend-side http/1 request
-	response backend1Response // the backend-side http/1 response
-	socket   *backend1Socket  // the backend-side http/1 socket
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non zeros)
-	// Stream states (zeros)
 }
 
 func (c *backend1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
@@ -346,14 +337,13 @@ func (c *backend1Conn) MakeTempName(p []byte, unixTime int64) int {
 }
 
 func (c *backend1Conn) HTTPBackend() HTTPBackend { return c.backend }
-func (c *backend1Conn) http1Node() *http1Node    { return c.node }
 
 func (c *backend1Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.HTTPBackend().MaxStreamsPerConn()
 }
 
 func (c *backend1Conn) fetchStream() (backendStream, error) {
-	stream := c
+	stream := &c.stream
 	stream.onUse()
 	return stream, nil
 }
@@ -368,7 +358,19 @@ func (c *backend1Conn) Close() error {
 }
 
 // backend1Stream is the backend-side HTTP/1 stream.
-type backend1Stream = backend1Conn
+type backend1Stream struct {
+	// Mixins
+	_httpStream_
+	// Assocs
+	conn     *backend1Conn    // the backend-side http/1 conn
+	request  backend1Request  // the backend-side http/1 request
+	response backend1Response // the backend-side http/1 response
+	socket   *backend1Socket  // the backend-side http/1 websocket
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non zeros)
+	// Stream states (zeros)
+}
 
 func (s *backend1Stream) onUse() { // for non-zeros
 	s._httpStream_.onUse()
@@ -401,7 +403,7 @@ func (s *backend1Stream) ExecuteSocket() error { // upgrade: websocket
 }
 
 func (s *backend1Stream) setWriteDeadline(deadline time.Time) error {
-	conn := s
+	conn := s.conn
 	if deadline.Sub(conn.lastWrite) >= time.Second {
 		if err := conn.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
@@ -411,7 +413,7 @@ func (s *backend1Stream) setWriteDeadline(deadline time.Time) error {
 	return nil
 }
 func (s *backend1Stream) setReadDeadline(deadline time.Time) error {
-	conn := s
+	conn := s.conn
 	if deadline.Sub(conn.lastRead) >= time.Second {
 		if err := conn.netConn.SetReadDeadline(deadline); err != nil {
 			return err
@@ -421,14 +423,19 @@ func (s *backend1Stream) setReadDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (c *backend1Stream) httpServend() httpServend { return c.HTTPBackend() }
-func (c *backend1Stream) httpConn() httpConn       { return c }
-func (c *backend1Stream) remoteAddr() net.Addr     { return c.netConn.RemoteAddr() }
+func (s *backend1Stream) markBroken()    { s.conn.markBroken() }
+func (s *backend1Stream) isBroken() bool { return s.conn.isBroken() }
 
-func (c *backend1Stream) write(p []byte) (int, error)               { return c.netConn.Write(p) }
-func (c *backend1Stream) writev(vector *net.Buffers) (int64, error) { return vector.WriteTo(c.netConn) }
-func (c *backend1Stream) read(p []byte) (int, error)                { return c.netConn.Read(p) }
-func (c *backend1Stream) readFull(p []byte) (int, error)            { return io.ReadFull(c.netConn, p) }
+func (s *backend1Stream) httpServend() httpServend { return s.conn.HTTPBackend() }
+func (s *backend1Stream) httpConn() httpConn       { return s.conn }
+func (s *backend1Stream) remoteAddr() net.Addr     { return s.conn.netConn.RemoteAddr() }
+
+func (s *backend1Stream) write(p []byte) (int, error) { return s.conn.netConn.Write(p) }
+func (s *backend1Stream) writev(vector *net.Buffers) (int64, error) {
+	return vector.WriteTo(s.conn.netConn)
+}
+func (s *backend1Stream) read(p []byte) (int, error)     { return s.conn.netConn.Read(p) }
+func (s *backend1Stream) readFull(p []byte) (int, error) { return io.ReadFull(s.conn.netConn, p) }
 
 // backend1Request is the backend-side HTTP/1 request.
 type backend1Request struct { // outgoing. needs building

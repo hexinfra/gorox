@@ -196,22 +196,21 @@ type Component interface {
 
 // Component_ is the parent for all components.
 type Component_ struct {
-	// Mixins
-	_subsWaiter_   // components can have sub components
-	_shutdownable_ // to support shutdown
 	// Assocs
 	shell  Component // the concrete Component
 	parent Component // the parent component, used by config
 	// States
-	name  string           // main, proxy1, ...
-	props map[string]Value // name1=value1, ...
-	info  any              // extra info about this component, used by config
+	name     string           // main, proxy1, ...
+	props    map[string]Value // name1=value1, ...
+	info     any              // extra info about this component, used by config
+	subs     sync.WaitGroup   // sub components to wait for
+	ShutChan chan struct{}    // used to notify shutdown
 }
 
 func (c *Component_) MakeComp(name string) {
-	c._shutdownable_.init()
 	c.name = name
 	c.props = make(map[string]Value)
+	c.ShutChan = make(chan struct{})
 }
 func (c *Component_) Name() string { return c.name }
 
@@ -280,6 +279,24 @@ func _configureProp[T any](c *Component_, name string, prop *T, conv func(*Value
 		}
 	} else {
 		*prop = defaultValue
+	}
+}
+
+func (c *Component_) IncSub()        { c.subs.Add(1) }
+func (c *Component_) SubsAddn(n int) { c.subs.Add(n) }
+func (c *Component_) WaitSubs()      { c.subs.Wait() }
+func (c *Component_) DecSub()        { c.subs.Done() }
+
+func (c *Component_) Loop(interval time.Duration, callback func(now time.Time)) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-c.ShutChan:
+			return
+		case now := <-ticker.C:
+			callback(now)
+		}
 	}
 }
 

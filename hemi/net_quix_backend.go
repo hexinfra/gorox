@@ -79,7 +79,6 @@ func (d *quixProxy) Deal(conn *QUIXConn, stream *QUIXStream) (dealt bool) {
 type QUIXBackend struct {
 	// Parent
 	Backend_[*quixNode]
-	// Mixins
 	// States
 	maxStreamsPerConn int32 // max streams of one conn. 0 means infinite
 }

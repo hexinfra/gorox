@@ -3591,7 +3591,6 @@ type Reviser interface {
 type Reviser_ struct {
 	// Parent
 	Component_
-	// Mixins
 	// States
 	id uint8
 }

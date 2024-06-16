@@ -78,7 +78,6 @@ func (d *udpsProxy) Deal(conn *UDPSConn) (dealt bool) {
 type UDPSBackend struct {
 	// Parent
 	Backend_[*udpsNode]
-	// Mixins
 	// States
 }
 

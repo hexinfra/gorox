@@ -11,6 +11,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -174,13 +175,12 @@ type Gate interface {
 
 // Gate_ is the parent for all gates.
 type Gate_ struct {
-	// Mixins
-	_subsWaiter_ // for conns
 	// States
-	id       int32        // gate id
-	maxConns int32        // max concurrent conns allowed
-	shut     atomic.Bool  // is gate shut?
-	numConns atomic.Int32 // TODO: false sharing
+	id       int32          // gate id
+	maxConns int32          // max concurrent conns allowed
+	shut     atomic.Bool    // is gate shut?
+	numConns atomic.Int32   // TODO: false sharing
+	subs     sync.WaitGroup // sub conns to wait for
 }
 
 func (g *Gate_) Init(id int32, maxConns int32) {
@@ -196,9 +196,12 @@ func (g *Gate_) MarkShut()        { g.shut.Store(true) }
 func (g *Gate_) DecConns() int32  { return g.numConns.Add(-1) }
 func (g *Gate_) ReachLimit() bool { return g.numConns.Add(1) > g.maxConns }
 
+func (g *Gate_) IncSub()   { g.subs.Add(1) }
+func (g *Gate_) WaitSubs() { g.subs.Wait() }
+
 func (g *Gate_) OnConnClosed() {
 	g.DecConns()
-	g.DecSub()
+	g.subs.Done()
 }
 
 // ServerConn_ is the parent for server conns.

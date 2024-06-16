@@ -29,7 +29,6 @@ func init() {
 type RedisBackend struct {
 	// Parent
 	Backend_[*redisNode]
-	// Mixins
 	// States
 }
 

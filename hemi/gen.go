@@ -14,8 +14,6 @@ import (
 	"fmt"
 	"os"
 	"regexp"
-	"sync"
-	"time"
 )
 
 const ( // array kinds
@@ -256,38 +254,6 @@ func (s *_contentSaver_) onPrepare(component Component, perm os.FileMode) {
 }
 
 func (s *_contentSaver_) SaveContentFilesDir() string { return s.saveContentFilesDir } // must ends with '/'
-
-// _subsWaiter_ is a mixin.
-type _subsWaiter_ struct {
-	subs sync.WaitGroup
-}
-
-func (w *_subsWaiter_) IncSub()        { w.subs.Add(1) }
-func (w *_subsWaiter_) SubsAddn(n int) { w.subs.Add(n) }
-func (w *_subsWaiter_) WaitSubs()      { w.subs.Wait() }
-func (w *_subsWaiter_) DecSub()        { w.subs.Done() }
-
-// _shutdownable_ is a mixin.
-type _shutdownable_ struct {
-	ShutChan chan struct{} // used to notify target to shutdown
-}
-
-func (s *_shutdownable_) init() {
-	s.ShutChan = make(chan struct{})
-}
-
-func (s *_shutdownable_) Loop(interval time.Duration, callback func(now time.Time)) {
-	ticker := time.NewTicker(interval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-s.ShutChan:
-			return
-		case now := <-ticker.C:
-			callback(now)
-		}
-	}
-}
 
 // logcfg
 type logcfg struct {

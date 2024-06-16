@@ -81,7 +81,6 @@ func (d *tcpsProxy) Deal(conn *TCPSConn) (dealt bool) {
 type TCPSBackend struct {
 	// Parent
 	Backend_[*tcpsNode]
-	// Mixins
 	// States
 }
 

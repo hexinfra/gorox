@@ -89,11 +89,11 @@ func (n *udpxNode) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("udpxNode=%s done\n", n.name)
 	}
-	n.backend.DecSub()
+	n.backend.DecSub() // node
 }
 
 func (n *udpxNode) dial() (*UConn, error) {
-	// TODO. note: use n.IncSub()
+	// TODO. note: use n.IncSub()?
 	return nil, nil
 }
 
@@ -179,6 +179,7 @@ func (c *UConn) WriteTo(p []byte, addr net.Addr) (n int, err error) {
 func (c *UConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) { return c.netConn.ReadFrom(p) }
 
 func (c *UConn) Close() error {
+	// TODO: c.node.DecSub()?
 	netConn := c.netConn
 	putUConn(c)
 	return netConn.Close()

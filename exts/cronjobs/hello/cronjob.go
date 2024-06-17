@@ -54,5 +54,5 @@ loop:
 	if DebugLevel() >= 2 {
 		Printf("helloCronjob=%s done\n", j.Name())
 	}
-	j.stage.DecSub()
+	j.stage.DecSub() // cronjob
 }

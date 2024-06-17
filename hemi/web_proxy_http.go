@@ -181,7 +181,7 @@ func (h *httpProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *httpProxy) OnShutdown() {
-	h.webapp.DecSub()
+	h.webapp.DecSub() // handlet
 }
 
 func (h *httpProxy) OnConfigure() {
@@ -291,7 +291,7 @@ func (s *sockProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
 	s.webapp = webapp
 }
 func (s *sockProxy) OnShutdown() {
-	s.webapp.DecSub()
+	s.webapp.DecSub() // socklet
 }
 
 func (s *sockProxy) OnConfigure() {

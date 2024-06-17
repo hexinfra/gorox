@@ -57,14 +57,14 @@ func (s *echoServer) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		s.AddGate(gate)
-		s.IncSub()
+		s.IncSub() // gate
 		go gate.serve()
 	}
 	s.WaitSubs() // gates
 	if DebugLevel() >= 2 {
 		Printf("echoServer=%s done\n", s.Name())
 	}
-	s.Stage().DecSub()
+	s.Stage().DecSub() // server
 }
 
 // echoGate
@@ -114,7 +114,7 @@ func (g *echoGate) serve() { // runner
 				continue
 			}
 		}
-		g.IncSub()
+		g.IncSub() // conn
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {
@@ -127,7 +127,7 @@ func (g *echoGate) serve() { // runner
 	if DebugLevel() >= 2 {
 		Printf("echoGate=%d done\n", g.ID())
 	}
-	g.Server().DecSub()
+	g.server.DecSub() // gate
 }
 
 func (g *echoGate) justClose(tcpConn *net.TCPConn) {

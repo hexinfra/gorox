@@ -37,7 +37,7 @@ func (r *gunzipReviser) onCreate(name string, stage *Stage, webapp *Webapp) {
 	r.webapp = webapp
 }
 func (r *gunzipReviser) OnShutdown() {
-	r.webapp.DecSub()
+	r.webapp.DecSub() // reviser
 }
 
 func (r *gunzipReviser) OnConfigure() {

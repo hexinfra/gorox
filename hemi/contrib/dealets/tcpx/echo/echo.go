@@ -35,7 +35,7 @@ func (d *echoDealet) onCreate(name string, stage *Stage, router *TCPXRouter) {
 	d.router = router
 }
 func (d *echoDealet) OnShutdown() {
-	d.router.DecSub()
+	d.router.DecSub() // dealet
 }
 
 func (d *echoDealet) OnConfigure() {

@@ -49,7 +49,7 @@ func (h *uwsgiProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *uwsgiProxy) OnShutdown() {
-	h.webapp.DecSub()
+	h.webapp.DecSub() // handlet
 }
 
 func (h *uwsgiProxy) OnConfigure() {
@@ -188,16 +188,10 @@ func (n *uwsgiNode) Maintain() { // runner
 		// TODO: health check, markDown, markUp()
 	})
 	n.markDown()
-	/*
-		if size := n.closeFree(); size > 0 {
-			n.SubsAddn(-size)
-		}
-		n.WaitSubs() // conns. TODO: max timeout?
-	*/
 	if DebugLevel() >= 2 {
 		Printf("uwsgiNode=%s done\n", n.name)
 	}
-	n.backend.DecSub()
+	n.backend.DecSub() // node
 }
 
 func (n *uwsgiNode) dial() (*uwsgiConn, error) {
@@ -216,7 +210,7 @@ func (n *uwsgiNode) dial() (*uwsgiConn, error) {
 	if err != nil {
 		return nil, errNodeDown
 	}
-	n.IncSub()
+	n.IncSub() // conn
 	return fConn, err
 }
 func (n *uwsgiNode) _dialUDS() (*uwsgiConn, error) {

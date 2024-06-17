@@ -35,7 +35,7 @@ func (d *dnsDealet) onCreate(name string, stage *Stage, router *UDPXRouter) {
 	d.router = router
 }
 func (d *dnsDealet) OnShutdown() {
-	d.router.DecSub()
+	d.router.DecSub() // dealet
 }
 
 func (d *dnsDealet) OnConfigure() {

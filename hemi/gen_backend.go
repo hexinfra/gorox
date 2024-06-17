@@ -10,7 +10,6 @@ package hemi
 import (
 	"crypto/tls"
 	"errors"
-	"io"
 	"math/rand"
 	"os"
 	"sync/atomic"
@@ -122,7 +121,7 @@ func (b *Backend_[N]) PrepareNodes()   { b.nodes.walk(N.OnPrepare) }
 
 func (b *Backend_[N]) Maintain() { // runner
 	for _, node := range b.nodes {
-		b.IncSub()
+		b.IncSub() // node
 		go node.Maintain()
 	}
 
@@ -138,7 +137,7 @@ func (b *Backend_[N]) Maintain() { // runner
 		Printf("backend=%s done\n", b.Name())
 	}
 
-	b.stage.DecSub()
+	b.stage.DecSub() // backend
 }
 
 func (b *Backend_[N]) AddNode(node N) {
@@ -248,11 +247,6 @@ func (n *Node_) IsUDS() bool { return n.udsMode }
 func (n *Node_) markDown()    { n.down.Store(true) }
 func (n *Node_) markUp()      { n.down.Store(false) }
 func (n *Node_) isDown() bool { return n.down.Load() }
-
-func (n *Node_) closeConn(conn io.Closer) {
-	conn.Close()
-	n.DecSub()
-}
 
 // BackendConn_ is the parent for backend conns.
 type BackendConn_ struct {

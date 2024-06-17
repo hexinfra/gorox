@@ -33,7 +33,7 @@ func (h *helloHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *helloHandlet) OnShutdown() {
-	h.webapp.DecSub()
+	h.webapp.DecSub() // handlet
 }
 
 func (h *helloHandlet) OnConfigure() {

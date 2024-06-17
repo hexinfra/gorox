@@ -108,13 +108,13 @@ func (n *http1Node) Maintain() { // runner
 	})
 	n.markDown()
 	if size := n.closeFree(); size > 0 {
-		n.SubsAddn(-size)
+		n.DecSubs(size) // conns
 	}
 	n.WaitSubs() // conns. TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("http1Node=%s done\n", n.name)
 	}
-	n.backend.DecSub()
+	n.backend.DecSub() // node
 }
 
 func (n *http1Node) fetchStream() (backendStream, error) {
@@ -124,7 +124,8 @@ func (n *http1Node) fetchStream() (backendStream, error) {
 		if conn.isAlive() && !conn.reachLimit() && !down {
 			return conn.fetchStream()
 		}
-		n.closeConn(conn)
+		conn.Close()
+		n.DecSub() // conn
 	}
 	if down {
 		return nil, errNodeDown
@@ -140,7 +141,7 @@ func (n *http1Node) fetchStream() (backendStream, error) {
 	if err != nil {
 		return nil, errNodeDown
 	}
-	n.IncSub()
+	n.IncSub() // conn
 	return conn.fetchStream()
 }
 func (n *http1Node) storeStream(stream backendStream) {
@@ -148,7 +149,8 @@ func (n *http1Node) storeStream(stream backendStream) {
 	conn.storeStream(stream)
 
 	if conn.isBroken() || n.isDown() || !conn.isAlive() || !conn.isPersistent() {
-		n.closeConn(conn)
+		conn.Close()
+		n.DecSub() // conn
 		if DebugLevel() >= 2 {
 			Printf("Backend1Conn[node=%s id=%d] closed\n", conn.node.Name(), conn.id)
 		}

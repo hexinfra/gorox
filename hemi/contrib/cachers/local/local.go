@@ -63,7 +63,7 @@ func (c *localCacher) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("localCacher=%s done\n", c.Name())
 	}
-	c.stage.DecSub()
+	c.stage.DecSub() // cacher
 }
 
 func (c *localCacher) Set(key []byte, hobject *Hobject) {

@@ -52,7 +52,7 @@ func (h *accessChecker) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *accessChecker) OnShutdown() {
-	h.webapp.DecSub()
+	h.webapp.DecSub() // handlet
 }
 
 func (h *accessChecker) OnConfigure() {

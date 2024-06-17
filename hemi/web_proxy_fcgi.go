@@ -62,7 +62,7 @@ func (h *fcgiProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *fcgiProxy) OnShutdown() {
-	h.webapp.DecSub()
+	h.webapp.DecSub() // handlet
 }
 
 func (h *fcgiProxy) OnConfigure() {
@@ -299,22 +299,6 @@ func (b *fcgiBackend) storeExchan(exchan *fcgiExchan) {
 	exchan.conn.node.storeExchan(exchan)
 }
 
-/*
-if h.persistent {
-	if conn, fcgiErr = h.backend.FetchConn(); fcgiErr == nil {
-		defer h.backend.StoreConn(conn)
-	}
-} else {
-	if conn, fcgiErr = h.backend.Dial(); fcgiErr == nil {
-		defer conn.Close()
-	}
-}
-func (b *fcgiBackend) Dial() (*fcgiConn, error) {
-	node := b.nodes[b.nextIndex()]
-	return node.dial()
-}
-*/
-
 // fcgiNode
 type fcgiNode struct {
 	// Parent
@@ -348,14 +332,30 @@ func (n *fcgiNode) Maintain() { // runner
 	})
 	n.markDown()
 	if size := n.closeFree(); size > 0 {
-		n.SubsAddn(-size)
+		n.DecSubs(size) // conns
 	}
 	n.WaitSubs() // conns. TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("fcgiNode=%s done\n", n.name)
 	}
-	n.backend.DecSub()
+	n.backend.DecSub() // node
 }
+
+/*
+if h.persistent {
+	if conn, fcgiErr = h.backend.FetchConn(); fcgiErr == nil {
+		defer h.backend.StoreConn(conn)
+	}
+} else {
+	if conn, fcgiErr = h.backend.Dial(); fcgiErr == nil {
+		defer conn.Close()
+	}
+}
+func (b *fcgiBackend) Dial() (*fcgiConn, error) {
+	node := b.nodes[b.nextIndex()]
+	return node.dial()
+}
+*/
 
 func (n *fcgiNode) fetchExchan() (*fcgiExchan, error) {
 	conn := n.pullConn()
@@ -364,7 +364,8 @@ func (n *fcgiNode) fetchExchan() (*fcgiExchan, error) {
 		if conn.isAlive() && !conn.reachLimit() && !down {
 			return conn.fetchExchan()
 		}
-		n.closeConn(conn)
+		conn.Close()
+		n.DecSub() // conn
 	}
 	if down {
 		return nil, errNodeDown
@@ -378,7 +379,7 @@ func (n *fcgiNode) fetchExchan() (*fcgiExchan, error) {
 	if err != nil {
 		return nil, errNodeDown
 	}
-	n.IncSub()
+	n.IncSub() // conn
 	return conn.fetchExchan()
 }
 func (n *fcgiNode) storeExchan(exchan *fcgiExchan) {
@@ -386,7 +387,8 @@ func (n *fcgiNode) storeExchan(exchan *fcgiExchan) {
 	conn.storeExchan(exchan)
 
 	if conn.isBroken() || n.isDown() || !conn.isAlive() || !conn.persistent {
-		n.closeConn(conn)
+		conn.Close()
+		n.DecSub() // conn
 	} else {
 		n.pushConn(conn)
 	}
@@ -408,7 +410,7 @@ func (n *fcgiNode) dial() (*fcgiConn, error) {
 	if err != nil {
 		return nil, errNodeDown
 	}
-	n.IncSub()
+	n.IncSub() // conn
 	return fConn, err
 }
 func (n *fcgiNode) _dialUDS() (*fcgiConn, error) {
@@ -447,36 +449,6 @@ func (n *fcgiNode) _dialTCP() (*fcgiConn, error) {
 	}
 	return getFCGIConn(connID, n, netConn, rawConn), nil
 }
-
-/*
-func (n *fcgiNode) fetchConn() (*fcgiConn, error) {
-	fConn := n.pullConn()
-	down := n.isDown()
-	if fConn != nil {
-		if fConn.isAlive() && !fConn.reachLimit() && !down {
-			return fConn, nil
-		}
-		n.closeConn(fConn)
-	}
-	if down {
-		return nil, errNodeDown
-	}
-	return n.dial()
-}
-func (n *fcgiNode) storeConn(fConn *fcgiConn) {
-	if fConn.IsBroken() || n.isDown() || !fConn.isAlive() {
-		if DebugLevel() >= 2 {
-			Printf("fcgiConn[node=%s id=%d] closed\n", fConn.node.Name(), fConn.id)
-		}
-		n.closeConn(fConn)
-	} else {
-		if DebugLevel() >= 2 {
-			Printf("fcgiConn[node=%s id=%d] pushed\n", fConn.node.Name(), fConn.id)
-		}
-		n.pushConn(fConn)
-	}
-}
-*/
 
 func (n *fcgiNode) pullConn() *fcgiConn {
 	list := &n.connPool
@@ -554,7 +526,7 @@ type fcgiConn struct {
 	BackendConn_
 	// Assocs
 	next   *fcgiConn  // the linked-list
-	exchan fcgiExchan // a fcgi connection has exactly one stream
+	exchan fcgiExchan // an fcgi connection has exactly one stream
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)

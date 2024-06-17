@@ -39,7 +39,7 @@ func (r *wrapReviser) onCreate(name string, stage *Stage, webapp *Webapp) {
 	r.webapp = webapp
 }
 func (r *wrapReviser) OnShutdown() {
-	r.webapp.DecSub()
+	r.webapp.DecSub() // reviser
 }
 
 func (r *wrapReviser) OnConfigure() {

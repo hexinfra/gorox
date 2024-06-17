@@ -52,7 +52,7 @@ func (c *memCacher) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("memCacher=%s done\n", c.Name())
 	}
-	c.stage.DecSub()
+	c.stage.DecSub() // cacher
 }
 
 func (c *memCacher) Set(key []byte, hobject *Hobject) {

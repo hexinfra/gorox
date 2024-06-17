@@ -166,7 +166,7 @@ type Component interface {
 	Name() string
 
 	OnShutdown()
-	DecSub() // called by sub components of this component
+	DecSub() // called by sub components or objects of this component
 
 	OnConfigure()
 	Find(name string) (value Value, ok bool)
@@ -203,7 +203,7 @@ type Component_ struct {
 	name     string           // main, proxy1, ...
 	props    map[string]Value // name1=value1, ...
 	info     any              // extra info about this component, used by config
-	subs     sync.WaitGroup   // sub components to wait for
+	subs     sync.WaitGroup   // sub components or objects to wait for
 	ShutChan chan struct{}    // used to notify shutdown
 }
 
@@ -282,10 +282,11 @@ func _configureProp[T any](c *Component_, name string, prop *T, conv func(*Value
 	}
 }
 
-func (c *Component_) IncSub()        { c.subs.Add(1) }
-func (c *Component_) SubsAddn(n int) { c.subs.Add(n) }
-func (c *Component_) WaitSubs()      { c.subs.Wait() }
-func (c *Component_) DecSub()        { c.subs.Done() }
+func (c *Component_) IncSub()       { c.subs.Add(1) }
+func (c *Component_) IncSubs(n int) { c.subs.Add(n) }
+func (c *Component_) WaitSubs()     { c.subs.Wait() }
+func (c *Component_) DecSub()       { c.subs.Done() }
+func (c *Component_) DecSubs(n int) { c.subs.Add(-n) }
 
 func (c *Component_) Loop(interval time.Duration, callback func(now time.Time)) {
 	ticker := time.NewTicker(interval)
@@ -403,50 +404,50 @@ func (s *Stage) OnShutdown() {
 	}
 
 	// cronjobs
-	s.SubsAddn(len(s.cronjobs))
+	s.IncSubs(len(s.cronjobs))
 	s.cronjobs.goWalk(Cronjob.OnShutdown)
 	s.WaitSubs()
 
 	// servers
-	s.SubsAddn(len(s.servers))
+	s.IncSubs(len(s.servers))
 	s.servers.goWalk(Server.OnShutdown)
 	s.WaitSubs()
 
 	// webapps & services
-	s.SubsAddn(len(s.webapps) + len(s.services))
+	s.IncSubs(len(s.webapps) + len(s.services))
 	s.webapps.goWalk((*Webapp).OnShutdown)
 	s.services.goWalk((*Service).OnShutdown)
 	s.WaitSubs()
 
 	// cachers & staters
-	s.SubsAddn(len(s.cachers) + len(s.staters))
+	s.IncSubs(len(s.cachers) + len(s.staters))
 	s.cachers.goWalk(Cacher.OnShutdown)
 	s.staters.goWalk(Stater.OnShutdown)
 	s.WaitSubs()
 
 	// routers
-	s.SubsAddn(len(s.udpxRouters) + len(s.tcpxRouters) + len(s.quixRouters))
+	s.IncSubs(len(s.udpxRouters) + len(s.tcpxRouters) + len(s.quixRouters))
 	s.udpxRouters.goWalk((*UDPXRouter).OnShutdown)
 	s.tcpxRouters.goWalk((*TCPXRouter).OnShutdown)
 	s.quixRouters.goWalk((*QUIXRouter).OnShutdown)
 	s.WaitSubs()
 
 	// backends
-	s.SubsAddn(len(s.backends))
+	s.IncSubs(len(s.backends))
 	s.backends.goWalk(Backend.OnShutdown)
 	s.WaitSubs()
 
 	// fixtures, manually one by one
 
-	s.IncSub()
+	s.IncSub() // fcache
 	s.fcache.OnShutdown()
 	s.WaitSubs()
 
-	s.IncSub()
+	s.IncSub() // resolv
 	s.resolv.OnShutdown()
 	s.WaitSubs()
 
-	s.IncSub()
+	s.IncSub() // clock
 	s.clock.OnShutdown()
 	s.WaitSubs()
 

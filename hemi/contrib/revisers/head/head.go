@@ -40,7 +40,7 @@ func (r *headReviser) onCreate(name string, stage *Stage, webapp *Webapp) {
 	r.webapp = webapp
 }
 func (r *headReviser) OnShutdown() {
-	r.webapp.DecSub()
+	r.webapp.DecSub() // reviser
 }
 
 func (r *headReviser) OnConfigure() {

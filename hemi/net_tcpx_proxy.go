@@ -32,7 +32,7 @@ func (d *tcpxProxy) onCreate(name string, stage *Stage, router *TCPXRouter) {
 	d.router = router
 }
 func (d *tcpxProxy) OnShutdown() {
-	d.router.DecSub()
+	d.router.DecSub() // dealet
 }
 
 func (d *tcpxProxy) OnConfigure() {

@@ -63,7 +63,7 @@ func (s *localStater) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("localStater=%s done\n", s.Name())
 	}
-	s.stage.DecSub()
+	s.stage.DecSub() // stater
 }
 
 func (s *localStater) Set(sid []byte, session *Session) {

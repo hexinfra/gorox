@@ -39,7 +39,7 @@ func (h *forumsHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *forumsHandlet) OnShutdown() {
-	h.webapp.DecSub()
+	h.webapp.DecSub() // handlet
 }
 
 func (h *forumsHandlet) OnConfigure() {

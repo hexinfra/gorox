@@ -22,8 +22,8 @@ type Service struct {
 	servers []*hrpcServer // bound hrpc servers. may be empty
 	// States
 	hostnames       [][]byte           // ...
-	accessLog       *logcfg            // ...
-	logger          *logger            // service access logger
+	accessLog       *LogConfig         // ...
+	logger          *Logger            // service access logger
 	maxContentSize  int64              // max content size allowed
 	exactHostnames  [][]byte           // like: ("example.com")
 	suffixHostnames [][]byte           // like: ("*.example.com")
@@ -63,7 +63,7 @@ func (s *Service) OnConfigure() {
 }
 func (s *Service) OnPrepare() {
 	if s.accessLog != nil {
-		//s.logger = newLogger(s.accessLog.logFile, s.accessLog.rotate)
+		//s.logger = NewLogger(s.accessLog.logFile, s.accessLog.rotate)
 	}
 
 	initsLock.RLock()
@@ -102,7 +102,7 @@ func (s *Service) maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("service=%s done\n", s.Name())
 	}
-	s.stage.DecSub()
+	s.stage.DecSub() // service
 }
 
 /*

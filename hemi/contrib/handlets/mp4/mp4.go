@@ -35,7 +35,7 @@ func (h *mp4Handlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *mp4Handlet) OnShutdown() {
-	h.webapp.DecSub()
+	h.webapp.DecSub() // handlet
 }
 
 func (h *mp4Handlet) OnConfigure() {

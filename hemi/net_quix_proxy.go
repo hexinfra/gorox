@@ -32,7 +32,7 @@ func (d *quixProxy) onCreate(name string, stage *Stage, router *QUIXRouter) {
 	d.router = router
 }
 func (d *quixProxy) OnShutdown() {
-	d.router.DecSub()
+	d.router.DecSub() // dealet
 }
 
 func (d *quixProxy) OnConfigure() {

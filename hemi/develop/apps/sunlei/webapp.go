@@ -38,7 +38,7 @@ func (h *sunleiHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *sunleiHandlet) OnShutdown() {
-	h.webapp.DecSub()
+	h.webapp.DecSub() // handlet
 }
 
 func (h *sunleiHandlet) OnConfigure() {

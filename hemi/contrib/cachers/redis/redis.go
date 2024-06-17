@@ -55,7 +55,7 @@ func (c *redisCacher) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("redisCacher=%s done\n", c.Name())
 	}
-	c.stage.DecSub()
+	c.stage.DecSub() // cacher
 }
 
 func (c *redisCacher) Set(key []byte, hobject *Hobject) {

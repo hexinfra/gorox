@@ -50,7 +50,7 @@ func (h *refererChecker) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *refererChecker) OnShutdown() {
-	h.webapp.DecSub()
+	h.webapp.DecSub() // handlet
 }
 
 func (h *refererChecker) OnConfigure() {

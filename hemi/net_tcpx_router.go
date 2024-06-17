@@ -29,8 +29,8 @@ type TCPXRouter struct {
 	dealets compDict[TCPXDealet] // defined dealets. indexed by name
 	cases   compList[*tcpxCase]  // defined cases. the order must be kept, so we use list. TODO: use ordered map?
 	// States
-	accessLog *logcfg // ...
-	logger    *logger // router access logger
+	accessLog *LogConfig // ...
+	logger    *Logger    // router access logger
 }
 
 func (r *TCPXRouter) onCreate(name string, stage *Stage) {
@@ -55,7 +55,7 @@ func (r *TCPXRouter) OnPrepare() {
 
 	// accessLog, TODO
 	if r.accessLog != nil {
-		//r.logger = newLogger(r.accessLog.logFile, r.accessLog.rotate)
+		//r.logger = NewLogger(r.accessLog.logFile, r.accessLog.rotate)
 	}
 
 	// sub components
@@ -112,7 +112,7 @@ func (r *TCPXRouter) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		r.AddGate(gate)
-		r.IncSub()
+		r.IncSub() // gate
 		if r.IsTLS() {
 			go gate.serveTLS()
 		} else if r.IsUDS() {
@@ -123,7 +123,7 @@ func (r *TCPXRouter) Serve() { // runner
 	}
 	r.WaitSubs() // gates
 
-	r.SubsAddn(len(r.dealets) + len(r.cases))
+	r.IncSubs(len(r.dealets) + len(r.cases))
 	r.cases.walk((*tcpxCase).OnShutdown)
 	r.dealets.walk(TCPXDealet.OnShutdown)
 	r.WaitSubs() // dealets, cases
@@ -134,7 +134,7 @@ func (r *TCPXRouter) Serve() { // runner
 	if DebugLevel() >= 2 {
 		Printf("tcpxRouter=%s done\n", r.Name())
 	}
-	r.stage.DecSub()
+	r.stage.DecSub() // router
 }
 
 func (r *TCPXRouter) dispatch(conn *TCPXConn) {
@@ -215,7 +215,7 @@ func (g *tcpxGate) serveTLS() { // runner
 				continue
 			}
 		}
-		g.IncSub()
+		g.IncSub() // conn
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {
@@ -233,7 +233,7 @@ func (g *tcpxGate) serveTLS() { // runner
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TLS done\n", g.id)
 	}
-	g.router.DecSub()
+	g.router.DecSub() // gate
 }
 func (g *tcpxGate) serveUDS() { // runner
 	listener := g.listener.(*net.UnixListener)
@@ -247,7 +247,7 @@ func (g *tcpxGate) serveUDS() { // runner
 				continue
 			}
 		}
-		g.IncSub()
+		g.IncSub() // conn
 		if g.ReachLimit() {
 			g.justClose(unixConn)
 		} else {
@@ -265,7 +265,7 @@ func (g *tcpxGate) serveUDS() { // runner
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TCP done\n", g.id)
 	}
-	g.router.DecSub()
+	g.router.DecSub() // gate
 }
 func (g *tcpxGate) serveTCP() { // runner
 	listener := g.listener.(*net.TCPListener)
@@ -279,7 +279,7 @@ func (g *tcpxGate) serveTCP() { // runner
 				continue
 			}
 		}
-		g.IncSub()
+		g.IncSub() // conn
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {
@@ -300,7 +300,7 @@ func (g *tcpxGate) serveTCP() { // runner
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TCP done\n", g.id)
 	}
-	g.router.DecSub()
+	g.router.DecSub() // gate
 }
 
 func (g *tcpxGate) justClose(netConn net.Conn) {
@@ -461,7 +461,7 @@ func (c *tcpxCase) onCreate(name string, router *TCPXRouter) {
 	c.router = router
 }
 func (c *tcpxCase) OnShutdown() {
-	c.router.DecSub()
+	c.router.DecSub() // case
 }
 
 func (c *tcpxCase) OnConfigure() {

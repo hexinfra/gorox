@@ -38,7 +38,7 @@ func (h *fengveHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *fengveHandlet) OnShutdown() {
-	h.webapp.DecSub()
+	h.webapp.DecSub() // handlet
 }
 
 func (h *fengveHandlet) OnConfigure() {

@@ -83,7 +83,7 @@ func (f *clockFixture) run() { // runner
 	if DebugLevel() >= 2 {
 		Println("clock done")
 	}
-	f.stage.DecSub()
+	f.stage.DecSub() // clock
 }
 
 func (f *clockFixture) writeDate1(p []byte) int {
@@ -443,7 +443,7 @@ func (f *fcacheFixture) run() { // runner
 	if DebugLevel() >= 2 {
 		Println("fcache done")
 	}
-	f.stage.DecSub()
+	f.stage.DecSub() // fcache
 }
 
 func (f *fcacheFixture) getEntry(path []byte) (*fcacheEntry, error) {
@@ -583,7 +583,7 @@ func (f *resolvFixture) run() { // runner
 	if DebugLevel() >= 2 {
 		Println("resolv done")
 	}
-	f.stage.DecSub()
+	f.stage.DecSub() // resolv
 }
 
 func (f *resolvFixture) Register(name string, addresses []string) bool {

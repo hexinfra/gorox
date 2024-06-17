@@ -37,7 +37,7 @@ func (d *redisProxy) onCreate(name string, stage *Stage, router *TCPXRouter) {
 	d.router = router
 }
 func (d *redisProxy) OnShutdown() {
-	d.router.DecSub()
+	d.router.DecSub() // dealet
 }
 
 func (d *redisProxy) OnConfigure() {

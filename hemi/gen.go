@@ -255,16 +255,16 @@ func (s *_contentSaver_) onPrepare(component Component, perm os.FileMode) {
 
 func (s *_contentSaver_) SaveContentFilesDir() string { return s.saveContentFilesDir } // must ends with '/'
 
-// logcfg
-type logcfg struct {
+// LogConfig
+type LogConfig struct {
 	logFile string
 	rotate  string
 	format  string
 	bufSize int
 }
 
-// logger is logger for routers, services, and webapps.
-type logger struct {
+// Logger is logger for routers, services, and webapps.
+type Logger struct {
 	file   *os.File
 	queue  chan string
 	buffer []byte
@@ -272,12 +272,12 @@ type logger struct {
 	used   int
 }
 
-func newLogger(logFile string) (*logger, error) {
+func NewLogger(logFile string) (*Logger, error) {
 	file, err := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE, 0700)
 	if err != nil {
 		return nil, err
 	}
-	l := new(logger)
+	l := new(Logger)
 	l.file = file
 	l.queue = make(chan string)
 	l.buffer = make([]byte, 1048576)
@@ -287,25 +287,25 @@ func newLogger(logFile string) (*logger, error) {
 	return l, nil
 }
 
-func (l *logger) Log(v ...any) {
+func (l *Logger) Log(v ...any) {
 	if s := fmt.Sprint(v...); s != "" {
 		l.queue <- s
 	}
 }
-func (l *logger) Logln(v ...any) {
+func (l *Logger) Logln(v ...any) {
 	if s := fmt.Sprintln(v...); s != "" {
 		l.queue <- s
 	}
 }
-func (l *logger) Logf(f string, v ...any) {
+func (l *Logger) Logf(f string, v ...any) {
 	if s := fmt.Sprintf(f, v...); s != "" {
 		l.queue <- s
 	}
 }
 
-func (l *logger) Close() { l.queue <- "" }
+func (l *Logger) Close() { l.queue <- "" }
 
-func (l *logger) saver() { // runner
+func (l *Logger) saver() { // runner
 	for {
 		s := <-l.queue
 		if s == "" {
@@ -330,7 +330,7 @@ over:
 	l.clear()
 	l.file.Close()
 }
-func (l *logger) write(s string) {
+func (l *Logger) write(s string) {
 	n := len(s)
 	if n >= l.size {
 		l.clear()
@@ -347,10 +347,10 @@ func (l *logger) write(s string) {
 		}
 	}
 }
-func (l *logger) clear() {
+func (l *Logger) clear() {
 	if l.used > 0 {
 		l.flush(l.buffer[:l.used])
 		l.used = 0
 	}
 }
-func (l *logger) flush(p []byte) { l.file.Write(p) }
+func (l *Logger) flush(p []byte) { l.file.Write(p) }

@@ -55,7 +55,7 @@ func (s *redisStater) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("redisStater=%s done\n", s.Name())
 	}
-	s.stage.DecSub()
+	s.stage.DecSub() // stater
 }
 
 func (s *redisStater) Set(sid []byte, session *Session) {

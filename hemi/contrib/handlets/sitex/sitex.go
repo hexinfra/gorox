@@ -45,7 +45,7 @@ func (h *Sitex) OnCreate(name string, stage *Stage, webapp *Webapp) {
 	h.sites = make(map[string]*Site)
 }
 func (h *Sitex) OnShutdown() {
-	h.webapp.DecSub()
+	h.webapp.DecSub() // handlet
 }
 
 func (h *Sitex) OnConfigure() {

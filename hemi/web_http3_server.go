@@ -53,14 +53,14 @@ func (s *http3Server) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		s.AddGate(gate)
-		s.IncSub()
+		s.IncSub() // gate
 		go gate.serve()
 	}
 	s.WaitSubs() // gates
 	if DebugLevel() >= 2 {
 		Printf("http3Server=%s done\n", s.Name())
 	}
-	s.stage.DecSub()
+	s.stage.DecSub() // server
 }
 
 // http3Gate is a gate of http3Server.
@@ -107,7 +107,7 @@ func (g *http3Gate) serve() { // runner
 				continue
 			}
 		}
-		g.IncSub()
+		g.IncSub() // conn
 		if g.ReachLimit() {
 			g.justClose(quicConn)
 		} else {
@@ -120,7 +120,7 @@ func (g *http3Gate) serve() { // runner
 	if DebugLevel() >= 2 {
 		Printf("http3Gate=%d done\n", g.id)
 	}
-	g.server.DecSub()
+	g.server.DecSub() // gate
 }
 
 func (g *http3Gate) justClose(quicConn *quic.Conn) {

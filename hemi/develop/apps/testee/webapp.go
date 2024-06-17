@@ -38,7 +38,7 @@ func (h *testeeHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *testeeHandlet) OnShutdown() {
-	h.webapp.DecSub()
+	h.webapp.DecSub() // handlet
 }
 
 func (h *testeeHandlet) OnConfigure() {

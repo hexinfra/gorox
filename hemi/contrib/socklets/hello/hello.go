@@ -35,7 +35,7 @@ func (s *helloSocklet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	s.webapp = webapp
 }
 func (s *helloSocklet) OnShutdown() {
-	s.webapp.DecSub()
+	s.webapp.DecSub() // socklet
 }
 
 func (s *helloSocklet) OnConfigure() {

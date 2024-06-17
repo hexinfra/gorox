@@ -3166,8 +3166,8 @@ type Webapp struct {
 	text404         []byte            // bytes of the default 404 file
 	tlsCertificate  string            // tls certificate file, in pem format
 	tlsPrivateKey   string            // tls private key file, in pem format
-	accessLog       *logcfg           // ...
-	logger          *logger           // webapp access logger
+	accessLog       *LogConfig        // ...
+	logger          *Logger           // webapp access logger
 	maxUpfileSize   int64             // max content size that uploads files through multipart/form-data
 	settings        map[string]string // webapp settings defined and used by users
 	settingsLock    sync.RWMutex      // protects settings
@@ -3301,7 +3301,7 @@ func (a *Webapp) OnConfigure() {
 }
 func (a *Webapp) OnPrepare() {
 	if a.accessLog != nil {
-		//a.logger = newLogger(a.accessLog.logFile, a.accessLog.rotate)
+		//a.logger = NewLogger(a.accessLog.logFile, a.accessLog.rotate)
 	}
 	if a.file404 != "" {
 		if data, err := os.ReadFile(a.file404); err == nil {
@@ -3334,7 +3334,7 @@ func (a *Webapp) maintain() { // runner
 		// TODO
 	})
 
-	a.SubsAddn(len(a.handlets) + len(a.revisers) + len(a.socklets) + len(a.rules))
+	a.IncSubs(len(a.handlets) + len(a.revisers) + len(a.socklets) + len(a.rules))
 	a.rules.goWalk((*Rule).OnShutdown)
 	a.socklets.goWalk(Socklet.OnShutdown)
 	a.revisers.goWalk(Reviser.OnShutdown)
@@ -3347,7 +3347,7 @@ func (a *Webapp) maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("webapp=%s done\n", a.Name())
 	}
-	a.stage.DecSub()
+	a.stage.DecSub() // webapp
 }
 
 func (a *Webapp) createHandlet(sign string, name string) Handlet {
@@ -3515,7 +3515,7 @@ func (r *Rule) onCreate(name string, webapp *Webapp) {
 	r.webapp = webapp
 }
 func (r *Rule) OnShutdown() {
-	r.webapp.DecSub()
+	r.webapp.DecSub() // rule
 }
 
 func (r *Rule) OnConfigure() {
@@ -3935,7 +3935,7 @@ func (h *staticHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *staticHandlet) OnShutdown() {
-	h.webapp.DecSub()
+	h.webapp.DecSub() // handlet
 }
 
 func (h *staticHandlet) OnConfigure() {

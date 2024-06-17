@@ -108,11 +108,11 @@ func (n *quixNode) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("quixNode=%s done\n", n.name)
 	}
-	n.backend.DecSub()
+	n.backend.DecSub() // node
 }
 
 func (n *quixNode) dial() (*QConn, error) {
-	// TODO. note: use n.IncSub()
+	// TODO. note: use n.IncSub()?
 	return nil, nil
 }
 

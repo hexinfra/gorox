@@ -87,13 +87,14 @@ func (n *tcpxNode) Maintain() { // runner
 		// TODO: health check, markDown, markUp()
 	})
 	n.markDown()
+	n.WaitSubs() // conns. TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("tcpxNode=%s done\n", n.name)
 	}
-	n.backend.DecSub()
+	n.backend.DecSub() // node
 }
 
-func (n *tcpxNode) dial() (*TConn, error) { // some protocols don't support or need connection reusing, just dial & tConn.close.
+func (n *tcpxNode) dial() (*TConn, error) {
 	if DebugLevel() >= 2 {
 		Printf("tcpxNode=%s dial %s\n", n.name, n.address)
 	}
@@ -111,6 +112,7 @@ func (n *tcpxNode) dial() (*TConn, error) { // some protocols don't support or n
 	if err != nil {
 		return nil, errNodeDown
 	}
+	n.IncSub() // conn
 	return tConn, err
 }
 func (n *tcpxNode) _dialTLS() (*TConn, error) {
@@ -311,6 +313,7 @@ func (c *TConn) CloseWrite() error {
 }
 
 func (c *TConn) Close() error {
+	c.node.DecSub() // conn
 	netConn := c.netConn
 	putTConn(c)
 	return netConn.Close()

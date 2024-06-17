@@ -37,7 +37,7 @@ func (d *mongoProxy) onCreate(name string, stage *Stage, router *TCPXRouter) {
 	d.router = router
 }
 func (d *mongoProxy) OnShutdown() {
-	d.router.DecSub()
+	d.router.DecSub() // dealet
 }
 
 func (d *mongoProxy) OnConfigure() {

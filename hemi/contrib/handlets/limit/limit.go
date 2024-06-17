@@ -35,7 +35,7 @@ func (h *limitChecker) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.webapp = webapp
 }
 func (h *limitChecker) OnShutdown() {
-	h.webapp.DecSub()
+	h.webapp.DecSub() // handlet
 }
 
 func (h *limitChecker) OnConfigure() {

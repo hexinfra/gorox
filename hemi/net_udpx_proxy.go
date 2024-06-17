@@ -32,7 +32,7 @@ func (d *udpxProxy) onCreate(name string, stage *Stage, router *UDPXRouter) {
 	d.router = router
 }
 func (d *udpxProxy) OnShutdown() {
-	d.router.DecSub()
+	d.router.DecSub() // dealet
 }
 
 func (d *udpxProxy) OnConfigure() {

@@ -23,8 +23,8 @@ type QUIXRouter struct {
 	dealets compDict[QUIXDealet] // defined dealets. indexed by name
 	cases   compList[*quixCase]  // defined cases. the order must be kept, so we use list. TODO: use ordered map?
 	// States
-	accessLog *logcfg // ...
-	logger    *logger // router access logger
+	accessLog *LogConfig // ...
+	logger    *Logger    // router access logger
 }
 
 func (r *QUIXRouter) onCreate(name string, stage *Stage) {
@@ -47,7 +47,7 @@ func (r *QUIXRouter) OnPrepare() {
 
 	// accessLog, TODO
 	if r.accessLog != nil {
-		//r.logger = newLogger(r.accessLog.logFile, r.accessLog.rotate)
+		//r.logger = NewLogger(r.accessLog.logFile, r.accessLog.rotate)
 	}
 
 	// sub components
@@ -104,12 +104,12 @@ func (r *QUIXRouter) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		r.AddGate(gate)
-		r.IncSub()
+		r.IncSub() // gate
 		go gate.serve()
 	}
 	r.WaitSubs() // gates
 
-	r.SubsAddn(len(r.dealets) + len(r.cases))
+	r.IncSubs(len(r.dealets) + len(r.cases))
 	r.cases.walk((*quixCase).OnShutdown)
 	r.dealets.walk(QUIXDealet.OnShutdown)
 	r.WaitSubs() // dealets, cases
@@ -120,7 +120,7 @@ func (r *QUIXRouter) Serve() { // runner
 	if DebugLevel() >= 2 {
 		Printf("quixRouter=%s done\n", r.Name())
 	}
-	r.stage.DecSub()
+	r.stage.DecSub() // router
 }
 
 func (r *QUIXRouter) dispatch(conn *QUIXConn) {
@@ -169,7 +169,7 @@ func (g *quixGate) serve() { // runner
 	for !g.IsShut() {
 		time.Sleep(time.Second)
 	}
-	g.router.DecSub()
+	g.router.DecSub() // gate
 }
 
 func (g *quixGate) justClose(quicConn *quic.Conn) {
@@ -291,7 +291,7 @@ func (c *quixCase) onCreate(name string, router *QUIXRouter) {
 	c.router = router
 }
 func (c *quixCase) OnShutdown() {
-	c.router.DecSub()
+	c.router.DecSub() // case
 }
 
 func (c *quixCase) OnConfigure() {

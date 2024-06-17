@@ -52,5 +52,5 @@ func (j *statCronjob) Schedule() { // runner
 	if DebugLevel() >= 2 {
 		Printf("statCronjob=%s done\n", j.Name())
 	}
-	j.stage.DecSub()
+	j.stage.DecSub() // cronjob
 }

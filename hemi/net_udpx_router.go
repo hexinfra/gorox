@@ -23,8 +23,8 @@ type UDPXRouter struct {
 	dealets compDict[UDPXDealet] // defined dealets. indexed by name
 	cases   compList[*udpxCase]  // defined cases. the order must be kept, so we use list. TODO: use ordered map?
 	// States
-	accessLog *logcfg // ...
-	logger    *logger // router access logger
+	accessLog *LogConfig // ...
+	logger    *Logger    // router access logger
 }
 
 func (r *UDPXRouter) onCreate(name string, stage *Stage) {
@@ -49,7 +49,7 @@ func (r *UDPXRouter) OnPrepare() {
 
 	// accessLog, TODO
 	if r.accessLog != nil {
-		//r.logger = newLogger(r.accessLog.logFile, r.accessLog.rotate)
+		//r.logger = NewLogger(r.accessLog.logFile, r.accessLog.rotate)
 	}
 
 	// sub components
@@ -106,7 +106,7 @@ func (r *UDPXRouter) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		r.AddGate(gate)
-		r.IncSub()
+		r.IncSub() // gate
 		if r.IsTLS() {
 			go gate.serveTLS()
 		} else if r.IsUDS() {
@@ -117,7 +117,7 @@ func (r *UDPXRouter) Serve() { // runner
 	}
 	r.WaitSubs() // gates
 
-	r.SubsAddn(len(r.dealets) + len(r.cases))
+	r.IncSubs(len(r.dealets) + len(r.cases))
 	r.cases.walk((*udpxCase).OnShutdown)
 	r.dealets.walk(UDPXDealet.OnShutdown)
 	r.WaitSubs() // dealets, cases
@@ -128,7 +128,7 @@ func (r *UDPXRouter) Serve() { // runner
 	if DebugLevel() >= 2 {
 		Printf("udpxRouter=%s done\n", r.Name())
 	}
-	r.stage.DecSub()
+	r.stage.DecSub() // router
 }
 
 func (r *UDPXRouter) dispatch(conn *UDPXConn) {
@@ -184,7 +184,7 @@ func (g *udpxGate) serveTLS() { // runner
 	for !g.shut.Load() {
 		time.Sleep(time.Second)
 	}
-	g.router.DecSub()
+	g.router.DecSub() // gate
 }
 func (g *udpxGate) serveUDS() { // runner
 	// TODO
@@ -194,7 +194,7 @@ func (g *udpxGate) serveUDP() { // runner
 	for !g.shut.Load() {
 		time.Sleep(time.Second)
 	}
-	g.router.DecSub()
+	g.router.DecSub() // gate
 }
 
 func (g *udpxGate) justClose(pktConn net.PacketConn) {
@@ -312,7 +312,7 @@ func (c *udpxCase) onCreate(name string, router *UDPXRouter) {
 	c.router = router
 }
 func (c *udpxCase) OnShutdown() {
-	c.router.DecSub()
+	c.router.DecSub() // case
 }
 
 func (c *udpxCase) OnConfigure() {

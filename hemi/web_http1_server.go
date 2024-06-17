@@ -73,7 +73,7 @@ func (s *http1Server) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		s.AddGate(gate)
-		s.IncSub()
+		s.IncSub() // gate
 		if s.IsTLS() {
 			go gate.serveTLS()
 		} else if s.IsUDS() {
@@ -86,7 +86,7 @@ func (s *http1Server) Serve() { // runner
 	if DebugLevel() >= 2 {
 		Printf("http1Server=%s done\n", s.Name())
 	}
-	s.stage.DecSub()
+	s.stage.DecSub() // server
 }
 
 // http1Gate is a gate of http1Server.
@@ -165,7 +165,7 @@ func (g *http1Gate) serveTLS() { // runner
 				continue
 			}
 		}
-		g.IncSub()
+		g.IncSub() // conn
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {
@@ -188,7 +188,7 @@ func (g *http1Gate) serveTLS() { // runner
 	if DebugLevel() >= 2 {
 		Printf("http1Gate=%d TLS done\n", g.id)
 	}
-	g.server.DecSub()
+	g.server.DecSub() // gate
 }
 func (g *http1Gate) serveUDS() { // runner
 	listener := g.listener.(*net.UnixListener)
@@ -203,7 +203,7 @@ func (g *http1Gate) serveUDS() { // runner
 				continue
 			}
 		}
-		g.IncSub()
+		g.IncSub() // conn
 		if g.ReachLimit() {
 			g.justClose(unixConn)
 		} else {
@@ -222,7 +222,7 @@ func (g *http1Gate) serveUDS() { // runner
 	if DebugLevel() >= 2 {
 		Printf("http1Gate=%d TCP done\n", g.id)
 	}
-	g.server.DecSub()
+	g.server.DecSub() // gate
 }
 func (g *http1Gate) serveTCP() { // runner
 	listener := g.listener.(*net.TCPListener)
@@ -237,7 +237,7 @@ func (g *http1Gate) serveTCP() { // runner
 				continue
 			}
 		}
-		g.IncSub()
+		g.IncSub() // conn
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {
@@ -256,7 +256,7 @@ func (g *http1Gate) serveTCP() { // runner
 	if DebugLevel() >= 2 {
 		Printf("http1Gate=%d TCP done\n", g.id)
 	}
-	g.server.DecSub()
+	g.server.DecSub() // gate
 }
 
 func (g *http1Gate) justClose(netConn net.Conn) {

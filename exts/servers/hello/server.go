@@ -51,14 +51,14 @@ func (s *helloServer) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		s.AddGate(gate)
-		s.IncSub()
+		s.IncSub() // gate
 		go gate.serve()
 	}
 	s.WaitSubs() // gates
 	if DebugLevel() >= 2 {
 		Printf("helloServer=%s done\n", s.Name())
 	}
-	s.Stage().DecSub()
+	s.Stage().DecSub() // server
 }
 
 // helloGate
@@ -108,7 +108,7 @@ func (g *helloGate) serve() { // runner
 				continue
 			}
 		}
-		g.IncSub()
+		g.IncSub() // conn
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {
@@ -121,7 +121,7 @@ func (g *helloGate) serve() { // runner
 	if DebugLevel() >= 2 {
 		Printf("helloGate=%d done\n", g.ID())
 	}
-	g.Server().DecSub()
+	g.server.DecSub() // gate
 }
 
 func (g *helloGate) justClose(tcpConn *net.TCPConn) {
@@ -161,6 +161,7 @@ type helloConn struct {
 
 func (c *helloConn) onGet(id int64, gate *helloGate, tcpConn *net.TCPConn) {
 	c.ServerConn_.OnGet(id)
+
 	c.server = gate.server
 	c.gate = gate
 	c.tcpConn = tcpConn
@@ -169,6 +170,7 @@ func (c *helloConn) onPut() {
 	c.tcpConn = nil
 	c.server = nil
 	c.gate = nil
+
 	c.ServerConn_.OnPut()
 }
 

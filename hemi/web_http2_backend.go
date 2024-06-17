@@ -103,7 +103,7 @@ func (n *http2Node) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("http2Node=%s done\n", n.name)
 	}
-	n.backend.DecSub()
+	n.backend.DecSub() // node
 }
 
 func (n *http2Node) fetchStream() (backendStream, error) {

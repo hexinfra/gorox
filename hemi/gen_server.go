@@ -198,10 +198,11 @@ func (g *Gate_) ReachLimit() bool { return g.numConns.Add(1) > g.maxConns }
 
 func (g *Gate_) IncSub()   { g.subs.Add(1) }
 func (g *Gate_) WaitSubs() { g.subs.Wait() }
+func (g *Gate_) DecSub()   { g.subs.Done() }
 
 func (g *Gate_) OnConnClosed() {
 	g.DecConns()
-	g.subs.Done()
+	g.DecSub()
 }
 
 // ServerConn_ is the parent for server conns.

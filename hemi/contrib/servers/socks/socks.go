@@ -58,14 +58,14 @@ func (s *socksServer) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		s.AddGate(gate)
-		s.IncSub()
+		s.IncSub() // gate
 		go gate.serve()
 	}
 	s.WaitSubs() // gates
 	if DebugLevel() >= 2 {
 		Printf("socksServer=%s done\n", s.Name())
 	}
-	s.Stage().DecSub()
+	s.Stage().DecSub() // server
 }
 
 // socksGate
@@ -115,7 +115,7 @@ func (g *socksGate) serve() { // runner
 				continue
 			}
 		}
-		g.IncSub()
+		g.IncSub() // conn
 		if g.ReachLimit() {
 			g.justClose(tcpConn)
 		} else {
@@ -128,7 +128,7 @@ func (g *socksGate) serve() { // runner
 	if DebugLevel() >= 2 {
 		Printf("socksGate=%d done\n", g.ID())
 	}
-	g.Server().DecSub()
+	g.server.DecSub() // gate
 }
 
 func (g *socksGate) justClose(tcpConn *net.TCPConn) {

@@ -100,7 +100,7 @@ func (n *redisNode) fetchConn() (*RedisConn, error) {
 func (n *redisNode) storeConn(redisConn *RedisConn) {
 }
 
-func (n *redisNode) closeConn(redisConn *RedisConn) { // TODO: use Node_.closeConn?
+func (n *redisNode) closeConn(redisConn *RedisConn) {
 }
 
 var poolRedisConn sync.Pool

@@ -58,10 +58,10 @@ func (s *httpxServer) OnPrepare() {
 	if s.IsTLS() {
 		var nextProtos []string
 		switch s.httpMode {
-		case httpModeHTTP1:
-			nextProtos = []string{"http/1.1"}
 		case httpModeHTTP2:
 			nextProtos = []string{"h2"}
+		case httpModeHTTP1:
+			nextProtos = []string{"http/1.1"}
 		default:
 			nextProtos = []string{"h2", "http/1.1"}
 		}

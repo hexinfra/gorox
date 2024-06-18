@@ -40,11 +40,11 @@ The logical architecture of a stage in Hemi engine looks like this:
    |     | e | [tcpx] | <gate><conn> |  <gate><conn>   |     |
    |     | r | [udpx] +--------------+-----------------+     |
    |     | v | router |              |webapp(*) handlet|     |
-   |     | e |        |  service(*)  | socklet reviser |     |
-   |     | r | dealet |              |     rule        |     |
-   |     |(*)|  case  |          +---+--+       +------+     |
-   |     |   |        |          |stater|       |cacher|     |
-   |     +---+--------+----------+------+-------+------+     |
+   |     | e |        |              | socklet reviser |     |
+   |     | r | dealet |  service(*)  |      rule       |     |
+   |     |(*)|  case  |              +------+   +------+     |
+   |     |   |        |              |stater|   |cacher|     |
+   |     +---+--------+--------------+------+---+------+     |
    |     |                  backend                    |     |
    |     |                   node                      |     |
    |     |                  <conn>                     |     |

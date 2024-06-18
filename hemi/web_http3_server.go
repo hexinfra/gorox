@@ -200,8 +200,6 @@ func (c *server3Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *server3Conn) HTTPServer() HTTPServer { return c.server }
-
 func (c *server3Conn) serve() { // runner
 	// TODO
 	// use go c.receive()?
@@ -304,7 +302,7 @@ func (s *server3Stream) executeSocket() { // see RFC 9220
 	// TODO
 }
 
-func (s *server3Stream) httpServend() httpServend { return s.conn.HTTPServer() }
+func (s *server3Stream) httpServend() httpServend { return s.conn.server }
 func (s *server3Stream) httpConn() httpConn       { return s.conn }
 func (s *server3Stream) remoteAddr() net.Addr     { return nil } // TODO
 

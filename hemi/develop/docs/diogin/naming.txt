@@ -34,5 +34,5 @@ COMPONENTS
       reviser (gzip, head, ...)
       socklet (hello, ...)
       rule [*]
-    server (http1Server, http3Server, echoServer, ...)
+    server (httpxServer, http3Server, echoServer, ...)
     cronjob (clean, stat, ...)

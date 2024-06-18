@@ -40,7 +40,7 @@ const ( // list of components
 	compReviser               // gzipReviser, wrapReviser, ...
 	compSocklet               // helloSocklet, ...
 	compRule                  // rule
-	compServer                // http1Server, hrpcServer, echoServer, ...
+	compServer                // httpxServer, hrpcServer, echoServer, ...
 	compCronjob               // cleanCronjob, statCronjob, ...
 )
 
@@ -916,72 +916,4 @@ func (s *Stage) Quit() {
 	if DebugLevel() >= 2 {
 		Printf("stage id=%d: quit.\n", s.id)
 	}
-}
-
-// fixture component.
-//
-// Fixtures only exist in internal, and are created by stage.
-// Some critical functions, like clock and resolv, are implemented as fixtures.
-//
-// Fixtures are singletons in stage.
-type fixture interface {
-	// Imports
-	Component
-	// Methods
-	run() // runner
-}
-
-// Stater component is the interface to storages of Web/RPC states.
-type Stater interface {
-	// Imports
-	Component
-	// Methods
-	Maintain() // runner
-	Set(sid []byte, session *Session)
-	Get(sid []byte) (session *Session)
-	Del(sid []byte) bool
-}
-
-// Stater_ is the parent for all staters.
-type Stater_ struct {
-	// Parent
-	Component_
-}
-
-// Session is a Web/RPC session in stater
-type Session struct {
-	// TODO
-	ID      [40]byte // session id
-	Secret  [40]byte // secret key
-	Created int64    // unix time
-	Expires int64    // unix time
-	Role    int8     // 0: default, >0: user defined values
-	Device  int8     // terminal device type
-	state1  int8     // user defined state1
-	state2  int8     // user defined state2
-	state3  int32    // user defined state3
-	states  map[string]string
-}
-
-func (s *Session) init() {
-	s.states = make(map[string]string)
-}
-
-func (s *Session) Get(name string) string        { return s.states[name] }
-func (s *Session) Set(name string, value string) { s.states[name] = value }
-func (s *Session) Del(name string)               { delete(s.states, name) }
-
-// Cronjob component
-type Cronjob interface {
-	// Imports
-	Component
-	// Methods
-	Schedule() // runner
-}
-
-// Cronjob_ is the parent for all cronjobs.
-type Cronjob_ struct {
-	// Parent
-	Component_
-	// States
 }

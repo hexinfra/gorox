@@ -25,7 +25,7 @@ To add a new Go webapp named "bar":
 
 You can also put your PHP webapps, Python webapps, and so on in this directory.
 
-In gorox, an http server (i.e. http1Server, http2Server, http3Server) can host
-many webapps, whereas a webapp can be bound to many http servers.
+In gorox, an http server (i.e. httpxServer, http3Server) can host many webapps,
+whereas a webapp can be bound to many http servers.
 
 For examples, see builtin webapps.

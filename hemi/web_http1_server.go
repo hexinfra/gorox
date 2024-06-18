@@ -11,263 +11,18 @@ package hemi
 
 import (
 	"bytes"
-	"context"
 	"crypto/tls"
 	"io"
 	"net"
-	"os"
 	"sync"
 	"syscall"
 	"time"
-
-	"github.com/hexinfra/gorox/hemi/library/system"
 )
-
-func init() {
-	RegisterServer("http1Server", func(name string, stage *Stage) Server {
-		s := new(http1Server)
-		s.onCreate(name, stage)
-		return s
-	})
-}
-
-// http1Server is the HTTP/1 server.
-type http1Server struct {
-	// Parent
-	httpServer_[*http1Gate]
-	// States
-	tlsEnableHTTP2 bool // enable switching to HTTP/2 for TLS?
-}
-
-func (s *http1Server) onCreate(name string, stage *Stage) {
-	s.httpServer_.onCreate(name, stage)
-}
-
-func (s *http1Server) OnConfigure() {
-	s.httpServer_.onConfigure()
-
-	if DebugLevel() >= 2 { // remove this condition after HTTP/2 server has been fully implemented
-		// tlsEnableHTTP2
-		s.ConfigureBool("tlsEnableHTTP2", &s.tlsEnableHTTP2, true)
-	}
-}
-func (s *http1Server) OnPrepare() {
-	s.httpServer_.onPrepare()
-
-	if s.IsTLS() {
-		var nextProtos []string
-		if s.tlsEnableHTTP2 {
-			nextProtos = []string{"h2", "http/1.1"}
-		} else {
-			nextProtos = []string{"http/1.1"}
-		}
-		s.tlsConfig.NextProtos = nextProtos
-	}
-}
-
-func (s *http1Server) Serve() { // runner
-	for id := int32(0); id < s.numGates; id++ {
-		gate := new(http1Gate)
-		gate.init(id, s)
-		if err := gate.Open(); err != nil {
-			EnvExitln(err.Error())
-		}
-		s.AddGate(gate)
-		s.IncSub() // gate
-		if s.IsTLS() {
-			go gate.serveTLS()
-		} else if s.IsUDS() {
-			go gate.serveUDS()
-		} else {
-			go gate.serveTCP()
-		}
-	}
-	s.WaitSubs() // gates
-	if DebugLevel() >= 2 {
-		Printf("http1Server=%s done\n", s.Name())
-	}
-	s.stage.DecSub() // server
-}
-
-// http1Gate is a gate of http1Server.
-type http1Gate struct {
-	// Parent
-	Gate_
-	// Assocs
-	server *http1Server
-	// States
-	listener net.Listener // the real gate. set after open
-}
-
-func (g *http1Gate) init(id int32, server *http1Server) {
-	g.Gate_.Init(id, server.MaxConnsPerGate())
-	g.server = server
-}
-
-func (g *http1Gate) Server() Server  { return g.server }
-func (g *http1Gate) Address() string { return g.server.Address() }
-func (g *http1Gate) IsTLS() bool     { return g.server.IsTLS() }
-func (g *http1Gate) IsUDS() bool     { return g.server.IsUDS() }
-
-func (g *http1Gate) Open() error {
-	if g.IsUDS() {
-		return g._openUnix()
-	} else {
-		return g._openInet()
-	}
-}
-func (g *http1Gate) _openUnix() error {
-	address := g.Address()
-	// UDS doesn't support SO_REUSEADDR or SO_REUSEPORT, so we have to remove it first.
-	// This affects graceful upgrading, maybe we can implement fd transfer in the future.
-	os.Remove(address)
-	listener, err := net.Listen("unix", address)
-	if err == nil {
-		g.listener = listener.(*net.UnixListener)
-		if DebugLevel() >= 1 {
-			Printf("http1Gate id=%d address=%s opened!\n", g.id, g.Address())
-		}
-	}
-	return err
-}
-func (g *http1Gate) _openInet() error {
-	listenConfig := new(net.ListenConfig)
-	listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
-		if err := system.SetReusePort(rawConn); err != nil {
-			return err
-		}
-		return system.SetDeferAccept(rawConn)
-	}
-	listener, err := listenConfig.Listen(context.Background(), "tcp", g.Address())
-	if err == nil {
-		g.listener = listener.(*net.TCPListener)
-		if DebugLevel() >= 1 {
-			Printf("http1Gate id=%d address=%s opened!\n", g.id, g.Address())
-		}
-	}
-	return err
-}
-func (g *http1Gate) Shut() error {
-	g.MarkShut()
-	return g.listener.Close() // breaks serve()
-}
-
-func (g *http1Gate) serveTLS() { // runner
-	listener := g.listener.(*net.TCPListener)
-	connID := int64(0)
-	for {
-		tcpConn, err := listener.AcceptTCP()
-		if err != nil {
-			if g.IsShut() {
-				break
-			} else {
-				//g.stage.Logf("http1Server[%s] http1Gate[%d]: accept error: %v\n", g.server.name, g.id, err)
-				continue
-			}
-		}
-		g.IncSub() // conn
-		if g.ReachLimit() {
-			g.justClose(tcpConn)
-		} else {
-			tlsConn := tls.Server(tcpConn, g.server.TLSConfig())
-			if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
-				g.justClose(tlsConn)
-				continue
-			}
-			if connState := tlsConn.ConnectionState(); connState.NegotiatedProtocol == "h2" {
-				serverConn := getServer2Conn(connID, g, tlsConn, nil)
-				go serverConn.serve() // serverConn is put to pool in serve()
-			} else {
-				serverConn := getServer1Conn(connID, g, tlsConn, nil)
-				go serverConn.serve() // serverConn is put to pool in serve()
-			}
-			connID++
-		}
-	}
-	g.WaitSubs() // conns. TODO: max timeout?
-	if DebugLevel() >= 2 {
-		Printf("http1Gate=%d TLS done\n", g.id)
-	}
-	g.server.DecSub() // gate
-}
-func (g *http1Gate) serveUDS() { // runner
-	listener := g.listener.(*net.UnixListener)
-	connID := int64(0)
-	for {
-		unixConn, err := listener.AcceptUnix()
-		if err != nil {
-			if g.IsShut() {
-				break
-			} else {
-				//g.stage.Logf("http1Server[%s] http1Gate[%d]: accept error: %v\n", g.server.name, g.id, err)
-				continue
-			}
-		}
-		g.IncSub() // conn
-		if g.ReachLimit() {
-			g.justClose(unixConn)
-		} else {
-			rawConn, err := unixConn.SyscallConn()
-			if err != nil {
-				g.justClose(unixConn)
-				//g.stage.Logf("http1Server[%s] http1Gate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
-				continue
-			}
-			serverConn := getServer1Conn(connID, g, unixConn, rawConn)
-			go serverConn.serve() // serverConn is put to pool in serve()
-			connID++
-		}
-	}
-	g.WaitSubs() // conns. TODO: max timeout?
-	if DebugLevel() >= 2 {
-		Printf("http1Gate=%d TCP done\n", g.id)
-	}
-	g.server.DecSub() // gate
-}
-func (g *http1Gate) serveTCP() { // runner
-	listener := g.listener.(*net.TCPListener)
-	connID := int64(0)
-	for {
-		tcpConn, err := listener.AcceptTCP()
-		if err != nil {
-			if g.IsShut() {
-				break
-			} else {
-				//g.stage.Logf("http1Server[%s] http1Gate[%d]: accept error: %v\n", g.server.name, g.id, err)
-				continue
-			}
-		}
-		g.IncSub() // conn
-		if g.ReachLimit() {
-			g.justClose(tcpConn)
-		} else {
-			rawConn, err := tcpConn.SyscallConn()
-			if err != nil {
-				g.justClose(tcpConn)
-				//g.stage.Logf("http1Server[%s] http1Gate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
-				continue
-			}
-			serverConn := getServer1Conn(connID, g, tcpConn, rawConn)
-			go serverConn.serve() // serverConn is put to pool in serve()
-			connID++
-		}
-	}
-	g.WaitSubs() // conns. TODO: max timeout?
-	if DebugLevel() >= 2 {
-		Printf("http1Gate=%d TCP done\n", g.id)
-	}
-	g.server.DecSub() // gate
-}
-
-func (g *http1Gate) justClose(netConn net.Conn) {
-	netConn.Close()
-	g.OnConnClosed()
-}
 
 // poolServer1Conn is the server-side HTTP/1 connection pool.
 var poolServer1Conn sync.Pool
 
-func getServer1Conn(id int64, gate Gate, netConn net.Conn, rawConn syscall.RawConn) *server1Conn {
+func getServer1Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) *server1Conn {
 	var serverConn *server1Conn
 	if x := poolServer1Conn.Get(); x == nil {
 		serverConn = new(server1Conn)
@@ -301,19 +56,19 @@ type server1Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	server    Server
-	gate      Gate
+	server    *httpxServer
+	gate      *httpxGate
 	netConn   net.Conn        // the connection (UDS/TCP/TLS)
 	rawConn   syscall.RawConn // for syscall, only when netConn is UDS/TCP
 	closeSafe bool            // if false, send a FIN first to avoid TCP's RST following immediate close(). true by default
 	// Conn states (zeros)
 }
 
-func (c *server1Conn) onGet(id int64, gate Gate, netConn net.Conn, rawConn syscall.RawConn) {
+func (c *server1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
 	c.ServerConn_.OnGet(id)
 	c._httpConn_.onGet()
 
-	c.server = gate.Server()
+	c.server = gate.server
 	c.gate = gate
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -346,8 +101,6 @@ func (c *server1Conn) IsUDS() bool { return c.server.IsUDS() }
 func (c *server1Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
-
-func (c *server1Conn) HTTPServer() HTTPServer { return c.server.(HTTPServer) }
 
 func (c *server1Conn) serve() { // runner
 	defer putServer1Conn(c)
@@ -443,7 +196,7 @@ func (s *server1Stream) execute() {
 	}
 
 	conn := s.conn
-	server := conn.server.(*http1Server)
+	server := conn.server
 	// RFC 9112:
 	// If the server's configuration provides for a fixed URI scheme, or a
 	// scheme is provided by a trusted outbound gateway, that scheme is
@@ -609,7 +362,7 @@ func (s *server1Stream) executeSocket() { // upgrade: websocket
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nConnection: close\r\n\r\n"))
 }
 
-func (s *server1Stream) httpServend() httpServend { return s.conn.HTTPServer() }
+func (s *server1Stream) httpServend() httpServend { return s.conn.server }
 func (s *server1Stream) httpConn() httpConn       { return s.conn }
 func (s *server1Stream) remoteAddr() net.Addr     { return s.conn.netConn.RemoteAddr() }
 

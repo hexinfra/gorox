@@ -18,7 +18,6 @@ type Service struct {
 	Component_
 	// Assocs
 	stage   *Stage        // current stage
-	stater  Stater        // the stater which is used by this service
 	servers []*hrpcServer // bound hrpc servers. may be empty
 	// States
 	hostnames       [][]byte           // ...
@@ -40,19 +39,6 @@ func (s *Service) OnShutdown() {
 }
 
 func (s *Service) OnConfigure() {
-	// withStater
-	if v, ok := s.Find("withStater"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if stater := s.stage.Stater(name); stater == nil {
-				UseExitf("unknown stater: '%s'\n", name)
-			} else {
-				s.stater = stater
-			}
-		} else {
-			UseExitln("invalid withStater")
-		}
-	}
-
 	// maxContentSize
 	s.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
 		if value > 0 && value <= _1G {

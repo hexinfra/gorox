@@ -22,6 +22,19 @@ func init() {
 	registerFixture(signResolv)
 }
 
+// fixture component.
+//
+// Fixtures only exist in internal, and are created by stage.
+// Some critical functions, like clock and resolv, are implemented as fixtures.
+//
+// Fixtures are singletons in stage.
+type fixture interface {
+	// Imports
+	Component
+	// Methods
+	run() // runner
+}
+
 const signClock = "clock"
 
 func createClock(stage *Stage) *clockFixture {

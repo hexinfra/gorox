@@ -10,7 +10,7 @@ worker 进程
     每个 backend 有多个 node.Maintain() 并发
   多个 router.serve() 并发
     每个 router 有多个 gate.serve() 并发
-      每个 gate 有多个 gate.execute(conn) 并发
+      每个 gate 有多个 gate.serveConn(conn) 并发
   多个 stater.Maintain() 并发
   多个 cacher.Maintain() 并发
   多个 service.maintain() 并发

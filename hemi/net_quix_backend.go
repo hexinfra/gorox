@@ -146,21 +146,23 @@ func putQConn(qConn *QConn) {
 
 // QConn is a backend-side quix connection to quixNode.
 type QConn struct {
-	// Parent
-	BackendConn_
 	// Conn states (non-zeros)
-	backend    *QUIXBackend
+	id         int64     // the conn id
+	expire     time.Time // when the conn is considered expired
 	node       *quixNode
 	quicConn   *quic.Conn
 	maxStreams int32 // how many streams are allowed on this connection?
 	// Conn states (zeros)
+	counter     atomic.Int64 // can be used to generate a random number
+	lastWrite   time.Time    // deadline of last write operation
+	lastRead    time.Time    // deadline of last read operation
 	usedStreams atomic.Int32 // how many streams have been used?
 	broken      atomic.Bool  // is connection broken?
 }
 
 func (c *QConn) onGet(id int64, node *quixNode, quicConn *quic.Conn) {
-	c.BackendConn_.OnGet(id, node.backend.aliveTimeout)
-	c.backend = node.backend
+	c.id = id
+	c.expire = time.Now().Add(node.backend.aliveTimeout)
 	c.node = node
 	c.quicConn = quicConn
 	c.maxStreams = node.backend.MaxStreamsPerConn()
@@ -170,15 +172,17 @@ func (c *QConn) onPut() {
 	c.usedStreams.Store(0)
 	c.broken.Store(false)
 	c.node = nil
-	c.backend = nil
-	c.BackendConn_.OnPut()
+	c.expire = time.Time{}
+	c.counter.Store(0)
+	c.lastWrite = time.Time{}
+	c.lastRead = time.Time{}
 }
 
 func (c *QConn) IsTLS() bool { return c.node.IsTLS() }
 func (c *QConn) IsUDS() bool { return c.node.IsUDS() }
 
 func (c *QConn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *QConn) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }

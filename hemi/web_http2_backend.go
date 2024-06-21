@@ -147,34 +147,36 @@ func (n *http2Node) storeConn(conn *backend2Conn) {
 var poolBackend2Conn sync.Pool
 
 func getBackend2Conn(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) *backend2Conn {
-	var conn *backend2Conn
+	var backendConn *backend2Conn
 	if x := poolBackend2Conn.Get(); x == nil {
-		conn = new(backend2Conn)
+		backendConn = new(backend2Conn)
 	} else {
-		conn = x.(*backend2Conn)
+		backendConn = x.(*backend2Conn)
 	}
-	conn.onGet(id, node, netConn, rawConn)
-	return conn
+	backendConn.onGet(id, node, netConn, rawConn)
+	return backendConn
 }
-func putBackend2Conn(conn *backend2Conn) {
-	conn.onPut()
-	poolBackend2Conn.Put(conn)
+func putBackend2Conn(backendConn *backend2Conn) {
+	backendConn.onPut()
+	poolBackend2Conn.Put(backendConn)
 }
 
 // backend2Conn
 type backend2Conn struct {
-	// Parent
-	BackendConn_
 	// Mixins
 	_httpConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	backend *HTTP2Backend
+	id      int64     // the conn id
+	expire  time.Time // when the conn is considered expired
 	node    *http2Node
 	netConn net.Conn // the connection (TCP/TLS)
 	rawConn syscall.RawConn
 	// Conn states (zeros)
+	counter       atomic.Int64                           // can be used to generate a random number
+	lastWrite     time.Time                              // deadline of last write operation
+	lastRead      time.Time                              // deadline of last read operation
 	nStreams      atomic.Int32                           // concurrent streams
 	streams       [http2MaxActiveStreams]*backend2Stream // active (open, remoteClosed, localClosed) streams
 	backend2Conn0                                        // all values must be zero by default in this struct!
@@ -183,10 +185,10 @@ type backend2Conn0 struct { // for fast reset, entirely
 }
 
 func (c *backend2Conn) onGet(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.BackendConn_.OnGet(id, node.backend.aliveTimeout)
 	c._httpConn_.onGet()
 
-	c.backend = node.backend
+	c.id = id
+	c.expire = time.Now().Add(node.backend.aliveTimeout)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -198,20 +200,24 @@ func (c *backend2Conn) onPut() {
 	c.streams = [http2MaxActiveStreams]*backend2Stream{}
 	c.backend2Conn0 = backend2Conn0{}
 	c.node = nil
-	c.backend = nil
+	c.expire = time.Time{}
+	c.counter.Store(0)
+	c.lastWrite = time.Time{}
+	c.lastRead = time.Time{}
 
 	c._httpConn_.onPut()
-	c.BackendConn_.OnPut()
 }
 
 func (c *backend2Conn) IsTLS() bool { return c.node.IsTLS() }
 func (c *backend2Conn) IsUDS() bool { return c.node.IsUDS() }
 
+func (c *backend2Conn) ID() int64 { return c.id }
+
 func (c *backend2Conn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *backend2Conn) HTTPBackend() HTTPBackend { return c.backend }
+func (c *backend2Conn) HTTPBackend() HTTPBackend { return c.node.backend }
 
 func (c *backend2Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.HTTPBackend().MaxStreamsPerConn()

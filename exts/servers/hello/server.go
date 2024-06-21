@@ -32,9 +32,6 @@ type helloServer struct {
 func (s *helloServer) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
 }
-func (s *helloServer) OnShutdown() {
-	s.Server_.OnShutdown()
-}
 
 func (s *helloServer) OnConfigure() {
 	s.Server_.OnConfigure()
@@ -149,33 +146,27 @@ func putHelloConn(conn *helloConn) {
 
 // helloConn
 type helloConn struct {
-	ServerConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	server  *helloServer
+	id      int64
 	gate    *helloGate
 	tcpConn *net.TCPConn
 	// Conn states (zeros)
 }
 
 func (c *helloConn) onGet(id int64, gate *helloGate, tcpConn *net.TCPConn) {
-	c.ServerConn_.OnGet(id)
-
-	c.server = gate.server
+	c.id = id
 	c.gate = gate
 	c.tcpConn = tcpConn
 }
 func (c *helloConn) onPut() {
 	c.tcpConn = nil
-	c.server = nil
 	c.gate = nil
-
-	c.ServerConn_.OnPut()
 }
 
-func (c *helloConn) IsTLS() bool { return c.server.IsTLS() }
-func (c *helloConn) IsUDS() bool { return c.server.IsUDS() }
+func (c *helloConn) IsTLS() bool { return c.gate.IsTLS() }
+func (c *helloConn) IsUDS() bool { return c.gate.IsUDS() }
 
 func (c *helloConn) serve() { // runner
 	defer putHelloConn(c)

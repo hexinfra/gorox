@@ -13,6 +13,7 @@ import (
 	"crypto/tls"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hexinfra/gorox/hemi/library/quic"
@@ -148,19 +149,20 @@ func putServer3Conn(serverConn *server3Conn) {
 
 // server3Conn is the server-side HTTP/3 connection.
 type server3Conn struct {
-	// Parent
-	ServerConn_
 	// Mixins
 	_httpConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	server   *http3Server
+	id       int64
 	gate     *http3Gate
 	quicConn *quic.Conn        // the quic connection
 	buffer   *http3Buffer      // ...
 	table    http3DynamicTable // ...
 	// Conn states (zeros)
+	counter      atomic.Int64                          // can be used to generate a random number
+	lastRead     time.Time                             // deadline of last read operation
+	lastWrite    time.Time                             // deadline of last write operation
 	streams      [http3MaxActiveStreams]*server3Stream // active (open, remoteClosed, localClosed) streams
 	server3Conn0                                       // all values must be zero by default in this struct!
 }
@@ -171,9 +173,9 @@ type server3Conn0 struct { // for fast reset, entirely
 }
 
 func (c *server3Conn) onGet(id int64, gate *http3Gate, quicConn *quic.Conn) {
-	c.ServerConn_.OnGet(id)
 	c._httpConn_.onGet()
-	c.server = gate.server
+
+	c.id = id
 	c.gate = gate
 	c.quicConn = quicConn
 	if c.buffer == nil {
@@ -187,17 +189,21 @@ func (c *server3Conn) onPut() {
 	// c.table is reserved
 	c.streams = [http3MaxActiveStreams]*server3Stream{}
 	c.server3Conn0 = server3Conn0{}
-	c.server = nil
 	c.gate = nil
+	c.counter.Store(0)
+	c.lastRead = time.Time{}
+	c.lastWrite = time.Time{}
+
 	c._httpConn_.onPut()
-	c.ServerConn_.OnPut()
 }
 
-func (c *server3Conn) IsTLS() bool { return c.server.IsTLS() }
-func (c *server3Conn) IsUDS() bool { return c.server.IsUDS() }
+func (c *server3Conn) ID() int64 { return c.id }
+
+func (c *server3Conn) IsTLS() bool { return c.gate.IsTLS() }
+func (c *server3Conn) IsUDS() bool { return c.gate.IsUDS() }
 
 func (c *server3Conn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(p, int64(c.gate.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *server3Conn) serve() { // runner
@@ -302,7 +308,7 @@ func (s *server3Stream) executeSocket() { // see RFC 9220
 	// TODO
 }
 
-func (s *server3Stream) httpServend() httpServend { return s.conn.server }
+func (s *server3Stream) httpServend() httpServend { return s.conn.gate.server }
 func (s *server3Stream) httpConn() httpConn       { return s.conn }
 func (s *server3Stream) remoteAddr() net.Addr     { return nil } // TODO
 
@@ -421,7 +427,7 @@ func (r *server3Response) finalizeHeaders() { // add at most 256 bytes
 	/*
 		// date: Sun, 06 Nov 1994 08:49:37 GMT
 		if r.iDate == 0 {
-			r.fieldsEdge += uint16(r.stream.webServend().Stage().Clock().writeDate1(r.fields[r.fieldsEdge:]))
+			r.fieldsEdge += uint16(r.stream.httpServend().Stage().Clock().writeDate1(r.fields[r.fieldsEdge:]))
 		}
 	*/
 }

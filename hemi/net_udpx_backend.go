@@ -117,20 +117,22 @@ func putUConn(uConn *UConn) {
 
 // UConn
 type UConn struct {
-	// Parent
-	BackendConn_
 	// Conn states (non-zeros)
-	backend *UDPXBackend
+	id      int64     // the conn id
+	expire  time.Time // when the conn is considered expired
 	node    *udpxNode
 	netConn net.PacketConn
 	rawConn syscall.RawConn // for syscall
 	// Conn states (zeros)
-	broken atomic.Bool // is conn broken?
+	counter   atomic.Int64 // can be used to generate a random number
+	lastWrite time.Time    // deadline of last write operation
+	lastRead  time.Time    // deadline of last read operation
+	broken    atomic.Bool  // is conn broken?
 }
 
 func (c *UConn) onGet(id int64, node *udpxNode, netConn net.PacketConn, rawConn syscall.RawConn) {
-	c.BackendConn_.OnGet(id, node.backend.aliveTimeout)
-	c.backend = node.backend
+	c.id = id
+	c.expire = time.Now().Add(node.backend.aliveTimeout)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -140,15 +142,17 @@ func (c *UConn) onPut() {
 	c.rawConn = nil
 	c.broken.Store(false)
 	c.node = nil
-	c.backend = nil
-	c.BackendConn_.OnPut()
+	c.expire = time.Time{}
+	c.counter.Store(0)
+	c.lastWrite = time.Time{}
+	c.lastRead = time.Time{}
 }
 
 func (c *UConn) IsTLS() bool { return c.node.IsTLS() }
 func (c *UConn) IsUDS() bool { return c.node.IsUDS() }
 
 func (c *UConn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *UConn) markBroken()    { c.broken.Store(true) }

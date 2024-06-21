@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// SOCKS proxy server.
+// SOCKS 5 proxy server.
 
 // Don't confuse SOCKS with sock. We use "sock" as an abbreviation of "websocket".
 
@@ -38,9 +38,6 @@ type socksServer struct {
 
 func (s *socksServer) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
-}
-func (s *socksServer) OnShutdown() {
-	s.Server_.OnShutdown()
 }
 
 func (s *socksServer) OnConfigure() {
@@ -120,7 +117,7 @@ func (g *socksGate) serve() { // runner
 			g.justClose(tcpConn)
 		} else {
 			socksConn := getSocksConn(connID, g, tcpConn)
-			go socksConn.serve() // socksConn is put to pool in serve()
+			go g.serveConn(socksConn) // socksConn is put to pool in serve()
 			connID++
 		}
 	}
@@ -129,6 +126,17 @@ func (g *socksGate) serve() { // runner
 		Printf("socksGate=%d done\n", g.ID())
 	}
 	g.server.DecSub() // gate
+}
+
+func (g *socksGate) serveConn(conn *socksConn) { // runner
+	defer putSocksConn(conn)
+
+	// -> ver(1) nmethods(1) methods(1-255)
+	// <- ver(1) method(1) : 00=noAuth 01=gssapi 02=username/password ff=noAcceptableMethods
+	// -> ver(1) cmd(1) rsv(1) atyp(1) dstAddr(v) dstPort(2)
+	// <- ver(1) res(1) rsv(1) atyp(1) bndAddr(v) bndPort(2)
+	conn.tcpConn.Write([]byte("not implemented yet"))
+	conn.Close()
 }
 
 func (g *socksGate) justClose(tcpConn *net.TCPConn) {
@@ -156,41 +164,30 @@ func putSocksConn(conn *socksConn) {
 
 // socksConn
 type socksConn struct {
-	// Parent
-	ServerConn_
 	// Conn states (stocks)
+	stockInput [8192]byte
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	server  *socksServer
+	id      int64
 	gate    *socksGate
 	tcpConn *net.TCPConn
+	input   []byte
 	// Conn states (zeros)
 }
 
 func (c *socksConn) onGet(id int64, gate *socksGate, tcpConn *net.TCPConn) {
-	c.ServerConn_.OnGet(id)
-	c.server = gate.server
+	c.id = id
 	c.gate = gate
 	c.tcpConn = tcpConn
+	c.input = c.stockInput[:]
 }
 func (c *socksConn) onPut() {
+	c.input = nil
 	c.tcpConn = nil
-	c.server = nil
 	c.gate = nil
-	c.ServerConn_.OnPut()
 }
 
-func (c *socksConn) IsTLS() bool { return c.server.IsTLS() }
-func (c *socksConn) IsUDS() bool { return c.server.IsUDS() }
-
-func (c *socksConn) serve() { // runner
-	defer putSocksConn(c)
-
-	c.tcpConn.Write([]byte("not implemented yet"))
-	c.closeConn()
-}
-
-func (c *socksConn) closeConn() {
+func (c *socksConn) Close() {
 	c.tcpConn.Close()
 	c.gate.OnConnClosed()
 }

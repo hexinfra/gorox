@@ -15,6 +15,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -272,11 +273,11 @@ func (n *http1Node) closeFree() int {
 var poolBackend1Conn sync.Pool
 
 func getBackend1Conn(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) *backend1Conn {
-	var conn *backend1Conn
+	var backendConn *backend1Conn
 	if x := poolBackend1Conn.Get(); x == nil {
-		conn = new(backend1Conn)
-		stream := &conn.stream
-		stream.conn = conn
+		backendConn = new(backend1Conn)
+		stream := &backendConn.stream
+		stream.conn = backendConn
 		req, resp := &stream.request, &stream.response
 		req.shell = req
 		req.stream = stream
@@ -284,20 +285,18 @@ func getBackend1Conn(id int64, node *http1Node, netConn net.Conn, rawConn syscal
 		resp.shell = resp
 		resp.stream = stream
 	} else {
-		conn = x.(*backend1Conn)
+		backendConn = x.(*backend1Conn)
 	}
-	conn.onGet(id, node, netConn, rawConn)
-	return conn
+	backendConn.onGet(id, node, netConn, rawConn)
+	return backendConn
 }
-func putBackend1Conn(conn *backend1Conn) {
-	conn.onPut()
-	poolBackend1Conn.Put(conn)
+func putBackend1Conn(backendConn *backend1Conn) {
+	backendConn.onPut()
+	poolBackend1Conn.Put(backendConn)
 }
 
 // backend1Conn is the backend-side HTTP/1 connection.
 type backend1Conn struct {
-	// Parent
-	BackendConn_
 	// Mixins
 	_httpConn_
 	// Assocs
@@ -306,18 +305,22 @@ type backend1Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	backend *HTTP1Backend
+	id      int64     // the conn id
+	expire  time.Time // when the conn is considered expired
 	node    *http1Node
 	netConn net.Conn        // the connection (TCP/TLS/UDS)
 	rawConn syscall.RawConn // used when netConn is TCP or UDS
 	// Conn states (zeros)
+	counter   atomic.Int64 // can be used to generate a random number
+	lastWrite time.Time    // deadline of last write operation
+	lastRead  time.Time    // deadline of last read operation
 }
 
 func (c *backend1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.BackendConn_.OnGet(id, node.backend.aliveTimeout)
 	c._httpConn_.onGet()
 
-	c.backend = node.backend
+	c.id = id
+	c.expire = time.Now().Add(node.backend.aliveTimeout)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -326,20 +329,26 @@ func (c *backend1Conn) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
 	c.node = nil
-	c.backend = nil
+	c.expire = time.Time{}
+	c.counter.Store(0)
+	c.lastWrite = time.Time{}
+	c.lastRead = time.Time{}
 
 	c._httpConn_.onPut()
-	c.BackendConn_.OnPut()
 }
 
 func (c *backend1Conn) IsTLS() bool { return c.node.IsTLS() }
 func (c *backend1Conn) IsUDS() bool { return c.node.IsUDS() }
 
+func (c *backend1Conn) ID() int64 { return c.id }
+
 func (c *backend1Conn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *backend1Conn) HTTPBackend() HTTPBackend { return c.backend }
+func (c *backend1Conn) isAlive() bool { return time.Now().Before(c.expire) }
+
+func (c *backend1Conn) HTTPBackend() HTTPBackend { return c.node.backend }
 
 func (c *backend1Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.HTTPBackend().MaxStreamsPerConn()

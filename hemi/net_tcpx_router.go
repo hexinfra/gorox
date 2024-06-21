@@ -37,9 +37,6 @@ func (r *TCPXRouter) onCreate(name string, stage *Stage) {
 	r.Server_.OnCreate(name, stage)
 	r.dealets = make(compDict[TCPXDealet])
 }
-func (r *TCPXRouter) OnShutdown() {
-	r.Server_.OnShutdown()
-}
 
 func (r *TCPXRouter) OnConfigure() {
 	r.Server_.OnConfigure()
@@ -101,7 +98,7 @@ func (r *TCPXRouter) Log(str string) {
 }
 func (r *TCPXRouter) Logln(str string) {
 }
-func (r *TCPXRouter) Logf(str string) {
+func (r *TCPXRouter) Logf(f string, v ...any) {
 }
 
 func (r *TCPXRouter) Serve() { // runner
@@ -169,32 +166,29 @@ func (g *tcpxGate) IsTLS() bool     { return g.router.IsTLS() }
 func (g *tcpxGate) IsUDS() bool     { return g.router.IsUDS() }
 
 func (g *tcpxGate) Open() error {
+	var (
+		listener net.Listener
+		err      error
+	)
 	if g.IsUDS() {
-		return g._openUnix()
+		address := g.Address()
+		// UDS doesn't support SO_REUSEADDR or SO_REUSEPORT, so we have to remove it first.
+		// This affects graceful upgrading, maybe we can implement fd transfer in the future.
+		os.Remove(address)
+		listener, err = net.Listen("unix", address)
+		if err == nil {
+			g.listener = listener.(*net.UnixListener)
+		}
 	} else {
-		return g._openInet()
-	}
-}
-func (g *tcpxGate) _openUnix() error {
-	address := g.Address()
-	// UDS doesn't support SO_REUSEADDR or SO_REUSEPORT, so we have to remove it first.
-	// This affects graceful upgrading, maybe we can implement fd transfer in the future.
-	os.Remove(address)
-	listener, err := net.Listen("unix", address)
-	if err == nil {
-		g.listener = listener.(*net.UnixListener)
-	}
-	return err
-}
-func (g *tcpxGate) _openInet() error {
-	listenConfig := new(net.ListenConfig)
-	listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
-		// Don't use SetDeferAccept here as it assumes that clients send data first. Maybe we can make this as a config option?
-		return system.SetReusePort(rawConn)
-	}
-	listener, err := listenConfig.Listen(context.Background(), "tcp", g.Address())
-	if err == nil {
-		g.listener = listener.(*net.TCPListener)
+		listenConfig := new(net.ListenConfig)
+		listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
+			// Don't use SetDeferAccept here as it assumes that clients send data first. Maybe we can make this as a config option?
+			return system.SetReusePort(rawConn)
+		}
+		listener, err = listenConfig.Listen(context.Background(), "tcp", g.Address())
+		if err == nil {
+			g.listener = listener.(*net.TCPListener)
+		}
 	}
 	return err
 }
@@ -217,6 +211,7 @@ func (g *tcpxGate) serveTLS() { // runner
 		}
 		g.IncSub() // conn
 		if g.ReachLimit() {
+			g.router.Logf("tcpxGate=%d: too many TLS connections!\n", g.id)
 			g.justClose(tcpConn)
 		} else {
 			tlsConn := tls.Server(tcpConn, g.router.TLSConfig())
@@ -225,7 +220,7 @@ func (g *tcpxGate) serveTLS() { // runner
 				continue
 			}
 			conn := getTCPXConn(connID, g, tlsConn, nil)
-			go conn.serve() // conn is put to pool in serve()
+			go g.serveConn(conn) // conn is put to pool in serveConn()
 			connID++
 		}
 	}
@@ -249,6 +244,7 @@ func (g *tcpxGate) serveUDS() { // runner
 		}
 		g.IncSub() // conn
 		if g.ReachLimit() {
+			g.router.Logf("tcpxGate=%d: too many UDS connections!\n", g.id)
 			g.justClose(unixConn)
 		} else {
 			rawConn, err := unixConn.SyscallConn()
@@ -257,7 +253,7 @@ func (g *tcpxGate) serveUDS() { // runner
 				continue
 			}
 			conn := getTCPXConn(connID, g, unixConn, rawConn)
-			go conn.serve() // conn is put to pool in serve()
+			go g.serveConn(conn) // conn is put to pool in serveConn()
 			connID++
 		}
 	}
@@ -281,6 +277,7 @@ func (g *tcpxGate) serveTCP() { // runner
 		}
 		g.IncSub() // conn
 		if g.ReachLimit() {
+			g.router.Logf("tcpxGate=%d: too many TCP connections!\n", g.id)
 			g.justClose(tcpConn)
 		} else {
 			rawConn, err := tcpConn.SyscallConn()
@@ -289,10 +286,10 @@ func (g *tcpxGate) serveTCP() { // runner
 				continue
 			}
 			conn := getTCPXConn(connID, g, tcpConn, rawConn)
-			if DebugLevel() >= 1 {
+			if DebugLevel() >= 2 {
 				Printf("%+v\n", conn)
 			}
-			go conn.serve() // conn is put to pool in serve()
+			go g.serveConn(conn) // conn is put to pool in serveConn()
 			connID++
 		}
 	}
@@ -301,6 +298,11 @@ func (g *tcpxGate) serveTCP() { // runner
 		Printf("tcpxGate=%d TCP done\n", g.id)
 	}
 	g.router.DecSub() // gate
+}
+
+func (g *tcpxGate) serveConn(conn *TCPXConn) { // runner
+	g.router.dispatch(conn)
+	putTCPXConn(conn)
 }
 
 func (g *tcpxGate) justClose(netConn net.Conn) {
@@ -328,33 +330,34 @@ func putTCPXConn(tcpxConn *TCPXConn) {
 
 // TCPXConn is a TCPX connection coming from TCPXRouter.
 type TCPXConn struct {
-	// Parent
-	ServerConn_
 	// Conn states (stocks)
 	stockInput  [8192]byte // for c.input
 	stockBuffer [256]byte  // a (fake) buffer to workaround Go's conservative escape analysis
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	router    *TCPXRouter
+	id        int64 // the conn id
 	gate      *tcpxGate
 	netConn   net.Conn        // the connection (TCP/TLS/UDS)
 	rawConn   syscall.RawConn // for syscall, only when netConn is TCP
 	input     []byte          // input buffer
 	region    Region          // a region-based memory pool
-	closeSema atomic.Int32
+	closeSema atomic.Int32    // for close read and close write
 	// Conn states (zeros)
+	counter     atomic.Int64 // can be used to generate a random number
+	lastRead    time.Time    // deadline of last read operation
+	lastWrite   time.Time    // deadline of last write operation
+	writeBroken atomic.Bool  // write-side broken?
+	readBroken  atomic.Bool  // read-side broken?
 }
 
 func (c *TCPXConn) onGet(id int64, gate *tcpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.ServerConn_.OnGet(id)
-
-	c.router = gate.router
+	c.id = id
 	c.gate = gate
 	c.netConn = netConn
 	c.rawConn = rawConn
 	c.input = c.stockInput[:]
 	c.region.Init()
-	c.closeSema.Store(2)
+	c.closeSema.Store(2) // read and write
 }
 func (c *TCPXConn) onPut() {
 	c.region.Free()
@@ -365,31 +368,32 @@ func (c *TCPXConn) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
 	c.gate = nil
-	c.router = nil
 
-	c.ServerConn_.OnPut()
+	c.counter.Store(0)
+	c.lastRead = time.Time{}
+	c.lastWrite = time.Time{}
+	c.writeBroken.Store(false)
+	c.readBroken.Store(false)
 }
 
-func (c *TCPXConn) IsTLS() bool { return c.router.IsTLS() }
-func (c *TCPXConn) IsUDS() bool { return c.router.IsUDS() }
+func (c *TCPXConn) IsTLS() bool { return c.gate.IsTLS() }
+func (c *TCPXConn) IsUDS() bool { return c.gate.IsUDS() }
 
 func (c *TCPXConn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.router.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(p, int64(c.gate.router.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *TCPXConn) serve() { // runner
-	c.router.dispatch(c)
-	c.closeConn()
-	putTCPXConn(c)
+func (c *TCPXConn) proxyPass(conn *TConn) error {
+	// TODO
+	return nil
 }
 
-func (c *TCPXConn) Recv() (p []byte, err error) { // p == nil means EOF
+func (c *TCPXConn) Recv() (p []byte, err error) {
 	// TODO: deadline
 	n, err := c.netConn.Read(c.input)
-	if n > 0 {
-		p = c.input[:n]
-	}
+	p = c.input[:n]
 	if err != nil {
+		c.closeRead()
 		c._checkClose()
 	}
 	return
@@ -406,23 +410,21 @@ func (c *TCPXConn) Send(p []byte) (err error) { // if p is nil, send EOF
 }
 func (c *TCPXConn) _checkClose() {
 	if c.closeSema.Add(-1) == 0 {
-		c.closeConn()
+		c.gate.justClose(c.netConn)
 	}
 }
 
+func (c *TCPXConn) closeRead() {
+	// Do nothing.
+}
 func (c *TCPXConn) closeWrite() {
-	if c.router.IsTLS() {
+	if c.gate.router.IsTLS() {
 		c.netConn.(*tls.Conn).CloseWrite()
-	} else if c.router.IsUDS() {
+	} else if c.gate.router.IsUDS() {
 		c.netConn.(*net.UnixConn).CloseWrite()
 	} else {
 		c.netConn.(*net.TCPConn).CloseWrite()
 	}
-}
-
-func (c *TCPXConn) closeConn() {
-	c.netConn.Close()
-	c.gate.OnConnClosed()
 }
 
 func (c *TCPXConn) unsafeVariable(code int16, name string) (value []byte) {

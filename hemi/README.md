@@ -9,7 +9,6 @@ Layout
 
 Hemi contains these directories:
 
-  * comdefs/  - Definitions of components,
   * contrib/  - Place optional components,
   * develop/  - A prototype application used to develop Hemi,
   * library/  - Place general purpose libraries,

@@ -10,7 +10,9 @@ package redis
 import (
 	"net"
 	"sync"
+	"sync/atomic"
 	"syscall"
+	"time"
 
 	. "github.com/hexinfra/gorox/hemi"
 
@@ -122,20 +124,21 @@ func putRedisConn(redisConn *RedisConn) {
 
 // RedisConn is a connection to redisNode.
 type RedisConn struct {
-	// Parent
-	BackendConn_
 	// Conn states (non-zeros)
-	backend *RedisBackend
+	id      int64     // the conn id
+	expire  time.Time // when the conn is considered expired
 	node    *redisNode
 	netConn net.Conn
 	rawConn syscall.RawConn
 	// Conn states (zeros)
+	counter   atomic.Int64 // can be used to generate a random number
+	lastWrite time.Time    // deadline of last write operation
+	lastRead  time.Time    // deadline of last read operation
 }
 
 func (c *RedisConn) onGet(id int64, node *redisNode, netConn net.Conn, rawConn syscall.RawConn) {
-	c.BackendConn_.OnGet(id, node.backend.AliveTimeout())
-
-	c.backend = node.backend
+	c.id = id
+	c.expire = time.Now().Add(node.backend.AliveTimeout())
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -144,9 +147,10 @@ func (c *RedisConn) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
 	c.node = nil
-	c.backend = nil
-
-	c.BackendConn_.OnPut()
+	c.expire = time.Time{}
+	c.counter.Store(0)
+	c.lastWrite = time.Time{}
+	c.lastRead = time.Time{}
 }
 
 func (c *RedisConn) Close() error {

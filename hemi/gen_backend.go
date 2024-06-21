@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// General backends for net, rpc, and web.
+// General backend and node for net, rpc, and web.
 
 package hemi
 
@@ -247,31 +247,3 @@ func (n *Node_) IsUDS() bool { return n.udsMode }
 func (n *Node_) markDown()    { n.down.Store(true) }
 func (n *Node_) markUp()      { n.down.Store(false) }
 func (n *Node_) isDown() bool { return n.down.Load() }
-
-// BackendConn_ is the parent for backend conns.
-type BackendConn_ struct {
-	// Conn states (stocks)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id     int64     // the conn id
-	expire time.Time // when the conn is considered expired
-	// Conn states (zeros)
-	counter   atomic.Int64 // can be used to generate a random number
-	lastWrite time.Time    // deadline of last write operation
-	lastRead  time.Time    // deadline of last read operation
-}
-
-func (c *BackendConn_) OnGet(id int64, aliveTimeout time.Duration) {
-	c.id = id
-	c.expire = time.Now().Add(aliveTimeout)
-}
-func (c *BackendConn_) OnPut() {
-	c.expire = time.Time{}
-	c.counter.Store(0)
-	c.lastWrite = time.Time{}
-	c.lastRead = time.Time{}
-}
-
-func (c *BackendConn_) ID() int64 { return c.id }
-
-func (c *BackendConn_) isAlive() bool { return time.Now().Before(c.expire) }

@@ -11,6 +11,7 @@ import (
 	"net"
 	"regexp"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -30,9 +31,6 @@ type UDPXRouter struct {
 func (r *UDPXRouter) onCreate(name string, stage *Stage) {
 	r.Server_.OnCreate(name, stage)
 	r.dealets = make(compDict[UDPXDealet])
-}
-func (r *UDPXRouter) OnShutdown() {
-	r.Server_.OnShutdown()
 }
 
 func (r *UDPXRouter) OnConfigure() {
@@ -165,14 +163,6 @@ func (g *udpxGate) Open() error {
 	// TODO
 	return nil
 }
-func (g *udpxGate) _openUnix() error {
-	// TODO
-	return nil
-}
-func (g *udpxGate) _openInet() error {
-	// TODO
-	return nil
-}
 func (g *udpxGate) Shut() error {
 	g.shut.Store(true)
 	// TODO
@@ -222,22 +212,22 @@ func putUDPXConn(udpxConn *UDPXConn) {
 
 // UDPXConn
 type UDPXConn struct {
-	// Parent
-	ServerConn_
 	// Conn states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	router  *UDPXRouter
+	id      int64
 	gate    *udpxGate
 	pktConn net.PacketConn
 	rawConn syscall.RawConn
 	// Conn states (zeros)
+	counter   atomic.Int64 // can be used to generate a random number
+	lastRead  time.Time    // deadline of last read operation
+	lastWrite time.Time    // deadline of last write operation
 }
 
 func (c *UDPXConn) onGet(id int64, gate *udpxGate, pktConn net.PacketConn, rawConn syscall.RawConn) {
-	c.ServerConn_.OnGet(id)
-	c.router = gate.router
+	c.id = id
 	c.gate = gate
 	c.pktConn = pktConn
 	c.rawConn = rawConn
@@ -245,20 +235,21 @@ func (c *UDPXConn) onGet(id int64, gate *udpxGate, pktConn net.PacketConn, rawCo
 func (c *UDPXConn) onPut() {
 	c.pktConn = nil
 	c.rawConn = nil
-	c.router = nil
 	c.gate = nil
-	c.ServerConn_.OnPut()
+	c.counter.Store(0)
+	c.lastRead = time.Time{}
+	c.lastWrite = time.Time{}
 }
 
-func (c *UDPXConn) IsTLS() bool { return c.router.IsTLS() }
-func (c *UDPXConn) IsUDS() bool { return c.router.IsUDS() }
+func (c *UDPXConn) IsTLS() bool { return c.gate.IsTLS() }
+func (c *UDPXConn) IsUDS() bool { return c.gate.IsUDS() }
 
 func (c *UDPXConn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.router.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(p, int64(c.gate.router.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *UDPXConn) serve() { // runner
-	c.router.dispatch(c)
+	c.gate.router.dispatch(c)
 	c.closeConn()
 	putUDPXConn(c)
 }
@@ -271,8 +262,8 @@ func (c *UDPXConn) Close() error {
 
 func (c *UDPXConn) closeConn() {
 	// TODO: tls, uds?
-	if c.router.IsTLS() {
-	} else if c.router.IsUDS() {
+	if c.gate.router.IsTLS() {
+	} else if c.gate.router.IsUDS() {
 	} else {
 	}
 	c.pktConn.Close()

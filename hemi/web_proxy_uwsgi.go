@@ -14,6 +14,7 @@ import (
 	"errors"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -231,7 +232,7 @@ func (n *uwsgiNode) _dialUDS() (*uwsgiConn, error) {
 	}
 	_, _ = connID, rawConn
 	return nil, nil
-	//return getUWSGIConn(connID, n, netConn, rawConn), nil
+	//return getUwsgiConn(connID, n, netConn, rawConn), nil
 }
 func (n *uwsgiNode) _dialTCP() (*uwsgiConn, error) {
 	// TODO: dynamic address names?
@@ -251,15 +252,15 @@ func (n *uwsgiNode) _dialTCP() (*uwsgiConn, error) {
 	}
 	_, _ = connID, rawConn
 	return nil, nil
-	//return getUWSGIConn(connID, n, netConn, rawConn), nil
+	//return getUwsgiConn(connID, n, netConn, rawConn), nil
 }
 
-// poolUWSGIConn
-var poolUWSGIConn sync.Pool
+// poolUwsgiConn
+var poolUwsgiConn sync.Pool
 
-func getUWSGIConn(tConn *TConn) *uwsgiConn {
+func getUwsgiConn(tConn *TConn) *uwsgiConn {
 	var conn *uwsgiConn
-	if x := poolUWSGIConn.Get(); x == nil {
+	if x := poolUwsgiConn.Get(); x == nil {
 		conn = new(uwsgiConn)
 		req, resp := &conn.request, &conn.response
 		req.conn = conn
@@ -271,15 +272,13 @@ func getUWSGIConn(tConn *TConn) *uwsgiConn {
 	conn.onUse(tConn)
 	return conn
 }
-func putUWSGIConn(conn *uwsgiConn) {
+func putUwsgiConn(conn *uwsgiConn) {
 	conn.onEnd()
-	poolUWSGIConn.Put(conn)
+	poolUwsgiConn.Put(conn)
 }
 
 // uwsgiConn
 type uwsgiConn struct {
-	// Parent
-	BackendConn_
 	// Assocs
 	request  uwsgiRequest  // the uwsgi request
 	response uwsgiResponse // the uwsgi response
@@ -287,11 +286,15 @@ type uwsgiConn struct {
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	backend *uwsgiBackend
-	node    *uwsgiNode
-	region  Region // a region-based memory pool
-	conn    *TConn // associated conn
+	id     int64     // the conn id
+	expire time.Time // when the conn is considered expired
+	node   *uwsgiNode
+	region Region // a region-based memory pool
+	conn   *TConn // associated conn
 	// Conn states (zeros)
+	counter   atomic.Int64 // can be used to generate a random number
+	lastWrite time.Time    // deadline of last write operation
+	lastRead  time.Time    // deadline of last read operation
 }
 
 func (x *uwsgiConn) onUse(conn *TConn) {

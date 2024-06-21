@@ -32,8 +32,8 @@ And these 64-bit CPU architectures:
 
   * AMD64, also known as x64, x86-64, Intel 64
   * ARM64, also known as AArch64
-  * RISCV64, also known as RV64, RISC-V 64
-  * Loong64, also known as LoongArch 64
+  * RISCV64, also known as RV64
+  * Loong64, also known as LoongArch64
 
 Other platforms are currently not tested and probably don't work.
 

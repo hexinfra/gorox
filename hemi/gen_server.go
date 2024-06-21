@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// General servers for net, rpc, and web.
+// General server and gate for net, rpc, and web.
 
 package hemi
 
@@ -22,16 +22,6 @@ type Server interface {
 	Component
 	// Methods
 	Serve() // runner
-	Stage() *Stage
-	ReadTimeout() time.Duration  // timeout for a single read operation
-	WriteTimeout() time.Duration // timeout for a single write operation
-	Address() string
-	ColonPort() string
-	ColonPortBytes() []byte
-	IsTLS() bool
-	TLSConfig() *tls.Config
-	IsUDS() bool
-	MaxConnsPerGate() int32
 }
 
 // Server_ is the parent for all servers.
@@ -204,26 +194,3 @@ func (g *Gate_) OnConnClosed() {
 	g.DecConns()
 	g.DecSub()
 }
-
-// ServerConn_ is the parent for server conns.
-type ServerConn_ struct {
-	// Conn states (stocks)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id int64 // the conn id
-	// Conn states (zeros)
-	counter   atomic.Int64 // can be used to generate a random number
-	lastRead  time.Time    // deadline of last read operation
-	lastWrite time.Time    // deadline of last write operation
-}
-
-func (c *ServerConn_) OnGet(id int64) {
-	c.id = id
-}
-func (c *ServerConn_) OnPut() {
-	c.counter.Store(0)
-	c.lastRead = time.Time{}
-	c.lastWrite = time.Time{}
-}
-
-func (c *ServerConn_) ID() int64 { return c.id }

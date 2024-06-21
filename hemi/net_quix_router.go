@@ -10,6 +10,7 @@ package hemi
 import (
 	"regexp"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/hexinfra/gorox/hemi/library/quic"
@@ -30,9 +31,6 @@ type QUIXRouter struct {
 func (r *QUIXRouter) onCreate(name string, stage *Stage) {
 	r.Server_.OnCreate(name, stage)
 	r.dealets = make(compDict[QUIXDealet])
-}
-func (r *QUIXRouter) OnShutdown() {
-	r.Server_.OnShutdown()
 }
 
 func (r *QUIXRouter) OnConfigure() {
@@ -197,40 +195,41 @@ func putQUIXConn(quixConn *QUIXConn) {
 
 // QUIXConn is a QUIX connection coming from QUIXRouter.
 type QUIXConn struct {
-	// Parent
-	ServerConn_
 	// Conn states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	router   *QUIXRouter
+	id       int64
 	gate     *quixGate
 	quicConn *quic.Conn
 	// Conn states (zeros)
+	counter   atomic.Int64 // can be used to generate a random number
+	lastRead  time.Time    // deadline of last read operation
+	lastWrite time.Time    // deadline of last write operation
 }
 
 func (c *QUIXConn) onGet(id int64, gate *quixGate, quicConn *quic.Conn) {
-	c.ServerConn_.OnGet(id)
-	c.router = gate.router
+	c.id = id
 	c.gate = gate
 	c.quicConn = quicConn
 }
 func (c *QUIXConn) onPut() {
 	c.quicConn = nil
 	c.gate = nil
-	c.router = nil
-	c.ServerConn_.OnPut()
+	c.counter.Store(0)
+	c.lastRead = time.Time{}
+	c.lastWrite = time.Time{}
 }
 
-func (c *QUIXConn) IsTLS() bool { return c.router.IsTLS() }
-func (c *QUIXConn) IsUDS() bool { return c.router.IsUDS() }
+func (c *QUIXConn) IsTLS() bool { return c.gate.IsTLS() }
+func (c *QUIXConn) IsUDS() bool { return c.gate.IsUDS() }
 
 func (c *QUIXConn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.router.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(p, int64(c.gate.router.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *QUIXConn) serve() { // runner
-	c.router.dispatch(c)
+	c.gate.router.dispatch(c)
 	c.closeConn()
 	putQUIXConn(c)
 }

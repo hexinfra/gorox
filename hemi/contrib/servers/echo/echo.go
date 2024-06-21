@@ -38,9 +38,6 @@ type echoServer struct {
 func (s *echoServer) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
 }
-func (s *echoServer) OnShutdown() {
-	s.Server_.OnShutdown()
-}
 
 func (s *echoServer) OnConfigure() {
 	s.Server_.OnConfigure()
@@ -119,7 +116,7 @@ func (g *echoGate) serve() { // runner
 			g.justClose(tcpConn)
 		} else {
 			echoConn := getEchoConn(connID, g, tcpConn)
-			go echoConn.serve() // echoConn is put to pool in serve()
+			go g.serveConn(echoConn) // echoConn is put to pool in serve()
 			connID++
 		}
 	}
@@ -128,6 +125,13 @@ func (g *echoGate) serve() { // runner
 		Printf("echoGate=%d done\n", g.ID())
 	}
 	g.server.DecSub() // gate
+}
+
+func (g *echoGate) serveConn(conn *echoConn) { // runner
+	defer putEchoConn(conn)
+	// TODO: deadline?
+	io.CopyBuffer(conn.tcpConn, conn.tcpConn, conn.buffer[:])
+	conn.closeConn()
 }
 
 func (g *echoGate) justClose(tcpConn *net.TCPConn) {
@@ -155,40 +159,28 @@ func putEchoConn(conn *echoConn) {
 
 // echoConn
 type echoConn struct {
-	// Parent
-	ServerConn_
 	// Conn states (stocks)
 	buffer [8152]byte
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	server  *echoServer
+	id      int64
 	gate    *echoGate
 	tcpConn *net.TCPConn
 	// Conn states (zeros)
 }
 
 func (c *echoConn) onGet(id int64, gate *echoGate, tcpConn *net.TCPConn) {
-	c.ServerConn_.OnGet(id)
-	c.server = gate.server
+	c.id = id
 	c.gate = gate
 	c.tcpConn = tcpConn
 }
 func (c *echoConn) onPut() {
 	c.tcpConn = nil
-	c.server = nil
 	c.gate = nil
-	c.ServerConn_.OnPut()
 }
 
-func (c *echoConn) IsTLS() bool { return c.server.IsTLS() }
-func (c *echoConn) IsUDS() bool { return c.server.IsUDS() }
-
-func (c *echoConn) serve() { // runner
-	defer putEchoConn(c)
-	// TODO: deadline?
-	io.CopyBuffer(c.tcpConn, c.tcpConn, c.buffer[:])
-	c.closeConn()
-}
+func (c *echoConn) IsTLS() bool { return c.gate.IsTLS() }
+func (c *echoConn) IsUDS() bool { return c.gate.IsUDS() }
 
 func (c *echoConn) closeConn() {
 	c.tcpConn.Close()

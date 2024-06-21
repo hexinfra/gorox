@@ -133,33 +133,35 @@ func (n *http3Node) storeConn(conn *backend3Conn) {
 var poolBackend3Conn sync.Pool
 
 func getBackend3Conn(id int64, node *http3Node, quicConn *quic.Conn) *backend3Conn {
-	var conn *backend3Conn
+	var backendConn *backend3Conn
 	if x := poolBackend3Conn.Get(); x == nil {
-		conn = new(backend3Conn)
+		backendConn = new(backend3Conn)
 	} else {
-		conn = x.(*backend3Conn)
+		backendConn = x.(*backend3Conn)
 	}
-	conn.onGet(id, node, quicConn)
-	return conn
+	backendConn.onGet(id, node, quicConn)
+	return backendConn
 }
-func putBackend3Conn(conn *backend3Conn) {
-	conn.onPut()
-	poolBackend3Conn.Put(conn)
+func putBackend3Conn(backendConn *backend3Conn) {
+	backendConn.onPut()
+	poolBackend3Conn.Put(backendConn)
 }
 
 // backend3Conn
 type backend3Conn struct {
-	// Parent
-	BackendConn_
 	// Mixins
 	_httpConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	backend  *HTTP3Backend
+	id       int64     // the conn id
+	expire   time.Time // when the conn is considered expired
 	node     *http3Node
 	quicConn *quic.Conn // the underlying quic connection
 	// Conn states (zeros)
+	counter       atomic.Int64                           // can be used to generate a random number
+	lastWrite     time.Time                              // deadline of last write operation
+	lastRead      time.Time                              // deadline of last read operation
 	nStreams      atomic.Int32                           // concurrent streams
 	streams       [http3MaxActiveStreams]*backend3Stream // active (open, remoteClosed, localClosed) streams
 	backend3Conn0                                        // all values must be zero by default in this struct!
@@ -168,10 +170,10 @@ type backend3Conn0 struct { // for fast reset, entirely
 }
 
 func (c *backend3Conn) onGet(id int64, node *http3Node, quicConn *quic.Conn) {
-	c.BackendConn_.OnGet(id, node.backend.aliveTimeout)
 	c._httpConn_.onGet()
 
-	c.backend = node.backend
+	c.id = id
+	c.expire = time.Now().Add(node.backend.aliveTimeout)
 	c.node = node
 	c.quicConn = quicConn
 }
@@ -181,20 +183,24 @@ func (c *backend3Conn) onPut() {
 	c.streams = [http3MaxActiveStreams]*backend3Stream{}
 	c.backend3Conn0 = backend3Conn0{}
 	c.node = nil
-	c.backend = nil
+	c.expire = time.Time{}
+	c.counter.Store(0)
+	c.lastWrite = time.Time{}
+	c.lastRead = time.Time{}
 
 	c._httpConn_.onPut()
-	c.BackendConn_.OnPut()
 }
 
 func (c *backend3Conn) IsTLS() bool { return c.node.IsTLS() }
 func (c *backend3Conn) IsUDS() bool { return c.node.IsUDS() }
 
+func (c *backend3Conn) ID() int64 { return c.id }
+
 func (c *backend3Conn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *backend3Conn) HTTPBackend() HTTPBackend { return c.backend }
+func (c *backend3Conn) HTTPBackend() HTTPBackend { return c.node.backend }
 
 func (c *backend3Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.HTTPBackend().MaxStreamsPerConn()

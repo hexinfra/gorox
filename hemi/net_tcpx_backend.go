@@ -194,56 +194,58 @@ func putTConn(tConn *TConn) {
 
 // TConn is a backend-side connection to tcpxNode.
 type TConn struct {
-	// Parent
-	BackendConn_
 	// Conn states (stocks)
 	stockInput [8192]byte // for c.input
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	backend *TCPXBackend
-	node    *tcpxNode
-	netConn net.Conn        // *net.TCPConn, *tls.Conn, *net.UnixConn
-	rawConn syscall.RawConn // for syscall. only usable when netConn is TCP/UDS
-	input   []byte
+	id        int64     // the conn id
+	expire    time.Time // when the conn is considered expired
+	node      *tcpxNode
+	netConn   net.Conn        // *net.TCPConn, *tls.Conn, *net.UnixConn
+	rawConn   syscall.RawConn // for syscall. only usable when netConn is TCP/UDS
+	input     []byte
+	closeSema atomic.Int32 // for close read and close write
 	// Conn states (zeros)
-	writeBroken atomic.Bool // write-side broken?
-	readBroken  atomic.Bool // read-side broken?
+	counter     atomic.Int64 // can be used to generate a random number
+	lastWrite   time.Time    // deadline of last write operation
+	lastRead    time.Time    // deadline of last read operation
+	writeBroken atomic.Bool  // write-side broken?
+	readBroken  atomic.Bool  // read-side broken?
 }
 
 func (c *TConn) onGet(id int64, node *tcpxNode, netConn net.Conn, rawConn syscall.RawConn) {
-	c.BackendConn_.OnGet(id, node.backend.aliveTimeout)
-
-	c.backend = node.backend
+	c.id = id
+	c.expire = time.Now().Add(node.backend.aliveTimeout)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
 	c.input = c.stockInput[:]
+	c.closeSema.Store(2) // read and write
 }
 func (c *TConn) onPut() {
 	c.input = nil
 	c.netConn = nil
 	c.rawConn = nil
 	c.node = nil
-	c.backend = nil
 
 	c.writeBroken.Store(false)
 	c.readBroken.Store(false)
-
-	c.BackendConn_.OnPut()
+	c.expire = time.Time{}
+	c.counter.Store(0)
+	c.lastWrite = time.Time{}
+	c.lastRead = time.Time{}
 }
 
 func (c *TConn) IsTLS() bool { return c.node.IsTLS() }
 func (c *TConn) IsUDS() bool { return c.node.IsUDS() }
 
 func (c *TConn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *TConn) TLSConn() *tls.Conn     { return c.netConn.(*tls.Conn) }
-func (c *TConn) UDSConn() *net.UnixConn { return c.netConn.(*net.UnixConn) }
-func (c *TConn) TCPConn() *net.TCPConn  { return c.netConn.(*net.TCPConn) }
+//func (c *TConn) isAlive() bool { return time.Now().Before(c.expire) }
 
-func (c *TConn) ProxyPass(conn *TCPXConn) error {
+func (c *TConn) proxyPass(conn *TCPXConn) error {
 	var (
 		p   []byte
 		err error
@@ -275,7 +277,7 @@ func (c *TConn) markWriteBroken() { c.writeBroken.Store(true) }
 func (c *TConn) markReadBroken()  { c.readBroken.Store(true) }
 func (c *TConn) IsBroken() bool   { return c.writeBroken.Load() || c.readBroken.Load() }
 
-func (c *TConn) SetWriteDeadline(deadline time.Time) error {
+func (c *TConn) setWriteDeadline(deadline time.Time) error {
 	if deadline.Sub(c.lastWrite) >= time.Second {
 		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
@@ -284,7 +286,7 @@ func (c *TConn) SetWriteDeadline(deadline time.Time) error {
 	}
 	return nil
 }
-func (c *TConn) SetReadDeadline(deadline time.Time) error {
+func (c *TConn) setReadDeadline(deadline time.Time) error {
 	if deadline.Sub(c.lastRead) >= time.Second {
 		if err := c.netConn.SetReadDeadline(deadline); err != nil {
 			return err

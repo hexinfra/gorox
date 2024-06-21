@@ -114,39 +114,36 @@ func (g *httpxGate) IsTLS() bool     { return g.server.IsTLS() }
 func (g *httpxGate) IsUDS() bool     { return g.server.IsUDS() }
 
 func (g *httpxGate) Open() error {
+	var (
+		listener net.Listener
+		err      error
+	)
 	if g.IsUDS() {
-		return g._openUnix()
+		address := g.Address()
+		// UDS doesn't support SO_REUSEADDR or SO_REUSEPORT, so we have to remove it first.
+		// This affects graceful upgrading, maybe we can implement fd transfer in the future.
+		os.Remove(address)
+		listener, err = net.Listen("unix", address)
+		if err == nil {
+			g.listener = listener.(*net.UnixListener)
+			if DebugLevel() >= 1 {
+				Printf("httpxGate id=%d address=%s opened!\n", g.id, g.Address())
+			}
+		}
 	} else {
-		return g._openInet()
-	}
-}
-func (g *httpxGate) _openUnix() error {
-	address := g.Address()
-	// UDS doesn't support SO_REUSEADDR or SO_REUSEPORT, so we have to remove it first.
-	// This affects graceful upgrading, maybe we can implement fd transfer in the future.
-	os.Remove(address)
-	listener, err := net.Listen("unix", address)
-	if err == nil {
-		g.listener = listener.(*net.UnixListener)
-		if DebugLevel() >= 1 {
-			Printf("httpxGate id=%d address=%s opened!\n", g.id, g.Address())
+		listenConfig := new(net.ListenConfig)
+		listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
+			if err := system.SetReusePort(rawConn); err != nil {
+				return err
+			}
+			return system.SetDeferAccept(rawConn)
 		}
-	}
-	return err
-}
-func (g *httpxGate) _openInet() error {
-	listenConfig := new(net.ListenConfig)
-	listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
-		if err := system.SetReusePort(rawConn); err != nil {
-			return err
-		}
-		return system.SetDeferAccept(rawConn)
-	}
-	listener, err := listenConfig.Listen(context.Background(), "tcp", g.Address())
-	if err == nil {
-		g.listener = listener.(*net.TCPListener)
-		if DebugLevel() >= 1 {
-			Printf("httpxGate id=%d address=%s opened!\n", g.id, g.Address())
+		listener, err = listenConfig.Listen(context.Background(), "tcp", g.Address())
+		if err == nil {
+			g.listener = listener.(*net.TCPListener)
+			if DebugLevel() >= 1 {
+				Printf("httpxGate id=%d address=%s opened!\n", g.id, g.Address())
+			}
 		}
 	}
 	return err

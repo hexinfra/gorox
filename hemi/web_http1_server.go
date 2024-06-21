@@ -15,6 +15,7 @@ import (
 	"io"
 	"net"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -47,8 +48,6 @@ func putServer1Conn(serverConn *server1Conn) {
 
 // server1Conn is the server-side HTTP/1 connection.
 type server1Conn struct {
-	// Parent
-	ServerConn_
 	// Mixins
 	_httpConn_
 	// Assocs
@@ -56,19 +55,21 @@ type server1Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	server    *httpxServer
+	id        int64
 	gate      *httpxGate
 	netConn   net.Conn        // the connection (UDS/TCP/TLS)
 	rawConn   syscall.RawConn // for syscall, only when netConn is UDS/TCP
 	closeSafe bool            // if false, send a FIN first to avoid TCP's RST following immediate close(). true by default
 	// Conn states (zeros)
+	counter   atomic.Int64 // can be used to generate a random number
+	lastRead  time.Time    // deadline of last read operation
+	lastWrite time.Time    // deadline of last write operation
 }
 
 func (c *server1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.ServerConn_.OnGet(id)
 	c._httpConn_.onGet()
 
-	c.server = gate.server
+	c.id = id
 	c.gate = gate
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -89,17 +90,21 @@ func (c *server1Conn) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
 	c.gate = nil
-	c.server = nil
+
+	c.counter.Store(0)
+	c.lastRead = time.Time{}
+	c.lastWrite = time.Time{}
 
 	c._httpConn_.onPut()
-	c.ServerConn_.OnPut()
 }
 
-func (c *server1Conn) IsTLS() bool { return c.server.IsTLS() }
-func (c *server1Conn) IsUDS() bool { return c.server.IsUDS() }
+func (c *server1Conn) ID() int64 { return c.id }
+
+func (c *server1Conn) IsTLS() bool { return c.gate.IsTLS() }
+func (c *server1Conn) IsUDS() bool { return c.gate.IsUDS() }
 
 func (c *server1Conn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(p, int64(c.gate.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *server1Conn) serve() { // runner
@@ -196,7 +201,8 @@ func (s *server1Stream) execute() {
 	}
 
 	conn := s.conn
-	server := conn.server
+	server := conn.gate.server
+
 	// RFC 9112:
 	// If the server's configuration provides for a fixed URI scheme, or a
 	// scheme is provided by a trusted outbound gateway, that scheme is
@@ -285,7 +291,7 @@ func (s *server1Stream) execute() {
 func (s *server1Stream) writeContinue() bool { // 100 continue
 	conn := s.conn
 	// This is an interim response, write directly.
-	if s.setWriteDeadline(time.Now().Add(conn.server.WriteTimeout())) == nil {
+	if s.setWriteDeadline(time.Now().Add(conn.gate.server.WriteTimeout())) == nil {
 		if _, err := s.write(http1BytesContinue); err == nil {
 			return true
 		}
@@ -311,7 +317,7 @@ func (s *server1Stream) executeExchan(webapp *Webapp, req *server1Request, resp 
 func (s *server1Stream) serveAbnormal(req *server1Request, resp *server1Response) { // 4xx & 5xx
 	conn := s.conn
 	if DebugLevel() >= 2 {
-		Printf("server=%s gate=%d conn=%d headResult=%d\n", conn.server.Name(), conn.gate.ID(), conn.id, s.request.headResult)
+		Printf("server=%s gate=%d conn=%d headResult=%d\n", conn.gate.server.Name(), conn.gate.ID(), conn.id, s.request.headResult)
 	}
 	conn.persistent = false // close anyway.
 
@@ -351,7 +357,7 @@ func (s *server1Stream) serveAbnormal(req *server1Request, resp *server1Response
 	resp.vector[1] = resp.addedHeaders()
 	resp.vector[2] = resp.fixedHeaders()
 	// Ignore any error, as the connection will be closed anyway.
-	if s.setWriteDeadline(time.Now().Add(conn.server.WriteTimeout())) == nil {
+	if s.setWriteDeadline(time.Now().Add(conn.gate.server.WriteTimeout())) == nil {
 		s.writev(&resp.vector)
 	}
 }
@@ -362,7 +368,7 @@ func (s *server1Stream) executeSocket() { // upgrade: websocket
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nConnection: close\r\n\r\n"))
 }
 
-func (s *server1Stream) httpServend() httpServend { return s.conn.server }
+func (s *server1Stream) httpServend() httpServend { return s.conn.gate.server }
 func (s *server1Stream) httpConn() httpConn       { return s.conn }
 func (s *server1Stream) remoteAddr() net.Addr     { return s.conn.netConn.RemoteAddr() }
 

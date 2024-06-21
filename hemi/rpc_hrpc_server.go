@@ -10,6 +10,7 @@ package hemi
 import (
 	"bytes"
 	"errors"
+	"sync/atomic"
 	"time"
 )
 
@@ -38,9 +39,6 @@ type hrpcServer struct {
 
 func (s *hrpcServer) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
-}
-func (s *hrpcServer) OnShutdown() {
-	s.Server_.OnShutdown()
 }
 
 func (s *hrpcServer) OnConfigure() {
@@ -139,14 +137,6 @@ func (g *hrpcGate) Open() error {
 	// TODO
 	return nil
 }
-func (g *hrpcGate) _openUnix() error {
-	// TODO
-	return nil
-}
-func (g *hrpcGate) _openInet() error {
-	// TODO
-	return nil
-}
 func (g *hrpcGate) Shut() error {
 	g.MarkShut()
 	// TODO // breaks serve()
@@ -160,27 +150,25 @@ func (g *hrpcGate) serve() { // runner
 // hrpcConn
 type hrpcConn struct {
 	// Parent
-	ServerConn_
-	server *hrpcServer
-	gate   *hrpcGate
+	id      int64
+	gate    *hrpcGate
+	counter atomic.Int64 // can be used to generate a random number
 }
 
 func (c *hrpcConn) onGet(id int64, gate *hrpcGate) {
-	c.ServerConn_.OnGet(id)
-	c.server = gate.server
+	c.id = id
 	c.gate = gate
 }
 func (c *hrpcConn) onPut() {
-	c.server = nil
 	c.gate = nil
-	c.ServerConn_.OnPut()
+	c.counter.Store(0)
 }
 
-func (c *hrpcConn) IsTLS() bool { return c.server.IsTLS() }
-func (c *hrpcConn) IsUDS() bool { return c.server.IsUDS() }
+func (c *hrpcConn) IsTLS() bool { return c.gate.IsTLS() }
+func (c *hrpcConn) IsUDS() bool { return c.gate.IsUDS() }
 
 func (c *hrpcConn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(p, int64(c.gate.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 //func (c *hrpcConn) rpcServer() *hrpcServer { return c.server }

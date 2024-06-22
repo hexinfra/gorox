@@ -37,11 +37,8 @@ type httpBackend_[N Node] struct {
 	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
-	sendTimeout          time.Duration // timeout to send the whole message
-	recvTimeout          time.Duration // timeout to recv the whole message content
-	maxContentSize       int64         // max content size allowed to receive
-	maxMemoryContentSize int32         // max content size that can be loaded into memory directly
-	maxStreamsPerConn    int32         // max streams of one conn. 0 means infinite
+	maxMemoryContentSize int32 // max content size that can be loaded into memory directly
+	maxStreamsPerConn    int32 // max streams of one conn. 0 means infinite
 }
 
 func (b *httpBackend_[N]) onCreate(name string, stage *Stage) {
@@ -50,31 +47,7 @@ func (b *httpBackend_[N]) onCreate(name string, stage *Stage) {
 
 func (b *httpBackend_[N]) onConfigure() {
 	b.Backend_.OnConfigure()
-	b._contentSaver_.onConfigure(b, TmpDir()+"/web/backends/"+b.name)
-
-	// sendTimeout
-	b.ConfigureDuration("sendTimeout", &b.sendTimeout, func(value time.Duration) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".sendTimeout has an invalid value")
-	}, 60*time.Second)
-
-	// recvTimeout
-	b.ConfigureDuration("recvTimeout", &b.recvTimeout, func(value time.Duration) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".recvTimeout has an invalid value")
-	}, 60*time.Second)
-
-	// maxContentSize
-	b.ConfigureInt64("maxContentSize", &b.maxContentSize, func(value int64) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".maxContentSize has an invalid value")
-	}, _1T)
+	b._contentSaver_.onConfigure(b, TmpDir()+"/web/backends/"+b.name, 60*time.Second, 60*time.Second)
 
 	// maxMemoryContentSize
 	b.ConfigureInt32("maxMemoryContentSize", &b.maxMemoryContentSize, func(value int32) error {

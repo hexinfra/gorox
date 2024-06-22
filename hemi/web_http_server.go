@@ -48,9 +48,6 @@ type httpServer_[G Gate] struct {
 	// Assocs
 	defaultApp *Webapp // default webapp if not found
 	// States
-	recvTimeout          time.Duration          // timeout to recv the whole message content
-	sendTimeout          time.Duration          // timeout to send the whole message
-	maxContentSize       int64                  // max content size allowed to receive
 	maxMemoryContentSize int32                  // max content size that can be loaded into memory directly
 	maxStreamsPerConn    int32                  // max streams of one conn. 0 means infinite
 	webapps              []string               // for what webapps
@@ -69,31 +66,7 @@ func (s *httpServer_[G]) onCreate(name string, stage *Stage) {
 
 func (s *httpServer_[G]) onConfigure() {
 	s.Server_.OnConfigure()
-	s._contentSaver_.onConfigure(s, TmpDir()+"/web/servers/"+s.name)
-
-	// recvTimeout
-	s.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".recvTimeout has an invalid value")
-	}, 120*time.Second)
-
-	// sendTimeout
-	s.ConfigureDuration("sendTimeout", &s.sendTimeout, func(value time.Duration) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".sendTimeout has an invalid value")
-	}, 120*time.Second)
-
-	// maxContentSize
-	s.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".maxContentSize has an invalid value")
-	}, _1T)
+	s._contentSaver_.onConfigure(s, TmpDir()+"/web/servers/"+s.name, 120*time.Second, 120*time.Second)
 
 	// maxMemoryContentSize
 	s.ConfigureInt32("maxMemoryContentSize", &s.maxMemoryContentSize, func(value int32) error {

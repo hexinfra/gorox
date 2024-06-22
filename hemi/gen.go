@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"time"
 )
 
 const ( // array kinds
@@ -232,10 +233,13 @@ type contentSaver interface {
 // _contentSaver_ is a mixin.
 type _contentSaver_ struct {
 	// States
-	saveContentFilesDir string
+	saveContentFilesDir string // content files are placed here
+	sendTimeout         time.Duration // timeout to send the whole message
+	recvTimeout         time.Duration // timeout to recv the whole message content
+	maxContentSize      int64         // max content size allowed to receive
 }
 
-func (s *_contentSaver_) onConfigure(component Component, defaultDir string) {
+func (s *_contentSaver_) onConfigure(component Component, defaultDir string, sendTimeout time.Duration, recvTimeout time.Duration) {
 	// saveContentFilesDir
 	component.ConfigureString("saveContentFilesDir", &s.saveContentFilesDir, func(value string) error {
 		if value != "" && len(value) <= 232 {
@@ -243,6 +247,30 @@ func (s *_contentSaver_) onConfigure(component Component, defaultDir string) {
 		}
 		return errors.New(".saveContentFilesDir has an invalid value")
 	}, defaultDir)
+
+	// sendTimeout
+	component.ConfigureDuration("sendTimeout", &s.sendTimeout, func(value time.Duration) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".sendTimeout has an invalid value")
+	}, sendTimeout)
+
+	// recvTimeout
+	component.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".recvTimeout has an invalid value")
+	}, recvTimeout)
+
+	// maxContentSize
+	component.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".maxContentSize has an invalid value")
+	}, _1T)
 }
 func (s *_contentSaver_) onPrepare(component Component, perm os.FileMode) {
 	if err := os.MkdirAll(s.saveContentFilesDir, perm); err != nil {

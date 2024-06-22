@@ -11,7 +11,6 @@
 package hemi
 
 import (
-	"errors"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -108,9 +107,6 @@ type uwsgiBackend struct {
 	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
-	sendTimeout    time.Duration // timeout to send the whole request
-	recvTimeout    time.Duration // timeout to recv the whole response content
-	maxContentSize int64         // max response content size allowed
 }
 
 func (b *uwsgiBackend) onCreate(name string, stage *Stage) {
@@ -119,31 +115,7 @@ func (b *uwsgiBackend) onCreate(name string, stage *Stage) {
 
 func (b *uwsgiBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
-	b._contentSaver_.onConfigure(b, TmpDir()+"/web/backends/"+b.name)
-
-	// sendTimeout
-	b.ConfigureDuration("sendTimeout", &b.sendTimeout, func(value time.Duration) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".sendTimeout has an invalid value")
-	}, 60*time.Second)
-
-	// recvTimeout
-	b.ConfigureDuration("recvTimeout", &b.recvTimeout, func(value time.Duration) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".recvTimeout has an invalid value")
-	}, 60*time.Second)
-
-	// maxContentSize
-	b.ConfigureInt64("maxContentSize", &b.maxContentSize, func(value int64) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".maxContentSize has an invalid value")
-	}, _1T)
+	b._contentSaver_.onConfigure(b, TmpDir()+"/web/backends/"+b.name, 60*time.Second, 60*time.Second)
 
 	// sub components
 	b.ConfigureNodes()

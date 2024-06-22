@@ -221,11 +221,8 @@ type fcgiBackend struct {
 	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
-	persistent        bool          // instructs FCGI server to keep conn?
-	sendTimeout       time.Duration // timeout to send the whole request
-	recvTimeout       time.Duration // timeout to recv the whole response content
-	maxContentSize    int64         // max response content size allowed
-	maxExchansPerConn int32         // max exchans of one conn. 0 means infinite
+	persistent        bool  // instructs FCGI server to keep conn?
+	maxExchansPerConn int32 // max exchans of one conn. 0 means infinite
 }
 
 func (b *fcgiBackend) onCreate(name string, stage *Stage) {
@@ -234,34 +231,10 @@ func (b *fcgiBackend) onCreate(name string, stage *Stage) {
 
 func (b *fcgiBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
-	b._contentSaver_.onConfigure(b, TmpDir()+"/web/backends/"+b.name)
+	b._contentSaver_.onConfigure(b, TmpDir()+"/web/backends/"+b.name, 60*time.Second, 60*time.Second)
 
 	// persistent
 	b.ConfigureBool("persistent", &b.persistent, false)
-
-	// sendTimeout
-	b.ConfigureDuration("sendTimeout", &b.sendTimeout, func(value time.Duration) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".sendTimeout has an invalid value")
-	}, 60*time.Second)
-
-	// recvTimeout
-	b.ConfigureDuration("recvTimeout", &b.recvTimeout, func(value time.Duration) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".recvTimeout has an invalid value")
-	}, 60*time.Second)
-
-	// maxContentSize
-	b.ConfigureInt64("maxContentSize", &b.maxContentSize, func(value int64) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".maxContentSize has an invalid value")
-	}, _1T)
 
 	// maxExchansPerConn
 	b.ConfigureInt32("maxExchansPerConn", &b.maxExchansPerConn, func(value int32) error {

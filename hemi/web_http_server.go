@@ -32,7 +32,7 @@ func init() {
 }
 
 // HTTPServer
-type HTTPServer interface { // for *http[1-3]Server
+type HTTPServer interface { // for *http[x3]Server
 	// Imports
 	Server
 	contentSaver
@@ -47,21 +47,26 @@ type HTTPServer interface { // for *http[1-3]Server
 	findApp(hostname []byte) *Webapp
 }
 
-// httpServer_ is the parent for http[1-3]Server.
+// httpServer_ is the parent for http[x3]Server.
 type httpServer_[G Gate] struct {
 	// Parent
 	Server_[G]
 	// Mixins
-	_httpServend_
+	_contentSaver_ // so responses can save their large contents in local file system.
 	// Assocs
 	defaultApp *Webapp // default webapp if not found
 	// States
-	webapps      []string               // for what webapps
-	exactApps    []*hostnameTo[*Webapp] // like: ("example.com")
-	suffixApps   []*hostnameTo[*Webapp] // like: ("*.example.com")
-	prefixApps   []*hostnameTo[*Webapp] // like: ("www.example.*")
-	forceScheme  int8                   // scheme (http/https) that must be used
-	adjustScheme bool                   // use https scheme for TLS and http scheme for others?
+	recvTimeout          time.Duration          // timeout to recv the whole message content
+	sendTimeout          time.Duration          // timeout to send the whole message
+	maxContentSize       int64                  // max content size allowed to receive
+	maxMemoryContentSize int32                  // max content size that can be loaded into memory directly
+	maxStreamsPerConn    int32                  // max streams of one conn. 0 means infinite
+	webapps              []string               // for what webapps
+	exactApps            []*hostnameTo[*Webapp] // like: ("example.com")
+	suffixApps           []*hostnameTo[*Webapp] // like: ("*.example.com")
+	prefixApps           []*hostnameTo[*Webapp] // like: ("www.example.*")
+	forceScheme          int8                   // scheme (http/https) that must be used
+	adjustScheme         bool                   // use https scheme for TLS and http scheme for others?
 }
 
 func (s *httpServer_[G]) onCreate(name string, stage *Stage) {
@@ -72,7 +77,47 @@ func (s *httpServer_[G]) onCreate(name string, stage *Stage) {
 
 func (s *httpServer_[G]) onConfigure() {
 	s.Server_.OnConfigure()
-	s._httpServend_.onConfigure(s, 120*time.Second, 120*time.Second, 1000, TmpDir()+"/web/servers/"+s.name)
+	s._contentSaver_.onConfigure(s, TmpDir()+"/web/servers/"+s.name)
+
+	// recvTimeout
+	s.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".recvTimeout has an invalid value")
+	}, 120*time.Second)
+
+	// sendTimeout
+	s.ConfigureDuration("sendTimeout", &s.sendTimeout, func(value time.Duration) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".sendTimeout has an invalid value")
+	}, 120*time.Second)
+
+	// maxContentSize
+	s.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".maxContentSize has an invalid value")
+	}, _1T)
+
+	// maxMemoryContentSize
+	s.ConfigureInt32("maxMemoryContentSize", &s.maxMemoryContentSize, func(value int32) error {
+		if value > 0 && value <= _1G { // DO NOT CHANGE THIS, otherwise integer overflow may occur
+			return nil
+		}
+		return errors.New(".maxMemoryContentSize has an invalid value")
+	}, _16M)
+
+	// maxStreamsPerConn
+	s.ConfigureInt32("maxStreamsPerConn", &s.maxStreamsPerConn, func(value int32) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".maxStreamsPerConn has an invalid value")
+	}, 1000)
 
 	// webapps
 	s.ConfigureStringList("webapps", &s.webapps, nil, []string{})
@@ -97,7 +142,7 @@ func (s *httpServer_[G]) onConfigure() {
 }
 func (s *httpServer_[G]) onPrepare() {
 	s.Server_.OnPrepare()
-	s._httpServend_.onPrepare(s)
+	s._contentSaver_.onPrepare(s, 0755)
 }
 
 func (s *httpServer_[G]) bindApps() {
@@ -158,6 +203,12 @@ func (s *httpServer_[G]) findApp(hostname []byte) *Webapp {
 	}
 	return s.defaultApp // may be nil
 }
+
+func (s *httpServer_[G]) RecvTimeout() time.Duration  { return s.recvTimeout }
+func (s *httpServer_[G]) SendTimeout() time.Duration  { return s.sendTimeout }
+func (s *httpServer_[G]) MaxContentSize() int64       { return s.maxContentSize }
+func (s *httpServer_[G]) MaxMemoryContentSize() int32 { return s.maxMemoryContentSize }
+func (s *httpServer_[G]) MaxStreamsPerConn() int32    { return s.maxStreamsPerConn }
 
 // Request is the server-side http request.
 type Request interface { // for *server[1-3]Request

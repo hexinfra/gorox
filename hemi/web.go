@@ -9,7 +9,6 @@ package hemi
 
 import (
 	"bytes"
-	"errors"
 	"net"
 	"os"
 	"strings"
@@ -29,71 +28,6 @@ type httpServend interface {
 	MaxMemoryContentSize() int32
 	MaxStreamsPerConn() int32
 }
-
-// _httpServend_ is a mixin for httpServer_ and HTTP[1-3]Backend.
-type _httpServend_ struct {
-	// Mixins
-	_contentSaver_ // so responses can save their large contents in local file system.
-	// States
-	recvTimeout          time.Duration // timeout to recv the whole message content
-	sendTimeout          time.Duration // timeout to send the whole message
-	maxContentSize       int64         // max content size allowed to receive
-	maxMemoryContentSize int32         // max content size that can be loaded into memory directly
-	maxStreamsPerConn    int32         // max streams of one conn. 0 means infinite
-}
-
-func (s *_httpServend_) onConfigure(servend Component, recvTimeout time.Duration, sendTimeout time.Duration, defaultMaxStreams int32, defaultDir string) {
-	s._contentSaver_.onConfigure(servend, defaultDir)
-
-	// recvTimeout
-	servend.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".recvTimeout has an invalid value")
-	}, recvTimeout)
-
-	// sendTimeout
-	servend.ConfigureDuration("sendTimeout", &s.sendTimeout, func(value time.Duration) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".sendTimeout has an invalid value")
-	}, sendTimeout)
-
-	// maxContentSize
-	servend.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".maxContentSize has an invalid value")
-	}, _1T)
-
-	// maxMemoryContentSize
-	servend.ConfigureInt32("maxMemoryContentSize", &s.maxMemoryContentSize, func(value int32) error {
-		if value > 0 && value <= _1G { // DO NOT CHANGE THIS, otherwise integer overflow may occur
-			return nil
-		}
-		return errors.New(".maxMemoryContentSize has an invalid value")
-	}, _16M)
-
-	// maxStreamsPerConn
-	servend.ConfigureInt32("maxStreamsPerConn", &s.maxStreamsPerConn, func(value int32) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".maxStreamsPerConn has an invalid value")
-	}, defaultMaxStreams)
-}
-func (s *_httpServend_) onPrepare(servend Component) {
-	s._contentSaver_.onPrepare(servend, 0755)
-}
-
-func (s *_httpServend_) RecvTimeout() time.Duration  { return s.recvTimeout }
-func (s *_httpServend_) SendTimeout() time.Duration  { return s.sendTimeout }
-func (s *_httpServend_) MaxContentSize() int64       { return s.maxContentSize }
-func (s *_httpServend_) MaxMemoryContentSize() int32 { return s.maxMemoryContentSize }
-func (s *_httpServend_) MaxStreamsPerConn() int32    { return s.maxStreamsPerConn }
 
 // httpConn collects shared methods between *server[1-3]Conn and *backend[1-3]Conn.
 type httpConn interface {

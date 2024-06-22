@@ -194,10 +194,8 @@ func (c *backend3Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *backend3Conn) HTTPBackend() HTTPBackend { return c.node.backend }
-
 func (c *backend3Conn) reachLimit() bool {
-	return c.usedStreams.Add(1) > c.HTTPBackend().MaxStreamsPerConn()
+	return c.usedStreams.Add(1) > c.node.backend.MaxStreamsPerConn()
 }
 
 func (c *backend3Conn) markBroken()    { c.broken.Store(true) }
@@ -292,7 +290,7 @@ func (s *backend3Stream) ExecuteSocket() error { // see RFC 9220
 	return nil
 }
 
-func (s *backend3Stream) httpServend() httpServend { return s.conn.HTTPBackend() }
+func (s *backend3Stream) httpServend() httpServend { return s.conn.node.backend }
 func (s *backend3Stream) httpConn() httpConn       { return s.conn }
 func (s *backend3Stream) remoteAddr() net.Addr     { return nil } // TODO
 

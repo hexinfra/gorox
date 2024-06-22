@@ -211,10 +211,8 @@ func (c *backend2Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *backend2Conn) HTTPBackend() HTTPBackend { return c.node.backend }
-
 func (c *backend2Conn) reachLimit() bool {
-	return c.usedStreams.Add(1) > c.HTTPBackend().MaxStreamsPerConn()
+	return c.usedStreams.Add(1) > c.node.backend.MaxStreamsPerConn()
 }
 
 func (c *backend2Conn) markBroken()    { c.broken.Store(true) }
@@ -338,7 +336,7 @@ func (s *backend2Stream) ExecuteSocket() error { // see RFC 8441: https://datatr
 	return nil
 }
 
-func (s *backend2Stream) httpServend() httpServend { return s.conn.HTTPBackend() }
+func (s *backend2Stream) httpServend() httpServend { return s.conn.node.backend }
 func (s *backend2Stream) httpConn() httpConn       { return s.conn }
 func (s *backend2Stream) remoteAddr() net.Addr     { return s.conn.netConn.RemoteAddr() }
 

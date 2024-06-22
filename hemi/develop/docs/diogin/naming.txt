@@ -10,9 +10,12 @@ NAMING
   Special types
   -------------
 
-    as mixin types:
+    as parent types:
 
       httpServer_
+
+    as mixin types:
+
       _client_
 
 

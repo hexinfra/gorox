@@ -344,10 +344,8 @@ func (c *backend1Conn) MakeTempName(p []byte, unixTime int64) int {
 
 func (c *backend1Conn) isAlive() bool { return time.Now().Before(c.expire) }
 
-func (c *backend1Conn) HTTPBackend() HTTPBackend { return c.node.backend }
-
 func (c *backend1Conn) reachLimit() bool {
-	return c.usedStreams.Add(1) > c.HTTPBackend().MaxStreamsPerConn()
+	return c.usedStreams.Add(1) > c.node.backend.MaxStreamsPerConn()
 }
 
 func (c *backend1Conn) markBroken()    { c.broken.Store(true) }
@@ -411,7 +409,7 @@ func (s *backend1Stream) ExecuteSocket() error { // upgrade: websocket
 	return nil
 }
 
-func (s *backend1Stream) httpServend() httpServend { return s.conn.HTTPBackend() }
+func (s *backend1Stream) httpServend() httpServend { return s.conn.node.backend }
 func (s *backend1Stream) httpConn() httpConn       { return s.conn }
 func (s *backend1Stream) remoteAddr() net.Addr     { return s.conn.netConn.RemoteAddr() }
 

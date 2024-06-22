@@ -24,10 +24,8 @@ type httpServend interface {
 	contentSaver
 	// Methods
 	Stage() *Stage
-	ReadTimeout() time.Duration  // timeout for a single read operation
-	WriteTimeout() time.Duration // timeout for a single write operation
-	RecvTimeout() time.Duration  // timeout to recv the whole message content
-	SendTimeout() time.Duration  // timeout to send the whole message
+	RecvTimeout() time.Duration // timeout to recv the whole message content
+	SendTimeout() time.Duration // timeout to send the whole message
 	MaxContentSize() int64
 	MaxMemoryContentSize() int32
 	MaxStreamsPerConn() int32
@@ -148,8 +146,8 @@ type httpStream interface {
 	isBroken() bool // returns true if either side of the stream is broken
 	markBroken()    // mark stream as broken
 
-	setReadDeadline(deadline time.Time) error
-	setWriteDeadline(deadline time.Time) error
+	setReadDeadline() error
+	setWriteDeadline() error
 
 	read(p []byte) (int, error)
 	readFull(p []byte) (int, error)

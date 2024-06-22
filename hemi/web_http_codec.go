@@ -865,7 +865,7 @@ func (r *httpIn_) _dropContent() { // if message content is not received, this w
 }
 func (r *httpIn_) _recvContent(retain bool) any { // to []byte (for small content <= 64K1) or tempFile (for large content > 64K1, or vague content)
 	if r.contentSize > 0 && r.contentSize <= _64K1 { // (0, 64K1]. save to []byte. must be received in a timeout
-		if err := r.stream.setReadDeadline(time.Now().Add(r.stream.httpServend().ReadTimeout())); err != nil {
+		if err := r.stream.setReadDeadline(); err != nil {
 			return err
 		}
 		// Since content is small, r.bodyWindow and tempFile are not needed.
@@ -1375,11 +1375,10 @@ func (r *httpIn_) _newTempFile(retain bool) (tempFile, error) { // to save conte
 	return os.OpenFile(WeakString(pathBuffer[:n]), os.O_RDWR|os.O_CREATE, 0644)
 }
 func (r *httpIn_) _beforeRead(toTime *time.Time) error {
-	now := time.Now()
 	if toTime.IsZero() {
-		*toTime = now
+		*toTime = time.Now()
 	}
-	return r.stream.setReadDeadline(now.Add(r.stream.httpServend().ReadTimeout()))
+	return r.stream.setReadDeadline()
 }
 func (r *httpIn_) _tooSlow() bool { // reports whether the speed of incoming content is too slow
 	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
@@ -1809,11 +1808,10 @@ func (r *httpOut_) _growFields(size int) (from int, edge int, ok bool) { // used
 }
 
 func (r *httpOut_) _beforeWrite() error {
-	now := time.Now()
-	if r.sendTime.IsZero() { // only once
-		r.sendTime = now
+	if r.sendTime.IsZero() {
+		r.sendTime = time.Now()
 	}
-	return r.stream.setWriteDeadline(now.Add(r.stream.httpServend().WriteTimeout()))
+	return r.stream.setWriteDeadline()
 }
 func (r *httpOut_) _slowCheck(err error) error {
 	if err == nil && r._tooSlow() {

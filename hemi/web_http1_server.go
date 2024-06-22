@@ -291,7 +291,7 @@ func (s *server1Stream) execute() {
 func (s *server1Stream) writeContinue() bool { // 100 continue
 	conn := s.conn
 	// This is an interim response, write directly.
-	if s.setWriteDeadline(time.Now().Add(conn.gate.server.WriteTimeout())) == nil {
+	if s.setWriteDeadline() == nil {
 		if _, err := s.write(http1BytesContinue); err == nil {
 			return true
 		}
@@ -357,7 +357,7 @@ func (s *server1Stream) serveAbnormal(req *server1Request, resp *server1Response
 	resp.vector[1] = resp.addedHeaders()
 	resp.vector[2] = resp.fixedHeaders()
 	// Ignore any error, as the connection will be closed anyway.
-	if s.setWriteDeadline(time.Now().Add(conn.gate.server.WriteTimeout())) == nil {
+	if s.setWriteDeadline() == nil {
 		s.writev(&resp.vector)
 	}
 }
@@ -375,8 +375,9 @@ func (s *server1Stream) remoteAddr() net.Addr     { return s.conn.netConn.Remote
 func (s *server1Stream) markBroken()    { s.conn.markBroken() }
 func (s *server1Stream) isBroken() bool { return s.conn.isBroken() }
 
-func (s *server1Stream) setReadDeadline(deadline time.Time) error {
+func (s *server1Stream) setReadDeadline() error {
 	conn := s.conn
+	deadline := time.Now().Add(conn.gate.server.ReadTimeout())
 	if deadline.Sub(conn.lastRead) >= time.Second {
 		if err := conn.netConn.SetReadDeadline(deadline); err != nil {
 			return err
@@ -385,8 +386,9 @@ func (s *server1Stream) setReadDeadline(deadline time.Time) error {
 	}
 	return nil
 }
-func (s *server1Stream) setWriteDeadline(deadline time.Time) error {
+func (s *server1Stream) setWriteDeadline() error {
 	conn := s.conn
+	deadline := time.Now().Add(conn.gate.server.WriteTimeout())
 	if deadline.Sub(conn.lastWrite) >= time.Second {
 		if err := conn.netConn.SetWriteDeadline(deadline); err != nil {
 			return err

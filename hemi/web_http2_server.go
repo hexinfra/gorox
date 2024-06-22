@@ -216,7 +216,7 @@ serve:
 
 func (c *server2Conn) handshake() error {
 	// Set deadline for the first request headers
-	if err := c.setReadDeadline(time.Now().Add(c.gate.server.ReadTimeout())); err != nil {
+	if err := c.setReadDeadline(); err != nil {
 		return err
 	}
 	if err := c._growFrame(uint32(len(http2BytesPrism))); err != nil {
@@ -644,7 +644,7 @@ func (c *server2Conn) recvFrame() (*http2InFrame, error) {
 			}
 		}
 		// Got a new headers. Set deadline for next headers
-		if err := c.setReadDeadline(time.Now().Add(c.gate.server.ReadTimeout())); err != nil {
+		if err := c.setReadDeadline(); err != nil {
 			return nil, err
 		}
 	}
@@ -780,7 +780,8 @@ func (c *server2Conn) sendFrame(outFrame *http2OutFrame) error {
 	return err
 }
 
-func (c *server2Conn) setReadDeadline(deadline time.Time) error {
+func (c *server2Conn) setReadDeadline() error {
+	deadline := time.Now().Add(c.gate.server.ReadTimeout())
 	if deadline.Sub(c.lastRead) >= time.Second {
 		if err := c.netConn.SetReadDeadline(deadline); err != nil {
 			return err
@@ -789,7 +790,8 @@ func (c *server2Conn) setReadDeadline(deadline time.Time) error {
 	}
 	return nil
 }
-func (c *server2Conn) setWriteDeadline(deadline time.Time) error {
+func (c *server2Conn) setWriteDeadline() error {
+	deadline := time.Now().Add(c.gate.server.WriteTimeout())
 	if deadline.Sub(c.lastWrite) >= time.Second {
 		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
@@ -917,10 +919,12 @@ func (s *server2Stream) remoteAddr() net.Addr     { return s.conn.netConn.Remote
 func (s *server2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 func (s *server2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
 
-func (s *server2Stream) setReadDeadline(deadline time.Time) error { // for content i/o only
+func (s *server2Stream) setReadDeadline() error { // for content i/o only
+	// TODO
 	return nil
 }
-func (s *server2Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only
+func (s *server2Stream) setWriteDeadline() error { // for content i/o only
+	// TODO
 	return nil
 }
 
@@ -1046,7 +1050,7 @@ func (r *server2Response) finalizeHeaders() { // add at most 256 bytes
 	/*
 		// date: Sun, 06 Nov 1994 08:49:37 GMT
 		if r.iDate == 0 {
-			r.fieldsEdge += uint16(r.stream.httpServend().Stage().Clock().writeDate1(r.fields[r.fieldsEdge:]))
+			r.fieldsEdge += uint16(r.stream.httpServend().Stage().Clock().writeDate2(r.fields[r.fieldsEdge:]))
 		}
 	*/
 }

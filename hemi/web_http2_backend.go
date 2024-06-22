@@ -234,7 +234,8 @@ func (c *backend2Conn) storeStream(stream backendStream) {
 	//stream.onEnd()
 }
 
-func (c *backend2Conn) setWriteDeadline(deadline time.Time) error {
+func (c *backend2Conn) setWriteDeadline() error {
+	deadline := time.Now().Add(c.node.backend.WriteTimeout())
 	if deadline.Sub(c.lastWrite) >= time.Second {
 		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
@@ -243,7 +244,8 @@ func (c *backend2Conn) setWriteDeadline(deadline time.Time) error {
 	}
 	return nil
 }
-func (c *backend2Conn) setReadDeadline(deadline time.Time) error {
+func (c *backend2Conn) setReadDeadline() error {
+	deadline := time.Now().Add(c.node.backend.ReadTimeout())
 	if deadline.Sub(c.lastRead) >= time.Second {
 		if err := c.netConn.SetReadDeadline(deadline); err != nil {
 			return err
@@ -346,10 +348,12 @@ func (s *backend2Stream) remoteAddr() net.Addr     { return s.conn.netConn.Remot
 func (s *backend2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 func (s *backend2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
 
-func (s *backend2Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only?
+func (s *backend2Stream) setWriteDeadline() error { // for content i/o only?
+	// TODO
 	return nil
 }
-func (s *backend2Stream) setReadDeadline(deadline time.Time) error { // for content i/o only?
+func (s *backend2Stream) setReadDeadline() error { // for content i/o only?
+	// TODO
 	return nil
 }
 

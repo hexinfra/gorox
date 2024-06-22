@@ -421,8 +421,9 @@ func (s *backend1Stream) remoteAddr() net.Addr     { return s.conn.netConn.Remot
 func (s *backend1Stream) markBroken()    { s.conn.markBroken() }
 func (s *backend1Stream) isBroken() bool { return s.conn.isBroken() }
 
-func (s *backend1Stream) setWriteDeadline(deadline time.Time) error {
+func (s *backend1Stream) setWriteDeadline() error {
 	conn := s.conn
+	deadline := time.Now().Add(conn.node.backend.WriteTimeout())
 	if deadline.Sub(conn.lastWrite) >= time.Second {
 		if err := conn.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
@@ -431,8 +432,9 @@ func (s *backend1Stream) setWriteDeadline(deadline time.Time) error {
 	}
 	return nil
 }
-func (s *backend1Stream) setReadDeadline(deadline time.Time) error {
+func (s *backend1Stream) setReadDeadline() error {
 	conn := s.conn
+	deadline := time.Now().Add(conn.node.backend.ReadTimeout())
 	if deadline.Sub(conn.lastRead) >= time.Second {
 		if err := conn.netConn.SetReadDeadline(deadline); err != nil {
 			return err

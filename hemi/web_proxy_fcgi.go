@@ -1191,7 +1191,7 @@ func (r *fcgiResponse) BodyResult() int16 { return r.bodyResult }
 
 func (r *fcgiResponse) recvHead() {
 	// The entire response head must be received within one timeout
-	if err := r._beforeRead(&r.recvTime); err != nil {
+	if err := r._beforeRead(); err != nil {
 		r.headResult = -1
 		return
 	}
@@ -1642,9 +1642,9 @@ func (r *fcgiResponse) _newTempFile() (tempFile, error) { // to save content to
 	n += r.exchan.conn.MakeTempName(filePath[n:], r.recvTime.Unix())
 	return os.OpenFile(WeakString(filePath[:n]), os.O_RDWR|os.O_CREATE, 0644)
 }
-func (r *fcgiResponse) _beforeRead(toTime *time.Time) error {
-	if toTime.IsZero() {
-		*toTime = time.Now()
+func (r *fcgiResponse) _beforeRead() error {
+	if r.recvTime.IsZero() {
+		r.recvTime = time.Now()
 	}
 	return r.exchan.setReadDeadline()
 }

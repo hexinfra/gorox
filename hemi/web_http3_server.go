@@ -315,23 +315,29 @@ func (s *server3Stream) remoteAddr() net.Addr     { return nil } // TODO
 func (s *server3Stream) markBroken()    {}               // TODO
 func (s *server3Stream) isBroken() bool { return false } // TODO
 
-func (s *server3Stream) setReadDeadline(deadline time.Time) error { // for content i/o only
+func (s *server3Stream) setReadDeadline() error { // for content i/o only
+	// TODO
 	return nil
 }
-func (s *server3Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only
+func (s *server3Stream) setWriteDeadline() error { // for content i/o only
+	// TODO
 	return nil
 }
 
 func (s *server3Stream) read(p []byte) (int, error) { // for content i/o only
+	// TODO
 	return 0, nil
 }
 func (s *server3Stream) readFull(p []byte) (int, error) { // for content i/o only
+	// TODO
 	return 0, nil
 }
 func (s *server3Stream) write(p []byte) (int, error) { // for content i/o only
+	// TODO
 	return 0, nil
 }
 func (s *server3Stream) writev(vector *net.Buffers) (int64, error) { // for content i/o only
+	// TODO
 	return 0, nil
 }
 
@@ -427,7 +433,7 @@ func (r *server3Response) finalizeHeaders() { // add at most 256 bytes
 	/*
 		// date: Sun, 06 Nov 1994 08:49:37 GMT
 		if r.iDate == 0 {
-			r.fieldsEdge += uint16(r.stream.httpServend().Stage().Clock().writeDate1(r.fields[r.fieldsEdge:]))
+			r.fieldsEdge += uint16(r.stream.httpServend().Stage().Clock().writeDate3(r.fields[r.fieldsEdge:]))
 		}
 	*/
 }

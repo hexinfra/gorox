@@ -302,10 +302,12 @@ func (s *backend3Stream) remoteAddr() net.Addr     { return nil } // TODO
 func (s *backend3Stream) markBroken()    {}               // TODO
 func (s *backend3Stream) isBroken() bool { return false } // TODO
 
-func (s *backend3Stream) setWriteDeadline(deadline time.Time) error { // for content i/o only?
+func (s *backend3Stream) setWriteDeadline() error { // for content i/o only?
+	// TODO
 	return nil
 }
-func (s *backend3Stream) setReadDeadline(deadline time.Time) error { // for content i/o only?
+func (s *backend3Stream) setReadDeadline() error { // for content i/o only?
+	// TODO
 	return nil
 }
 

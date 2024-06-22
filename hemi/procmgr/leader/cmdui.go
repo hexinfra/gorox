@@ -90,6 +90,12 @@ func cmduiServer() { // runner
 			if hemi.DebugLevel() >= 1 {
 				hemi.Printf("[leader] send: %+v\n", resp)
 			}
+			if err = cmdConn.SetWriteDeadline(time.Now().Add(10 * time.Second)); err != nil {
+				if hemi.DebugLevel() >= 1 {
+					hemi.Println("[leader]: SetWriteDeadline error: " + err.Error())
+				}
+				goto closeNext
+			}
 			msgx.Send(cmdConn, resp)
 		}
 	closeNext:

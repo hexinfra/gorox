@@ -29,26 +29,22 @@ func init() {
 // HTTP3Backend
 type HTTP3Backend struct {
 	// Parent
-	Backend_[*http3Node]
-	// Mixins
-	_httpServend_
+	httpBackend_[*http3Node]
 	// States
 }
 
 func (b *HTTP3Backend) onCreate(name string, stage *Stage) {
-	b.Backend_.OnCreate(name, stage)
+	b.httpBackend_.OnCreate(name, stage)
 }
 
 func (b *HTTP3Backend) OnConfigure() {
-	b.Backend_.OnConfigure()
-	b._httpServend_.onConfigure(b, 60*time.Second, 60*time.Second, 1000, TmpDir()+"/web/backends/"+b.name)
+	b.httpBackend_.OnConfigure()
 
 	// sub components
 	b.ConfigureNodes()
 }
 func (b *HTTP3Backend) OnPrepare() {
-	b.Backend_.OnPrepare()
-	b._httpServend_.onPrepare(b)
+	b.httpBackend_.OnPrepare()
 
 	// sub components
 	b.PrepareNodes()
@@ -149,16 +145,16 @@ func putBackend3Conn(backendConn *backend3Conn) {
 
 // backend3Conn
 type backend3Conn struct {
-	// Mixins
-	_httpConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id       int64     // the conn id
-	expire   time.Time // when the conn is considered expired
+	id       int64 // the conn id
 	node     *http3Node
 	quicConn *quic.Conn // the underlying quic connection
+	expire   time.Time  // when the conn is considered expired
 	// Conn states (zeros)
+	usedStreams   atomic.Int32                           // accumulated num of streams served or fired
+	broken        atomic.Bool                            // is conn broken?
 	counter       atomic.Int64                           // can be used to generate a random number
 	lastWrite     time.Time                              // deadline of last write operation
 	lastRead      time.Time                              // deadline of last read operation
@@ -170,12 +166,10 @@ type backend3Conn0 struct { // for fast reset, entirely
 }
 
 func (c *backend3Conn) onGet(id int64, node *http3Node, quicConn *quic.Conn) {
-	c._httpConn_.onGet()
-
 	c.id = id
-	c.expire = time.Now().Add(node.backend.aliveTimeout)
 	c.node = node
 	c.quicConn = quicConn
+	c.expire = time.Now().Add(node.backend.aliveTimeout)
 }
 func (c *backend3Conn) onPut() {
 	c.quicConn = nil
@@ -187,8 +181,8 @@ func (c *backend3Conn) onPut() {
 	c.counter.Store(0)
 	c.lastWrite = time.Time{}
 	c.lastRead = time.Time{}
-
-	c._httpConn_.onPut()
+	c.usedStreams.Store(0)
+	c.broken.Store(false)
 }
 
 func (c *backend3Conn) IsTLS() bool { return c.node.IsTLS() }
@@ -205,6 +199,9 @@ func (c *backend3Conn) HTTPBackend() HTTPBackend { return c.node.backend }
 func (c *backend3Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.HTTPBackend().MaxStreamsPerConn()
 }
+
+func (c *backend3Conn) markBroken()    { c.broken.Store(true) }
+func (c *backend3Conn) isBroken() bool { return c.broken.Load() }
 
 func (c *backend3Conn) fetchStream() (backendStream, error) {
 	// Note: A backend3Conn can be used concurrently, limited by maxStreams.
@@ -249,22 +246,22 @@ func putBackend3Stream(stream *backend3Stream) {
 
 // backend3Stream
 type backend3Stream struct {
-	// Mixins
-	_httpStream_
 	// Assocs
 	request  backend3Request
 	response backend3Response
 	socket   *backend3Socket
 	// Stream states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	conn       *backend3Conn
 	quicStream *quic.Stream // the underlying quic stream
+	region     Region       // a region-based memory pool
 	// Stream states (zeros)
 }
 
 func (s *backend3Stream) onUse(conn *backend3Conn, quicStream *quic.Stream) { // for non-zeros
-	s._httpStream_.onUse()
+	s.region.Init()
 	s.conn = conn
 	s.quicStream = quicStream
 	s.request.onUse(Version3)
@@ -279,7 +276,7 @@ func (s *backend3Stream) onEnd() { // for zeros
 	}
 	s.conn = nil
 	s.quicStream = nil
-	s._httpStream_.onEnd()
+	s.region.Free()
 }
 
 func (s *backend3Stream) Request() backendRequest   { return &s.request }
@@ -323,6 +320,9 @@ func (s *backend3Stream) read(p []byte) (int, error) { // for content i/o only?
 func (s *backend3Stream) readFull(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
+
+func (s *backend3Stream) buffer256() []byte          { return s.stockBuffer[:] }
+func (s *backend3Stream) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 // backend3Request is the backend-side HTTP/3 request.
 type backend3Request struct { // outgoing. needs building

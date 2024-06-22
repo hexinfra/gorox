@@ -29,6 +29,27 @@ type HTTPBackend interface { // for *HTTP[1-3]Backend
 	StoreStream(stream backendStream)
 }
 
+// httpBackend_ is the parent for http[1-3]Backend.
+type httpBackend_[N Node] struct {
+	// Parent
+	Backend_[N]
+	// Mixins
+	_httpServend_
+}
+
+func (b *httpBackend_[N]) onCreate(name string, stage *Stage) {
+	b.Backend_.OnCreate(name, stage)
+}
+
+func (b *httpBackend_[N]) onConfigure() {
+	b.Backend_.OnConfigure()
+	b._httpServend_.onConfigure(b, 60*time.Second, 60*time.Second, 1000, TmpDir()+"/web/backends/"+b.name)
+}
+func (b *httpBackend_[N]) onPrepare() {
+	b.Backend_.OnPrepare()
+	b._httpServend_.onPrepare(b)
+}
+
 // backendStream is the backend-side http stream.
 type backendStream interface { // for *backend[1-3]Stream
 	Request() backendRequest

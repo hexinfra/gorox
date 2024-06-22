@@ -31,26 +31,22 @@ func init() {
 // HTTP1Backend
 type HTTP1Backend struct {
 	// Parent
-	Backend_[*http1Node]
-	// Mixins
-	_httpServend_
+	httpBackend_[*http1Node]
 	// States
 }
 
 func (b *HTTP1Backend) onCreate(name string, stage *Stage) {
-	b.Backend_.OnCreate(name, stage)
+	b.httpBackend_.OnCreate(name, stage)
 }
 
 func (b *HTTP1Backend) OnConfigure() {
-	b.Backend_.OnConfigure()
-	b._httpServend_.onConfigure(b, 60*time.Second, 60*time.Second, 1000, TmpDir()+"/web/backends/"+b.name)
+	b.httpBackend_.OnConfigure()
 
 	// sub components
 	b.ConfigureNodes()
 }
 func (b *HTTP1Backend) OnPrepare() {
-	b.Backend_.OnPrepare()
-	b._httpServend_.onPrepare(b)
+	b.httpBackend_.OnPrepare()
 
 	// sub components
 	b.PrepareNodes()
@@ -149,7 +145,7 @@ func (n *http1Node) storeStream(stream backendStream) {
 	conn := stream.(*backend1Stream).conn
 	conn.storeStream(stream)
 
-	if conn.isBroken() || n.isDown() || !conn.isAlive() || !conn.isPersistent() {
+	if conn.isBroken() || n.isDown() || !conn.isAlive() || !conn.persistent {
 		conn.Close()
 		n.DecSub() // conn
 		if DebugLevel() >= 2 {
@@ -297,33 +293,33 @@ func putBackend1Conn(backendConn *backend1Conn) {
 
 // backend1Conn is the backend-side HTTP/1 connection.
 type backend1Conn struct {
-	// Mixins
-	_httpConn_
 	// Assocs
 	next   *backend1Conn  // the linked-list
 	stream backend1Stream // an http/1 connection has exactly one stream
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id      int64     // the conn id
-	expire  time.Time // when the conn is considered expired
-	node    *http1Node
-	netConn net.Conn        // the connection (TCP/TLS/UDS)
-	rawConn syscall.RawConn // used when netConn is TCP or UDS
+	id         int64 // the conn id
+	node       *http1Node
+	netConn    net.Conn        // the connection (TCP/TLS/UDS)
+	rawConn    syscall.RawConn // used when netConn is TCP or UDS
+	expire     time.Time       // when the conn is considered expired
+	persistent bool            // keep the connection after current stream? true by default
 	// Conn states (zeros)
-	counter   atomic.Int64 // can be used to generate a random number
-	lastWrite time.Time    // deadline of last write operation
-	lastRead  time.Time    // deadline of last read operation
+	usedStreams atomic.Int32 // accumulated num of streams served or fired
+	broken      atomic.Bool  // is conn broken?
+	counter     atomic.Int64 // can be used to generate a random number
+	lastWrite   time.Time    // deadline of last write operation
+	lastRead    time.Time    // deadline of last read operation
 }
 
 func (c *backend1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c._httpConn_.onGet()
-
 	c.id = id
-	c.expire = time.Now().Add(node.backend.aliveTimeout)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
+	c.expire = time.Now().Add(node.backend.aliveTimeout)
+	c.persistent = true
 }
 func (c *backend1Conn) onPut() {
 	c.netConn = nil
@@ -333,8 +329,8 @@ func (c *backend1Conn) onPut() {
 	c.counter.Store(0)
 	c.lastWrite = time.Time{}
 	c.lastRead = time.Time{}
-
-	c._httpConn_.onPut()
+	c.usedStreams.Store(0)
+	c.broken.Store(false)
 }
 
 func (c *backend1Conn) IsTLS() bool { return c.node.IsTLS() }
@@ -354,6 +350,9 @@ func (c *backend1Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.HTTPBackend().MaxStreamsPerConn()
 }
 
+func (c *backend1Conn) markBroken()    { c.broken.Store(true) }
+func (c *backend1Conn) isBroken() bool { return c.broken.Load() }
+
 func (c *backend1Conn) fetchStream() (backendStream, error) {
 	stream := &c.stream
 	stream.onUse()
@@ -371,22 +370,21 @@ func (c *backend1Conn) Close() error {
 
 // backend1Stream is the backend-side HTTP/1 stream.
 type backend1Stream struct {
-	// Mixins
-	_httpStream_
 	// Assocs
 	conn     *backend1Conn    // the backend-side http/1 conn
 	request  backend1Request  // the backend-side http/1 request
 	response backend1Response // the backend-side http/1 response
 	socket   *backend1Socket  // the backend-side http/1 websocket
 	// Stream states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Stream states (controlled)
 	// Stream states (non zeros)
+	region Region // a region-based memory pool
 	// Stream states (zeros)
 }
 
 func (s *backend1Stream) onUse() { // for non-zeros
-	s._httpStream_.onUse()
-
+	s.region.Init()
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
 }
@@ -397,8 +395,7 @@ func (s *backend1Stream) onEnd() { // for zeros
 		s.socket.onEnd()
 		s.socket = nil
 	}
-
-	s._httpStream_.onEnd()
+	s.region.Free()
 }
 
 func (s *backend1Stream) Request() backendRequest   { return &s.request }
@@ -450,6 +447,9 @@ func (s *backend1Stream) writev(vector *net.Buffers) (int64, error) {
 }
 func (s *backend1Stream) read(p []byte) (int, error)     { return s.conn.netConn.Read(p) }
 func (s *backend1Stream) readFull(p []byte) (int, error) { return io.ReadFull(s.conn.netConn, p) }
+
+func (s *backend1Stream) buffer256() []byte          { return s.stockBuffer[:] }
+func (s *backend1Stream) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 // backend1Request is the backend-side HTTP/1 request.
 type backend1Request struct { // outgoing. needs building

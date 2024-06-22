@@ -528,12 +528,12 @@ type fcgiConn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id         int64     // the conn id
-	expire     time.Time // when the conn is considered expired
+	id         int64 // the conn id
 	node       *fcgiNode
 	netConn    net.Conn        // *net.TCPConn or *net.UnixConn
 	rawConn    syscall.RawConn // for syscall
-	persistent bool            // persist the connection after current exchan? true by default
+	expire     time.Time       // when the conn is considered expired
+	persistent bool            // keep the connection after current exchan? true by default
 	// Conn states (zeros)
 	counter     atomic.Int64 // can be used to generate a random number
 	lastWrite   time.Time    // deadline of last write operation
@@ -544,10 +544,10 @@ type fcgiConn struct {
 
 func (c *fcgiConn) onGet(id int64, node *fcgiNode, netConn net.Conn, rawConn syscall.RawConn) {
 	c.id = id
-	c.expire = time.Now().Add(node.backend.aliveTimeout)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
+	c.expire = time.Now().Add(node.backend.aliveTimeout)
 	c.persistent = true
 }
 func (c *fcgiConn) onPut() {

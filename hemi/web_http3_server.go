@@ -149,8 +149,6 @@ func putServer3Conn(serverConn *server3Conn) {
 
 // server3Conn is the server-side HTTP/3 connection.
 type server3Conn struct {
-	// Mixins
-	_httpConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -160,6 +158,8 @@ type server3Conn struct {
 	buffer   *http3Buffer      // ...
 	table    http3DynamicTable // ...
 	// Conn states (zeros)
+	usedStreams  atomic.Int32                          // accumulated num of streams served or fired
+	broken       atomic.Bool                           // is conn broken?
 	counter      atomic.Int64                          // can be used to generate a random number
 	lastRead     time.Time                             // deadline of last read operation
 	lastWrite    time.Time                             // deadline of last write operation
@@ -173,8 +173,6 @@ type server3Conn0 struct { // for fast reset, entirely
 }
 
 func (c *server3Conn) onGet(id int64, gate *http3Gate, quicConn *quic.Conn) {
-	c._httpConn_.onGet()
-
 	c.id = id
 	c.gate = gate
 	c.quicConn = quicConn
@@ -193,8 +191,8 @@ func (c *server3Conn) onPut() {
 	c.counter.Store(0)
 	c.lastRead = time.Time{}
 	c.lastWrite = time.Time{}
-
-	c._httpConn_.onPut()
+	c.usedStreams.Store(0)
+	c.broken.Store(false)
 }
 
 func (c *server3Conn) ID() int64 { return c.id }
@@ -205,6 +203,9 @@ func (c *server3Conn) IsUDS() bool { return c.gate.IsUDS() }
 func (c *server3Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.gate.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
+
+func (c *server3Conn) markBroken()    { c.broken.Store(true) }
+func (c *server3Conn) isBroken() bool { return c.broken.Load() }
 
 func (c *server3Conn) serve() { // runner
 	// TODO
@@ -246,17 +247,17 @@ func putServer3Stream(stream *server3Stream) {
 
 // server3Stream is the server-side HTTP/3 stream.
 type server3Stream struct {
-	// Mixins
-	_httpStream_
 	// Assocs
 	request  server3Request  // the http/3 request.
 	response server3Response // the http/3 response.
 	socket   *server3Socket  // ...
 	// Stream states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	conn       *server3Conn
 	quicStream *quic.Stream // the underlying quic stream
+	region     Region       // a region-based memory pool
 	// Stream states (zeros)
 	server3Stream0 // all values must be zero by default in this struct!
 }
@@ -267,7 +268,7 @@ type server3Stream0 struct { // for fast reset, entirely
 }
 
 func (s *server3Stream) onUse(conn *server3Conn, quicStream *quic.Stream) { // for non-zeros
-	s._httpStream_.onUse()
+	s.region.Init()
 	s.conn = conn
 	s.quicStream = quicStream
 	s.request.onUse(Version3)
@@ -283,7 +284,7 @@ func (s *server3Stream) onEnd() { // for zeros
 	s.conn = nil
 	s.quicStream = nil
 	s.server3Stream0 = server3Stream0{}
-	s._httpStream_.onEnd()
+	s.region.Free()
 }
 
 func (s *server3Stream) execute() { // runner
@@ -340,6 +341,9 @@ func (s *server3Stream) writev(vector *net.Buffers) (int64, error) { // for cont
 	// TODO
 	return 0, nil
 }
+
+func (s *server3Stream) buffer256() []byte          { return s.stockBuffer[:] }
+func (s *server3Stream) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 // server3Request is the server-side HTTP/3 request.
 type server3Request struct { // incoming. needs parsing

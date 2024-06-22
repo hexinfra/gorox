@@ -29,26 +29,22 @@ func init() {
 // HTTP2Backend
 type HTTP2Backend struct {
 	// Parent
-	Backend_[*http2Node]
-	// Mixins
-	_httpServend_
+	httpBackend_[*http2Node]
 	// States
 }
 
 func (b *HTTP2Backend) onCreate(name string, stage *Stage) {
-	b.Backend_.OnCreate(name, stage)
+	b.httpBackend_.OnCreate(name, stage)
 }
 
 func (b *HTTP2Backend) OnConfigure() {
-	b.Backend_.OnConfigure()
-	b._httpServend_.onConfigure(b, 60*time.Second, 60*time.Second, 1000, TmpDir()+"/web/backends/"+b.name)
+	b.httpBackend_.OnConfigure()
 
 	// sub components
 	b.ConfigureNodes()
 }
 func (b *HTTP2Backend) OnPrepare() {
-	b.Backend_.OnPrepare()
-	b._httpServend_.onPrepare(b)
+	b.httpBackend_.OnPrepare()
 
 	// sub components
 	b.PrepareNodes()
@@ -163,17 +159,17 @@ func putBackend2Conn(backendConn *backend2Conn) {
 
 // backend2Conn
 type backend2Conn struct {
-	// Mixins
-	_httpConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id      int64     // the conn id
-	expire  time.Time // when the conn is considered expired
+	id      int64 // the conn id
 	node    *http2Node
 	netConn net.Conn // the connection (TCP/TLS)
 	rawConn syscall.RawConn
+	expire  time.Time // when the conn is considered expired
 	// Conn states (zeros)
+	usedStreams   atomic.Int32                           // accumulated num of streams served or fired
+	broken        atomic.Bool                            // is conn broken?
 	counter       atomic.Int64                           // can be used to generate a random number
 	lastWrite     time.Time                              // deadline of last write operation
 	lastRead      time.Time                              // deadline of last read operation
@@ -185,13 +181,11 @@ type backend2Conn0 struct { // for fast reset, entirely
 }
 
 func (c *backend2Conn) onGet(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c._httpConn_.onGet()
-
 	c.id = id
-	c.expire = time.Now().Add(node.backend.aliveTimeout)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
+	c.expire = time.Now().Add(node.backend.aliveTimeout)
 }
 func (c *backend2Conn) onPut() {
 	c.netConn = nil
@@ -204,8 +198,8 @@ func (c *backend2Conn) onPut() {
 	c.counter.Store(0)
 	c.lastWrite = time.Time{}
 	c.lastRead = time.Time{}
-
-	c._httpConn_.onPut()
+	c.usedStreams.Store(0)
+	c.broken.Store(false)
 }
 
 func (c *backend2Conn) IsTLS() bool { return c.node.IsTLS() }
@@ -222,6 +216,9 @@ func (c *backend2Conn) HTTPBackend() HTTPBackend { return c.node.backend }
 func (c *backend2Conn) reachLimit() bool {
 	return c.usedStreams.Add(1) > c.HTTPBackend().MaxStreamsPerConn()
 }
+
+func (c *backend2Conn) markBroken()    { c.broken.Store(true) }
+func (c *backend2Conn) isBroken() bool { return c.broken.Load() }
 
 func (c *backend2Conn) fetchStream() (backendStream, error) {
 	// Note: A backend2Conn can be used concurrently, limited by maxStreams.
@@ -296,22 +293,22 @@ func putBackend2Stream(stream *backend2Stream) {
 
 // backend2Stream
 type backend2Stream struct {
-	// Mixins
-	_httpStream_
 	// Assocs
 	request  backend2Request
 	response backend2Response
 	socket   *backend2Socket
 	// Stream states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	conn *backend2Conn
-	id   uint32
+	conn   *backend2Conn
+	id     uint32
+	region Region // a region-based memory pool
 	// Stream states (zeros)
 }
 
 func (s *backend2Stream) onUse(conn *backend2Conn, id uint32) { // for non-zeros
-	s._httpStream_.onUse()
+	s.region.Init()
 	s.conn = conn
 	s.id = id
 	s.request.onUse(Version2)
@@ -325,7 +322,7 @@ func (s *backend2Stream) onEnd() { // for zeros
 		s.socket = nil
 	}
 	s.conn = nil
-	s._httpStream_.onEnd()
+	s.region.Free()
 }
 
 func (s *backend2Stream) Request() backendRequest   { return &s.request }
@@ -369,6 +366,9 @@ func (s *backend2Stream) read(p []byte) (int, error) { // for content i/o only?
 func (s *backend2Stream) readFull(p []byte) (int, error) { // for content i/o only?
 	return 0, nil
 }
+
+func (s *backend2Stream) buffer256() []byte          { return s.stockBuffer[:] }
+func (s *backend2Stream) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 // backend2Request is the backend-side HTTP/2 request.
 type backend2Request struct { // outgoing. needs building

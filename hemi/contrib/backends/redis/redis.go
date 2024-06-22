@@ -125,11 +125,11 @@ func putRedisConn(redisConn *RedisConn) {
 // RedisConn is a connection to redisNode.
 type RedisConn struct {
 	// Conn states (non-zeros)
-	id      int64     // the conn id
-	expire  time.Time // when the conn is considered expired
+	id      int64 // the conn id
 	node    *redisNode
 	netConn net.Conn
 	rawConn syscall.RawConn
+	expire  time.Time // when the conn is considered expired
 	// Conn states (zeros)
 	counter   atomic.Int64 // can be used to generate a random number
 	lastWrite time.Time    // deadline of last write operation
@@ -138,10 +138,10 @@ type RedisConn struct {
 
 func (c *RedisConn) onGet(id int64, node *redisNode, netConn net.Conn, rawConn syscall.RawConn) {
 	c.id = id
-	c.expire = time.Now().Add(node.backend.AliveTimeout())
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
+	c.expire = time.Now().Add(node.backend.AliveTimeout())
 }
 func (c *RedisConn) onPut() {
 	c.netConn = nil

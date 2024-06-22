@@ -48,31 +48,31 @@ func putServer1Conn(serverConn *server1Conn) {
 
 // server1Conn is the server-side HTTP/1 connection.
 type server1Conn struct {
-	// Mixins
-	_httpConn_
 	// Assocs
 	stream server1Stream // an http/1 connection has exactly one stream
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id        int64
-	gate      *httpxGate
-	netConn   net.Conn        // the connection (UDS/TCP/TLS)
-	rawConn   syscall.RawConn // for syscall, only when netConn is UDS/TCP
-	closeSafe bool            // if false, send a FIN first to avoid TCP's RST following immediate close(). true by default
+	id         int64
+	gate       *httpxGate
+	netConn    net.Conn        // the connection (UDS/TCP/TLS)
+	rawConn    syscall.RawConn // for syscall, only when netConn is UDS/TCP
+	persistent bool            // keep the connection after current stream? true by default
+	closeSafe  bool            // if false, send a FIN first to avoid TCP's RST following immediate close(). true by default
 	// Conn states (zeros)
-	counter   atomic.Int64 // can be used to generate a random number
-	lastRead  time.Time    // deadline of last read operation
-	lastWrite time.Time    // deadline of last write operation
+	usedStreams atomic.Int32 // accumulated num of streams served or fired
+	broken      atomic.Bool  // is conn broken?
+	counter     atomic.Int64 // can be used to generate a random number
+	lastRead    time.Time    // deadline of last read operation
+	lastWrite   time.Time    // deadline of last write operation
 }
 
 func (c *server1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c._httpConn_.onGet()
-
 	c.id = id
 	c.gate = gate
 	c.netConn = netConn
 	c.rawConn = rawConn
+	c.persistent = true
 	c.closeSafe = true
 
 	req := &c.stream.request
@@ -94,8 +94,8 @@ func (c *server1Conn) onPut() {
 	c.counter.Store(0)
 	c.lastRead = time.Time{}
 	c.lastWrite = time.Time{}
-
-	c._httpConn_.onPut()
+	c.usedStreams.Store(0)
+	c.broken.Store(false)
 }
 
 func (c *server1Conn) ID() int64 { return c.id }
@@ -106,6 +106,9 @@ func (c *server1Conn) IsUDS() bool { return c.gate.IsUDS() }
 func (c *server1Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.gate.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
+
+func (c *server1Conn) markBroken()    { c.broken.Store(true) }
+func (c *server1Conn) isBroken() bool { return c.broken.Load() }
 
 func (c *server1Conn) serve() { // runner
 	defer putServer1Conn(c)
@@ -154,22 +157,21 @@ func (c *server1Conn) serve() { // runner
 
 // server1Stream is the server-side HTTP/1 stream.
 type server1Stream struct {
-	// Mixins
-	_httpStream_
 	// Assocs
 	conn     *server1Conn
 	request  server1Request  // the server-side http/1 request.
 	response server1Response // the server-side http/1 response.
 	socket   *server1Socket  // the server-side http/1 websocket.
 	// Stream states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Stream states (controlled)
 	// Stream states (non-zeros)
+	region Region // a region-based memory pool
 	// Stream states (zeros)
 }
 
 func (s *server1Stream) onUse() { // for non-zeros
-	s._httpStream_.onUse()
-
+	s.region.Init()
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
 }
@@ -180,8 +182,7 @@ func (s *server1Stream) onEnd() { // for zeros
 		s.socket.onEnd()
 		s.socket = nil
 	}
-
-	s._httpStream_.onEnd()
+	s.region.Free()
 }
 
 func (s *server1Stream) execute() {
@@ -404,6 +405,9 @@ func (s *server1Stream) write(p []byte) (int, error)    { return s.conn.netConn.
 func (s *server1Stream) writev(vector *net.Buffers) (int64, error) {
 	return vector.WriteTo(s.conn.netConn)
 }
+
+func (s *server1Stream) buffer256() []byte          { return s.stockBuffer[:] }
+func (s *server1Stream) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 // server1Request is the server-side HTTP/1 request.
 type server1Request struct { // incoming. needs parsing
@@ -952,7 +956,7 @@ func (r *server1Response) AddDirectoryRedirection() bool {
 		return false
 	}
 }
-func (r *server1Response) setConnectionClose() { r.stream.httpConn().setPersistent(false) }
+func (r *server1Response) setConnectionClose() { r.stream.httpConn().(*server1Conn).persistent = false }
 
 func (r *server1Response) AddCookie(cookie *Cookie) bool {
 	if cookie.name == "" || cookie.invalid {
@@ -1022,7 +1026,7 @@ func (r *server1Response) finalizeHeaders() { // add at most 256 bytes
 	if r.unixTimes.lastModified >= 0 {
 		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesLastModified, r.unixTimes.lastModified))
 	}
-	conn := r.stream.httpConn()
+	conn := r.stream.httpConn().(*server1Conn)
 	if r.contentSize != -1 { // with content
 		if !r.forbidFraming {
 			if !r.isVague() { // content-length: >=0\r\n
@@ -1035,7 +1039,7 @@ func (r *server1Response) finalizeHeaders() { // add at most 256 bytes
 				// RFC 7230 (section 3.3.1): A server MUST NOT send a
 				// response containing Transfer-Encoding unless the corresponding
 				// request indicates HTTP/1.1 (or later).
-				conn.setPersistent(false) // close conn anyway for HTTP/1.0
+				conn.persistent = false // close conn anyway for HTTP/1.0
 			}
 		}
 		// content-type: text/html; charset=utf-8\r\n
@@ -1043,7 +1047,7 @@ func (r *server1Response) finalizeHeaders() { // add at most 256 bytes
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTMLUTF8))
 		}
 	}
-	if conn.isPersistent() { // connection: keep-alive\r\n
+	if conn.persistent { // connection: keep-alive\r\n
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
 	} else { // connection: close\r\n
 		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionClose))

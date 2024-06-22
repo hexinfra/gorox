@@ -14,7 +14,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 )
 
@@ -38,7 +37,7 @@ type _httpServend_ struct {
 	// States
 	recvTimeout          time.Duration // timeout to recv the whole message content
 	sendTimeout          time.Duration // timeout to send the whole message
-	maxContentSize       int64         // max content size allowed
+	maxContentSize       int64         // max content size allowed to receive
 	maxMemoryContentSize int32         // max content size that can be loaded into memory directly
 	maxStreamsPerConn    int32         // max streams of one conn. 0 means infinite
 }
@@ -102,36 +101,9 @@ type httpConn interface {
 	IsTLS() bool
 	IsUDS() bool
 	MakeTempName(p []byte, unixTime int64) int
-	isPersistent() bool
-	setPersistent(persistent bool)
 	markBroken()
 	isBroken() bool
 }
-
-// _httpConn_ is a mixin for server[1-3]Conn and backend[1-3]Conn.
-type _httpConn_ struct {
-	// Conn states (stocks)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	persistent bool // persist the connection after current stream? true by default
-	// Conn states (zeros)
-	usedStreams atomic.Int32 // accumulated num of streams served or fired
-	broken      atomic.Bool  // is conn broken?
-}
-
-func (c *_httpConn_) onGet() {
-	c.persistent = true
-}
-func (c *_httpConn_) onPut() {
-	c.usedStreams.Store(0)
-	c.broken.Store(false)
-}
-
-func (c *_httpConn_) isPersistent() bool            { return c.persistent }
-func (c *_httpConn_) setPersistent(persistent bool) { c.persistent = persistent }
-
-func (c *_httpConn_) markBroken()    { c.broken.Store(true) }
-func (c *_httpConn_) isBroken() bool { return c.broken.Load() }
 
 // httpStream collects shared methods between *server[1-3]Stream and *backend[1-3]Stream.
 type httpStream interface {
@@ -154,26 +126,6 @@ type httpStream interface {
 	write(p []byte) (int, error)
 	writev(vector *net.Buffers) (int64, error)
 }
-
-// _httpStream_ is a mixin for server[1-3]Stream and backend[1-3]Stream.
-type _httpStream_ struct {
-	// Stream states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	region Region // a region-based memory pool
-	// Stream states (zeros)
-}
-
-func (s *_httpStream_) onUse() {
-	s.region.Init()
-}
-func (s *_httpStream_) onEnd() {
-	s.region.Free()
-}
-
-func (s *_httpStream_) buffer256() []byte          { return s.stockBuffer[:] }
-func (s *_httpStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 // poolPiece
 var poolPiece sync.Pool

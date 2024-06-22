@@ -147,8 +147,7 @@ func putQConn(qConn *QConn) {
 // QConn is a backend-side quix connection to quixNode.
 type QConn struct {
 	// Conn states (non-zeros)
-	id         int64     // the conn id
-	expire     time.Time // when the conn is considered expired
+	id         int64 // the conn id
 	node       *quixNode
 	quicConn   *quic.Conn
 	maxStreams int32 // how many streams are allowed on this connection?
@@ -162,7 +161,6 @@ type QConn struct {
 
 func (c *QConn) onGet(id int64, node *quixNode, quicConn *quic.Conn) {
 	c.id = id
-	c.expire = time.Now().Add(node.backend.aliveTimeout)
 	c.node = node
 	c.quicConn = quicConn
 	c.maxStreams = node.backend.MaxStreamsPerConn()
@@ -172,7 +170,6 @@ func (c *QConn) onPut() {
 	c.usedStreams.Store(0)
 	c.broken.Store(false)
 	c.node = nil
-	c.expire = time.Time{}
 	c.counter.Store(0)
 	c.lastWrite = time.Time{}
 	c.lastRead = time.Time{}

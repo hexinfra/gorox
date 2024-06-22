@@ -9,7 +9,6 @@ package hemi
 
 import (
 	"crypto/tls"
-	"io"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -198,86 +197,46 @@ type TConn struct {
 	stockInput [8192]byte // for c.input
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id        int64     // the conn id
-	expire    time.Time // when the conn is considered expired
+	id        int64 // the conn id
 	node      *tcpxNode
 	netConn   net.Conn        // *net.TCPConn, *tls.Conn, *net.UnixConn
 	rawConn   syscall.RawConn // for syscall. only usable when netConn is TCP/UDS
-	input     []byte
-	closeSema atomic.Int32 // for close read and close write
+	input     []byte          // input buffer
+	closeSema atomic.Int32    // controls read/write close
 	// Conn states (zeros)
-	counter     atomic.Int64 // can be used to generate a random number
-	lastWrite   time.Time    // deadline of last write operation
-	lastRead    time.Time    // deadline of last read operation
-	writeBroken atomic.Bool  // write-side broken?
-	readBroken  atomic.Bool  // read-side broken?
+	counter   atomic.Int64 // can be used to generate a random number
+	lastWrite time.Time    // deadline of last write operation
+	lastRead  time.Time    // deadline of last read operation
 }
 
 func (c *TConn) onGet(id int64, node *tcpxNode, netConn net.Conn, rawConn syscall.RawConn) {
 	c.id = id
-	c.expire = time.Now().Add(node.backend.aliveTimeout)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
 	c.input = c.stockInput[:]
-	c.closeSema.Store(2) // read and write
+	c.closeSema.Store(2)
 }
 func (c *TConn) onPut() {
+	if cap(c.input) != cap(c.stockInput) {
+		PutNK(c.input)
+	}
 	c.input = nil
 	c.netConn = nil
 	c.rawConn = nil
 	c.node = nil
 
-	c.writeBroken.Store(false)
-	c.readBroken.Store(false)
-	c.expire = time.Time{}
 	c.counter.Store(0)
 	c.lastWrite = time.Time{}
 	c.lastRead = time.Time{}
 }
 
-func (c *TConn) IsTLS() bool { return c.node.IsTLS() }
-func (c *TConn) IsUDS() bool { return c.node.IsUDS() }
-
 func (c *TConn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-//func (c *TConn) isAlive() bool { return time.Now().Before(c.expire) }
-
-func (c *TConn) proxyPass(conn *TCPXConn) error {
-	var (
-		p   []byte
-		err error
-	)
-	for {
-		p, err = conn.Recv()
-		if err != nil {
-			return err
-		}
-		if p == nil {
-			if err = c.CloseWrite(); err != nil {
-				c.markWriteBroken()
-				return err
-			}
-			return nil
-		}
-		if _, err = c.Write(p); err != nil {
-			c.markWriteBroken()
-			return err
-		}
-	}
-}
-
-func (c *TConn) MarkBroken() {
-	c.markWriteBroken()
-	c.markReadBroken()
-}
-func (c *TConn) markWriteBroken() { c.writeBroken.Store(true) }
-func (c *TConn) markReadBroken()  { c.readBroken.Store(true) }
-func (c *TConn) IsBroken() bool   { return c.writeBroken.Load() || c.readBroken.Load() }
-
-func (c *TConn) setWriteDeadline(deadline time.Time) error {
+func (c *TConn) setWriteDeadline() error {
+	deadline := time.Now().Add(c.node.backend.WriteTimeout())
 	if deadline.Sub(c.lastWrite) >= time.Second {
 		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
@@ -286,7 +245,8 @@ func (c *TConn) setWriteDeadline(deadline time.Time) error {
 	}
 	return nil
 }
-func (c *TConn) setReadDeadline(deadline time.Time) error {
+func (c *TConn) setReadDeadline() error {
+	deadline := time.Now().Add(c.node.backend.ReadTimeout())
 	if deadline.Sub(c.lastRead) >= time.Second {
 		if err := c.netConn.SetReadDeadline(deadline); err != nil {
 			return err
@@ -296,24 +256,34 @@ func (c *TConn) setReadDeadline(deadline time.Time) error {
 	return nil
 }
 
-func (c *TConn) Write(p []byte) (n int, err error)         { return c.netConn.Write(p) }
-func (c *TConn) Writev(vector *net.Buffers) (int64, error) { return vector.WriteTo(c.netConn) }
-func (c *TConn) Read(p []byte) (n int, err error)          { return c.netConn.Read(p) }
-func (c *TConn) ReadFull(p []byte) (n int, err error)      { return io.ReadFull(c.netConn, p) }
-func (c *TConn) ReadAtLeast(p []byte, min int) (n int, err error) {
-	return io.ReadAtLeast(c.netConn, p, min)
+func (c *TConn) send(p []byte) (err error) {
+	_, err = c.netConn.Write(p)
+	return
+}
+func (c *TConn) recv() (p []byte, err error) {
+	n, err := c.netConn.Read(c.input)
+	p = c.input[:n]
+	return
 }
 
-func (c *TConn) CloseWrite() error {
-	if c.IsTLS() {
-		return c.netConn.(*tls.Conn).CloseWrite()
-	} else if c.IsUDS() {
-		return c.netConn.(*net.UnixConn).CloseWrite()
+func (c *TConn) closeWrite() {
+	if node := c.node; node.IsTLS() {
+		c.netConn.(*tls.Conn).CloseWrite()
+	} else if node.IsUDS() {
+		c.netConn.(*net.UnixConn).CloseWrite()
 	} else {
-		return c.netConn.(*net.TCPConn).CloseWrite()
+		c.netConn.(*net.TCPConn).CloseWrite()
+	}
+	c._checkClose()
+}
+func (c *TConn) closeRead() {
+	c._checkClose()
+}
+func (c *TConn) _checkClose() {
+	if c.closeSema.Add(-1) == 0 {
+		c.Close()
 	}
 }
-
 func (c *TConn) Close() error {
 	c.node.DecSub() // conn
 	netConn := c.netConn

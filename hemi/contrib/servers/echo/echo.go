@@ -64,6 +64,13 @@ func (s *echoServer) Serve() { // runner
 	s.Stage().DecSub() // server
 }
 
+func (s *echoServer) serveConn(conn *echoConn) { // runner
+	defer putEchoConn(conn)
+	// TODO: deadline?
+	io.CopyBuffer(conn.tcpConn, conn.tcpConn, conn.buffer[:])
+	conn.closeConn()
+}
+
 // echoGate
 type echoGate struct {
 	// Parent
@@ -116,7 +123,7 @@ func (g *echoGate) serve() { // runner
 			g.justClose(tcpConn)
 		} else {
 			echoConn := getEchoConn(connID, g, tcpConn)
-			go g.serveConn(echoConn) // echoConn is put to pool in serve()
+			go g.server.serveConn(echoConn) // echoConn is put to pool in serve()
 			connID++
 		}
 	}
@@ -125,13 +132,6 @@ func (g *echoGate) serve() { // runner
 		Printf("echoGate=%d done\n", g.ID())
 	}
 	g.server.DecSub() // gate
-}
-
-func (g *echoGate) serveConn(conn *echoConn) { // runner
-	defer putEchoConn(conn)
-	// TODO: deadline?
-	io.CopyBuffer(conn.tcpConn, conn.tcpConn, conn.buffer[:])
-	conn.closeConn()
 }
 
 func (g *echoGate) justClose(tcpConn *net.TCPConn) {

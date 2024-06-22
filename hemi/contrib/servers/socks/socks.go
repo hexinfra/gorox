@@ -65,6 +65,17 @@ func (s *socksServer) Serve() { // runner
 	s.Stage().DecSub() // server
 }
 
+func (s *socksServer) serveConn(conn *socksConn) { // runner
+	defer putSocksConn(conn)
+
+	// -> ver(1) nmethods(1) methods(1-255)
+	// <- ver(1) method(1) : 00=noAuth 01=gssapi 02=username/password ff=noAcceptableMethods
+	// -> ver(1) cmd(1) rsv(1) atyp(1) dstAddr(v) dstPort(2)
+	// <- ver(1) res(1) rsv(1) atyp(1) bndAddr(v) bndPort(2)
+	conn.tcpConn.Write([]byte("not implemented yet"))
+	conn.Close()
+}
+
 // socksGate
 type socksGate struct {
 	// Parent
@@ -117,7 +128,7 @@ func (g *socksGate) serve() { // runner
 			g.justClose(tcpConn)
 		} else {
 			socksConn := getSocksConn(connID, g, tcpConn)
-			go g.serveConn(socksConn) // socksConn is put to pool in serve()
+			go g.server.serveConn(socksConn) // socksConn is put to pool in serve()
 			connID++
 		}
 	}
@@ -126,17 +137,6 @@ func (g *socksGate) serve() { // runner
 		Printf("socksGate=%d done\n", g.ID())
 	}
 	g.server.DecSub() // gate
-}
-
-func (g *socksGate) serveConn(conn *socksConn) { // runner
-	defer putSocksConn(conn)
-
-	// -> ver(1) nmethods(1) methods(1-255)
-	// <- ver(1) method(1) : 00=noAuth 01=gssapi 02=username/password ff=noAcceptableMethods
-	// -> ver(1) cmd(1) rsv(1) atyp(1) dstAddr(v) dstPort(2)
-	// <- ver(1) res(1) rsv(1) atyp(1) bndAddr(v) bndPort(2)
-	conn.tcpConn.Write([]byte("not implemented yet"))
-	conn.Close()
 }
 
 func (g *socksGate) justClose(tcpConn *net.TCPConn) {

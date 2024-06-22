@@ -94,11 +94,14 @@ func (r *TCPXRouter) hasCase(name string) bool {
 	return false
 }
 
-func (r *TCPXRouter) Log(str string) {
+func (r *TCPXRouter) Log(s string) {
+	// TODO
 }
-func (r *TCPXRouter) Logln(str string) {
+func (r *TCPXRouter) Logln(s string) {
+	// TODO
 }
 func (r *TCPXRouter) Logf(f string, v ...any) {
+	// TODO
 }
 
 func (r *TCPXRouter) Serve() { // runner
@@ -134,7 +137,7 @@ func (r *TCPXRouter) Serve() { // runner
 	r.stage.DecSub() // router
 }
 
-func (r *TCPXRouter) dispatch(conn *TCPXConn) {
+func (r *TCPXRouter) serveConn(conn *TCPXConn) { // runner
 	for _, kase := range r.cases {
 		if !kase.isMatch(conn) {
 			continue
@@ -143,6 +146,7 @@ func (r *TCPXRouter) dispatch(conn *TCPXConn) {
 			break
 		}
 	}
+	putTCPXConn(conn)
 }
 
 // tcpxGate is an opening gate of TCPXRouter.
@@ -220,7 +224,7 @@ func (g *tcpxGate) serveTLS() { // runner
 				continue
 			}
 			conn := getTCPXConn(connID, g, tlsConn, nil)
-			go g.serveConn(conn) // conn is put to pool in serveConn()
+			go g.router.serveConn(conn) // conn is put to pool in serveConn()
 			connID++
 		}
 	}
@@ -253,7 +257,7 @@ func (g *tcpxGate) serveUDS() { // runner
 				continue
 			}
 			conn := getTCPXConn(connID, g, unixConn, rawConn)
-			go g.serveConn(conn) // conn is put to pool in serveConn()
+			go g.router.serveConn(conn) // conn is put to pool in serveConn()
 			connID++
 		}
 	}
@@ -289,7 +293,7 @@ func (g *tcpxGate) serveTCP() { // runner
 			if DebugLevel() >= 2 {
 				Printf("%+v\n", conn)
 			}
-			go g.serveConn(conn) // conn is put to pool in serveConn()
+			go g.router.serveConn(conn) // conn is put to pool in serveConn()
 			connID++
 		}
 	}
@@ -298,11 +302,6 @@ func (g *tcpxGate) serveTCP() { // runner
 		Printf("tcpxGate=%d TCP done\n", g.id)
 	}
 	g.router.DecSub() // gate
-}
-
-func (g *tcpxGate) serveConn(conn *TCPXConn) { // runner
-	g.router.dispatch(conn)
-	putTCPXConn(conn)
 }
 
 func (g *tcpxGate) justClose(netConn net.Conn) {
@@ -317,6 +316,7 @@ func getTCPXConn(id int64, gate *tcpxGate, netConn net.Conn, rawConn syscall.Raw
 	var tcpxConn *TCPXConn
 	if x := poolTCPXConn.Get(); x == nil {
 		tcpxConn = new(TCPXConn)
+		tcpxConn.waitChan = make(chan struct{}, 1)
 	} else {
 		tcpxConn = x.(*TCPXConn)
 	}
@@ -334,6 +334,7 @@ type TCPXConn struct {
 	stockInput  [8192]byte // for c.input
 	stockBuffer [256]byte  // a (fake) buffer to workaround Go's conservative escape analysis
 	// Conn states (controlled)
+	waitChan chan struct{} // ...
 	// Conn states (non-zeros)
 	id        int64 // the conn id
 	gate      *tcpxGate
@@ -341,13 +342,11 @@ type TCPXConn struct {
 	rawConn   syscall.RawConn // for syscall, only when netConn is TCP
 	input     []byte          // input buffer
 	region    Region          // a region-based memory pool
-	closeSema atomic.Int32    // for close read and close write
+	closeSema atomic.Int32    // controls read/write close
 	// Conn states (zeros)
-	counter     atomic.Int64 // can be used to generate a random number
-	lastRead    time.Time    // deadline of last read operation
-	lastWrite   time.Time    // deadline of last write operation
-	writeBroken atomic.Bool  // write-side broken?
-	readBroken  atomic.Bool  // read-side broken?
+	counter   atomic.Int64 // can be used to generate a random number
+	lastRead  time.Time    // deadline of last read operation
+	lastWrite time.Time    // deadline of last write operation
 }
 
 func (c *TCPXConn) onGet(id int64, gate *tcpxGate, netConn net.Conn, rawConn syscall.RawConn) {
@@ -357,14 +356,14 @@ func (c *TCPXConn) onGet(id int64, gate *tcpxGate, netConn net.Conn, rawConn sys
 	c.rawConn = rawConn
 	c.input = c.stockInput[:]
 	c.region.Init()
-	c.closeSema.Store(2) // read and write
+	c.closeSema.Store(2)
 }
 func (c *TCPXConn) onPut() {
 	c.region.Free()
 	if cap(c.input) != cap(c.stockInput) {
 		PutNK(c.input)
-		c.input = nil
 	}
+	c.input = nil
 	c.netConn = nil
 	c.rawConn = nil
 	c.gate = nil
@@ -372,8 +371,6 @@ func (c *TCPXConn) onPut() {
 	c.counter.Store(0)
 	c.lastRead = time.Time{}
 	c.lastWrite = time.Time{}
-	c.writeBroken.Store(false)
-	c.readBroken.Store(false)
 }
 
 func (c *TCPXConn) IsTLS() bool { return c.gate.IsTLS() }
@@ -383,49 +380,62 @@ func (c *TCPXConn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.gate.router.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *TCPXConn) proxyPass(conn *TConn) error {
-	// TODO
+func (c *TCPXConn) SetReadDeadline() error {
+	deadline := time.Now().Add(c.gate.router.ReadTimeout())
+	if deadline.Sub(c.lastRead) >= time.Second {
+		if err := c.netConn.SetReadDeadline(deadline); err != nil {
+			return err
+		}
+		c.lastRead = deadline
+	}
+	return nil
+}
+func (c *TCPXConn) SetWriteDeadline() error {
+	deadline := time.Now().Add(c.gate.router.WriteTimeout())
+	if deadline.Sub(c.lastWrite) >= time.Second {
+		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
+			return err
+		}
+		c.lastWrite = deadline
+	}
 	return nil
 }
 
 func (c *TCPXConn) Recv() (p []byte, err error) {
-	// TODO: deadline
 	n, err := c.netConn.Read(c.input)
 	p = c.input[:n]
-	if err != nil {
-		c.closeRead()
-		c._checkClose()
-	}
 	return
 }
-func (c *TCPXConn) Send(p []byte) (err error) { // if p is nil, send EOF
-	// TODO: deadline
-	if p == nil {
-		c.closeWrite()
-		c._checkClose()
-	} else {
-		_, err = c.netConn.Write(p)
-	}
+func (c *TCPXConn) Send(p []byte) (err error) {
+	_, err = c.netConn.Write(p)
 	return
-}
-func (c *TCPXConn) _checkClose() {
-	if c.closeSema.Add(-1) == 0 {
-		c.gate.justClose(c.netConn)
-	}
 }
 
-func (c *TCPXConn) closeRead() {
-	// Do nothing.
+func (c *TCPXConn) CloseRead() {
+	c._checkClose()
 }
-func (c *TCPXConn) closeWrite() {
-	if c.gate.router.IsTLS() {
+func (c *TCPXConn) CloseWrite() {
+	if router := c.gate.router; router.IsTLS() {
 		c.netConn.(*tls.Conn).CloseWrite()
-	} else if c.gate.router.IsUDS() {
+	} else if router.IsUDS() {
 		c.netConn.(*net.UnixConn).CloseWrite()
 	} else {
 		c.netConn.(*net.TCPConn).CloseWrite()
 	}
+	c._checkClose()
 }
+func (c *TCPXConn) _checkClose() {
+	if c.closeSema.Add(-1) == 0 {
+		c.Close()
+	}
+}
+
+func (c *TCPXConn) Close() {
+	c.gate.justClose(c.netConn)
+}
+
+func (c *TCPXConn) done() { c.waitChan <- struct{}{} }
+func (c *TCPXConn) wait() { <-c.waitChan }
 
 func (c *TCPXConn) unsafeVariable(code int16, name string) (value []byte) {
 	return tcpxConnVariables[code](c)

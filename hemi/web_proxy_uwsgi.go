@@ -286,8 +286,7 @@ type uwsgiConn struct {
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id     int64     // the conn id
-	expire time.Time // when the conn is considered expired
+	id     int64 // the conn id
 	node   *uwsgiNode
 	region Region // a region-based memory pool
 	conn   *TConn // associated conn

@@ -118,8 +118,7 @@ func putUConn(uConn *UConn) {
 // UConn
 type UConn struct {
 	// Conn states (non-zeros)
-	id      int64     // the conn id
-	expire  time.Time // when the conn is considered expired
+	id      int64 // the conn id
 	node    *udpxNode
 	netConn net.PacketConn
 	rawConn syscall.RawConn // for syscall
@@ -132,7 +131,6 @@ type UConn struct {
 
 func (c *UConn) onGet(id int64, node *udpxNode, netConn net.PacketConn, rawConn syscall.RawConn) {
 	c.id = id
-	c.expire = time.Now().Add(node.backend.aliveTimeout)
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -142,7 +140,6 @@ func (c *UConn) onPut() {
 	c.rawConn = nil
 	c.broken.Store(false)
 	c.node = nil
-	c.expire = time.Time{}
 	c.counter.Store(0)
 	c.lastWrite = time.Time{}
 	c.lastRead = time.Time{}
@@ -157,25 +154,6 @@ func (c *UConn) MakeTempName(p []byte, unixTime int64) int {
 
 func (c *UConn) markBroken()    { c.broken.Store(true) }
 func (c *UConn) isBroken() bool { return c.broken.Load() }
-
-func (c *UConn) SetWriteDeadline(deadline time.Time) error {
-	if deadline.Sub(c.lastWrite) >= time.Second {
-		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
-			return err
-		}
-		c.lastWrite = deadline
-	}
-	return nil
-}
-func (c *UConn) SetReadDeadline(deadline time.Time) error {
-	if deadline.Sub(c.lastRead) >= time.Second {
-		if err := c.netConn.SetReadDeadline(deadline); err != nil {
-			return err
-		}
-		c.lastRead = deadline
-	}
-	return nil
-}
 
 func (c *UConn) WriteTo(p []byte, addr net.Addr) (n int, err error) {
 	return c.netConn.WriteTo(p, addr)

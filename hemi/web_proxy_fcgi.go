@@ -626,8 +626,9 @@ func (x *fcgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }
 func (x *fcgiExchan) markBroken()    { x.conn.markBroken() }
 func (x *fcgiExchan) isBroken() bool { return x.conn.isBroken() }
 
-func (x *fcgiExchan) setWriteDeadline(deadline time.Time) error {
+func (x *fcgiExchan) setWriteDeadline() error {
 	conn := x.conn
+	deadline := time.Now().Add(conn.node.backend.WriteTimeout())
 	if deadline.Sub(conn.lastWrite) >= time.Second {
 		if err := conn.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
@@ -636,8 +637,9 @@ func (x *fcgiExchan) setWriteDeadline(deadline time.Time) error {
 	}
 	return nil
 }
-func (x *fcgiExchan) setReadDeadline(deadline time.Time) error {
+func (x *fcgiExchan) setReadDeadline() error {
 	conn := x.conn
+	deadline := time.Now().Add(conn.node.backend.ReadTimeout())
 	if deadline.Sub(conn.lastRead) >= time.Second {
 		if err := conn.netConn.SetReadDeadline(deadline); err != nil {
 			return err
@@ -1026,11 +1028,10 @@ func (r *fcgiRequest) _writeVector() error {
 	return r._slowCheck(err)
 }
 func (r *fcgiRequest) _beforeWrite() error {
-	now := time.Now()
 	if r.sendTime.IsZero() {
-		r.sendTime = now
+		r.sendTime = time.Now()
 	}
-	return r.exchan.setWriteDeadline(now.Add(r.exchan.conn.node.backend.WriteTimeout()))
+	return r.exchan.setWriteDeadline()
 }
 func (r *fcgiRequest) _slowCheck(err error) error {
 	if err == nil && r._tooSlow() {
@@ -1642,11 +1643,10 @@ func (r *fcgiResponse) _newTempFile() (tempFile, error) { // to save content to
 	return os.OpenFile(WeakString(filePath[:n]), os.O_RDWR|os.O_CREATE, 0644)
 }
 func (r *fcgiResponse) _beforeRead(toTime *time.Time) error {
-	now := time.Now()
 	if toTime.IsZero() {
-		*toTime = now
+		*toTime = time.Now()
 	}
-	return r.exchan.setReadDeadline(now.Add(r.exchan.conn.node.backend.ReadTimeout()))
+	return r.exchan.setReadDeadline()
 }
 func (r *fcgiResponse) _tooSlow() bool {
 	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout

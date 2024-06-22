@@ -58,6 +58,57 @@ func (d *tcpxProxy) OnPrepare() {
 }
 
 func (d *tcpxProxy) Deal(conn *TCPXConn) (dealt bool) {
-	// TODO
-	return true
+	dealt = true
+	tConn, err := d.backend.Dial()
+	if err != nil {
+		conn.Close()
+		return
+	}
+	go d.relayInbound(conn, tConn)
+	d.relayOutbound(tConn, conn)
+	conn.wait()
+	return
+}
+func (d *tcpxProxy) relayInbound(tcpxConn *TCPXConn, tConn *TConn) {
+	var (
+		data    []byte
+		tcpxErr error
+		tErr    error
+	)
+	for {
+		if tcpxErr = tcpxConn.SetReadDeadline(); tcpxErr == nil {
+			if data, tcpxErr = tcpxConn.Recv(); len(data) > 0 {
+				if tErr = tConn.setWriteDeadline(); tErr == nil {
+					tErr = tConn.send(data)
+				}
+			}
+		}
+		if tcpxErr != nil || tErr != nil {
+			tcpxConn.CloseRead()
+			tConn.closeWrite()
+			break
+		}
+	}
+	tcpxConn.done()
+}
+func (d *tcpxProxy) relayOutbound(tConn *TConn, tcpxConn *TCPXConn) {
+	var (
+		data    []byte
+		tErr    error
+		tcpxErr error
+	)
+	for {
+		if tErr = tConn.setReadDeadline(); tErr == nil {
+			if data, tErr = tConn.recv(); len(data) > 0 {
+				if tcpxErr = tcpxConn.SetWriteDeadline(); tcpxErr == nil {
+					tcpxErr = tcpxConn.Send(data)
+				}
+			}
+		}
+		if tErr != nil || tcpxErr != nil {
+			tConn.closeRead()
+			tcpxConn.CloseWrite()
+			break
+		}
+	}
 }

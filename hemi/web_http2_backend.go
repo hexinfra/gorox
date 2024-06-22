@@ -62,8 +62,8 @@ func (b *HTTP2Backend) FetchStream() (backendStream, error) {
 	return node.fetchStream()
 }
 func (b *HTTP2Backend) StoreStream(stream backendStream) {
-	conn := stream.httpConn().(*backend2Conn)
-	conn.node.storeStream(stream)
+	stream2 := stream.(*backend2Stream)
+	stream2.conn.node.storeStream(stream2)
 }
 
 // http2Node
@@ -102,12 +102,12 @@ func (n *http2Node) Maintain() { // runner
 	n.backend.DecSub() // node
 }
 
-func (n *http2Node) fetchStream() (backendStream, error) {
+func (n *http2Node) fetchStream() (*backend2Stream, error) {
 	// Note: A backend2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 	return nil, nil
 }
-func (n *http2Node) storeStream(stream backendStream) {
+func (n *http2Node) storeStream(stream *backend2Stream) {
 	// Note: A backend2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 }
@@ -218,12 +218,12 @@ func (c *backend2Conn) reachLimit() bool {
 func (c *backend2Conn) markBroken()    { c.broken.Store(true) }
 func (c *backend2Conn) isBroken() bool { return c.broken.Load() }
 
-func (c *backend2Conn) fetchStream() (backendStream, error) {
+func (c *backend2Conn) fetchStream() (*backend2Stream, error) {
 	// Note: A backend2Conn can be used concurrently, limited by maxStreams.
 	// TODO: incRef, stream.onUse()
 	return nil, nil
 }
-func (c *backend2Conn) storeStream(stream backendStream) {
+func (c *backend2Conn) storeStream(stream *backend2Stream) {
 	// Note: A backend2Conn can be used concurrently, limited by maxStreams.
 	// TODO
 	//stream.onEnd()

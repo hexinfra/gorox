@@ -233,7 +233,7 @@ type contentSaver interface {
 // _contentSaver_ is a mixin.
 type _contentSaver_ struct {
 	// States
-	saveContentFilesDir string // content files are placed here
+	saveContentFilesDir string        // content files are placed here
 	sendTimeout         time.Duration // timeout to send the whole message
 	recvTimeout         time.Duration // timeout to recv the whole message content
 	maxContentSize      int64         // max content size allowed to receive

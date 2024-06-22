@@ -64,8 +64,8 @@ func (b *HTTP1Backend) FetchStream() (backendStream, error) {
 	return node.fetchStream()
 }
 func (b *HTTP1Backend) StoreStream(stream backendStream) {
-	conn := stream.httpConn().(*backend1Conn)
-	conn.node.storeStream(stream)
+	stream1 := stream.(*backend1Stream)
+	stream1.conn.node.storeStream(stream1)
 }
 
 // http1Node is a node in HTTP1Backend.
@@ -114,7 +114,7 @@ func (n *http1Node) Maintain() { // runner
 	n.backend.DecSub() // node
 }
 
-func (n *http1Node) fetchStream() (backendStream, error) {
+func (n *http1Node) fetchStream() (*backend1Stream, error) {
 	conn := n.pullConn()
 	down := n.isDown()
 	if conn != nil {
@@ -141,8 +141,8 @@ func (n *http1Node) fetchStream() (backendStream, error) {
 	n.IncSub() // conn
 	return conn.fetchStream()
 }
-func (n *http1Node) storeStream(stream backendStream) {
-	conn := stream.(*backend1Stream).conn
+func (n *http1Node) storeStream(stream *backend1Stream) {
+	conn := stream.conn
 	conn.storeStream(stream)
 
 	if conn.isBroken() || n.isDown() || !conn.isAlive() || !conn.persistent {
@@ -351,13 +351,13 @@ func (c *backend1Conn) reachLimit() bool {
 func (c *backend1Conn) markBroken()    { c.broken.Store(true) }
 func (c *backend1Conn) isBroken() bool { return c.broken.Load() }
 
-func (c *backend1Conn) fetchStream() (backendStream, error) {
+func (c *backend1Conn) fetchStream() (*backend1Stream, error) {
 	stream := &c.stream
 	stream.onUse()
 	return stream, nil
 }
-func (c *backend1Conn) storeStream(stream backendStream) {
-	stream.(*backend1Stream).onEnd()
+func (c *backend1Conn) storeStream(stream *backend1Stream) {
+	stream.onEnd()
 }
 
 func (c *backend1Conn) Close() error {

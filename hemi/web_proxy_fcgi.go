@@ -221,7 +221,7 @@ type fcgiBackend struct {
 	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
-	persistent        bool  // instructs FCGI server to keep conn?
+	keepConn          bool  // instructs FCGI server to keep conn?
 	maxExchansPerConn int32 // max exchans of one conn. 0 means infinite
 }
 
@@ -233,8 +233,8 @@ func (b *fcgiBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
 	b._contentSaver_.onConfigure(b, TmpDir()+"/web/backends/"+b.name, 60*time.Second, 60*time.Second)
 
-	// persistent
-	b.ConfigureBool("persistent", &b.persistent, false)
+	// keepConn
+	b.ConfigureBool("keepConn", &b.keepConn, false)
 
 	// maxExchansPerConn
 	b.ConfigureInt32("maxExchansPerConn", &b.maxExchansPerConn, func(value int32) error {
@@ -313,22 +313,6 @@ func (n *fcgiNode) Maintain() { // runner
 	}
 	n.backend.DecSub() // node
 }
-
-/*
-if h.persistent {
-	if conn, fcgiErr = h.backend.FetchConn(); fcgiErr == nil {
-		defer h.backend.StoreConn(conn)
-	}
-} else {
-	if conn, fcgiErr = h.backend.Dial(); fcgiErr == nil {
-		defer conn.Close()
-	}
-}
-func (b *fcgiBackend) Dial() (*fcgiConn, error) {
-	node := b.nodes[b.nextIndex()]
-	return node.dial()
-}
-*/
 
 func (n *fcgiNode) fetchExchan() (*fcgiExchan, error) {
 	conn := n.pullConn()
@@ -506,7 +490,7 @@ type fcgiConn struct {
 	netConn    net.Conn        // *net.TCPConn or *net.UnixConn
 	rawConn    syscall.RawConn // for syscall
 	expire     time.Time       // when the conn is considered expired
-	persistent bool            // keep the connection after current exchan? true by default
+	persistent bool            // keep the connection after current exchan?
 	// Conn states (zeros)
 	counter     atomic.Int64 // can be used to generate a random number
 	lastWrite   time.Time    // deadline of last write operation
@@ -521,7 +505,7 @@ func (c *fcgiConn) onGet(id int64, node *fcgiNode, netConn net.Conn, rawConn sys
 	c.netConn = netConn
 	c.rawConn = rawConn
 	c.expire = time.Now().Add(node.backend.aliveTimeout)
-	c.persistent = true
+	c.persistent = node.backend.keepConn
 }
 func (c *fcgiConn) onPut() {
 	c.usedExchans.Store(0)
@@ -965,7 +949,7 @@ func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
 }
 
 func (r *fcgiRequest) _setBeginRequest(p *[]byte) {
-	if r.exchan.conn.node.backend.persistent {
+	if r.exchan.conn.node.backend.keepConn {
 		*p = fcgiBeginKeepConn
 	} else {
 		*p = fcgiBeginDontKeep

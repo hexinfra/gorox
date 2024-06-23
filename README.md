@@ -10,7 +10,7 @@ used as a:
   * Layer 7 Reverse Proxy (Various Protocols, with or without Load Balancing)
   * Layer 4 Reverse Proxy (TCP, UDP, QUIC, TLS, UDS, Load Balancing)
   * Web Server (HTTP, TLS, WebSocket, static, FCGI, uwsgi)
-  * Web Application Server for Go (Frameworks, Applications)
+  * Go Web Application Server (Frameworks, Applications)
   * RPC Framework for Go (gRPC, HRPC)
   * ... and more through its highly extensible compoments design!
 

@@ -20,9 +20,6 @@ type HTTPBackend interface { // for *HTTP[1-3]Backend
 	Backend
 	contentSaver
 	// Methods
-	SendTimeout() time.Duration  // timeout to send the whole message
-	RecvTimeout() time.Duration  // timeout to recv the whole message content
-	MaxContentSize() int64       // in response
 	MaxMemoryContentSize() int32 // in response
 	MaxStreamsPerConn() int32
 
@@ -70,9 +67,6 @@ func (b *httpBackend_[N]) onPrepare() {
 	b._contentSaver_.onPrepare(b, 0755)
 }
 
-func (b *httpBackend_[N]) RecvTimeout() time.Duration  { return b.recvTimeout }
-func (b *httpBackend_[N]) SendTimeout() time.Duration  { return b.sendTimeout }
-func (b *httpBackend_[N]) MaxContentSize() int64       { return b.maxContentSize }
 func (b *httpBackend_[N]) MaxMemoryContentSize() int32 { return b.maxMemoryContentSize }
 func (b *httpBackend_[N]) MaxStreamsPerConn() int32    { return b.maxStreamsPerConn }
 
@@ -85,7 +79,6 @@ type backendStream interface { // for *backend[1-3]Stream
 	ExecuteExchan() error
 	ExecuteSocket() error
 
-	httpConn() httpConn
 	isBroken() bool
 	markBroken()
 }
@@ -106,7 +99,7 @@ type backendRequest interface { // for *backend[1-3]Request
 // backendRequest_ is the parent for backend[1-3]Request.
 type backendRequest_ struct { // outgoing. needs building
 	// Parent
-	httpOut_ // outgoing http message
+	httpOut_ // outgoing http request
 	// Assocs
 	response backendResponse // the corresponding response
 	// Stream states (stocks)
@@ -131,18 +124,20 @@ type backendRequest0 struct { // for fast reset, entirely
 func (r *backendRequest_) onUse(httpVersion uint8) { // for non-zeros
 	const asRequest = true
 	r.httpOut_.onUse(httpVersion, asRequest)
+
 	r.unixTimes.ifModifiedSince = -1   // not set
 	r.unixTimes.ifUnmodifiedSince = -1 // not set
 }
 func (r *backendRequest_) onEnd() { // for zeros
 	r.backendRequest0 = backendRequest0{}
+
 	r.httpOut_.onEnd()
 }
 
 func (r *backendRequest_) Response() backendResponse { return r.response }
 
 func (r *backendRequest_) SetMethodURI(method string, uri string, hasContent bool) bool {
-	return r.shell.(backendRequest).setMethodURI(ConstBytes(method), ConstBytes(uri), hasContent)
+	return r.message.(backendRequest).setMethodURI(ConstBytes(method), ConstBytes(uri), hasContent)
 }
 func (r *backendRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only. HTTP/1 doesn't use this!
 	// TODO: copy `:scheme $scheme` to r.fields
@@ -159,7 +154,7 @@ func (r *backendRequest_) SetIfUnmodifiedSince(since int64) bool {
 
 func (r *backendRequest_) beforeSend() {} // revising is not supported in backend side.
 func (r *backendRequest_) doSend() error { // revising is not supported in backend side.
-	return r.shell.sendChain()
+	return r.message.sendChain()
 }
 
 func (r *backendRequest_) beforeEcho() {} // revising is not supported in backend side.
@@ -169,13 +164,13 @@ func (r *backendRequest_) doEcho() error { // revising is not supported in backe
 	}
 	r.chain.PushTail(&r.piece)
 	defer r.chain.free()
-	return r.shell.echoChain()
+	return r.message.echoChain()
 }
 func (r *backendRequest_) endVague() error { // revising is not supported in backend side.
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
-	return r.shell.finalizeVague()
+	return r.message.finalizeVague()
 }
 
 var ( // perfect hash table for request critical headers
@@ -209,7 +204,7 @@ func (r *backendRequest_) insertHeader(hash uint16, name []byte, value []byte) b
 		}
 		return h.fAdd(r, value)
 	}
-	return r.shell.addHeader(name, value)
+	return r.message.addHeader(name, value)
 }
 func (r *backendRequest_) appendHost(host []byte) (ok bool) {
 	return r._appendSingleton(&r.indexes.host, bytesHost, host)
@@ -232,7 +227,7 @@ func (r *backendRequest_) removeHeader(hash uint16, name []byte) bool {
 		}
 		return h.fDel(r)
 	}
-	return r.shell.delHeader(name)
+	return r.message.delHeader(name)
 }
 func (r *backendRequest_) deleteHost() (deleted bool) {
 	return r._deleteSingleton(&r.indexes.host)
@@ -248,14 +243,14 @@ func (r *backendRequest_) deleteIfRange() (deleted bool) {
 }
 
 func (r *backendRequest_) proxyPass(req Request) error { // sync content to backend directly
-	pass := r.shell.passBytes
+	pass := r.message.passBytes
 	if req.IsVague() {
 		pass = r.EchoBytes
 	} else {
 		r.isSent = true
 		r.contentSize = req.ContentSize()
 		// TODO: find a way to reduce i/o syscalls if content is small?
-		if err := r.shell.passHeaders(); err != nil {
+		if err := r.message.passHeaders(); err != nil {
 			return err
 		}
 	}
@@ -275,7 +270,7 @@ func (r *backendRequest_) proxyPass(req Request) error { // sync content to back
 	}
 	if req.HasTrailers() { // added trailers will be written by upper code eventually.
 		if !req.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
-			return r.shell.addTrailer(name, value)
+			return r.message.addTrailer(name, value)
 		}) {
 			return httpOutTrailerFailed
 		}
@@ -293,13 +288,13 @@ func (r *backendRequest_) proxyCopyHead(req Request, cfg *WebExchanProxyConfig) 
 		// then the last proxy on the request chain MUST send a request-target of "*" when it forwards the request to the indicated origin server.
 		uri = bytesAsterisk
 	}
-	if !r.shell.(backendRequest).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
+	if !r.message.(backendRequest).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
 		return false
 	}
 	if req.IsAbsoluteForm() || len(cfg.Hostname) != 0 || len(cfg.ColonPort) != 0 { // TODO: what about HTTP/2 and HTTP/3?
 		req.unsetHost()
 		if req.IsAbsoluteForm() {
-			if !r.shell.addHeader(bytesHost, req.UnsafeAuthority()) {
+			if !r.message.addHeader(bytesHost, req.UnsafeAuthority()) {
 				return false
 			}
 		} else { // custom authority (hostname or colonPort)
@@ -317,7 +312,7 @@ func (r *backendRequest_) proxyCopyHead(req Request, cfg *WebExchanProxyConfig) 
 			} else {
 				colonPort = cfg.ColonPort
 			}
-			if !r.shell.(backendRequest).setAuthority(hostname, colonPort) {
+			if !r.message.(backendRequest).setAuthority(hostname, colonPort) {
 				return false
 			}
 		}
@@ -337,10 +332,10 @@ func (r *backendRequest_) proxyCopyHead(req Request, cfg *WebExchanProxyConfig) 
 	}
 
 	// copy selective forbidden headers (including cookie) from req
-	if req.HasCookies() && !r.shell.(backendRequest).proxyCopyCookies(req) {
+	if req.HasCookies() && !r.message.(backendRequest).proxyCopyCookies(req) {
 		return false
 	}
-	if !r.shell.addHeader(bytesVia, cfg.InboundViaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
+	if !r.message.addHeader(bytesVia, cfg.InboundViaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
 		return false
 	}
 
@@ -354,27 +349,27 @@ func (r *backendRequest_) proxyCopyHead(req Request, cfg *WebExchanProxyConfig) 
 		} else {
 			// Invalid values are treated as empty
 		}
-		if !r.shell.addHeader(ConstBytes(name), value) {
+		if !r.message.addHeader(ConstBytes(name), value) {
 			return false
 		}
 	}
 
 	// copy remaining headers from req
 	if !req.forHeaders(func(header *pair, name []byte, value []byte) bool {
-		return r.shell.insertHeader(header.hash, name, value)
+		return r.message.insertHeader(header.hash, name, value)
 	}) {
 		return false
 	}
 
 	for _, name := range cfg.DelRequestHeaders {
-		r.shell.delHeader(name)
+		r.message.delHeader(name)
 	}
 
 	return true
 }
 func (r *backendRequest_) proxyCopyTail(req Request, cfg *WebExchanProxyConfig) bool {
 	return req.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
-		return r.shell.addTrailer(name, value)
+		return r.message.addTrailer(name, value)
 	})
 }
 
@@ -402,7 +397,7 @@ type backendResponse interface { // for *backend[1-3]Response
 // backendResponse_ is the parent for backend[1-3]Response.
 type backendResponse_ struct { // incoming. needs parsing
 	// Parent
-	httpIn_ // incoming http message
+	httpIn_ // incoming http response
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

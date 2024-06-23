@@ -827,9 +827,9 @@ func getServer2Stream(conn *server2Conn, id uint32, outWindow int32) *server2Str
 	if x := poolServer2Stream.Get(); x == nil {
 		stream = new(server2Stream)
 		req, resp := &stream.request, &stream.response
-		req.shell = req
+		req.message = req
 		req.stream = stream
-		resp.shell = resp
+		resp.message = resp
 		resp.stream = stream
 		resp.request = req
 	} else {
@@ -913,9 +913,9 @@ func (s *server2Stream) executeSocket() { // see RFC 8441: https://datatracker.i
 	// TODO
 }
 
-func (s *server2Stream) httpServend() httpServend { return s.conn.gate.server }
-func (s *server2Stream) httpConn() httpConn       { return s.conn }
-func (s *server2Stream) remoteAddr() net.Addr     { return s.conn.netConn.RemoteAddr() }
+func (s *server2Stream) servend() httpServend { return s.conn.gate.server }
+func (s *server2Stream) httpConn() httpConn   { return s.conn }
+func (s *server2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *server2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 func (s *server2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
@@ -1054,7 +1054,8 @@ func (r *server2Response) finalizeHeaders() { // add at most 256 bytes
 	/*
 		// date: Sun, 06 Nov 1994 08:49:37 GMT
 		if r.iDate == 0 {
-			r.fieldsEdge += uint16(r.stream.httpServend().Stage().Clock().writeDate2(r.fields[r.fieldsEdge:]))
+			clock := r.stream.(*server2Stream).conn.gate.server.stage.clock
+			r.fieldsEdge += uint16(clock.writeDate2(r.fields[r.fieldsEdge:]))
 		}
 	*/
 }

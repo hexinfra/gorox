@@ -275,10 +275,10 @@ func getBackend1Conn(id int64, node *http1Node, netConn net.Conn, rawConn syscal
 		stream := &backendConn.stream
 		stream.conn = backendConn
 		req, resp := &stream.request, &stream.response
-		req.shell = req
+		req.message = req
 		req.stream = stream
 		req.response = resp
-		resp.shell = resp
+		resp.message = resp
 		resp.stream = stream
 	} else {
 		backendConn = x.(*backend1Conn)
@@ -409,9 +409,9 @@ func (s *backend1Stream) ExecuteSocket() error { // upgrade: websocket
 	return nil
 }
 
-func (s *backend1Stream) httpServend() httpServend { return s.conn.node.backend }
-func (s *backend1Stream) httpConn() httpConn       { return s.conn }
-func (s *backend1Stream) remoteAddr() net.Addr     { return s.conn.netConn.RemoteAddr() }
+func (s *backend1Stream) servend() httpServend { return s.conn.node.backend }
+func (s *backend1Stream) httpConn() httpConn   { return s.conn }
+func (s *backend1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *backend1Stream) markBroken()    { s.conn.markBroken() }
 func (s *backend1Stream) isBroken() bool { return s.conn.isBroken() }

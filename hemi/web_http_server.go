@@ -29,9 +29,6 @@ type HTTPServer interface { // for *http[x3]Server
 	Server
 	contentSaver
 	// Methods
-	RecvTimeout() time.Duration // timeout to recv the whole message content
-	SendTimeout() time.Duration // timeout to send the whole message
-	MaxContentSize() int64
 	MaxMemoryContentSize() int32
 	MaxStreamsPerConn() int32
 
@@ -169,9 +166,6 @@ func (s *httpServer_[G]) findApp(hostname []byte) *Webapp {
 	return s.defaultApp // may be nil
 }
 
-func (s *httpServer_[G]) RecvTimeout() time.Duration  { return s.recvTimeout }
-func (s *httpServer_[G]) SendTimeout() time.Duration  { return s.sendTimeout }
-func (s *httpServer_[G]) MaxContentSize() int64       { return s.maxContentSize }
 func (s *httpServer_[G]) MaxMemoryContentSize() int32 { return s.maxMemoryContentSize }
 func (s *httpServer_[G]) MaxStreamsPerConn() int32    { return s.maxStreamsPerConn }
 
@@ -336,7 +330,7 @@ type Request interface { // for *server[1-3]Request
 // serverRequest_ is the parent for server[1-3]Request.
 type serverRequest_ struct { // incoming. needs parsing
 	// Parent
-	httpIn_ // incoming http message
+	httpIn_ // incoming http request
 	// Stream states (stocks)
 	stockUpfiles [2]Upfile // for r.upfiles. 96B
 	// Stream states (controlled)
@@ -2621,7 +2615,7 @@ type Response interface { // for *server[1-3]Response
 // serverResponse_ is the parent for server[1-3]Response.
 type serverResponse_ struct { // outgoing. needs building
 	// Parent
-	httpOut_ // outgoing http message
+	httpOut_ // outgoing http response
 	// Assocs
 	request Request // related request
 	// Stream states (stocks)
@@ -2650,6 +2644,7 @@ type serverResponse0 struct { // for fast reset, entirely
 func (r *serverResponse_) onUse(httpVersion uint8) { // for non-zeros
 	const asRequest = false
 	r.httpOut_.onUse(httpVersion, asRequest)
+
 	r.status = StatusOK
 	r.unixTimes.expires = -1      // not set
 	r.unixTimes.lastModified = -1 // not set
@@ -2657,6 +2652,7 @@ func (r *serverResponse_) onUse(httpVersion uint8) { // for non-zeros
 func (r *serverResponse_) onEnd() { // for zeros
 	r.webapp = nil
 	r.serverResponse0 = serverResponse0{}
+
 	r.httpOut_.onEnd()
 }
 
@@ -2750,7 +2746,7 @@ func (r *serverResponse_) sendError(status int16, content []byte) error {
 	r.piece.SetText(content)
 	r.chain.PushTail(&r.piece)
 	r.contentSize = int64(len(content))
-	return r.shell.sendChain()
+	return r.message.sendChain()
 }
 
 var serverErrorPages = func() map[int16][]byte {
@@ -2785,7 +2781,7 @@ footer{padding:20px;}
 }()
 
 func (r *serverResponse_) beforeSend() {
-	resp := r.shell.(Response)
+	resp := r.message.(Response)
 	for _, id := range r.revisers { // revise headers
 		if id == 0 { // id of effective reviser is ensured to be > 0
 			continue
@@ -2796,7 +2792,7 @@ func (r *serverResponse_) beforeSend() {
 }
 func (r *serverResponse_) doSend() error {
 	if r.hasRevisers {
-		resp := r.shell.(Response)
+		resp := r.message.(Response)
 		for _, id := range r.revisers { // revise sized content
 			if id == 0 {
 				continue
@@ -2811,11 +2807,11 @@ func (r *serverResponse_) doSend() error {
 			return httpOutTooLarge
 		}
 	}
-	return r.shell.sendChain()
+	return r.message.sendChain()
 }
 
 func (r *serverResponse_) beforeEcho() {
-	resp := r.shell.(Response)
+	resp := r.message.(Response)
 	for _, id := range r.revisers { // revise headers
 		if id == 0 { // id of effective reviser is ensured to be > 0
 			continue
@@ -2831,7 +2827,7 @@ func (r *serverResponse_) doEcho() error {
 	r.chain.PushTail(&r.piece)
 	defer r.chain.free()
 	if r.hasRevisers {
-		resp := r.shell.(Response)
+		resp := r.message.(Response)
 		for _, id := range r.revisers { // revise vague content
 			if id == 0 { // id of effective reviser is ensured to be > 0
 				continue
@@ -2840,14 +2836,14 @@ func (r *serverResponse_) doEcho() error {
 			reviser.OnOutput(resp.Request(), resp, &r.chain)
 		}
 	}
-	return r.shell.echoChain()
+	return r.message.echoChain()
 }
 func (r *serverResponse_) endVague() error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
 	if r.hasRevisers {
-		resp := r.shell.(Response)
+		resp := r.message.(Response)
 		for _, id := range r.revisers { // finish vague content
 			if id == 0 { // id of effective reviser is ensured to be > 0
 				continue
@@ -2856,7 +2852,7 @@ func (r *serverResponse_) endVague() error {
 			reviser.FinishEcho(resp.Request(), resp)
 		}
 	}
-	return r.shell.finalizeVague()
+	return r.message.finalizeVague()
 }
 
 var ( // perfect hash table for response critical headers
@@ -2888,7 +2884,7 @@ func (r *serverResponse_) insertHeader(hash uint16, name []byte, value []byte) b
 		}
 		return h.fAdd(r, value)
 	}
-	return r.shell.addHeader(name, value)
+	return r.message.addHeader(name, value)
 }
 func (r *serverResponse_) appendExpires(expires []byte) (ok bool) {
 	return r._addUnixTime(&r.unixTimes.expires, &r.indexes.expires, bytesExpires, expires)
@@ -2905,7 +2901,7 @@ func (r *serverResponse_) removeHeader(hash uint16, name []byte) bool {
 		}
 		return h.fDel(r)
 	}
-	return r.shell.delHeader(name)
+	return r.message.delHeader(name)
 }
 func (r *serverResponse_) deleteExpires() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.expires, &r.indexes.expires)
@@ -2915,14 +2911,14 @@ func (r *serverResponse_) deleteLastModified() (deleted bool) {
 }
 
 func (r *serverResponse_) proxyPass(resp backendResponse) error { // sync content to the other side directly
-	pass := r.shell.passBytes
+	pass := r.message.passBytes
 	if resp.IsVague() || r.hasRevisers { // if we need to revise, we always use vague no matter the original content is sized or vague
 		pass = r.EchoBytes
 	} else { // resp is sized and there are no revisers, use passBytes
 		r.isSent = true
 		r.contentSize = resp.ContentSize()
 		// TODO: find a way to reduce i/o syscalls if content is small?
-		if err := r.shell.passHeaders(); err != nil {
+		if err := r.message.passHeaders(); err != nil {
 			return err
 		}
 	}
@@ -2942,7 +2938,7 @@ func (r *serverResponse_) proxyPass(resp backendResponse) error { // sync conten
 	}
 	if resp.HasTrailers() { // added trailers will be written by upper code eventually.
 		if !resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
-			return r.shell.addTrailer(name, value)
+			return r.message.addTrailer(name, value)
 		}) {
 			return httpOutTrailerFailed
 		}
@@ -2960,9 +2956,9 @@ func (r *serverResponse_) proxyCopyHead(resp backendResponse, cfg *WebExchanProx
 	// copy remaining headers from resp
 	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
 		if header.hash == hashSetCookie && bytes.Equal(name, bytesSetCookie) { // set-cookie is copied directly
-			return r.shell.addHeader(name, value)
+			return r.message.addHeader(name, value)
 		} else {
-			return r.shell.insertHeader(header.hash, name, value)
+			return r.message.insertHeader(header.hash, name, value)
 		}
 	}) {
 		return false
@@ -2972,7 +2968,7 @@ func (r *serverResponse_) proxyCopyHead(resp backendResponse, cfg *WebExchanProx
 }
 func (r *serverResponse_) proxyCopyTail(resp backendResponse, cfg *WebExchanProxyConfig) bool {
 	return resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
-		return r.shell.addTrailer(name, value)
+		return r.message.addTrailer(name, value)
 	})
 }
 

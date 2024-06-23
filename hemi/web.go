@@ -9,57 +9,10 @@ package hemi
 
 import (
 	"bytes"
-	"net"
 	"os"
 	"strings"
 	"sync"
-	"time"
 )
-
-// httpServend collects shared methods between HTTPServer or HTTPBackend.
-type httpServend interface {
-	// Imports
-	contentSaver
-	// Methods
-	Stage() *Stage
-	RecvTimeout() time.Duration // timeout to recv the whole message content
-	SendTimeout() time.Duration // timeout to send the whole message
-	MaxContentSize() int64
-	MaxMemoryContentSize() int32
-	MaxStreamsPerConn() int32
-}
-
-// httpConn collects shared methods between *server[1-3]Conn and *backend[1-3]Conn.
-type httpConn interface {
-	ID() int64
-	IsTLS() bool
-	IsUDS() bool
-	MakeTempName(p []byte, unixTime int64) int
-	markBroken()
-	isBroken() bool
-}
-
-// httpStream collects shared methods between *server[1-3]Stream and *backend[1-3]Stream.
-type httpStream interface {
-	httpServend() httpServend
-	httpConn() httpConn
-
-	remoteAddr() net.Addr
-
-	buffer256() []byte
-	unsafeMake(size int) []byte
-
-	isBroken() bool // returns true if either side of the stream is broken
-	markBroken()    // mark stream as broken
-
-	setReadDeadline() error
-	setWriteDeadline() error
-
-	read(p []byte) (int, error)
-	readFull(p []byte) (int, error)
-	write(p []byte) (int, error)
-	writev(vector *net.Buffers) (int64, error)
-}
 
 // poolPiece
 var poolPiece sync.Pool

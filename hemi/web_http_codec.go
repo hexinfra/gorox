@@ -18,10 +18,48 @@ import (
 	"time"
 )
 
+// httpServend collects shared methods between HTTPServer or HTTPBackend.
+type httpServend interface {
+	// Imports
+	contentSaver
+	// Methods
+	MaxMemoryContentSize() int32
+}
+
+// httpConn collects shared methods between *server[1-3]Conn and *backend[1-3]Conn.
+type httpConn interface {
+	ID() int64
+	IsTLS() bool
+	IsUDS() bool
+	MakeTempName(p []byte, unixTime int64) int
+}
+
+// httpStream collects shared methods between *server[1-3]Stream and *backend[1-3]Stream.
+type httpStream interface {
+	servend() httpServend
+	httpConn() httpConn
+
+	remoteAddr() net.Addr
+
+	buffer256() []byte
+	unsafeMake(size int) []byte
+
+	isBroken() bool // returns true if either side of the stream is broken
+	markBroken()    // mark stream as broken
+
+	setReadDeadline() error
+	setWriteDeadline() error
+
+	read(p []byte) (int, error)
+	readFull(p []byte) (int, error)
+	write(p []byte) (int, error)
+	writev(vector *net.Buffers) (int64, error)
+}
+
 // httpIn_ is the parent for serverRequest_ and backendResponse_.
 type httpIn_ struct { // incoming. needs parsing
 	// Assocs
-	shell interface { // *server[1-3]Request, *backend[1-3]Response
+	message interface { // *server[1-3]Request, *backend[1-3]Response
 		readContent() (p []byte, err error)
 		examineTail() bool
 	}
@@ -38,19 +76,21 @@ type httpIn_ struct { // incoming. needs parsing
 	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see httpCodingXXX for values
 	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.nAcceptCodings. see httpCodingXXX for values
 	// Stream states (non-zeros)
-	primes         []pair        // hold prime queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockPrimes>/max]
-	extras         []pair        // hold extra queries, headers(main+subs), cookies, forms, trailers(main+subs), and params. [<r.stockExtras>/max]
-	array          []byte        // store parsed, dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
-	input          []byte        // bytes of incoming message heads. [<r.stockInput>/4K/16K]
-	recvTimeout    time.Duration // timeout to recv the whole message content
-	maxContentSize int64         // max content size allowed for current message. if the content is vague, size will be calculated on receiving
-	contentSize    int64         // info about incoming content. >=0: content size, -1: no content, -2: vague content
-	httpVersion    uint8         // Version1_0, Version1_1, Version2, Version3
-	asResponse     bool          // treat this message as a response?
-	keepAlive      int8          // used by HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
-	_              byte          // padding
-	headResult     int16         // result of receiving message head. values are as same as http status for convenience
-	bodyResult     int16         // result of receiving message body. values are as same as http status for convenience
+	primes               []pair        // hold prime queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockPrimes>/max]
+	extras               []pair        // hold extra queries, headers(main+subs), cookies, forms, trailers(main+subs), and params. [<r.stockExtras>/max]
+	array                []byte        // store parsed, dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
+	input                []byte        // bytes of incoming message heads. [<r.stockInput>/4K/16K]
+	recvTimeout          time.Duration // timeout to recv the whole message content
+	maxContentSize       int64         // max content size allowed for current message. if the content is vague, size will be calculated on receiving
+	maxMemoryContentSize int32         // max content size allowed to load into memory
+	_                    int32         // padding
+	contentSize          int64         // info about incoming content. >=0: content size, -1: no content, -2: vague content
+	httpVersion          uint8         // Version1_0, Version1_1, Version2, Version3
+	asResponse           bool          // treat this message as a response?
+	keepAlive            int8          // used by HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
+	_                    byte          // padding
+	headResult           int16         // result of receiving message head. values are as same as http status for convenience
+	bodyResult           int16         // result of receiving message body. values are as same as http status for convenience
 	// Stream states (zeros)
 	bodyWindow  []byte    // a window used for receiving body. sizes must be same with r.input for HTTP/1. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
 	failReason  string    // the fail reason of headResult or bodyResult
@@ -108,9 +148,10 @@ func (r *httpIn_) onUse(httpVersion uint8, asResponse bool) { // for non-zeros
 	} else {
 		// HTTP/1 supports request pipelining, so input related are not set here.
 	}
-	servend := r.stream.httpServend()
+	servend := r.stream.servend()
 	r.recvTimeout = servend.RecvTimeout()
 	r.maxContentSize = servend.MaxContentSize()
+	r.maxMemoryContentSize = servend.MaxMemoryContentSize()
 	r.contentSize = -1 // no content
 	r.httpVersion = httpVersion
 	r.asResponse = asResponse
@@ -889,7 +930,7 @@ func (r *httpIn_) _recvContent(retain bool) any { // to []byte (for small conten
 		}
 		var p []byte
 		for {
-			p, err = r.shell.readContent()
+			p, err = r.message.readContent()
 			if len(p) > 0 { // skip 0, nothing to write
 				if _, e := contentFile.Write(p); e != nil {
 					err = e
@@ -1291,7 +1332,7 @@ func (r *httpIn_) arrayCopy(p []byte) bool { // callers don't guarantee the inte
 		if edge < r.arrayEdge { // overflow
 			return false
 		}
-		if edge > r.stream.httpServend().MaxMemoryContentSize() {
+		if edge > r.maxMemoryContentSize {
 			return false
 		}
 		if !r._growArray(int32(len(p))) {
@@ -1361,7 +1402,7 @@ func (r *httpIn_) _growArray(size int32) bool { // stock(<4K)->4K->16K->64K1->(1
 }
 
 func (r *httpIn_) saveContentFilesDir() string {
-	return r.stream.httpServend().SaveContentFilesDir()
+	return r.stream.servend().SaveContentFilesDir()
 }
 
 func (r *httpIn_) _newTempFile(retain bool) (tempFile, error) { // to save content to
@@ -1392,7 +1433,7 @@ var ( // http incoming message errors
 // httpOut_ is the parent for serverResponse_ and backendRequest_.
 type httpOut_ struct { // outgoing. needs building
 	// Assocs
-	shell interface { // *server[1-3]Response, *backend[1-3]Request
+	message interface { // *server[1-3]Response, *backend[1-3]Request
 		control() []byte
 		addHeader(name []byte, value []byte) bool
 		header(name []byte) (value []byte, ok bool)
@@ -1453,7 +1494,8 @@ type httpOut0 struct { // for fast reset, entirely
 
 func (r *httpOut_) onUse(httpVersion uint8, asRequest bool) { // for non-zeros
 	r.fields = r.stockFields[:]
-	r.sendTimeout = r.stream.httpServend().SendTimeout()
+	servend := r.stream.servend()
+	r.sendTimeout = servend.SendTimeout()
 	r.contentSize = -1 // not set
 	r.httpVersion = httpVersion
 	r.asRequest = asRequest
@@ -1485,11 +1527,11 @@ func (r *httpOut_) AddContentTypeBytes(contentType []byte) bool {
 }
 
 func (r *httpOut_) Header(name string) (value string, ok bool) {
-	v, ok := r.shell.header(ConstBytes(name))
+	v, ok := r.message.header(ConstBytes(name))
 	return string(v), ok
 }
 func (r *httpOut_) HasHeader(name string) bool {
-	return r.shell.hasHeader(ConstBytes(name))
+	return r.message.hasHeader(ConstBytes(name))
 }
 func (r *httpOut_) AddHeader(name string, value string) bool {
 	return r.AddHeaderBytes(ConstBytes(name), ConstBytes(value))
@@ -1504,7 +1546,7 @@ func (r *httpOut_) AddHeaderBytes(name []byte, value []byte) bool {
 			return false
 		}
 	}
-	return r.shell.insertHeader(hash, lower, value)
+	return r.message.insertHeader(hash, lower, value)
 }
 func (r *httpOut_) DelHeader(name string) bool {
 	return r.DelHeaderBytes(ConstBytes(name))
@@ -1514,7 +1556,7 @@ func (r *httpOut_) DelHeaderBytes(name []byte) bool {
 	if !valid {
 		return false
 	}
-	return r.shell.removeHeader(hash, lower)
+	return r.message.removeHeader(hash, lower)
 }
 func (r *httpOut_) _nameCheck(name []byte) (hash uint16, valid bool, lower []byte) { // TODO: improve performance
 	n := len(name)
@@ -1562,7 +1604,7 @@ func (r *httpOut_) deleteContentType() (deleted bool) { return r._deleteSingleto
 func (r *httpOut_) deleteDate() (deleted bool)        { return r._deleteSingleton(&r.iDate) }
 
 func (r *httpOut_) _appendSingleton(pIndex *uint8, name []byte, value []byte) bool {
-	if *pIndex > 0 || !r.shell.addHeader(name, value) {
+	if *pIndex > 0 || !r.message.addHeader(name, value) {
 		return false
 	}
 	*pIndex = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
@@ -1572,7 +1614,7 @@ func (r *httpOut_) _deleteSingleton(pIndex *uint8) bool {
 	if *pIndex == 0 { // not exist
 		return false
 	}
-	r.shell.delHeaderAt(*pIndex)
+	r.message.delHeaderAt(*pIndex)
 	*pIndex = 0
 	return true
 }
@@ -1582,7 +1624,7 @@ func (r *httpOut_) _setUnixTime(pUnixTime *int64, pIndex *uint8, unixTime int64)
 		return false
 	}
 	if *pUnixTime == -2 { // was set through general api, must delete it
-		r.shell.delHeaderAt(*pIndex)
+		r.message.delHeaderAt(*pIndex)
 		*pIndex = 0
 	}
 	*pUnixTime = unixTime
@@ -1590,12 +1632,12 @@ func (r *httpOut_) _setUnixTime(pUnixTime *int64, pIndex *uint8, unixTime int64)
 }
 func (r *httpOut_) _addUnixTime(pUnixTime *int64, pIndex *uint8, name []byte, httpDate []byte) bool {
 	if *pUnixTime == -2 { // was set through general api, must delete it
-		r.shell.delHeaderAt(*pIndex)
+		r.message.delHeaderAt(*pIndex)
 		*pIndex = 0
 	} else { // >= 0 or -1
 		*pUnixTime = -2
 	}
-	if !r.shell.addHeader(name, httpDate) {
+	if !r.message.addHeader(name, httpDate) {
 		return false
 	}
 	*pIndex = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
@@ -1606,7 +1648,7 @@ func (r *httpOut_) _delUnixTime(pUnixTime *int64, pIndex *uint8) bool {
 		return false
 	}
 	if *pUnixTime == -2 { // was set through general api, must delete it
-		r.shell.delHeaderAt(*pIndex)
+		r.message.delHeaderAt(*pIndex)
 		*pIndex = 0
 	}
 	*pUnixTime = -1
@@ -1660,10 +1702,10 @@ func (r *httpOut_) AddTrailerBytes(name []byte, value []byte) bool {
 	if !r.isSent { // trailers must be added after headers & content are sent, otherwise r.fields will be messed up
 		return false
 	}
-	return r.shell.addTrailer(name, value)
+	return r.message.addTrailer(name, value)
 }
 func (r *httpOut_) Trailer(name string) (value string, ok bool) {
-	v, ok := r.shell.trailer(ConstBytes(name))
+	v, ok := r.message.trailer(ConstBytes(name))
 	return string(v), ok
 }
 
@@ -1690,7 +1732,7 @@ func (r *httpOut_) proxyPost(content any, hasTrailers bool) error { // post held
 			return err
 		}
 		r.forbidContent = true
-		return r.shell.doSend()
+		return r.message.doSend()
 	}
 }
 
@@ -1706,7 +1748,7 @@ func (r *httpOut_) sendText(content []byte) error {
 	r.piece.SetText(content)
 	r.chain.PushTail(&r.piece)
 	r.contentSize = int64(len(content)) // initial size, may be changed by revisers
-	return r.shell.doSend()
+	return r.message.doSend()
 }
 func (r *httpOut_) sendFile(content *os.File, info os.FileInfo, shut bool) error {
 	if err := r._beforeSend(); err != nil {
@@ -1715,7 +1757,7 @@ func (r *httpOut_) sendFile(content *os.File, info os.FileInfo, shut bool) error
 	r.piece.SetFile(content, info, shut)
 	r.chain.PushTail(&r.piece)
 	r.contentSize = info.Size() // initial size, may be changed by revisers
-	return r.shell.doSend()
+	return r.message.doSend()
 }
 func (r *httpOut_) _beforeSend() error {
 	if r.isSent {
@@ -1723,7 +1765,7 @@ func (r *httpOut_) _beforeSend() error {
 	}
 	r.isSent = true
 	if r.hasRevisers {
-		r.shell.beforeSend()
+		r.message.beforeSend()
 	}
 	return nil
 }
@@ -1737,7 +1779,7 @@ func (r *httpOut_) echoText(chunk []byte) error {
 	}
 	r.piece.SetText(chunk)
 	defer r.piece.zero()
-	return r.shell.doEcho()
+	return r.message.doEcho()
 }
 func (r *httpOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {
 	if err := r._beforeEcho(); err != nil {
@@ -1751,7 +1793,7 @@ func (r *httpOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {
 	}
 	r.piece.SetFile(chunk, info, shut)
 	defer r.piece.zero()
-	return r.shell.doEcho()
+	return r.message.doEcho()
 }
 func (r *httpOut_) _beforeEcho() error {
 	if r.stream.isBroken() {
@@ -1766,9 +1808,9 @@ func (r *httpOut_) _beforeEcho() error {
 	r.isSent = true
 	r.contentSize = -2 // vague
 	if r.hasRevisers {
-		r.shell.beforeEcho()
+		r.message.beforeEcho()
 	}
-	return r.shell.echoHeaders()
+	return r.message.echoHeaders()
 }
 
 func (r *httpOut_) growHeader(size int) (from int, edge int, ok bool) { // headers and trailers are not manipulated at the same time
@@ -1839,7 +1881,7 @@ var ( // http outgoing message errors
 // webSocket_
 type webSocket_ struct {
 	// Assocs
-	shell interface { // *server[1-3]Socket, *backend[1-3]Socket
+	webSocket interface { // *server[1-3]Socket, *backend[1-3]Socket
 		Read(p []byte) (int, error)
 		Write(p []byte) (int, error)
 		Close() error

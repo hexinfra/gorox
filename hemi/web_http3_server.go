@@ -36,7 +36,7 @@ type http3Server struct {
 
 func (s *http3Server) onCreate(name string, stage *Stage) {
 	s.httpServer_.onCreate(name, stage)
-	s.tlsConfig = new(tls.Config) // tls mode is always enabled
+	s.tlsConfig = new(tls.Config) // tls mode is always enabled in http/3
 }
 
 func (s *http3Server) OnConfigure() {
@@ -229,9 +229,9 @@ func getServer3Stream(conn *server3Conn, quicStream *quic.Stream) *server3Stream
 	if x := poolServer3Stream.Get(); x == nil {
 		stream = new(server3Stream)
 		req, resp := &stream.request, &stream.response
-		req.shell = req
+		req.message = req
 		req.stream = stream
-		resp.shell = resp
+		resp.message = resp
 		resp.stream = stream
 		resp.request = req
 	} else {
@@ -309,9 +309,9 @@ func (s *server3Stream) executeSocket() { // see RFC 9220
 	// TODO
 }
 
-func (s *server3Stream) httpServend() httpServend { return s.conn.gate.server }
-func (s *server3Stream) httpConn() httpConn       { return s.conn }
-func (s *server3Stream) remoteAddr() net.Addr     { return nil } // TODO
+func (s *server3Stream) servend() httpServend { return s.conn.gate.server }
+func (s *server3Stream) httpConn() httpConn   { return s.conn }
+func (s *server3Stream) remoteAddr() net.Addr { return nil } // TODO
 
 func (s *server3Stream) markBroken()    {}               // TODO
 func (s *server3Stream) isBroken() bool { return false } // TODO
@@ -437,7 +437,8 @@ func (r *server3Response) finalizeHeaders() { // add at most 256 bytes
 	/*
 		// date: Sun, 06 Nov 1994 08:49:37 GMT
 		if r.iDate == 0 {
-			r.fieldsEdge += uint16(r.stream.httpServend().Stage().Clock().writeDate3(r.fields[r.fieldsEdge:]))
+			clock := r.stream.(*server3Stream).conn.gate.server.stage.clock
+			r.fieldsEdge += uint16(clock.writeDate3(r.fields[r.fieldsEdge:]))
 		}
 	*/
 }

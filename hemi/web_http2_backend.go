@@ -121,15 +121,6 @@ func (n *http2Node) fetchConn() (*backend2Conn, error) {
 	connID := n.backend.nextConnID()
 	return getBackend2Conn(connID, n, netConn, rawConn), nil
 }
-func (n *http2Node) _dialTLS() (*backend2Conn, error) {
-	return nil, nil
-}
-func (n *http2Node) _dialUDS() (*backend2Conn, error) {
-	return nil, nil
-}
-func (n *http2Node) _dialTCP() (*backend2Conn, error) {
-	return nil, nil
-}
 func (n *http2Node) storeConn(conn *backend2Conn) {
 	// Note: A backend2Conn can be used concurrently, limited by maxStreams.
 	// TODO: decRef
@@ -273,10 +264,10 @@ func getBackend2Stream(conn *backend2Conn, id uint32) *backend2Stream {
 	if x := poolBackend2Stream.Get(); x == nil {
 		stream = new(backend2Stream)
 		req, resp := &stream.request, &stream.response
-		req.shell = req
+		req.message = req
 		req.stream = stream
 		req.response = resp
-		resp.shell = resp
+		resp.message = resp
 		resp.stream = stream
 	} else {
 		stream = x.(*backend2Stream)
@@ -336,9 +327,9 @@ func (s *backend2Stream) ExecuteSocket() error { // see RFC 8441: https://datatr
 	return nil
 }
 
-func (s *backend2Stream) httpServend() httpServend { return s.conn.node.backend }
-func (s *backend2Stream) httpConn() httpConn       { return s.conn }
-func (s *backend2Stream) remoteAddr() net.Addr     { return s.conn.netConn.RemoteAddr() }
+func (s *backend2Stream) servend() httpServend { return s.conn.node.backend }
+func (s *backend2Stream) httpConn() httpConn   { return s.conn }
+func (s *backend2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *backend2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
 func (s *backend2Stream) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream

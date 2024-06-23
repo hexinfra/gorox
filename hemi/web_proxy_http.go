@@ -107,7 +107,7 @@ func WebExchanReverseProxy(req Request, resp Response, backend HTTPBackend, cfg 
 		if backResp.Status() >= StatusOK {
 			// Only HTTP/1 cares this.
 			if backResp.KeepAlive() == 0 {
-				backStream.httpConn().(*backend1Conn).persistent = false
+				backStream.(*backend1Stream).conn.persistent = false
 			}
 			break
 		}

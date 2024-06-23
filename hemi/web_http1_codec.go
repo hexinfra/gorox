@@ -315,7 +315,7 @@ func (r *httpIn_) _readVagueContent1() (p []byte, err error) {
 				}
 			} else if r.bodyWindow[r.cFore] != '\n' { // must be trailer-section = *( field-line CRLF)
 				r.receiving = httpSectionTrailers
-				if !r.recvTrailers1() || !r.shell.examineTail() {
+				if !r.recvTrailers1() || !r.message.examineTail() {
 					goto badRead
 				}
 				// r.recvTrailers1() must ends with r.cFore being at the last '\n' after trailer-section.
@@ -633,7 +633,7 @@ func (r *httpOut_) sendChain1() error { // TODO: if conn is TLS, don't use write
 		return r._sendEntireChain1()
 	}
 	if !r.asRequest {
-		r.shell.(Response).SetStatus(StatusPartialContent)
+		r.message.(Response).SetStatus(StatusPartialContent)
 	}
 	if nContentRanges == 1 {
 		return r._sendSingleRange1()
@@ -642,7 +642,7 @@ func (r *httpOut_) sendChain1() error { // TODO: if conn is TLS, don't use write
 	}
 }
 func (r *httpOut_) _sendEntireChain1() error {
-	r.shell.finalizeHeaders()
+	r.message.finalizeHeaders()
 	vector := r._prepareVector1() // waiting to write
 	if DebugLevel() >= 2 {
 		if r.asRequest {
@@ -729,9 +729,9 @@ func (r *httpOut_) _prepareVector1() [][]byte {
 	} else { // nPieces >= 2
 		vector = make([][]byte, 3+nPieces) // TODO(diogin): get from pool? defer pool.put()
 	}
-	vector[0] = r.shell.control()
-	vector[1] = r.shell.addedHeaders()
-	vector[2] = r.shell.fixedHeaders()
+	vector[0] = r.message.control()
+	vector[1] = r.message.addedHeaders()
+	vector[2] = r.message.fixedHeaders()
 	return vector
 }
 
@@ -795,11 +795,11 @@ func (r *httpOut_) finalizeVague1() error {
 }
 
 func (r *httpOut_) writeHeaders1() error { // used by echo and pass
-	r.shell.finalizeHeaders()
+	r.message.finalizeHeaders()
 	r.vector = r.fixedVector[0:3]
-	r.vector[0] = r.shell.control()
-	r.vector[1] = r.shell.addedHeaders()
-	r.vector[2] = r.shell.fixedHeaders()
+	r.vector[0] = r.message.control()
+	r.vector[1] = r.message.addedHeaders()
+	r.vector[2] = r.message.fixedHeaders()
 	if DebugLevel() >= 2 {
 		if r.asRequest {
 			Printf("[backend1Stream=%d]", r.stream.httpConn().ID())

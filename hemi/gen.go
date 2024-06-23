@@ -228,6 +228,9 @@ func (r *Region) Free() {
 // contentSaver
 type contentSaver interface {
 	SaveContentFilesDir() string
+	RecvTimeout() time.Duration
+	SendTimeout() time.Duration
+	MaxContentSize() int64
 }
 
 // _contentSaver_ is a mixin.
@@ -282,6 +285,9 @@ func (s *_contentSaver_) onPrepare(component Component, perm os.FileMode) {
 }
 
 func (s *_contentSaver_) SaveContentFilesDir() string { return s.saveContentFilesDir } // must ends with '/'
+func (s *_contentSaver_) RecvTimeout() time.Duration  { return s.recvTimeout }
+func (s *_contentSaver_) SendTimeout() time.Duration  { return s.sendTimeout }
+func (s *_contentSaver_) MaxContentSize() int64       { return s.maxContentSize }
 
 // LogConfig
 type LogConfig struct {

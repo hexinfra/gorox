@@ -226,10 +226,10 @@ func getBackend3Stream(conn *backend3Conn, quicStream *quic.Stream) *backend3Str
 	if x := poolBackend3Stream.Get(); x == nil {
 		stream = new(backend3Stream)
 		req, resp := &stream.request, &stream.response
-		req.shell = req
+		req.message = req
 		req.stream = stream
 		req.response = resp
-		resp.shell = resp
+		resp.message = resp
 		resp.stream = stream
 	} else {
 		stream = x.(*backend3Stream)
@@ -290,9 +290,9 @@ func (s *backend3Stream) ExecuteSocket() error { // see RFC 9220
 	return nil
 }
 
-func (s *backend3Stream) httpServend() httpServend { return s.conn.node.backend }
-func (s *backend3Stream) httpConn() httpConn       { return s.conn }
-func (s *backend3Stream) remoteAddr() net.Addr     { return nil } // TODO
+func (s *backend3Stream) servend() httpServend { return s.conn.node.backend }
+func (s *backend3Stream) httpConn() httpConn   { return s.conn }
+func (s *backend3Stream) remoteAddr() net.Addr { return nil } // TODO
 
 func (s *backend3Stream) markBroken()    {}               // TODO
 func (s *backend3Stream) isBroken() bool { return false } // TODO

@@ -30,9 +30,9 @@ func getServer1Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall
 		stream := &serverConn.stream
 		stream.conn = serverConn
 		req, resp := &stream.request, &stream.response
-		req.shell = req
+		req.message = req
 		req.stream = stream
-		resp.shell = resp
+		resp.message = resp
 		resp.stream = stream
 		resp.request = req
 	} else {
@@ -369,9 +369,9 @@ func (s *server1Stream) executeSocket() { // upgrade: websocket
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nConnection: close\r\n\r\n"))
 }
 
-func (s *server1Stream) httpServend() httpServend { return s.conn.gate.server }
-func (s *server1Stream) httpConn() httpConn       { return s.conn }
-func (s *server1Stream) remoteAddr() net.Addr     { return s.conn.netConn.RemoteAddr() }
+func (s *server1Stream) servend() httpServend { return s.conn.gate.server }
+func (s *server1Stream) httpConn() httpConn   { return s.conn }
+func (s *server1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *server1Stream) markBroken()    { s.conn.markBroken() }
 func (s *server1Stream) isBroken() bool { return s.conn.isBroken() }
@@ -956,7 +956,7 @@ func (r *server1Response) AddDirectoryRedirection() bool {
 		return false
 	}
 }
-func (r *server1Response) setConnectionClose() { r.stream.httpConn().(*server1Conn).persistent = false }
+func (r *server1Response) setConnectionClose() { r.stream.(*server1Stream).conn.persistent = false }
 
 func (r *server1Response) AddCookie(cookie *Cookie) bool {
 	if cookie.name == "" || cookie.invalid {
@@ -1016,7 +1016,8 @@ func (r *server1Response) passBytes(p []byte) error { return r.passBytes1(p) }
 func (r *server1Response) finalizeHeaders() { // add at most 256 bytes
 	// date: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.iDate == 0 {
-		r.fieldsEdge += uint16(r.stream.httpServend().Stage().Clock().writeDate1(r.fields[r.fieldsEdge:]))
+		clock := r.stream.(*server1Stream).conn.gate.server.stage.clock
+		r.fieldsEdge += uint16(clock.writeDate1(r.fields[r.fieldsEdge:]))
 	}
 	// expires: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.unixTimes.expires >= 0 {
@@ -1026,7 +1027,7 @@ func (r *server1Response) finalizeHeaders() { // add at most 256 bytes
 	if r.unixTimes.lastModified >= 0 {
 		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesLastModified, r.unixTimes.lastModified))
 	}
-	conn := r.stream.httpConn().(*server1Conn)
+	conn := r.stream.(*server1Stream).conn
 	if r.contentSize != -1 { // with content
 		if !r.forbidFraming {
 			if !r.isVague() { // content-length: >=0\r\n

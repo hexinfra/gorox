@@ -69,44 +69,44 @@ func (d *tcpxProxy) Deal(conn *TCPXConn) (dealt bool) {
 	conn.wait()
 	return
 }
-func (d *tcpxProxy) relayInbound(tcpxConn *TCPXConn, tConn *TConn) {
+func (d *tcpxProxy) relayInbound(tcpxConn *TCPXConn, backConn *TConn) {
 	var (
-		data    []byte
+		payload []byte
 		tcpxErr error
-		tErr    error
+		backErr error
 	)
 	for {
 		if tcpxErr = tcpxConn.SetReadDeadline(); tcpxErr == nil {
-			if data, tcpxErr = tcpxConn.Recv(); len(data) > 0 {
-				if tErr = tConn.setWriteDeadline(); tErr == nil {
-					tErr = tConn.send(data)
+			if payload, tcpxErr = tcpxConn.Recv(); len(payload) > 0 {
+				if backErr = backConn.setWriteDeadline(); backErr == nil {
+					backErr = backConn.send(payload)
 				}
 			}
 		}
-		if tcpxErr != nil || tErr != nil {
+		if tcpxErr != nil || backErr != nil {
 			tcpxConn.CloseRead()
-			tConn.closeWrite()
+			backConn.closeWrite()
 			break
 		}
 	}
 	tcpxConn.done()
 }
-func (d *tcpxProxy) relayOutbound(tConn *TConn, tcpxConn *TCPXConn) {
+func (d *tcpxProxy) relayOutbound(backConn *TConn, tcpxConn *TCPXConn) {
 	var (
-		data    []byte
-		tErr    error
+		payload []byte
+		backErr error
 		tcpxErr error
 	)
 	for {
-		if tErr = tConn.setReadDeadline(); tErr == nil {
-			if data, tErr = tConn.recv(); len(data) > 0 {
+		if backErr = backConn.setReadDeadline(); backErr == nil {
+			if payload, backErr = backConn.recv(); len(payload) > 0 {
 				if tcpxErr = tcpxConn.SetWriteDeadline(); tcpxErr == nil {
-					tcpxErr = tcpxConn.Send(data)
+					tcpxErr = tcpxConn.Send(payload)
 				}
 			}
 		}
-		if tErr != nil || tcpxErr != nil {
-			tConn.closeRead()
+		if backErr != nil || tcpxErr != nil {
+			backConn.closeRead()
 			tcpxConn.CloseWrite()
 			break
 		}

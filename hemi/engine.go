@@ -43,7 +43,7 @@ func Errorln(args ...any) {
 }
 func Errorf(format string, args ...any) {
 	_printTime(os.Stderr)
-	fmt.Fprintf(os.Stdout, format, args...)
+	fmt.Fprintf(os.Stderr, format, args...)
 }
 func _printTime(file *os.File) {
 	fmt.Fprintf(file, "[%s] ", time.Now().Format("2006-01-02 15:04:05 MST"))
@@ -137,131 +137,6 @@ func _checkDirs() {
 	if _topDir.Load() == nil || _logDir.Load() == nil || _tmpDir.Load() == nil || _varDir.Load() == nil {
 		UseExitln("topDir, logDir, tmpDir, and varDir must all be set")
 	}
-}
-
-// Value is a value in config file.
-type Value struct {
-	kind  int16  // tokenXXX in values
-	code  int16  // variable code if kind is tokenVariable
-	name  string // variable name if kind is tokenVariable
-	value any    // bools, integers, strings, durations, lists, and dicts
-	bytes []byte // []byte of string value, to avoid the cost of []byte(s)
-}
-
-func (v *Value) IsBool() bool     { return v.kind == tokenBool }
-func (v *Value) IsInteger() bool  { return v.kind == tokenInteger }
-func (v *Value) IsString() bool   { return v.kind == tokenString }
-func (v *Value) IsDuration() bool { return v.kind == tokenDuration }
-func (v *Value) IsList() bool     { return v.kind == tokenList }
-func (v *Value) IsDict() bool     { return v.kind == tokenDict }
-func (v *Value) IsVariable() bool { return v.kind == tokenVariable }
-
-func (v *Value) Bool() (b bool, ok bool) {
-	b, ok = v.value.(bool)
-	return
-}
-func (v *Value) Int64() (i64 int64, ok bool) {
-	i64, ok = v.value.(int64)
-	return
-}
-func (v *Value) Uint32() (u32 uint32, ok bool) { return toInt[uint32](v) }
-func (v *Value) Int32() (i32 int32, ok bool)   { return toInt[int32](v) }
-func (v *Value) Int16() (i16 int16, ok bool)   { return toInt[int16](v) }
-func (v *Value) Int8() (i8 int8, ok bool)      { return toInt[int8](v) }
-func (v *Value) Int() (i int, ok bool)         { return toInt[int](v) }
-func toInt[T ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64](v *Value) (i T, ok bool) {
-	i64, ok := v.Int64()
-	i = T(i64)
-	if ok && int64(i) != i64 {
-		ok = false
-	}
-	return
-}
-func (v *Value) String() (s string, ok bool) {
-	s, ok = v.value.(string)
-	return
-}
-func (v *Value) Bytes() (p []byte, ok bool) {
-	if v.kind == tokenString {
-		p, ok = v.bytes, true
-	}
-	return
-}
-func (v *Value) Duration() (d time.Duration, ok bool) {
-	d, ok = v.value.(time.Duration)
-	return
-}
-func (v *Value) List() (list []Value, ok bool) {
-	list, ok = v.value.([]Value)
-	return
-}
-func (v *Value) ListN(n int) (list []Value, ok bool) {
-	list, ok = v.value.([]Value)
-	if ok && n >= 0 && len(list) != n {
-		ok = false
-	}
-	return
-}
-func (v *Value) StringList() (list []string, ok bool) {
-	l, ok := v.value.([]Value)
-	if ok {
-		for _, value := range l {
-			if s, isString := value.String(); isString {
-				list = append(list, s)
-			}
-		}
-	}
-	return
-}
-func (v *Value) BytesList() (list [][]byte, ok bool) {
-	l, ok := v.value.([]Value)
-	if ok {
-		for _, value := range l {
-			if value.kind == tokenString {
-				list = append(list, value.bytes)
-			}
-		}
-	}
-	return
-}
-func (v *Value) StringListN(n int) (list []string, ok bool) {
-	l, ok := v.value.([]Value)
-	if !ok {
-		return
-	}
-	if n >= 0 && len(l) != n {
-		ok = false
-		return
-	}
-	for _, value := range l {
-		if s, ok := value.String(); ok {
-			list = append(list, s)
-		}
-	}
-	return
-}
-func (v *Value) Dict() (dict map[string]Value, ok bool) {
-	dict, ok = v.value.(map[string]Value)
-	return
-}
-func (v *Value) StringDict() (dict map[string]string, ok bool) {
-	d, ok := v.value.(map[string]Value)
-	if ok {
-		dict = make(map[string]string)
-		for name, value := range d {
-			if s, ok := value.String(); ok {
-				dict[name] = s
-			}
-		}
-	}
-	return
-}
-
-func (v *Value) BytesVar(holder varHolder) []byte {
-	return holder.unsafeVariable(v.code, v.name)
-}
-func (v *Value) StringVar(holder varHolder) string {
-	return string(holder.unsafeVariable(v.code, v.name))
 }
 
 // configurator applies configuration and creates a new stage.
@@ -1348,4 +1223,129 @@ func (l *lexer) _loadURL(base string, file string) string {
 	} else {
 		return data
 	}
+}
+
+// Value is a value in config file.
+type Value struct {
+	kind  int16  // tokenXXX in values
+	code  int16  // variable code if kind is tokenVariable
+	name  string // variable name if kind is tokenVariable
+	value any    // bools, integers, strings, durations, lists, and dicts
+	bytes []byte // []byte of string value, to avoid the cost of []byte(s)
+}
+
+func (v *Value) IsBool() bool     { return v.kind == tokenBool }
+func (v *Value) IsInteger() bool  { return v.kind == tokenInteger }
+func (v *Value) IsString() bool   { return v.kind == tokenString }
+func (v *Value) IsDuration() bool { return v.kind == tokenDuration }
+func (v *Value) IsList() bool     { return v.kind == tokenList }
+func (v *Value) IsDict() bool     { return v.kind == tokenDict }
+func (v *Value) IsVariable() bool { return v.kind == tokenVariable }
+
+func (v *Value) Bool() (b bool, ok bool) {
+	b, ok = v.value.(bool)
+	return
+}
+func (v *Value) Int64() (i64 int64, ok bool) {
+	i64, ok = v.value.(int64)
+	return
+}
+func (v *Value) Uint32() (u32 uint32, ok bool) { return toInt[uint32](v) }
+func (v *Value) Int32() (i32 int32, ok bool)   { return toInt[int32](v) }
+func (v *Value) Int16() (i16 int16, ok bool)   { return toInt[int16](v) }
+func (v *Value) Int8() (i8 int8, ok bool)      { return toInt[int8](v) }
+func (v *Value) Int() (i int, ok bool)         { return toInt[int](v) }
+func toInt[T ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64](v *Value) (i T, ok bool) {
+	i64, ok := v.Int64()
+	i = T(i64)
+	if ok && int64(i) != i64 {
+		ok = false
+	}
+	return
+}
+func (v *Value) String() (s string, ok bool) {
+	s, ok = v.value.(string)
+	return
+}
+func (v *Value) Bytes() (p []byte, ok bool) {
+	if v.kind == tokenString {
+		p, ok = v.bytes, true
+	}
+	return
+}
+func (v *Value) Duration() (d time.Duration, ok bool) {
+	d, ok = v.value.(time.Duration)
+	return
+}
+func (v *Value) List() (list []Value, ok bool) {
+	list, ok = v.value.([]Value)
+	return
+}
+func (v *Value) ListN(n int) (list []Value, ok bool) {
+	list, ok = v.value.([]Value)
+	if ok && n >= 0 && len(list) != n {
+		ok = false
+	}
+	return
+}
+func (v *Value) StringList() (list []string, ok bool) {
+	l, ok := v.value.([]Value)
+	if ok {
+		for _, value := range l {
+			if s, isString := value.String(); isString {
+				list = append(list, s)
+			}
+		}
+	}
+	return
+}
+func (v *Value) BytesList() (list [][]byte, ok bool) {
+	l, ok := v.value.([]Value)
+	if ok {
+		for _, value := range l {
+			if value.kind == tokenString {
+				list = append(list, value.bytes)
+			}
+		}
+	}
+	return
+}
+func (v *Value) StringListN(n int) (list []string, ok bool) {
+	l, ok := v.value.([]Value)
+	if !ok {
+		return
+	}
+	if n >= 0 && len(l) != n {
+		ok = false
+		return
+	}
+	for _, value := range l {
+		if s, ok := value.String(); ok {
+			list = append(list, s)
+		}
+	}
+	return
+}
+func (v *Value) Dict() (dict map[string]Value, ok bool) {
+	dict, ok = v.value.(map[string]Value)
+	return
+}
+func (v *Value) StringDict() (dict map[string]string, ok bool) {
+	d, ok := v.value.(map[string]Value)
+	if ok {
+		dict = make(map[string]string)
+		for name, value := range d {
+			if s, ok := value.String(); ok {
+				dict[name] = s
+			}
+		}
+	}
+	return
+}
+
+func (v *Value) BytesVar(holder varHolder) []byte {
+	return holder.unsafeVariable(v.code, v.name)
+}
+func (v *Value) StringVar(holder varHolder) string {
+	return string(holder.unsafeVariable(v.code, v.name))
 }

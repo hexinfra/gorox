@@ -3,9 +3,9 @@ package main
 import (
 	"os"
 
-	"github.com/hexinfra/gorox/hemi/develop/test/apps/diogin"
-	"github.com/hexinfra/gorox/hemi/develop/test/apps/fengve"
-	"github.com/hexinfra/gorox/hemi/develop/test/apps/testee"
+	"github.com/hexinfra/gorox/hemi/hemidev/test/apps/diogin"
+	"github.com/hexinfra/gorox/hemi/hemidev/test/apps/fengve"
+	"github.com/hexinfra/gorox/hemi/hemidev/test/apps/testee"
 )
 
 func main() {

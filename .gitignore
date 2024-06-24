@@ -34,6 +34,6 @@ local.conf
 
 data/
 
-/hemi/develop/develop
+/hemi/hemidev/hemidev
 /goben
 /gorox

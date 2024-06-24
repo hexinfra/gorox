@@ -71,23 +71,22 @@ func _exitf(exitCode int, prefix, format string, args ...any) {
 	os.Exit(exitCode)
 }
 
-var ( // basic variables
-	_topOnce sync.Once    // protects _topDir
-	_topDir  atomic.Value // directory of the executable
-
-	_logOnce sync.Once    // protects _logDir
-	_logDir  atomic.Value // directory of the log files
-
-	_tmpOnce sync.Once    // protects _tmpDir
-	_tmpDir  atomic.Value // directory of the temp files
-
-	_varOnce sync.Once    // protects _varDir
-	_varDir  atomic.Value // directory of the run-time data
-
-	_debugLevel atomic.Int32 // debug level
-)
+var _debugLevel atomic.Int32 // debug level
 
 func SetDebugLevel(level int32) { _debugLevel.Store(level) }
+func DebugLevel() int32         { return _debugLevel.Load() }
+
+var ( // basic variables
+	_topOnce sync.Once // protects _topDir
+	_logOnce sync.Once // protects _logDir
+	_tmpOnce sync.Once // protects _tmpDir
+	_varOnce sync.Once // protects _varDir
+
+	_topDir atomic.Value // directory of the executable
+	_logDir atomic.Value // directory of the log files
+	_tmpDir atomic.Value // directory of the temp files
+	_varDir atomic.Value // directory of the run-time data
+)
 
 func SetTopDir(dir string) { // only once!
 	_topOnce.Do(func() {
@@ -119,21 +118,20 @@ func _mustMkdir(dir string) {
 	}
 }
 
-func DebugLevel() int32 { return _debugLevel.Load() }
-func TopDir() string    { return _topDir.Load().(string) }
-func LogDir() string    { return _logDir.Load().(string) }
-func TmpDir() string    { return _tmpDir.Load().(string) }
-func VarDir() string    { return _varDir.Load().(string) }
+func TopDir() string { return _topDir.Load().(string) }
+func LogDir() string { return _logDir.Load().(string) }
+func TmpDir() string { return _tmpDir.Load().(string) }
+func VarDir() string { return _varDir.Load().(string) }
 
-func NewStageText(text string) (*Stage, error) {
+func NewStageFromText(text string) (*Stage, error) {
 	_checkDirs()
 	var c config
-	return c.newStageText(text)
+	return c.newStageFromText(text)
 }
-func NewStageFile(base string, file string) (*Stage, error) {
+func NewStageFromFile(base string, file string) (*Stage, error) {
 	_checkDirs()
 	var c config
-	return c.newStageFile(base, file)
+	return c.newStageFromFile(base, file)
 }
 func _checkDirs() {
 	if _topDir.Load() == nil || _logDir.Load() == nil || _tmpDir.Load() == nil || _varDir.Load() == nil {
@@ -275,7 +273,7 @@ type config struct {
 	counter int     // the name for components without a name
 }
 
-func (c *config) newStageText(text string) (stage *Stage, err error) {
+func (c *config) newStageFromText(text string) (stage *Stage, err error) {
 	defer func() {
 		if x := recover(); x != nil {
 			err = x.(error)
@@ -285,7 +283,7 @@ func (c *config) newStageText(text string) (stage *Stage, err error) {
 	c.tokens = l.scanText(text)
 	return c.parse()
 }
-func (c *config) newStageFile(base string, path string) (stage *Stage, err error) {
+func (c *config) newStageFromFile(base string, path string) (stage *Stage, err error) {
 	defer func() {
 		if x := recover(); x != nil {
 			err = x.(error)

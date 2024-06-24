@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// PgSQL backend implementation.
+// Pgsql backend implementation.
 
 package pgsql
 
@@ -13,18 +13,18 @@ import (
 	_ "github.com/hexinfra/gorox/hemi/library/drivers/rdbms/pgsql"
 )
 
-// PgSQLBackend is a group of pgsql nodes.
-type PgSQLBackend struct {
+// PgsqlBackend is a group of pgsql nodes.
+type PgsqlBackend struct {
 	// Parent
 	Backend_[*pgsqlNode]
 }
 
-// pgsqlNode is a node in PgSQLBackend.
+// pgsqlNode is a node in PgsqlBackend.
 type pgsqlNode struct {
 	// Parent
 	Node_
 	// Assocs
-	backend *PgSQLBackend
+	backend *PgsqlBackend
 }
 
 func (n *pgsqlNode) Maintain() { // runner

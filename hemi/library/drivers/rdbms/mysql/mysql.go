@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// MySQL driver implementation.
+// Mysql driver implementation.
 
 package mysql
 
@@ -20,16 +20,16 @@ type DSN struct {
 	Code string // utf8mb4
 }
 
-func Dial(dsn *DSN, timeout time.Duration) (*MySQL, error) {
+func Dial(dsn *DSN, timeout time.Duration) (*Mysql, error) {
 	return nil, nil
 }
 
-type MySQL struct {
+type Mysql struct {
 	dsn          *DSN
 	writeTimeout time.Duration
 	readTimeout  time.Duration
 }
 
-func (c *MySQL) Close() error {
+func (c *Mysql) Close() error {
 	return nil
 }

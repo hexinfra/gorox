@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// PgSQL driver implementation.
+// Pgsql driver implementation.
 
 package pgsql
 
@@ -19,16 +19,16 @@ type DSN struct {
 	Name string // dbname
 }
 
-func Dial(dsn *DSN, timeout time.Duration) (*PgSQL, error) {
+func Dial(dsn *DSN, timeout time.Duration) (*Pgsql, error) {
 	return nil, nil
 }
 
-type PgSQL struct {
+type Pgsql struct {
 	dsn          *DSN
 	writeTimeout time.Duration
 	readTimeout  time.Duration
 }
 
-func (c *PgSQL) Close() error {
+func (c *Pgsql) Close() error {
 	return nil
 }

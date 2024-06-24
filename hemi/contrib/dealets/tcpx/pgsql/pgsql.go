@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// PgSQL proxy dealet passes connections to PgSQL backends.
+// Pgsql proxy dealet passes connections to Pgsql backends.
 
 package pgsql
 
@@ -27,7 +27,7 @@ type pgsqlProxy struct {
 	// Assocs
 	stage   *Stage // current stage
 	router  *TCPXRouter
-	backend *PgSQLBackend // the backend to pass to
+	backend *PgsqlBackend // the backend to pass to
 	// States
 }
 

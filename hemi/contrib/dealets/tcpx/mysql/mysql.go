@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// MySQL proxy dealet passes connections to MySQL backends.
+// Mysql proxy dealet passes connections to Mysql backends.
 
 package mysql
 
@@ -27,7 +27,7 @@ type mysqlProxy struct {
 	// Assocs
 	stage   *Stage // current stage
 	router  *TCPXRouter
-	backend *MySQLBackend // the backend to pass to
+	backend *MysqlBackend // the backend to pass to
 	// States
 }
 

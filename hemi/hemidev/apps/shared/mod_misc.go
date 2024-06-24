@@ -3,20 +3,20 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-package testee
+package shared
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
 )
 
-func (h *testeeHandlet) GET_(req Request, resp Response) { // GET empty through absolute-form, or GET /
+func (h *sharedHandlet) GET_(req Request, resp Response) { // GET empty through absolute-form, or GET /
 	if req.IsAbsoluteForm() {
 		resp.Send("absolute-form GET /")
 	} else {
 		resp.Send("origin-form GET /")
 	}
 }
-func (h *testeeHandlet) OPTIONS_(req Request, resp Response) { // OPTIONS * or OPTIONS /
+func (h *sharedHandlet) OPTIONS_(req Request, resp Response) { // OPTIONS * or OPTIONS /
 	if req.IsAsteriskOptions() {
 		if req.IsAbsoluteForm() {
 			resp.Send("absolute-form OPTIONS *")
@@ -31,14 +31,14 @@ func (h *testeeHandlet) OPTIONS_(req Request, resp Response) { // OPTIONS * or O
 		}
 	}
 }
-func (h *testeeHandlet) GET_json(req Request, resp Response) { // GET /json
+func (h *sharedHandlet) GET_json(req Request, resp Response) { // GET /json
 	user := struct {
 		Name string `json:"name"`
 		Age  int    `json:"age"`
 	}{"jack", 25}
 	resp.SendJSON(user)
 }
-func (h *testeeHandlet) PUT_file(req Request, resp Response) { // PUT /file
+func (h *sharedHandlet) PUT_file(req Request, resp Response) { // PUT /file
 	content := req.Content()
 	resp.Send(content)
 }

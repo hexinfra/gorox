@@ -10,6 +10,5 @@ package svcs
 import (
 	_ "github.com/hexinfra/gorox/hemi/hemidev/svcs/diogin"
 	_ "github.com/hexinfra/gorox/hemi/hemidev/svcs/fengve"
-	_ "github.com/hexinfra/gorox/hemi/hemidev/svcs/sunlei"
-	_ "github.com/hexinfra/gorox/hemi/hemidev/svcs/testee"
+	_ "github.com/hexinfra/gorox/hemi/hemidev/svcs/shared"
 )

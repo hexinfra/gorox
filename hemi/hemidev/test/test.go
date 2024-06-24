@@ -5,7 +5,7 @@ import (
 
 	"github.com/hexinfra/gorox/hemi/hemidev/test/apps/diogin"
 	"github.com/hexinfra/gorox/hemi/hemidev/test/apps/fengve"
-	"github.com/hexinfra/gorox/hemi/hemidev/test/apps/testee"
+	"github.com/hexinfra/gorox/hemi/hemidev/test/apps/shared"
 )
 
 func main() {
@@ -19,6 +19,6 @@ func main() {
 	case "diogin":
 		diogin.Main()
 	default:
-		testee.Main()
+		shared.Main()
 	}
 }

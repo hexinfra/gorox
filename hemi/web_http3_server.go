@@ -311,8 +311,8 @@ func (s *server3Stream) executeSocket() { // see RFC 9220
 	// TODO
 }
 
-func (s *server3Stream) servend() httpServend { return s.conn.gate.server }
-func (s *server3Stream) httpConn() httpConn   { return s.conn }
+func (s *server3Stream) Servend() httpServend { return s.conn.gate.server }
+func (s *server3Stream) Conn() httpConn       { return s.conn }
 func (s *server3Stream) remoteAddr() net.Addr { return nil } // TODO
 
 func (s *server3Stream) markBroken()    {}               // TODO

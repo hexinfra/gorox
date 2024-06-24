@@ -646,9 +646,9 @@ func (r *httpOut_) _sendEntireChain1() error {
 	vector := r._prepareVector1() // waiting to write
 	if DebugLevel() >= 2 {
 		if r.asRequest {
-			Printf("[backend1Stream=%d]=======> ", r.stream.httpConn().ID())
+			Printf("[backend1Stream=%d]=======> ", r.stream.Conn().ID())
 		} else {
-			Printf("[server1Stream=%d]-------> ", r.stream.httpConn().ID())
+			Printf("[server1Stream=%d]-------> ", r.stream.Conn().ID())
 		}
 		Printf("[%s%s%s]\n", vector[0], vector[1], vector[2])
 	}
@@ -802,9 +802,9 @@ func (r *httpOut_) writeHeaders1() error { // used by echo and pass
 	r.vector[2] = r.message.fixedHeaders()
 	if DebugLevel() >= 2 {
 		if r.asRequest {
-			Printf("[backend1Stream=%d]", r.stream.httpConn().ID())
+			Printf("[backend1Stream=%d]", r.stream.Conn().ID())
 		} else {
-			Printf("[server1Stream=%d]", r.stream.httpConn().ID())
+			Printf("[server1Stream=%d]", r.stream.Conn().ID())
 		}
 		Printf("-------> [%s%s%s]\n", r.vector[0], r.vector[1], r.vector[2])
 	}

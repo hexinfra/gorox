@@ -10,6 +10,5 @@ package apps
 import (
 	_ "github.com/hexinfra/gorox/hemi/hemidev/apps/diogin"
 	_ "github.com/hexinfra/gorox/hemi/hemidev/apps/fengve"
-	_ "github.com/hexinfra/gorox/hemi/hemidev/apps/sunlei"
-	_ "github.com/hexinfra/gorox/hemi/hemidev/apps/testee"
+	_ "github.com/hexinfra/gorox/hemi/hemidev/apps/shared"
 )

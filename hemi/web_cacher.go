@@ -18,7 +18,7 @@ type Cacher interface {
 	Del(key []byte) bool
 }
 
-// Cacher_
+// Cacher_ is the parent for all cachers.
 type Cacher_ struct {
 	// Parent
 	Component_

@@ -327,8 +327,8 @@ func (s *backend2Stream) ExecuteSocket() error { // see RFC 8441: https://datatr
 	return nil
 }
 
-func (s *backend2Stream) servend() httpServend { return s.conn.node.backend }
-func (s *backend2Stream) httpConn() httpConn   { return s.conn }
+func (s *backend2Stream) Servend() httpServend { return s.conn.node.backend }
+func (s *backend2Stream) Conn() httpConn       { return s.conn }
 func (s *backend2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *backend2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream

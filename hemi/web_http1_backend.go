@@ -409,8 +409,8 @@ func (s *backend1Stream) ExecuteSocket() error { // upgrade: websocket
 	return nil
 }
 
-func (s *backend1Stream) servend() httpServend { return s.conn.node.backend }
-func (s *backend1Stream) httpConn() httpConn   { return s.conn }
+func (s *backend1Stream) Servend() httpServend { return s.conn.node.backend }
+func (s *backend1Stream) Conn() httpConn       { return s.conn }
 func (s *backend1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *backend1Stream) markBroken()    { s.conn.markBroken() }
@@ -482,7 +482,7 @@ func (r *backend1Request) setMethodURI(method []byte, uri []byte, hasContent boo
 	}
 }
 func (r *backend1Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
-	if r.stream.httpConn().IsTLS() {
+	if r.stream.Conn().IsTLS() {
 		if bytes.Equal(colonPort, bytesColonPort443) {
 			colonPort = nil
 		}
@@ -614,7 +614,7 @@ func (r *backend1Response) recvHead() { // control + headers
 	}
 	r.cleanInput()
 	if DebugLevel() >= 2 {
-		Printf("[backend1Stream=%d]<======= [%s]\n", r.stream.httpConn().ID(), r.input[r.head.from:r.head.edge])
+		Printf("[backend1Stream=%d]<======= [%s]\n", r.stream.Conn().ID(), r.input[r.head.from:r.head.edge])
 	}
 }
 func (r *backend1Response) _recvControl() bool { // HTTP-version SP status-code SP [ reason-phrase ] CRLF

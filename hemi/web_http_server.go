@@ -2020,7 +2020,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 							return
 						}
 						nameBuffer := r.stream.buffer256() // enough for tempName
-						m := r.stream.httpConn().MakeTempName(nameBuffer, r.recvTime.Unix())
+						m := r.stream.Conn().MakeTempName(nameBuffer, r.recvTime.Unix())
 						if !r.arrayCopy(nameBuffer[:m]) { // add "391384576"
 							r.stream.markBroken()
 							return

@@ -370,8 +370,8 @@ func (s *server1Stream) executeSocket() { // upgrade: websocket
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nConnection: close\r\n\r\n"))
 }
 
-func (s *server1Stream) servend() httpServend { return s.conn.gate.server }
-func (s *server1Stream) httpConn() httpConn   { return s.conn }
+func (s *server1Stream) Servend() httpServend { return s.conn.gate.server }
+func (s *server1Stream) Conn() httpConn       { return s.conn }
 func (s *server1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *server1Stream) markBroken()    { s.conn.markBroken() }
@@ -436,7 +436,7 @@ func (r *server1Request) recvHead() { // control + headers
 	}
 	r.cleanInput()
 	if DebugLevel() >= 2 {
-		Printf("[server1Stream=%d]<------- [%s]\n", r.stream.httpConn().ID(), r.input[r.head.from:r.head.edge])
+		Printf("[server1Stream=%d]<------- [%s]\n", r.stream.Conn().ID(), r.input[r.head.from:r.head.edge])
 	}
 }
 func (r *server1Request) _recvControl() bool { // method SP request-target SP HTTP-version CRLF

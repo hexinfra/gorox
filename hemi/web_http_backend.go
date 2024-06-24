@@ -319,7 +319,7 @@ func (r *backendRequest_) proxyCopyHead(req Request, cfg *WebExchanProxyConfig) 
 	}
 	if r.httpVersion >= Version2 {
 		var scheme []byte
-		if r.stream.httpConn().IsTLS() {
+		if r.stream.Conn().IsTLS() {
 			scheme = bytesSchemeHTTPS
 		} else {
 			scheme = bytesSchemeHTTP

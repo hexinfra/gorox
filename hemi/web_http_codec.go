@@ -36,8 +36,8 @@ type httpConn interface {
 
 // httpStream collects shared methods between *server[1-3]Stream and *backend[1-3]Stream.
 type httpStream interface {
-	servend() httpServend
-	httpConn() httpConn
+	Servend() httpServend
+	Conn() httpConn
 
 	remoteAddr() net.Addr
 
@@ -148,7 +148,7 @@ func (r *httpIn_) onUse(httpVersion uint8, asResponse bool) { // for non-zeros
 	} else {
 		// HTTP/1 supports request pipelining, so input related are not set here.
 	}
-	servend := r.stream.servend()
+	servend := r.stream.Servend()
 	r.recvTimeout = servend.RecvTimeout()
 	r.maxContentSize = servend.MaxContentSize()
 	r.maxMemoryContentSize = servend.MaxMemoryContentSize()
@@ -1402,7 +1402,7 @@ func (r *httpIn_) _growArray(size int32) bool { // stock(<4K)->4K->16K->64K1->(1
 }
 
 func (r *httpIn_) saveContentFilesDir() string {
-	return r.stream.servend().SaveContentFilesDir()
+	return r.stream.Servend().SaveContentFilesDir()
 }
 
 func (r *httpIn_) _newTempFile(retain bool) (tempFile, error) { // to save content to
@@ -1412,7 +1412,7 @@ func (r *httpIn_) _newTempFile(retain bool) (tempFile, error) { // to save conte
 	filesDir := r.saveContentFilesDir()
 	pathBuffer := r.UnsafeMake(len(filesDir) + 19) // 19 bytes is enough for an int64
 	n := copy(pathBuffer, filesDir)
-	n += r.stream.httpConn().MakeTempName(pathBuffer[n:], r.recvTime.Unix())
+	n += r.stream.Conn().MakeTempName(pathBuffer[n:], r.recvTime.Unix())
 	return os.OpenFile(WeakString(pathBuffer[:n]), os.O_RDWR|os.O_CREATE, 0644)
 }
 func (r *httpIn_) _beforeRead(toTime *time.Time) error {
@@ -1494,7 +1494,7 @@ type httpOut0 struct { // for fast reset, entirely
 
 func (r *httpOut_) onUse(httpVersion uint8, asRequest bool) { // for non-zeros
 	r.fields = r.stockFields[:]
-	servend := r.stream.servend()
+	servend := r.stream.Servend()
 	r.sendTimeout = servend.SendTimeout()
 	r.contentSize = -1 // not set
 	r.httpVersion = httpVersion

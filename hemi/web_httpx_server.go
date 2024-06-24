@@ -10,8 +10,10 @@ package hemi
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"net"
 	"os"
+	"strings"
 	"syscall"
 	"time"
 
@@ -27,7 +29,7 @@ func init() {
 }
 
 const (
-	httpModeAdaptive = 0 // must be 0
+	httpModeAdaptive = 0
 	httpModeHTTP1    = 1
 	httpModeHTTP2    = 2
 )
@@ -49,7 +51,24 @@ func (s *httpxServer) OnConfigure() {
 
 	if DebugLevel() >= 2 { // remove this condition after HTTP/2 server has been fully implemented
 		// httpMode
-		s.ConfigureInt8("httpMode", &s.httpMode, nil, httpModeAdaptive)
+		var mode string
+		s.ConfigureString("httpMode", &mode, func(value string) error {
+			value = strings.ToLower(value)
+			switch value {
+			case "http1", "http/1", "http2", "http/2", "adaptive":
+				return nil
+			default:
+				return errors.New(".httpMode has an invalid value")
+			}
+		}, "adaptive")
+		switch mode {
+		case "http1", "http/1":
+			s.httpMode = httpModeHTTP1
+		case "http2", "http/2":
+			s.httpMode = httpModeHTTP2
+		default:
+			s.httpMode = httpModeAdaptive
+		}
 	}
 }
 func (s *httpxServer) OnPrepare() {

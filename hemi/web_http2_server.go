@@ -914,8 +914,8 @@ func (s *server2Stream) executeSocket() { // see RFC 8441: https://datatracker.i
 	// TODO
 }
 
-func (s *server2Stream) servend() httpServend { return s.conn.gate.server }
-func (s *server2Stream) httpConn() httpConn   { return s.conn }
+func (s *server2Stream) Servend() httpServend { return s.conn.gate.server }
+func (s *server2Stream) Conn() httpConn       { return s.conn }
 func (s *server2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *server2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream

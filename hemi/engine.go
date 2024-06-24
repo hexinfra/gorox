@@ -125,12 +125,12 @@ func VarDir() string { return _varDir.Load().(string) }
 
 func NewStageFromText(text string) (*Stage, error) {
 	_checkDirs()
-	var c config
+	var c configurator
 	return c.newStageFromText(text)
 }
 func NewStageFromFile(base string, file string) (*Stage, error) {
 	_checkDirs()
-	var c config
+	var c configurator
 	return c.newStageFromFile(base, file)
 }
 func _checkDirs() {
@@ -264,8 +264,8 @@ func (v *Value) StringVar(holder varHolder) string {
 	return string(holder.unsafeVariable(v.code, v.name))
 }
 
-// config applies configuration and creates a new stage.
-type config struct {
+// configurator applies configuration and creates a new stage.
+type configurator struct {
 	// States
 	tokens  []token // the token list
 	index   int     // token index
@@ -273,7 +273,7 @@ type config struct {
 	counter int     // the name for components without a name
 }
 
-func (c *config) newStageFromText(text string) (stage *Stage, err error) {
+func (c *configurator) newStageFromText(text string) (stage *Stage, err error) {
 	defer func() {
 		if x := recover(); x != nil {
 			err = x.(error)
@@ -283,7 +283,7 @@ func (c *config) newStageFromText(text string) (stage *Stage, err error) {
 	c.tokens = l.scanText(text)
 	return c.parse()
 }
-func (c *config) newStageFromFile(base string, path string) (stage *Stage, err error) {
+func (c *configurator) newStageFromFile(base string, path string) (stage *Stage, err error) {
 	defer func() {
 		if x := recover(); x != nil {
 			err = x.(error)
@@ -294,50 +294,50 @@ func (c *config) newStageFromFile(base string, path string) (stage *Stage, err e
 	return c.parse()
 }
 
-func (c *config) showTokens() {
+func (c *configurator) showTokens() {
 	for i := 0; i < len(c.tokens); i++ {
 		token := &c.tokens[i]
 		fmt.Printf("kind=%16s code=%2d line=%4d file=%s    %s\n", token.name(), token.info, token.line, token.file, token.text)
 	}
 }
 
-func (c *config) current() *token { return &c.tokens[c.index] }
-func (c *config) forward() *token {
+func (c *configurator) current() *token { return &c.tokens[c.index] }
+func (c *configurator) forward() *token {
 	c._forwardCheckEOF()
 	return &c.tokens[c.index]
 }
-func (c *config) currentIs(kind int16) bool { return c.tokens[c.index].kind == kind }
-func (c *config) nextIs(kind int16) bool {
+func (c *configurator) currentIs(kind int16) bool { return c.tokens[c.index].kind == kind }
+func (c *configurator) nextIs(kind int16) bool {
 	if c.index == c.limit {
 		return false
 	}
 	return c.tokens[c.index+1].kind == kind
 }
-func (c *config) expect(kind int16) *token {
+func (c *configurator) expect(kind int16) *token {
 	current := &c.tokens[c.index]
 	if current.kind != kind {
-		panic(fmt.Errorf("config: expect %s, but get %s=%s (in line %d)\n", tokenNames[kind], tokenNames[current.kind], current.text, current.line))
+		panic(fmt.Errorf("configurator: expect %s, but get %s=%s (in line %d)\n", tokenNames[kind], tokenNames[current.kind], current.text, current.line))
 	}
 	return current
 }
-func (c *config) forwardExpect(kind int16) *token {
+func (c *configurator) forwardExpect(kind int16) *token {
 	c._forwardCheckEOF()
 	return c.expect(kind)
 }
-func (c *config) _forwardCheckEOF() {
+func (c *configurator) _forwardCheckEOF() {
 	if c.index++; c.index == c.limit {
-		panic(errors.New("config: unexpected EOF"))
+		panic(errors.New("configurator: unexpected EOF"))
 	}
 }
 
-func (c *config) newName() string {
+func (c *configurator) newName() string {
 	c.counter++
 	return strconv.Itoa(c.counter)
 }
 
-func (c *config) parse() (stage *Stage, err error) {
+func (c *configurator) parse() (stage *Stage, err error) {
 	if current := c.current(); current.kind != tokenComponent || current.info != compStage {
-		panic(errors.New("config error: root component is not stage"))
+		panic(errors.New("configurator error: root component is not stage"))
 	}
 	stage = newStage()
 	stage.setParent(nil)
@@ -345,7 +345,7 @@ func (c *config) parse() (stage *Stage, err error) {
 	return stage, nil
 }
 
-func (c *config) parseStage(stage *Stage) { // stage {}
+func (c *configurator) parseStage(stage *Stage) { // stage {}
 	c.forwardExpect(tokenLeftBrace) // {
 	for {
 		current := c.forward()
@@ -357,7 +357,7 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 			continue
 		}
 		if current.kind != tokenComponent {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in stage\n", current.name(), current.text, current.line))
+			panic(fmt.Errorf("configurator error: unknown token %s=%s (in line %d) in stage\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
 		case compFixture:
@@ -387,17 +387,17 @@ func (c *config) parseStage(stage *Stage) { // stage {}
 		}
 	}
 }
-func (c *config) parseFixture(sign *token, stage *Stage) { // xxxFixture {}
+func (c *configurator) parseFixture(sign *token, stage *Stage) { // xxxFixture {}
 	fixtureSign := sign.text
 	fixture := stage.Fixture(fixtureSign)
 	if fixture == nil {
-		panic(errors.New("config error: unknown fixture: " + fixtureSign))
+		panic(errors.New("configurator error: unknown fixture: " + fixtureSign))
 	}
 	fixture.setParent(stage)
 	c.forward()
 	c._parseLeaf(fixture)
 }
-func (c *config) parseBackend(sign *token, stage *Stage) { // xxxBackend <name> {}
+func (c *configurator) parseBackend(sign *token, stage *Stage) { // xxxBackend <name> {}
 	backendName := c.forwardExpect(tokenString)
 	backend := stage.createBackend(sign.text, backendName.text)
 	backend.setParent(stage)
@@ -412,7 +412,7 @@ func (c *config) parseBackend(sign *token, stage *Stage) { // xxxBackend <name> 
 			continue
 		}
 		if current.kind != tokenComponent {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in backend\n", current.name(), current.text, current.line))
+			panic(fmt.Errorf("configurator error: unknown token %s=%s (in line %d) in backend\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
 		case compNode:
@@ -422,7 +422,7 @@ func (c *config) parseBackend(sign *token, stage *Stage) { // xxxBackend <name> 
 		}
 	}
 }
-func (c *config) parseNode(backend Backend) { // node <name> {}
+func (c *configurator) parseNode(backend Backend) { // node <name> {}
 	var nodeName string
 	if current := c.forward(); current.kind == tokenString {
 		nodeName = current.text
@@ -434,25 +434,25 @@ func (c *config) parseNode(backend Backend) { // node <name> {}
 	node.setParent(backend)
 	c._parseLeaf(node)
 }
-func (c *config) parseQUIXRouter(stage *Stage) { // quixRouter <name> {}
+func (c *configurator) parseQUIXRouter(stage *Stage) { // quixRouter <name> {}
 	parseComponentR(c, stage, stage.createQUIXRouter, compQUIXDealet, c.parseQUIXDealet, c.parseQUIXCase)
 }
-func (c *config) parseTCPXRouter(stage *Stage) { // tcpxRouter <name> {}
+func (c *configurator) parseTCPXRouter(stage *Stage) { // tcpxRouter <name> {}
 	parseComponentR(c, stage, stage.createTCPXRouter, compTCPXDealet, c.parseTCPXDealet, c.parseTCPXCase)
 }
-func (c *config) parseUDPXRouter(stage *Stage) { // udpxRouter <name> {}
+func (c *configurator) parseUDPXRouter(stage *Stage) { // udpxRouter <name> {}
 	parseComponentR(c, stage, stage.createUDPXRouter, compUDPXDealet, c.parseUDPXDealet, c.parseUDPXCase)
 }
-func (c *config) parseQUIXDealet(sign *token, router *QUIXRouter, kase *quixCase) { // qqqDealet <name> {}, qqqDealet {}
+func (c *configurator) parseQUIXDealet(sign *token, router *QUIXRouter, kase *quixCase) { // qqqDealet <name> {}, qqqDealet {}
 	parseComponent1(c, sign, router, router.createDealet, kase, kase.addDealet)
 }
-func (c *config) parseTCPXDealet(sign *token, router *TCPXRouter, kase *tcpxCase) { // tttDealet <name> {}, tttDealet {}
+func (c *configurator) parseTCPXDealet(sign *token, router *TCPXRouter, kase *tcpxCase) { // tttDealet <name> {}, tttDealet {}
 	parseComponent1(c, sign, router, router.createDealet, kase, kase.addDealet)
 }
-func (c *config) parseUDPXDealet(sign *token, router *UDPXRouter, kase *udpxCase) { // uuuDealet <name> {}, uuuDealet {}
+func (c *configurator) parseUDPXDealet(sign *token, router *UDPXRouter, kase *udpxCase) { // uuuDealet <name> {}, uuuDealet {}
 	parseComponent1(c, sign, router, router.createDealet, kase, kase.addDealet)
 }
-func (c *config) parseQUIXCase(router *QUIXRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
+func (c *configurator) parseQUIXCase(router *QUIXRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
 	kase := router.createCase(c.newName()) // use a temp name by default
 	kase.setParent(router)
 	c.forward()
@@ -478,7 +478,7 @@ func (c *config) parseQUIXCase(router *QUIXRouter) { // case <name> {}, case <na
 			continue
 		}
 		if current.kind != tokenComponent {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
+			panic(fmt.Errorf("configurator error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
 		case compQUIXDealet:
@@ -488,7 +488,7 @@ func (c *config) parseQUIXCase(router *QUIXRouter) { // case <name> {}, case <na
 		}
 	}
 }
-func (c *config) parseTCPXCase(router *TCPXRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
+func (c *configurator) parseTCPXCase(router *TCPXRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
 	kase := router.createCase(c.newName()) // use a temp name by default
 	kase.setParent(router)
 	c.forward()
@@ -514,7 +514,7 @@ func (c *config) parseTCPXCase(router *TCPXRouter) { // case <name> {}, case <na
 			continue
 		}
 		if current.kind != tokenComponent {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
+			panic(fmt.Errorf("configurator error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
 		case compTCPXDealet:
@@ -524,7 +524,7 @@ func (c *config) parseTCPXCase(router *TCPXRouter) { // case <name> {}, case <na
 		}
 	}
 }
-func (c *config) parseUDPXCase(router *UDPXRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
+func (c *configurator) parseUDPXCase(router *UDPXRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
 	kase := router.createCase(c.newName()) // use a temp name by default
 	kase.setParent(router)
 	c.forward()
@@ -550,7 +550,7 @@ func (c *config) parseUDPXCase(router *UDPXRouter) { // case <name> {}, case <na
 			continue
 		}
 		if current.kind != tokenComponent {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
+			panic(fmt.Errorf("configurator error: unknown token %s=%s (in line %d) in case\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
 		case compUDPXDealet:
@@ -560,11 +560,11 @@ func (c *config) parseUDPXCase(router *UDPXRouter) { // case <name> {}, case <na
 		}
 	}
 }
-func (c *config) parseCaseCond(kase interface{ setInfo(info any) }) {
+func (c *configurator) parseCaseCond(kase interface{ setInfo(info any) }) {
 	variable := c.expect(tokenVariable)
 	c.forward()
 	if c.currentIs(tokenFSCheck) {
-		panic(errors.New("config error: fs check is not allowed in case"))
+		panic(errors.New("configurator error: fs check is not allowed in case"))
 	}
 	cond := caseCond{varCode: variable.info, varName: variable.text}
 	compare := c.expect(tokenCompare)
@@ -579,36 +579,36 @@ func (c *config) parseCaseCond(kase interface{ setInfo(info any) }) {
 			} else if current.kind == tokenString {
 				patterns = append(patterns, current.text)
 			} else {
-				panic(errors.New("config error: only strings are allowed in cond"))
+				panic(errors.New("configurator error: only strings are allowed in cond"))
 			}
 			current = c.forward()
 			if current.kind == tokenRightParen { // )
 				break
 			} else if current.kind != tokenComma {
-				panic(errors.New("config error: bad string list in cond"))
+				panic(errors.New("configurator error: bad string list in cond"))
 			}
 		}
 	} else {
-		panic(errors.New("config error: bad cond pattern"))
+		panic(errors.New("configurator error: bad cond pattern"))
 	}
 	cond.patterns = patterns
 	cond.compare = compare.text
 	kase.setInfo(cond)
 }
-func (c *config) parseStater(sign *token, stage *Stage) { // xxxStater <name> {}
+func (c *configurator) parseStater(sign *token, stage *Stage) { // xxxStater <name> {}
 	parseComponent0(c, sign, stage, stage.createStater)
 }
-func (c *config) parseCacher(sign *token, stage *Stage) { // xxxCacher <name> {}
+func (c *configurator) parseCacher(sign *token, stage *Stage) { // xxxCacher <name> {}
 	parseComponent0(c, sign, stage, stage.createCacher)
 }
-func (c *config) parseService(sign *token, stage *Stage) { // service <name> {}
+func (c *configurator) parseService(sign *token, stage *Stage) { // service <name> {}
 	serviceName := c.forwardExpect(tokenString)
 	service := stage.createService(serviceName.text)
 	service.setParent(stage)
 	c.forward()
 	c._parseLeaf(service)
 }
-func (c *config) parseWebapp(sign *token, stage *Stage) { // webapp <name> {}
+func (c *configurator) parseWebapp(sign *token, stage *Stage) { // webapp <name> {}
 	webappName := c.forwardExpect(tokenString)
 	webapp := stage.createWebapp(webappName.text)
 	webapp.setParent(stage)
@@ -623,7 +623,7 @@ func (c *config) parseWebapp(sign *token, stage *Stage) { // webapp <name> {}
 			continue
 		}
 		if current.kind != tokenComponent {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in webapp\n", current.name(), current.text, current.line))
+			panic(fmt.Errorf("configurator error: unknown token %s=%s (in line %d) in webapp\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
 		case compHandlet:
@@ -639,16 +639,16 @@ func (c *config) parseWebapp(sign *token, stage *Stage) { // webapp <name> {}
 		}
 	}
 }
-func (c *config) parseHandlet(sign *token, webapp *Webapp, rule *Rule) { // xxxHandlet <name> {}, xxxHandlet {}
+func (c *configurator) parseHandlet(sign *token, webapp *Webapp, rule *Rule) { // xxxHandlet <name> {}, xxxHandlet {}
 	parseComponent2(c, sign, webapp, webapp.createHandlet, rule, rule.addHandlet)
 }
-func (c *config) parseReviser(sign *token, webapp *Webapp, rule *Rule) { // xxxReviser <name> {}, xxxReviser {}
+func (c *configurator) parseReviser(sign *token, webapp *Webapp, rule *Rule) { // xxxReviser <name> {}, xxxReviser {}
 	parseComponent2(c, sign, webapp, webapp.createReviser, rule, rule.addReviser)
 }
-func (c *config) parseSocklet(sign *token, webapp *Webapp, rule *Rule) { // xxxSocklet <name> {}, xxxSocklet {}
+func (c *configurator) parseSocklet(sign *token, webapp *Webapp, rule *Rule) { // xxxSocklet <name> {}, xxxSocklet {}
 	parseComponent2(c, sign, webapp, webapp.createSocklet, rule, rule.addSocklet)
 }
-func (c *config) parseRule(webapp *Webapp) { // rule <name> {}, rule <name> <cond> {}, rule <cond> {}, rule {}
+func (c *configurator) parseRule(webapp *Webapp) { // rule <name> {}, rule <name> <cond> {}, rule <cond> {}, rule {}
 	rule := webapp.createRule(c.newName()) // use a temp name by default
 	rule.setParent(webapp)
 	c.forward()
@@ -674,7 +674,7 @@ func (c *config) parseRule(webapp *Webapp) { // rule <name> {}, rule <name> <con
 			continue
 		}
 		if current.kind != tokenComponent {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in rule\n", current.name(), current.text, current.line))
+			panic(fmt.Errorf("configurator error: unknown token %s=%s (in line %d) in rule\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
 		case compHandlet:
@@ -684,18 +684,18 @@ func (c *config) parseRule(webapp *Webapp) { // rule <name> {}, rule <name> <con
 		case compSocklet:
 			c.parseSocklet(current, webapp, rule)
 		default:
-			panic(fmt.Errorf("config error: unknown component %s=%s (in line %d) in rule\n", current.name(), current.text, current.line))
+			panic(fmt.Errorf("configurator error: unknown component %s=%s (in line %d) in rule\n", current.name(), current.text, current.line))
 		}
 	}
 }
-func (c *config) parseRuleCond(rule *Rule) {
+func (c *configurator) parseRuleCond(rule *Rule) {
 	variable := c.expect(tokenVariable)
 	c.forward()
 	cond := ruleCond{varCode: variable.info, varName: variable.text}
 	var compare *token
 	if c.currentIs(tokenFSCheck) {
 		if variable.text != "path" {
-			panic(fmt.Errorf("config error: only path is allowed to test against file system, but got %s\n", variable.text))
+			panic(fmt.Errorf("configurator error: only path is allowed to test against file system, but got %s\n", variable.text))
 		}
 		compare = c.current()
 	} else {
@@ -711,31 +711,31 @@ func (c *config) parseRuleCond(rule *Rule) {
 				} else if current.kind == tokenString {
 					patterns = append(patterns, current.text)
 				} else {
-					panic(errors.New("config error: only strings are allowed in cond"))
+					panic(errors.New("configurator error: only strings are allowed in cond"))
 				}
 				current = c.forward()
 				if current.kind == tokenRightParen { // )
 					break
 				} else if current.kind != tokenComma {
-					panic(errors.New("config error: bad string list in cond"))
+					panic(errors.New("configurator error: bad string list in cond"))
 				}
 			}
 		} else {
-			panic(errors.New("config error: bad cond pattern"))
+			panic(errors.New("configurator error: bad cond pattern"))
 		}
 		cond.patterns = patterns
 	}
 	cond.compare = compare.text
 	rule.setInfo(cond)
 }
-func (c *config) parseServer(sign *token, stage *Stage) { // xxxServer <name> {}
+func (c *configurator) parseServer(sign *token, stage *Stage) { // xxxServer <name> {}
 	parseComponent0(c, sign, stage, stage.createServer)
 }
-func (c *config) parseCronjob(sign *token, stage *Stage) { // xxxCronjob <name> {}
+func (c *configurator) parseCronjob(sign *token, stage *Stage) { // xxxCronjob <name> {}
 	parseComponent0(c, sign, stage, stage.createCronjob)
 }
 
-func (c *config) _parseLeaf(component Component) {
+func (c *configurator) _parseLeaf(component Component) {
 	c.expect(tokenLeftBrace) // {
 	for {
 		current := c.forward()
@@ -746,12 +746,12 @@ func (c *config) _parseLeaf(component Component) {
 			c._parseAssign(current, component)
 			continue
 		}
-		panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in component\n", current.name(), current.text, current.line))
+		panic(fmt.Errorf("configurator error: unknown token %s=%s (in line %d) in component\n", current.name(), current.text, current.line))
 	}
 }
-func (c *config) _parseAssign(prop *token, component Component) {
+func (c *configurator) _parseAssign(prop *token, component Component) {
 	if c.nextIs(tokenLeftBrace) { // {
-		panic(fmt.Errorf("config error: unknown component '%s' (in line %d)\n", prop.text, prop.line))
+		panic(fmt.Errorf("configurator error: unknown component '%s' (in line %d)\n", prop.text, prop.line))
 	}
 	c.forwardExpect(tokenEqual) // =
 	c.forward()
@@ -760,7 +760,7 @@ func (c *config) _parseAssign(prop *token, component Component) {
 	component.setProp(prop.text, value)
 }
 
-func (c *config) _parseValue(component Component, prop string, value *Value) {
+func (c *configurator) _parseValue(component Component, prop string, value *Value) {
 	current := c.current()
 	switch current.kind {
 	case tokenBool:
@@ -770,19 +770,19 @@ func (c *config) _parseValue(component Component, prop string, value *Value) {
 		if byteIsDigit(last) {
 			n64, err := strconv.ParseInt(current.text, 10, 64)
 			if err != nil {
-				panic(fmt.Errorf("config error: bad integer %s\n", current.text))
+				panic(fmt.Errorf("configurator error: bad integer %s\n", current.text))
 			}
 			if n64 < 0 {
-				panic(errors.New("config error: negative integers are not allowed"))
+				panic(errors.New("configurator error: negative integers are not allowed"))
 			}
 			value.value = n64
 		} else {
 			size, err := strconv.ParseInt(current.text[:len(current.text)-1], 10, 64)
 			if err != nil {
-				panic(fmt.Errorf("config error: bad size %s\n", current.text))
+				panic(fmt.Errorf("configurator error: bad size %s\n", current.text))
 			}
 			if size < 0 {
-				panic(errors.New("config error: negative sizes are not allowed"))
+				panic(errors.New("configurator error: negative sizes are not allowed"))
 			}
 			switch current.text[len(current.text)-1] {
 			case 'K':
@@ -803,10 +803,10 @@ func (c *config) _parseValue(component Component, prop string, value *Value) {
 		last := len(current.text) - 1
 		n, err := strconv.ParseInt(current.text[:last], 10, 64)
 		if err != nil {
-			panic(fmt.Errorf("config error: bad duration %s\n", current.text))
+			panic(fmt.Errorf("configurator error: bad duration %s\n", current.text))
 		}
 		if n < 0 {
-			panic(errors.New("config error: negative durations are not allowed"))
+			panic(errors.New("configurator error: negative durations are not allowed"))
 		}
 		var d time.Duration
 		switch current.text[last] {
@@ -828,14 +828,14 @@ func (c *config) _parseValue(component Component, prop string, value *Value) {
 		c._parseDict(component, prop, value)
 	case tokenProperty: // .property
 		if propRef := current.text; prop == "" || prop == propRef {
-			panic(errors.New("config error: cannot refer to self"))
+			panic(errors.New("configurator error: cannot refer to self"))
 		} else if valueRef, ok := component.Find(propRef); !ok {
-			panic(fmt.Errorf("config error: refer to a prop that doesn't exist in line %d\n", current.line))
+			panic(fmt.Errorf("configurator error: refer to a prop that doesn't exist in line %d\n", current.line))
 		} else {
 			*value = valueRef
 		}
 	default:
-		panic(fmt.Errorf("config error: expect a value, but get token %s=%s (in line %d)\n", current.name(), current.text, current.line))
+		panic(fmt.Errorf("configurator error: expect a value, but get token %s=%s (in line %d)\n", current.name(), current.text, current.line))
 	}
 
 	if value.kind != tokenString {
@@ -857,9 +857,9 @@ func (c *config) _parseValue(component Component, prop string, value *Value) {
 			c._parseValue(component, prop, &str)
 		} else if c.currentIs(tokenProperty) {
 			if propRef := current.text; prop == "" || prop == propRef {
-				panic(errors.New("config error: cannot refer to self"))
+				panic(errors.New("configurator error: cannot refer to self"))
 			} else if valueRef, ok := component.Find(propRef); !ok {
-				panic(errors.New("config error: refere to a prop that doesn't exist"))
+				panic(errors.New("configurator error: refere to a prop that doesn't exist"))
 			} else {
 				str = valueRef
 				if str.kind == tokenString {
@@ -871,11 +871,11 @@ func (c *config) _parseValue(component Component, prop string, value *Value) {
 			value.value = value.value.(string) + str.value.(string)
 			value.bytes = append(value.bytes, str.bytes...)
 		} else {
-			panic(errors.New("config error: cannot concat string with other types. token=" + c.current().text))
+			panic(errors.New("configurator error: cannot concat string with other types. token=" + c.current().text))
 		}
 	}
 }
-func (c *config) _parseList(component Component, prop string, value *Value) {
+func (c *configurator) _parseList(component Component, prop string, value *Value) {
 	list := []Value{}
 	c.expect(tokenLeftParen) // (
 	for {
@@ -890,12 +890,12 @@ func (c *config) _parseList(component Component, prop string, value *Value) {
 		if current.kind == tokenRightParen { // )
 			break
 		} else if current.kind != tokenComma { // ,
-			panic(fmt.Errorf("config error: bad list in line %d\n", current.line))
+			panic(fmt.Errorf("configurator error: bad list in line %d\n", current.line))
 		}
 	}
 	value.kind, value.value = tokenList, list
 }
-func (c *config) _parseDict(component Component, prop string, value *Value) {
+func (c *configurator) _parseDict(component Component, prop string, value *Value) {
 	dict := make(map[string]Value)
 	c.expect(tokenLeftBracket) // [
 	for {
@@ -913,20 +913,20 @@ func (c *config) _parseDict(component Component, prop string, value *Value) {
 		if current.kind == tokenRightBracket { // ]
 			break
 		} else if current.kind != tokenComma { // ,
-			panic(fmt.Errorf("config error: bad dict in line %d\n", current.line))
+			panic(fmt.Errorf("configurator error: bad dict in line %d\n", current.line))
 		}
 	}
 	value.kind, value.value = tokenDict, dict
 }
 
-func parseComponent0[T Component](c *config, sign *token, stage *Stage, create func(sign string, name string) T) { // backend, stater, cacher, server, cronjob
+func parseComponent0[T Component](c *configurator, sign *token, stage *Stage, create func(sign string, name string) T) { // backend, stater, cacher, server, cronjob
 	name := c.forwardExpect(tokenString)
 	component := create(sign.text, name.text)
 	component.setParent(stage)
 	c.forward()
 	c._parseLeaf(component)
 }
-func parseComponentR[R Component, C any](c *config, stage *Stage, create func(name string) R, infoDealet int16, parseDealet func(sign *token, router R, kase *C), parseCase func(router R)) { // router
+func parseComponentR[R Component, C any](c *configurator, stage *Stage, create func(name string) R, infoDealet int16, parseDealet func(sign *token, router R, kase *C), parseCase func(router R)) { // router
 	routerName := c.forwardExpect(tokenString)
 	router := create(routerName.text)
 	router.setParent(stage)
@@ -941,7 +941,7 @@ func parseComponentR[R Component, C any](c *config, stage *Stage, create func(na
 			continue
 		}
 		if current.kind != tokenComponent {
-			panic(fmt.Errorf("config error: unknown token %s=%s (in line %d) in router\n", current.name(), current.text, current.line))
+			panic(fmt.Errorf("configurator error: unknown token %s=%s (in line %d) in router\n", current.name(), current.text, current.line))
 		}
 		switch current.info {
 		case infoDealet:
@@ -953,7 +953,7 @@ func parseComponentR[R Component, C any](c *config, stage *Stage, create func(na
 		}
 	}
 }
-func parseComponent1[R Component, T Component, C any](c *config, sign *token, router R, create func(sign string, name string) T, kase *C, assign func(T)) { // dealet
+func parseComponent1[R Component, T Component, C any](c *configurator, sign *token, router R, create func(sign string, name string) T, kase *C, assign func(T)) { // dealet
 	name := sign.text
 	if current := c.forward(); current.kind == tokenString {
 		name = current.text
@@ -968,7 +968,7 @@ func parseComponent1[R Component, T Component, C any](c *config, sign *token, ro
 	}
 	c._parseLeaf(component)
 }
-func parseComponent2[T Component](c *config, sign *token, webapp *Webapp, create func(sign string, name string) T, rule *Rule, assign func(T)) { // handlet, reviser, socklet
+func parseComponent2[T Component](c *configurator, sign *token, webapp *Webapp, create func(sign string, name string) T, rule *Rule, assign func(T)) { // handlet, reviser, socklet
 	name := sign.text
 	if current := c.forward(); current.kind == tokenString {
 		name = current.text

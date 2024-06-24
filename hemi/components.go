@@ -206,11 +206,11 @@ type Component interface {
 type Component_ struct {
 	// Assocs
 	shell  Component // the concrete Component
-	parent Component // the parent component, used by config
+	parent Component // the parent component, used by configurator
 	// States
 	name     string           // main, proxy1, ...
 	props    map[string]Value // name1=value1, ...
-	info     any              // extra info about this component, used by config
+	info     any              // extra info about this component, used by configurator
 	subs     sync.WaitGroup   // sub components or objects to wait for
 	ShutChan chan struct{}    // used to notify shutdown
 }

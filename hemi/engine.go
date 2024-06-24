@@ -19,7 +19,7 @@ import (
 	"time"
 )
 
-const Version = "0.2.0-dev"
+const Version = "0.2.0-alpha"
 
 func Print(args ...any) {
 	_printTime(os.Stdout)

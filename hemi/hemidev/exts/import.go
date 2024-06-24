@@ -20,8 +20,6 @@ import ( // import extra contrib here
 	_ "github.com/hexinfra/gorox/hemi/contrib/cronjobs/clean"
 	_ "github.com/hexinfra/gorox/hemi/contrib/cronjobs/stat"
 	_ "github.com/hexinfra/gorox/hemi/contrib/dealets/tcpx/access"
-	_ "github.com/hexinfra/gorox/hemi/contrib/dealets/tcpx/echo"
-	_ "github.com/hexinfra/gorox/hemi/contrib/dealets/tcpx/hello"
 	_ "github.com/hexinfra/gorox/hemi/contrib/dealets/tcpx/mongo"
 	_ "github.com/hexinfra/gorox/hemi/contrib/dealets/tcpx/mysql"
 	_ "github.com/hexinfra/gorox/hemi/contrib/dealets/tcpx/pgsql"

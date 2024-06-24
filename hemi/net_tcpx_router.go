@@ -306,7 +306,8 @@ func (g *tcpxGate) serveTCP() { // runner
 
 func (g *tcpxGate) justClose(netConn net.Conn) {
 	netConn.Close()
-	g.OnConnClosed()
+	g.DecConns()
+	g.DecSub()
 }
 
 // poolTCPXConn

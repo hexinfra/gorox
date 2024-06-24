@@ -30,7 +30,7 @@ Gorox works on these operating systems:
 
 And these 64-bit CPU architectures:
 
-  * AMD64, also known as x64, x86-64, Intel 64
+  * AMD64, also known as x86-64, x64
   * ARM64, also known as AArch64
   * RISCV64, also known as RV64
   * Loong64, also known as LoongArch64

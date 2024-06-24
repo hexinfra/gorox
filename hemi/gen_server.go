@@ -160,7 +160,6 @@ type Gate interface {
 	Open() error
 	Shut() error
 	IsShut() bool
-	OnConnClosed()
 }
 
 // Gate_ is the parent for all gates.
@@ -189,8 +188,3 @@ func (g *Gate_) ReachLimit() bool { return g.numConns.Add(1) > g.maxConns }
 func (g *Gate_) IncSub()   { g.subs.Add(1) }
 func (g *Gate_) WaitSubs() { g.subs.Wait() }
 func (g *Gate_) DecSub()   { g.subs.Done() }
-
-func (g *Gate_) OnConnClosed() {
-	g.DecConns()
-	g.DecSub()
-}

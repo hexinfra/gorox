@@ -126,7 +126,8 @@ func (g *http3Gate) serve() { // runner
 
 func (g *http3Gate) justClose(quicConn *quic.Conn) {
 	quicConn.Close()
-	g.OnConnClosed()
+	g.DecConns()
+	g.DecSub()
 }
 
 // poolServer3Conn is the server-side HTTP/3 connection pool.
@@ -218,7 +219,8 @@ func (c *server3Conn) receive() { // runner
 
 func (c *server3Conn) closeConn() {
 	c.quicConn.Close()
-	c.gate.OnConnClosed()
+	c.gate.DecConns()
+	c.gate.DecSub()
 }
 
 // poolServer3Stream is the server-side HTTP/3 stream pool.

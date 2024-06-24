@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// uwsgi proxy implementation.
+// uwsgi proxy and backend implementation.
 
 // uwsgi is mainly for Python applications. See: https://uwsgi-docs.readthedocs.io/en/latest/Protocol.html
 // uwsgi 1.9.13 seems to have vague content support: https://uwsgi-docs.readthedocs.io/en/latest/Chunked.html

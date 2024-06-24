@@ -141,7 +141,8 @@ func (g *socksGate) serve() { // runner
 
 func (g *socksGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()
-	g.OnConnClosed()
+	g.DecConns()
+	g.DecSub()
 }
 
 // poolSocksConn
@@ -189,5 +190,6 @@ func (c *socksConn) onPut() {
 
 func (c *socksConn) Close() {
 	c.tcpConn.Close()
-	c.gate.OnConnClosed()
+	c.gate.DecConns()
+	c.gate.DecSub()
 }

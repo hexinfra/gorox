@@ -152,7 +152,8 @@ func (c *server1Conn) serve() { // runner
 		time.Sleep(time.Second)
 	}
 	netConn.Close()
-	c.gate.OnConnClosed()
+	c.gate.DecConns()
+	c.gate.DecSub()
 }
 
 // server1Stream is the server-side HTTP/1 stream.

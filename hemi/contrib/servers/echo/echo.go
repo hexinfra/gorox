@@ -136,7 +136,8 @@ func (g *echoGate) serve() { // runner
 
 func (g *echoGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()
-	g.OnConnClosed()
+	g.DecConns()
+	g.DecSub()
 }
 
 // poolEchoConn
@@ -184,5 +185,6 @@ func (c *echoConn) IsUDS() bool { return c.gate.IsUDS() }
 
 func (c *echoConn) closeConn() {
 	c.tcpConn.Close()
-	c.gate.OnConnClosed()
+	c.gate.DecConns()
+	c.gate.DecSub()
 }

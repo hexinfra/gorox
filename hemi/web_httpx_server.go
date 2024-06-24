@@ -272,5 +272,6 @@ func (g *httpxGate) serveTCP() { // runner
 
 func (g *httpxGate) justClose(netConn net.Conn) {
 	netConn.Close()
-	g.OnConnClosed()
+	g.DecConns()
+	g.DecSub()
 }

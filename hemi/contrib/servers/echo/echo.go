@@ -118,8 +118,8 @@ func (g *echoGate) serve() { // runner
 				continue
 			}
 		}
-		g.IncSub() // conn
-		if g.ReachLimit() {
+		g.IncConn()
+		if actives := g.IncActives(); g.ReachLimit(actives) {
 			g.justClose(tcpConn)
 		} else {
 			echoConn := getEchoConn(connID, g, tcpConn)
@@ -127,7 +127,7 @@ func (g *echoGate) serve() { // runner
 			connID++
 		}
 	}
-	g.WaitSubs() // conns. TODO: max timeout?
+	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("echoGate=%d done\n", g.ID())
 	}
@@ -136,8 +136,8 @@ func (g *echoGate) serve() { // runner
 
 func (g *echoGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()
-	g.DecConns()
-	g.DecSub()
+	g.DecActives()
+	g.DecConn()
 }
 
 // poolEchoConn
@@ -185,6 +185,6 @@ func (c *echoConn) IsUDS() bool { return c.gate.IsUDS() }
 
 func (c *echoConn) closeConn() {
 	c.tcpConn.Close()
-	c.gate.DecConns()
-	c.gate.DecSub()
+	c.gate.DecActives()
+	c.gate.DecConn()
 }

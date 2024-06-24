@@ -108,8 +108,8 @@ func (g *http3Gate) serve() { // runner
 				continue
 			}
 		}
-		g.IncSub() // conn
-		if g.ReachLimit() {
+		g.IncConn()
+		if actives := g.IncActives(); g.ReachLimit(actives) {
 			g.justClose(quicConn)
 		} else {
 			server3Conn := getServer3Conn(connID, g, quicConn)
@@ -117,7 +117,7 @@ func (g *http3Gate) serve() { // runner
 			connID++
 		}
 	}
-	g.WaitSubs() // conns. TODO: max timeout?
+	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("http3Gate=%d done\n", g.id)
 	}
@@ -126,8 +126,8 @@ func (g *http3Gate) serve() { // runner
 
 func (g *http3Gate) justClose(quicConn *quic.Conn) {
 	quicConn.Close()
-	g.DecConns()
-	g.DecSub()
+	g.DecActives()
+	g.DecConn()
 }
 
 // poolServer3Conn is the server-side HTTP/3 connection pool.
@@ -219,8 +219,8 @@ func (c *server3Conn) receive() { // runner
 
 func (c *server3Conn) closeConn() {
 	c.quicConn.Close()
-	c.gate.DecConns()
-	c.gate.DecSub()
+	c.gate.DecActives()
+	c.gate.DecConn()
 }
 
 // poolServer3Stream is the server-side HTTP/3 stream pool.

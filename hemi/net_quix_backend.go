@@ -182,7 +182,7 @@ func (c *QConn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *QConn) reachLimit() bool { return c.usedStreams.Add(1) > c.maxStreams }
+func (c *QConn) runOut() bool { return c.usedStreams.Add(1) > c.maxStreams }
 
 func (c *QConn) markBroken()    { c.broken.Store(true) }
 func (c *QConn) isBroken() bool { return c.broken.Load() }

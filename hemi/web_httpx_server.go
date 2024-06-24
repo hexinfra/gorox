@@ -166,8 +166,8 @@ func (g *httpxGate) serveTLS() { // runner
 				continue
 			}
 		}
-		g.IncSub() // conn
-		if g.ReachLimit() {
+		g.IncConn()
+		if actives := g.IncActives(); g.ReachLimit(actives) {
 			g.justClose(tcpConn)
 		} else {
 			tlsConn := tls.Server(tcpConn, g.server.TLSConfig())
@@ -185,7 +185,7 @@ func (g *httpxGate) serveTLS() { // runner
 			connID++
 		}
 	}
-	g.WaitSubs() // conns. TODO: max timeout?
+	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("httpxGate=%d TLS done\n", g.id)
 	}
@@ -204,8 +204,8 @@ func (g *httpxGate) serveUDS() { // runner
 				continue
 			}
 		}
-		g.IncSub() // conn
-		if g.ReachLimit() {
+		g.IncConn()
+		if actives := g.IncActives(); g.ReachLimit(actives) {
 			g.justClose(unixConn)
 		} else {
 			rawConn, err := unixConn.SyscallConn()
@@ -224,7 +224,7 @@ func (g *httpxGate) serveUDS() { // runner
 			connID++
 		}
 	}
-	g.WaitSubs() // conns. TODO: max timeout?
+	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("httpxGate=%d TCP done\n", g.id)
 	}
@@ -243,8 +243,8 @@ func (g *httpxGate) serveTCP() { // runner
 				continue
 			}
 		}
-		g.IncSub() // conn
-		if g.ReachLimit() {
+		g.IncConn()
+		if actives := g.IncActives(); g.ReachLimit(actives) {
 			g.justClose(tcpConn)
 		} else {
 			rawConn, err := tcpConn.SyscallConn()
@@ -263,7 +263,7 @@ func (g *httpxGate) serveTCP() { // runner
 			connID++
 		}
 	}
-	g.WaitSubs() // conns. TODO: max timeout?
+	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("httpxGate=%d TCP done\n", g.id)
 	}
@@ -272,6 +272,6 @@ func (g *httpxGate) serveTCP() { // runner
 
 func (g *httpxGate) justClose(netConn net.Conn) {
 	netConn.Close()
-	g.DecConns()
-	g.DecSub()
+	g.DecActives()
+	g.DecConn()
 }

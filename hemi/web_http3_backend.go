@@ -194,7 +194,7 @@ func (c *backend3Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *backend3Conn) reachLimit() bool {
+func (c *backend3Conn) runOut() bool {
 	return c.usedStreams.Add(1) > c.node.backend.MaxStreamsPerConn()
 }
 

@@ -64,12 +64,13 @@ func (d *tcpxProxy) Deal(conn *TCPXConn) (dealt bool) {
 		conn.Close()
 		return
 	}
-	go d.relayInbound(conn, tConn)
+	inboundOver := make(chan struct{}, 1)
+	go d.relayInbound(conn, tConn, inboundOver)
 	d.relayOutbound(tConn, conn)
-	conn.wait()
+	<-inboundOver
 	return
 }
-func (d *tcpxProxy) relayInbound(tcpxConn *TCPXConn, backConn *TConn) {
+func (d *tcpxProxy) relayInbound(tcpxConn *TCPXConn, backConn *TConn, overChan chan struct{}) {
 	var (
 		payload []byte
 		tcpxErr error
@@ -89,7 +90,7 @@ func (d *tcpxProxy) relayInbound(tcpxConn *TCPXConn, backConn *TConn) {
 			break
 		}
 	}
-	tcpxConn.done()
+	overChan <- struct{}{}
 }
 func (d *tcpxProxy) relayOutbound(backConn *TConn, tcpxConn *TCPXConn) {
 	var (

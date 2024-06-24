@@ -213,8 +213,8 @@ func (g *tcpxGate) serveTLS() { // runner
 				continue
 			}
 		}
-		g.IncSub() // conn
-		if g.ReachLimit() {
+		g.IncConn()
+		if actives := g.IncActives(); g.ReachLimit(actives) {
 			g.router.Logf("tcpxGate=%d: too many TLS connections!\n", g.id)
 			g.justClose(tcpConn)
 		} else {
@@ -228,7 +228,7 @@ func (g *tcpxGate) serveTLS() { // runner
 			connID++
 		}
 	}
-	g.WaitSubs() // conns. TODO: max timeout?
+	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TLS done\n", g.id)
 	}
@@ -246,8 +246,8 @@ func (g *tcpxGate) serveUDS() { // runner
 				continue
 			}
 		}
-		g.IncSub() // conn
-		if g.ReachLimit() {
+		g.IncConn()
+		if actives := g.IncActives(); g.ReachLimit(actives) {
 			g.router.Logf("tcpxGate=%d: too many UDS connections!\n", g.id)
 			g.justClose(unixConn)
 		} else {
@@ -261,7 +261,7 @@ func (g *tcpxGate) serveUDS() { // runner
 			connID++
 		}
 	}
-	g.WaitSubs() // conns. TODO: max timeout?
+	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TCP done\n", g.id)
 	}
@@ -279,8 +279,8 @@ func (g *tcpxGate) serveTCP() { // runner
 				continue
 			}
 		}
-		g.IncSub() // conn
-		if g.ReachLimit() {
+		g.IncConn()
+		if actives := g.IncActives(); g.ReachLimit(actives) {
 			g.router.Logf("tcpxGate=%d: too many TCP connections!\n", g.id)
 			g.justClose(tcpConn)
 		} else {
@@ -297,7 +297,7 @@ func (g *tcpxGate) serveTCP() { // runner
 			connID++
 		}
 	}
-	g.WaitSubs() // conns. TODO: max timeout?
+	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TCP done\n", g.id)
 	}
@@ -306,8 +306,8 @@ func (g *tcpxGate) serveTCP() { // runner
 
 func (g *tcpxGate) justClose(netConn net.Conn) {
 	netConn.Close()
-	g.DecConns()
-	g.DecSub()
+	g.DecActives()
+	g.DecConn()
 }
 
 // poolTCPXConn
@@ -317,7 +317,6 @@ func getTCPXConn(id int64, gate *tcpxGate, netConn net.Conn, rawConn syscall.Raw
 	var tcpxConn *TCPXConn
 	if x := poolTCPXConn.Get(); x == nil {
 		tcpxConn = new(TCPXConn)
-		tcpxConn.waitChan = make(chan struct{}, 1)
 	} else {
 		tcpxConn = x.(*TCPXConn)
 	}
@@ -335,7 +334,6 @@ type TCPXConn struct {
 	stockInput  [8192]byte // for c.input
 	stockBuffer [256]byte  // a (fake) buffer to workaround Go's conservative escape analysis
 	// Conn states (controlled)
-	waitChan chan struct{} // ...
 	// Conn states (non-zeros)
 	id        int64 // the conn id
 	gate      *tcpxGate
@@ -434,9 +432,6 @@ func (c *TCPXConn) _checkClose() {
 func (c *TCPXConn) Close() {
 	c.gate.justClose(c.netConn)
 }
-
-func (c *TCPXConn) done() { c.waitChan <- struct{}{} }
-func (c *TCPXConn) wait() { <-c.waitChan }
 
 func (c *TCPXConn) unsafeVariable(code int16, name string) (value []byte) {
 	return tcpxConnVariables[code](c)

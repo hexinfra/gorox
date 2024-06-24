@@ -118,7 +118,7 @@ func (n *http1Node) fetchStream() (*backend1Stream, error) {
 	conn := n.pullConn()
 	down := n.isDown()
 	if conn != nil {
-		if conn.isAlive() && !conn.reachLimit() && !down {
+		if conn.isAlive() && !conn.runOut() && !down {
 			return conn.fetchStream()
 		}
 		conn.Close()
@@ -344,7 +344,7 @@ func (c *backend1Conn) MakeTempName(p []byte, unixTime int64) int {
 
 func (c *backend1Conn) isAlive() bool { return time.Now().Before(c.expire) }
 
-func (c *backend1Conn) reachLimit() bool {
+func (c *backend1Conn) runOut() bool {
 	return c.usedStreams.Add(1) > c.node.backend.MaxStreamsPerConn()
 }
 

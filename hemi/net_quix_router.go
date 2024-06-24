@@ -172,8 +172,8 @@ func (g *quixGate) serve() { // runner
 
 func (g *quixGate) justClose(quicConn *quic.Conn) {
 	quicConn.Close()
-	g.DecConns()
-	g.DecSub()
+	g.DecActives()
+	g.DecConn()
 }
 
 // poolQUIXConn

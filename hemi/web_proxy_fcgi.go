@@ -318,7 +318,7 @@ func (n *fcgiNode) fetchExchan() (*fcgiExchan, error) {
 	conn := n.pullConn()
 	down := n.isDown()
 	if conn != nil {
-		if conn.isAlive() && !conn.reachLimit() && !down {
+		if conn.isAlive() && !conn.runOut() && !down {
 			return conn.fetchExchan()
 		}
 		conn.Close()
@@ -526,7 +526,7 @@ func (c *fcgiConn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *fcgiConn) reachLimit() bool {
+func (c *fcgiConn) runOut() bool {
 	return c.usedExchans.Add(1) > c.node.backend.maxExchansPerConn
 }
 

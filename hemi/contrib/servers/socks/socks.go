@@ -123,8 +123,8 @@ func (g *socksGate) serve() { // runner
 				continue
 			}
 		}
-		g.IncSub() // conn
-		if g.ReachLimit() {
+		g.IncConn()
+		if actives := g.IncActives(); g.ReachLimit(actives) {
 			g.justClose(tcpConn)
 		} else {
 			socksConn := getSocksConn(connID, g, tcpConn)
@@ -132,7 +132,7 @@ func (g *socksGate) serve() { // runner
 			connID++
 		}
 	}
-	g.WaitSubs() // conns. TODO: max timeout?
+	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("socksGate=%d done\n", g.ID())
 	}
@@ -141,8 +141,8 @@ func (g *socksGate) serve() { // runner
 
 func (g *socksGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()
-	g.DecConns()
-	g.DecSub()
+	g.DecActives()
+	g.DecConn()
 }
 
 // poolSocksConn
@@ -190,6 +190,6 @@ func (c *socksConn) onPut() {
 
 func (c *socksConn) Close() {
 	c.tcpConn.Close()
-	c.gate.DecConns()
-	c.gate.DecSub()
+	c.gate.DecActives()
+	c.gate.DecConn()
 }

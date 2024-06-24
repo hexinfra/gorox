@@ -632,6 +632,7 @@ func (r *httpOut_) sendChain1() error { // TODO: if conn is TLS, don't use write
 	if nContentRanges == 0 {
 		return r._sendEntireChain1()
 	}
+	// Partial content.
 	if !r.asRequest {
 		r.message.(Response).SetStatus(StatusPartialContent)
 	}

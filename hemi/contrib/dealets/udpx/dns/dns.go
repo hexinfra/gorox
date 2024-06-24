@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// DNS dealets can respond DNS requests.
+// DNS proxy.
 
 package dns
 
@@ -12,15 +12,15 @@ import (
 )
 
 func init() {
-	RegisterUDPXDealet("dnsDealet", func(name string, stage *Stage, router *UDPXRouter) UDPXDealet {
-		d := new(dnsDealet)
+	RegisterUDPXDealet("dnsProxy", func(name string, stage *Stage, router *UDPXRouter) UDPXDealet {
+		d := new(dnsProxy)
 		d.onCreate(name, stage, router)
 		return d
 	})
 }
 
-// dnsDealet
-type dnsDealet struct {
+// dnsProxy
+type dnsProxy struct {
 	// Parent
 	UDPXDealet_
 	// Assocs
@@ -29,23 +29,23 @@ type dnsDealet struct {
 	// States
 }
 
-func (d *dnsDealet) onCreate(name string, stage *Stage, router *UDPXRouter) {
+func (d *dnsProxy) onCreate(name string, stage *Stage, router *UDPXRouter) {
 	d.MakeComp(name)
 	d.stage = stage
 	d.router = router
 }
-func (d *dnsDealet) OnShutdown() {
+func (d *dnsProxy) OnShutdown() {
 	d.router.DecSub() // dealet
 }
 
-func (d *dnsDealet) OnConfigure() {
+func (d *dnsProxy) OnConfigure() {
 	// TODO
 }
-func (d *dnsDealet) OnPrepare() {
+func (d *dnsProxy) OnPrepare() {
 	// TODO
 }
 
-func (d *dnsDealet) Deal(conn *UDPXConn) (dealt bool) {
+func (d *dnsProxy) Deal(conn *UDPXConn) (dealt bool) {
 	// TODO
 	return true
 }

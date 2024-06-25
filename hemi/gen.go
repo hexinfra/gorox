@@ -237,8 +237,8 @@ type contentSaver interface {
 type _contentSaver_ struct {
 	// States
 	saveContentFilesDir string        // content files are placed here
-	sendTimeout         time.Duration // timeout to send the whole message
-	recvTimeout         time.Duration // timeout to recv the whole message content
+	sendTimeout         time.Duration // timeout to send the whole message. zero means no timeout
+	recvTimeout         time.Duration // timeout to recv the whole message content. zero means no timeout
 	maxContentSize      int64         // max content size allowed to receive
 }
 

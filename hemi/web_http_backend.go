@@ -500,7 +500,7 @@ func (r *backendResponse_) examineHead() bool {
 		return false
 	}
 	if r.contentSize > r.maxContentSize {
-		r.headResult, r.failReason = StatusContentTooLarge, "content size exceeds http client's limit"
+		r.headResult, r.failReason = StatusContentTooLarge, "content size exceeds backend's limit"
 		return false
 	}
 

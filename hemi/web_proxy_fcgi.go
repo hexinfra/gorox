@@ -627,7 +627,7 @@ type fcgiRequest struct { // outgoing. needs building
 	stdinHeader  [8]byte // used by stdin record
 	// Exchan states (non-zeros)
 	params      []byte        // place the payload of exactly one FCGI_PARAMS record. [<r.stockParams>/16K]
-	sendTimeout time.Duration // timeout to send the whole request
+	sendTimeout time.Duration // timeout to send the whole request. zero means no timeout
 	// Exchan states (zeros)
 	sendTime     time.Time   // the time when first send operation is performed
 	vector       net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after exchan
@@ -1024,7 +1024,7 @@ type fcgiResponse struct { // incoming. needs parsing
 	input          []byte        // bytes of incoming response headers. [<r.stockInput>/4K/16K]
 	primes         []pair        // prime fcgi response headers
 	extras         []pair        // extra fcgi response headers
-	recvTimeout    time.Duration // timeout to recv the whole response content
+	recvTimeout    time.Duration // timeout to recv the whole response content. zero means no timeout
 	maxContentSize int64         // max content size allowed for current response
 	status         int16         // 200, 302, 404, ...
 	headResult     int16         // result of receiving response head. values are same as http status for convenience

@@ -23,7 +23,7 @@ type httpServend interface {
 	// Imports
 	contentSaver
 	// Methods
-	MaxMemoryContentSize() int32
+	MaxMemoryContentSize() int32 // allowed to load into memory
 }
 
 // httpConn collects shared methods between *server[1-3]Conn and *backend[1-3]Conn.
@@ -38,18 +38,13 @@ type httpConn interface {
 type httpStream interface {
 	Servend() httpServend
 	Conn() httpConn
-
 	remoteAddr() net.Addr
-
 	buffer256() []byte
 	unsafeMake(size int) []byte
-
 	isBroken() bool // returns true if either side of the stream is broken
 	markBroken()    // mark stream as broken
-
 	setReadDeadline() error
 	setWriteDeadline() error
-
 	read(p []byte) (int, error)
 	readFull(p []byte) (int, error)
 	write(p []byte) (int, error)
@@ -80,7 +75,7 @@ type httpIn_ struct { // incoming. needs parsing
 	extras               []pair        // hold extra queries, headers(main+subs), cookies, forms, trailers(main+subs), and params. [<r.stockExtras>/max]
 	array                []byte        // store parsed, dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
 	input                []byte        // bytes of incoming message heads. [<r.stockInput>/4K/16K]
-	recvTimeout          time.Duration // timeout to recv the whole message content
+	recvTimeout          time.Duration // timeout to recv the whole message content. zero means no timeout
 	maxContentSize       int64         // max content size allowed for current message. if the content is vague, size will be calculated on receiving
 	maxMemoryContentSize int32         // max content size allowed to load into memory
 	_                    int32         // padding
@@ -1467,7 +1462,7 @@ type httpOut_ struct { // outgoing. needs building
 	chain Chain       // outgoing piece chain. used when sending content or echoing chunks
 	// Stream states (non-zeros)
 	fields      []byte        // bytes of the headers or trailers which are not manipulated at the same time. [<r.stockFields>/4K/16K]
-	sendTimeout time.Duration // timeout to send the whole message
+	sendTimeout time.Duration // timeout to send the whole message. zero means no timeout
 	contentSize int64         // info of outgoing content. -1: not set, -2: vague, >=0: size
 	httpVersion uint8         // Version1_1, Version2, Version3
 	asRequest   bool          // treat this message as request?

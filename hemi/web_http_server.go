@@ -29,7 +29,7 @@ type HTTPServer interface { // for *http[x3]Server
 	Server
 	contentSaver
 	// Methods
-	MaxMemoryContentSize() int32
+	MaxMemoryContentSize() int32 // in request
 	MaxStreamsPerConn() int32
 
 	bindApps()
@@ -1826,7 +1826,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 			r.contentTextKind = httpContentTextPool        // so r.contentText can be freed on end
 			r.formWindow = r.contentText[0:r.receivedSize] // r.formWindow refers to the exact r.content.
 			r.formEdge = int32(r.receivedSize)
-		case tempFile: // [0, r.webapp.maxUpfileSize]. case happens when sized content > 64K1, or content is vague.
+		case tempFile: // [0, r.webapp.maxMultiformSize]. case happens when sized content > 64K1, or content is vague.
 			r.contentFile = content.(*os.File)
 			if r.receivedSize == 0 {
 				return // vague content can be empty
@@ -3172,23 +3172,23 @@ type Webapp struct {
 	socklets compDict[Socklet] // defined socklets. indexed by name
 	rules    compList[*Rule]   // defined rules. the order must be kept, so we use list. TODO: use ordered map?
 	// States
-	hostnames       [][]byte          // like: ("www.example.com", "1.2.3.4", "fff8::1")
-	webRoot         string            // root dir for the web
-	file404         string            // 404 file path
-	text404         []byte            // bytes of the default 404 file
-	tlsCertificate  string            // tls certificate file, in pem format
-	tlsPrivateKey   string            // tls private key file, in pem format
-	accessLog       *LogConfig        // ...
-	logger          *Logger           // webapp access logger
-	maxUpfileSize   int64             // max content size that uploads files through multipart/form-data
-	settings        map[string]string // webapp settings defined and used by users
-	settingsLock    sync.RWMutex      // protects settings
-	isDefault       bool              // is this webapp the default webapp of its belonging http servers?
-	exactHostnames  [][]byte          // like: ("example.com")
-	suffixHostnames [][]byte          // like: ("*.example.com")
-	prefixHostnames [][]byte          // like: ("www.example.*")
-	revisersByID    [256]Reviser      // for fast searching. position 0 is not used
-	nRevisers       uint8             // used number of revisersByID in this webapp
+	hostnames        [][]byte          // like: ("www.example.com", "1.2.3.4", "fff8::1")
+	webRoot          string            // root dir for the web
+	file404          string            // 404 file path
+	text404          []byte            // bytes of the default 404 file
+	tlsCertificate   string            // tls certificate file, in pem format
+	tlsPrivateKey    string            // tls private key file, in pem format
+	accessLog        *LogConfig        // ...
+	logger           *Logger           // webapp access logger
+	maxMultiformSize int64             // max content size when content type is multipart/form-data
+	settings         map[string]string // webapp settings defined and used by users
+	settingsLock     sync.RWMutex      // protects settings
+	isDefault        bool              // is this webapp the default webapp of its belonging http servers?
+	exactHostnames   [][]byte          // like: ("example.com")
+	suffixHostnames  [][]byte          // like: ("*.example.com")
+	prefixHostnames  [][]byte          // like: ("www.example.*")
+	revisersByID     [256]Reviser      // for fast searching. position 0 is not used
+	nRevisers        uint8             // used number of revisersByID in this webapp
 }
 
 func (a *Webapp) onCreate(name string, stage *Stage) {
@@ -3281,12 +3281,12 @@ func (a *Webapp) OnConfigure() {
 
 	// accessLog, TODO
 
-	// maxUpfileSize
-	a.ConfigureInt64("maxUpfileSize", &a.maxUpfileSize, func(value int64) error {
+	// maxMultiformSize
+	a.ConfigureInt64("maxMultiformSize", &a.maxMultiformSize, func(value int64) error {
 		if value > 0 && value <= _1T {
 			return nil
 		}
-		return errors.New(".maxUpfileSize has an invalid value")
+		return errors.New(".maxMultiformSize has an invalid value")
 	}, _128M)
 
 	// settings

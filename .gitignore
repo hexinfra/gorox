@@ -29,11 +29,12 @@ Thumbs.db
 
 .idea
 .vscode
+SciTEDirectory.properties
 
 local.conf
 
 data/
 
-/hemi/hemidev/hemidev
 /goben
 /gorox
+/hemi/hemidev/hemidev

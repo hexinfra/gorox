@@ -5,7 +5,7 @@ webapp "a1" {
 	.tlsCertificate       = ""
 	.tlsPrivateKey        = ""
 	.accessLog            = []
-	.maxUpfileSize = 128M
+	.maxMultiformSize = 128M
 	.settings             = []
 	.withStater           = "ls"
 

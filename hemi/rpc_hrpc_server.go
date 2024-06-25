@@ -33,8 +33,8 @@ type hrpcServer struct {
 	exactServices  []*hostnameTo[*Service] // like: ("example.com")
 	suffixServices []*hostnameTo[*Service] // like: ("*.example.com")
 	prefixServices []*hostnameTo[*Service] // like: ("www.example.*")
-	recvTimeout    time.Duration           // timeout to recv the whole message content
-	sendTimeout    time.Duration           // timeout to send the whole message
+	recvTimeout    time.Duration           // timeout to recv the whole message content. zero means no timeout
+	sendTimeout    time.Duration           // timeout to send the whole message. zero means no timeout
 }
 
 func (s *hrpcServer) onCreate(name string, stage *Stage) {

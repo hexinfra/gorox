@@ -502,7 +502,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 			"rotate" : "day",
 			"format" : "%T",
 		]
-		.maxUpfileSize = 128M
+		.maxMultiformSize = 128M
 		.settings = []
 		.withStater = ""
 		.file404 = ""
@@ -531,28 +531,28 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					<code>语法： .hostnames = ("example.com", "*.example.com")
 					默认值： -  //必须配置
 					取值范围：-
-				</code>
+					</code>
 				</li>
 				<li>
 					<p>.webRoot web 资源的根路径，存放图片、代码等文件。</p>
 					<code>语法： .webRoot = "path"
 					默认值： -  // 必须配置
 					取值范围：-
-				</code>
+					</code>
 				</li>
 				<li>
-					<p>.maxUpfileSize 一个请求可以上传的最大文件上限。</p>
-					<code>语法： .maxUpfileSize = Size
+					<p>.maxMultiformSize 上传文件时的最大内容体大小。</p>
+					<code>语法： .maxMultiformSize = Size
 					默认值：128M
 					取值范围：(0, 1T]
-				</code>
+					</code>
 				</li>
 				<li>
 					<p>.settings 用户的自定义数据。</p>
 					<code>语法： .settings = ["bar" : "foo", "bar2" : "foo2"]
 						默认值： - 
 						取值范围：-
-				</code>
+					</code>
 				</li>
 				<li>
 					<p>.withStater 使用那个 stater。</p>

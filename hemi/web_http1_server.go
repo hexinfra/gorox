@@ -34,18 +34,12 @@ func init() {
 	})
 }
 
-const (
-	httpModeAdaptive = 0
-	httpModeHTTP1    = 1
-	httpModeHTTP2    = 2
-)
-
 // httpxServer is the HTTP/1 and HTTP/2 server.
 type httpxServer struct {
 	// Parent
 	httpServer_[*httpxGate]
 	// States
-	httpMode int8 // adaptive, http1, http2
+	httpMode int8 // 0: adaptive, 1: http/1, 2: http/2
 }
 
 func (s *httpxServer) onCreate(name string, stage *Stage) {
@@ -69,11 +63,11 @@ func (s *httpxServer) OnConfigure() {
 		}, "adaptive")
 		switch mode {
 		case "http1", "http/1":
-			s.httpMode = httpModeHTTP1
+			s.httpMode = 1
 		case "http2", "http/2":
-			s.httpMode = httpModeHTTP2
+			s.httpMode = 2
 		default:
-			s.httpMode = httpModeAdaptive
+			s.httpMode = 0
 		}
 	}
 }
@@ -83,9 +77,9 @@ func (s *httpxServer) OnPrepare() {
 	if s.IsTLS() {
 		var nextProtos []string
 		switch s.httpMode {
-		case httpModeHTTP2:
+		case 2:
 			nextProtos = []string{"h2"}
-		case httpModeHTTP1:
+		case 1:
 			nextProtos = []string{"http/1.1"}
 		default:
 			nextProtos = []string{"h2", "http/1.1"}
@@ -239,7 +233,7 @@ func (g *httpxGate) serveUDS() { // runner
 				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
 				continue
 			}
-			if g.server.httpMode == httpModeHTTP2 {
+			if g.server.httpMode == 2 {
 				serverConn := getServer2Conn(connID, g, unixConn, rawConn)
 				go serverConn.serve() // serverConn is put to pool in serve()
 			} else {
@@ -278,7 +272,7 @@ func (g *httpxGate) serveTCP() { // runner
 				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
 				continue
 			}
-			if g.server.httpMode == httpModeHTTP2 {
+			if g.server.httpMode == 2 {
 				serverConn := getServer2Conn(connID, g, tcpConn, rawConn)
 				go serverConn.serve() // serverConn is put to pool in serve()
 			} else {

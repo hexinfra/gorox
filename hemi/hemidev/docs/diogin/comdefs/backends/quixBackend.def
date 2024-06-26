@@ -3,17 +3,14 @@ quixBackend "qb1" {
 	.dialTimeout = 10s
 	.writeTimeout = 30s
 	.readTimeout = 30s
-	.aliveTimeout = 5s
 	.maxStreamsPerConn = 1000
 	.balancer = "random"
 	node {
 		.address = "127.0.0.1:3080"
 		.weight = 9
-		.keepAliveConns = 2
 	}
 	node {
 		.address = "127.0.0.1:3081"
 		.weight = 8
-		.keepAliveConns = 3
 	}
 }

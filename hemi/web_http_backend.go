@@ -34,8 +34,9 @@ type httpBackend_[N Node] struct {
 	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
-	maxMemoryContentSize int32 // max content size that can be loaded into memory directly
-	maxStreamsPerConn    int32 // max streams of one conn. 0 means infinite
+	maxMemoryContentSize int32         // max content size that can be loaded into memory directly
+	maxStreamsPerConn    int32         // max streams of one conn. 0 means infinite
+	aliveTimeout         time.Duration // conn alive timeout
 }
 
 func (b *httpBackend_[N]) onCreate(name string, stage *Stage) {
@@ -61,6 +62,14 @@ func (b *httpBackend_[N]) onConfigure() {
 		}
 		return errors.New(".maxStreamsPerConn has an invalid value")
 	}, 1000)
+
+	// aliveTimeout
+	b.ConfigureDuration("aliveTimeout", &b.aliveTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".aliveTimeout has an invalid value")
+	}, 5*time.Second)
 }
 func (b *httpBackend_[N]) onPrepare() {
 	b.Backend_.OnPrepare()
@@ -69,6 +78,24 @@ func (b *httpBackend_[N]) onPrepare() {
 
 func (b *httpBackend_[N]) MaxMemoryContentSize() int32 { return b.maxMemoryContentSize }
 func (b *httpBackend_[N]) MaxStreamsPerConn() int32    { return b.maxStreamsPerConn }
+
+// httpNode_ is the parent for http[1-3]Node.
+type httpNode_ struct {
+	// Parent
+	Node_
+	// States
+	keepAliveConns int32 // max conns to keep alive
+}
+
+func (n *httpNode_) OnConfigure() {
+	// keepAliveConns
+	n.ConfigureInt32("keepAliveConns", &n.keepAliveConns, func(value int32) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New("bad keepAliveConns in node")
+	}, 10)
+}
 
 // backendStream is the backend-side http stream.
 type backendStream interface { // for *backend[1-3]Stream

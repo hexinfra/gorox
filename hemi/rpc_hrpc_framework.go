@@ -3,7 +3,10 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// HRPC server implementation.
+// HRPC framework implementation.
+
+// HRPC is a request/response RPC protocol designed for IDC.
+// HRPC is under design, its transport protocol is not determined. Maybe we can build it upon QUIC without TLS?
 
 package hemi
 

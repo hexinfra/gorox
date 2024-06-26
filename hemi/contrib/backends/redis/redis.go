@@ -8,6 +8,7 @@
 package redis
 
 import (
+	"errors"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -32,6 +33,7 @@ type RedisBackend struct {
 	// Parent
 	Backend_[*redisNode]
 	// States
+	aliveTimeout time.Duration // conn alive timeout
 }
 
 func (b *RedisBackend) onCreate(name string, stage *Stage) {
@@ -40,6 +42,14 @@ func (b *RedisBackend) onCreate(name string, stage *Stage) {
 
 func (b *RedisBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
+
+	// aliveTimeout
+	b.ConfigureDuration("aliveTimeout", &b.aliveTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".aliveTimeout has an invalid value")
+	}, 5*time.Second)
 
 	// sub components
 	b.ConfigureNodes()
@@ -141,7 +151,7 @@ func (c *RedisConn) onGet(id int64, node *redisNode, netConn net.Conn, rawConn s
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
-	c.expire = time.Now().Add(node.backend.AliveTimeout())
+	c.expire = time.Now().Add(node.backend.aliveTimeout)
 }
 func (c *RedisConn) onPut() {
 	c.netConn = nil

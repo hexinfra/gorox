@@ -221,8 +221,9 @@ type fcgiBackend struct {
 	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
-	keepConn          bool  // instructs FCGI server to keep conn?
-	maxExchansPerConn int32 // max exchans of one conn. 0 means infinite
+	keepConn          bool          // instructs FCGI server to keep conn?
+	maxExchansPerConn int32         // max exchans of one conn. 0 means infinite
+	aliveTimeout      time.Duration // conn alive timeout
 }
 
 func (b *fcgiBackend) onCreate(name string, stage *Stage) {
@@ -243,6 +244,14 @@ func (b *fcgiBackend) OnConfigure() {
 		}
 		return errors.New(".maxExchansPerConn has an invalid value")
 	}, 1000)
+
+	// aliveTimeout
+	b.ConfigureDuration("aliveTimeout", &b.aliveTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".aliveTimeout has an invalid value")
+	}, 5*time.Second)
 
 	// sub components
 	b.ConfigureNodes()

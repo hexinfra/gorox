@@ -40,9 +40,9 @@ const ( // list of components
 	compUDPXRouter            // udpxRouter
 	compUDPXDealet            // udpxProxy, dnsProxy, ...
 	compCase                  // case
+	compService               // service
 	compStater                // localStater, redisStater, ...
 	compCacher                // localCacher, redisCacher, ...
-	compService               // service
 	compWebapp                // webapp
 	compHandlet               // static, httpProxy, ...
 	compReviser               // gzipReviser, wrapReviser, ...
@@ -369,9 +369,9 @@ type Stage struct {
 	quixRouters compDict[*QUIXRouter] // indexed by routerName
 	tcpxRouters compDict[*TCPXRouter] // indexed by routerName
 	udpxRouters compDict[*UDPXRouter] // indexed by routerName
+	services    compDict[*Service]    // indexed by serviceName
 	staters     compDict[Stater]      // indexed by staterName
 	cachers     compDict[Cacher]      // indexed by cacherName
-	services    compDict[*Service]    // indexed by serviceName
 	webapps     compDict[*Webapp]     // indexed by webappName
 	servers     compDict[Server]      // indexed by serverName
 	cronjobs    compDict[Cronjob]     // indexed by cronjobName
@@ -399,9 +399,9 @@ func (s *Stage) onCreate() {
 	s.quixRouters = make(compDict[*QUIXRouter])
 	s.tcpxRouters = make(compDict[*TCPXRouter])
 	s.udpxRouters = make(compDict[*UDPXRouter])
+	s.services = make(compDict[*Service])
 	s.staters = make(compDict[Stater])
 	s.cachers = make(compDict[Cacher])
-	s.services = make(compDict[*Service])
 	s.webapps = make(compDict[*Webapp])
 	s.servers = make(compDict[Server])
 	s.cronjobs = make(compDict[Cronjob])
@@ -421,16 +421,20 @@ func (s *Stage) OnShutdown() {
 	s.servers.goWalk(Server.OnShutdown)
 	s.WaitSubs()
 
-	// webapps & services
-	s.IncSubs(len(s.webapps) + len(s.services))
+	// webapps
+	s.IncSubs(len(s.webapps))
 	s.webapps.goWalk((*Webapp).OnShutdown)
-	s.services.goWalk((*Service).OnShutdown)
 	s.WaitSubs()
 
 	// cachers & staters
 	s.IncSubs(len(s.cachers) + len(s.staters))
 	s.cachers.goWalk(Cacher.OnShutdown)
 	s.staters.goWalk(Stater.OnShutdown)
+	s.WaitSubs()
+
+	// services
+	s.IncSubs(len(s.services))
+	s.services.goWalk((*Service).OnShutdown)
 	s.WaitSubs()
 
 	// routers
@@ -514,9 +518,9 @@ func (s *Stage) OnConfigure() {
 	s.quixRouters.walk((*QUIXRouter).OnConfigure)
 	s.tcpxRouters.walk((*TCPXRouter).OnConfigure)
 	s.udpxRouters.walk((*UDPXRouter).OnConfigure)
+	s.services.walk((*Service).OnConfigure)
 	s.staters.walk(Stater.OnConfigure)
 	s.cachers.walk(Cacher.OnConfigure)
-	s.services.walk((*Service).OnConfigure)
 	s.webapps.walk((*Webapp).OnConfigure)
 	s.servers.walk(Server.OnConfigure)
 	s.cronjobs.walk(Cronjob.OnConfigure)
@@ -534,9 +538,9 @@ func (s *Stage) OnPrepare() {
 	s.quixRouters.walk((*QUIXRouter).OnPrepare)
 	s.tcpxRouters.walk((*TCPXRouter).OnPrepare)
 	s.udpxRouters.walk((*UDPXRouter).OnPrepare)
+	s.services.walk((*Service).OnPrepare)
 	s.staters.walk(Stater.OnPrepare)
 	s.cachers.walk(Cacher.OnPrepare)
-	s.services.walk((*Service).OnPrepare)
 	s.webapps.walk((*Webapp).OnPrepare)
 	s.servers.walk(Server.OnPrepare)
 	s.cronjobs.walk(Cronjob.OnPrepare)
@@ -585,6 +589,16 @@ func (s *Stage) createUDPXRouter(name string) *UDPXRouter {
 	s.udpxRouters[name] = router
 	return router
 }
+func (s *Stage) createService(name string) *Service {
+	if s.Service(name) != nil {
+		UseExitf("conflicting service with a same name '%s'\n", name)
+	}
+	service := new(Service)
+	service.onCreate(name, s)
+	service.setShell(service)
+	s.services[name] = service
+	return service
+}
 func (s *Stage) createStater(sign string, name string) Stater {
 	if s.Stater(name) != nil {
 		UseExitf("conflicting stater with a same name '%s'\n", name)
@@ -610,16 +624,6 @@ func (s *Stage) createCacher(sign string, name string) Cacher {
 	cacher.setShell(cacher)
 	s.cachers[name] = cacher
 	return cacher
-}
-func (s *Stage) createService(name string) *Service {
-	if s.Service(name) != nil {
-		UseExitf("conflicting service with a same name '%s'\n", name)
-	}
-	service := new(Service)
-	service.onCreate(name, s)
-	service.setShell(service)
-	s.services[name] = service
-	return service
 }
 func (s *Stage) createWebapp(name string) *Webapp {
 	if s.Webapp(name) != nil {
@@ -666,9 +670,9 @@ func (s *Stage) Backend(name string) Backend        { return s.backends[name] }
 func (s *Stage) QUIXRouter(name string) *QUIXRouter { return s.quixRouters[name] }
 func (s *Stage) TCPXRouter(name string) *TCPXRouter { return s.tcpxRouters[name] }
 func (s *Stage) UDPXRouter(name string) *UDPXRouter { return s.udpxRouters[name] }
+func (s *Stage) Service(name string) *Service       { return s.services[name] }
 func (s *Stage) Stater(name string) Stater          { return s.staters[name] }
 func (s *Stage) Cacher(name string) Cacher          { return s.cachers[name] }
-func (s *Stage) Service(name string) *Service       { return s.services[name] }
 func (s *Stage) Webapp(name string) *Webapp         { return s.webapps[name] }
 func (s *Stage) Server(name string) Server          { return s.servers[name] }
 func (s *Stage) Cronjob(name string) Cronjob        { return s.cronjobs[name] }
@@ -722,9 +726,9 @@ func (s *Stage) Start(id int32) {
 	s.startFixtures() // go fixture.run()
 	s.startBackends() // go backend.maintain()
 	s.startRouters()  // go router.serve()
+	s.startServices() // go service.maintain()
 	s.startStaters()  // go stater.Maintain()
 	s.startCachers()  // go cacher.Maintain()
-	s.startServices() // go service.maintain()
 	s.startWebapps()  // go webapp.maintain()
 	s.startServers()  // go server.Serve()
 	s.startCronjobs() // go cronjob.Schedule()
@@ -817,6 +821,14 @@ func (s *Stage) startRouters() {
 		go udpxRouter.Serve()
 	}
 }
+func (s *Stage) startServices() {
+	for _, service := range s.services {
+		if DebugLevel() >= 1 {
+			Printf("service=%s go maintain()\n", service.Name())
+		}
+		go service.maintain()
+	}
+}
 func (s *Stage) startStaters() {
 	for _, stater := range s.staters {
 		if DebugLevel() >= 1 {
@@ -831,14 +843,6 @@ func (s *Stage) startCachers() {
 			Printf("cacher=%s go Maintain()\n", cacher.Name())
 		}
 		go cacher.Maintain()
-	}
-}
-func (s *Stage) startServices() {
-	for _, service := range s.services {
-		if DebugLevel() >= 1 {
-			Printf("service=%s go maintain()\n", service.Name())
-		}
-		go service.maintain()
 	}
 }
 func (s *Stage) startWebapps() {

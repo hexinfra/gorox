@@ -119,11 +119,11 @@ article table.none tr td {
 		<li>stage &gt; udpxRouter &gt; case</li>
 		<li>stage &gt; udpxRouter &gt; [case &gt;] dnsProxy</li>
 		<li>stage &gt; udpxRouter &gt; [case &gt;] udpxProxy</li>
+		<li><a href="#stage-service">stage &gt; service</a></li>
 		<li>stage &gt; localStater</li>
 		<li>stage &gt; redisStater</li>
 		<li><a href="#stage-localCacher">stage &gt; localCacher</a></li>
 		<li><a href="#stage-redisCacher">stage &gt; redisCacher</a></li>
-		<li><a href="#stage-service">stage &gt; service</a></li>
 		<li><a href="#stage-webapp">stage &gt; webapp</a></li>
 		<li><a href="#stage-webapp-rule">stage &gt; webapp &gt; rule</a></li>
 		<li><a href="#stage-webapp-accessChecker">stage &gt; webapp &gt; [rule &gt;] accessChecker</a></li>
@@ -452,6 +452,10 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 			</ul>
 		</li>
 
+		<li id="stage-service">
+			<h4>stage &gt; service </h4>
+		</li>
+
 		<li id="stage-localCacher">
 			<h4>stage &gt; localCacher</h4>
 			<p>localCacher：本地 HTTP 缓存，根据 HTTP 的 header 信息把远端的数据缓存在本地。</p>
@@ -469,10 +473,6 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		<li id="stage-redisCacher">
 			<h4>stage &gt; redisCacher</h4>
 			<p>redisCacher：根据 HTTP 的 header 信息把远端的数据缓存在 redis 中。</p>
-		</li>
-
-		<li id="stage-service">
-			<h4>stage &gt; service </h4>
 		</li>
 
 		<li id="stage-webapp">

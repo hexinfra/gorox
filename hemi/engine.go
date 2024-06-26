@@ -245,12 +245,12 @@ func (c *configurator) parseStage(stage *Stage) { // stage {}
 			c.parseTCPXRouter(stage)
 		case compUDPXRouter:
 			c.parseUDPXRouter(stage)
+		case compService:
+			c.parseService(current, stage)
 		case compStater:
 			c.parseStater(current, stage)
 		case compCacher:
 			c.parseCacher(current, stage)
-		case compService:
-			c.parseService(current, stage)
 		case compWebapp:
 			c.parseWebapp(current, stage)
 		case compServer:
@@ -470,18 +470,18 @@ func (c *configurator) parseCaseCond(kase interface{ setInfo(info any) }) {
 	cond.compare = compare.text
 	kase.setInfo(cond)
 }
-func (c *configurator) parseStater(sign *token, stage *Stage) { // xxxStater <name> {}
-	parseComponent0(c, sign, stage, stage.createStater)
-}
-func (c *configurator) parseCacher(sign *token, stage *Stage) { // xxxCacher <name> {}
-	parseComponent0(c, sign, stage, stage.createCacher)
-}
 func (c *configurator) parseService(sign *token, stage *Stage) { // service <name> {}
 	serviceName := c.forwardExpect(tokenString)
 	service := stage.createService(serviceName.text)
 	service.setParent(stage)
 	c.forward()
 	c._parseLeaf(service)
+}
+func (c *configurator) parseStater(sign *token, stage *Stage) { // xxxStater <name> {}
+	parseComponent0(c, sign, stage, stage.createStater)
+}
+func (c *configurator) parseCacher(sign *token, stage *Stage) { // xxxCacher <name> {}
+	parseComponent0(c, sign, stage, stage.createCacher)
 }
 func (c *configurator) parseWebapp(sign *token, stage *Stage) { // webapp <name> {}
 	webappName := c.forwardExpect(tokenString)

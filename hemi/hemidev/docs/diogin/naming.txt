@@ -29,9 +29,9 @@ COMPONENTS
     router (quixRouter, tcpxRouter, udpxRouter)
       dealet (quixProxy, tcpxProxy, udpxProxy, ...)
       case [*]
+    service [*]
     stater (localStater, redisStater, ...)
     cacher (localCacher, redisCacher, ...)
-    service [*]
     webapp [*]
       handlet (hello, static, ...)
       reviser (gzip, head, ...)

@@ -46,7 +46,7 @@ func (c *memCacher) OnPrepare() {
 }
 
 func (c *memCacher) Maintain() { // runner
-	c.Loop(time.Second, func(now time.Time) {
+	c.LoopRun(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if DebugLevel() >= 2 {

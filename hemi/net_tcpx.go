@@ -750,7 +750,7 @@ func (n *tcpxNode) OnPrepare() {
 }
 
 func (n *tcpxNode) Maintain() { // runner
-	n.Loop(time.Second, func(now time.Time) {
+	n.LoopRun(time.Second, func(now time.Time) {
 		// TODO: health check, markDown, markUp()
 	})
 	n.markDown()

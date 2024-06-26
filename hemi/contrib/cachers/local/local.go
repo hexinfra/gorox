@@ -57,7 +57,7 @@ func (c *localCacher) OnPrepare() {
 }
 
 func (c *localCacher) Maintain() { // runner
-	c.Loop(time.Second, func(now time.Time) {
+	c.LoopRun(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if DebugLevel() >= 2 {

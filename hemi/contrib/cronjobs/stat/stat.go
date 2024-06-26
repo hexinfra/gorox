@@ -46,7 +46,7 @@ func (j *statCronjob) OnPrepare() {
 }
 
 func (j *statCronjob) Schedule() { // runner
-	j.Loop(time.Minute, func(now time.Time) {
+	j.LoopRun(time.Minute, func(now time.Time) {
 		// TODO
 	})
 	if DebugLevel() >= 2 {

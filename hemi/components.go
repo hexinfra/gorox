@@ -296,7 +296,7 @@ func (c *Component_) WaitSubs()     { c.subs.Wait() }
 func (c *Component_) DecSub()       { c.subs.Done() }
 func (c *Component_) DecSubs(n int) { c.subs.Add(-n) }
 
-func (c *Component_) Loop(interval time.Duration, callback func(now time.Time)) {
+func (c *Component_) LoopRun(interval time.Duration, callback func(now time.Time)) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
 	for {
@@ -979,7 +979,7 @@ func (f *clockFixture) OnPrepare() {
 }
 
 func (f *clockFixture) run() { // runner
-	f.Loop(f.resolution, func(now time.Time) {
+	f.LoopRun(f.resolution, func(now time.Time) {
 		now = now.UTC()
 		weekday := now.Weekday()       // weekday: 0-6
 		year, month, day := now.Date() // month: 1-12
@@ -1341,7 +1341,7 @@ func (f *fcacheFixture) OnPrepare() {
 }
 
 func (f *fcacheFixture) run() { // runner
-	f.Loop(time.Second, func(now time.Time) {
+	f.LoopRun(time.Second, func(now time.Time) {
 		f.rwMutex.Lock()
 		for path, entry := range f.entries {
 			if entry.last.After(now) {
@@ -1498,7 +1498,7 @@ func (f *resolvFixture) OnPrepare() {
 }
 
 func (f *resolvFixture) run() { // runner
-	f.Loop(time.Second, func(now time.Time) {
+	f.LoopRun(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if DebugLevel() >= 2 {

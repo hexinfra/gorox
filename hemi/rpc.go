@@ -82,7 +82,7 @@ func (s *Service) BindServer(server *hrpcServer) { s.servers = append(s.servers,
 func (s *Service) Servers() []*hrpcServer        { return s.servers }
 
 func (s *Service) maintain() { // runner
-	s.Loop(time.Second, func(now time.Time) {
+	s.LoopRun(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if DebugLevel() >= 2 {

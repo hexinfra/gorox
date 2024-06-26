@@ -532,7 +532,7 @@ func (n *udpxNode) OnPrepare() {
 }
 
 func (n *udpxNode) Maintain() { // runner
-	n.Loop(time.Second, func(now time.Time) {
+	n.LoopRun(time.Second, func(now time.Time) {
 		// TODO: health check, markDown, markUp()
 	})
 	n.markDown()

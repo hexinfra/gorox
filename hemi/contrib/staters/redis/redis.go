@@ -49,7 +49,7 @@ func (s *redisStater) OnPrepare() {
 }
 
 func (s *redisStater) Maintain() { // runner
-	s.Loop(time.Second, func(now time.Time) {
+	s.LoopRun(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if DebugLevel() >= 2 {

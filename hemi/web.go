@@ -9,6 +9,7 @@ package hemi
 
 import (
 	"errors"
+	"net"
 	"os"
 	"reflect"
 	"regexp"
@@ -200,7 +201,7 @@ func (a *Webapp) OnPrepare() {
 }
 
 func (a *Webapp) maintain() { // runner
-	a.Loop(time.Second, func(now time.Time) {
+	a.LoopRun(time.Second, func(now time.Time) {
 		// TODO
 	})
 
@@ -676,61 +677,162 @@ func (r *Rule) notExistMatch(req Request, value []byte) bool { // value !e
 	return pathInfo == nil
 }
 
-// Handle is a function which handles http request and gives http response.
-type Handle func(req Request, resp Response)
+// Request is the server-side http request.
+type Request interface { // for *server[1-3]Request
+	RemoteAddr() net.Addr
+	Webapp() *Webapp
 
-// Mapper performs request mapping in handlets. Mappers are not components.
-type Mapper interface {
-	FindHandle(req Request) Handle // called firstly
-	HandleName(req Request) string // called secondly
-}
+	IsAbsoluteForm() bool    // TODO: what about HTTP/2 and HTTP/3?
+	IsAsteriskOptions() bool // OPTIONS *
 
-// Handlet component handles the incoming request and gives an outgoing response if the request is handled.
-type Handlet interface {
-	// Imports
-	Component
-	// Methods
-	IsProxy() bool // proxies and origins are different, we must differentiate them
-	IsCache() bool // caches and proxies are different, we must differentiate them
-	Handle(req Request, resp Response) (handled bool)
-}
+	VersionCode() uint8
+	IsHTTP1_0() bool
+	IsHTTP1_1() bool
+	IsHTTP1() bool
+	IsHTTP2() bool
+	IsHTTP3() bool
+	Version() string // HTTP/1.0, HTTP/1.1, HTTP/2, HTTP/3
+	UnsafeVersion() []byte
 
-// Handlet_ is the parent for all handlets.
-type Handlet_ struct {
-	// Parent
-	Component_
-	// Assocs
-	mapper Mapper
-	// States
-	rShell reflect.Value // the shell handlet
-}
+	SchemeCode() uint8 // SchemeHTTP, SchemeHTTPS
+	IsHTTP() bool
+	IsHTTPS() bool
+	Scheme() string // http, https
+	UnsafeScheme() []byte
 
-func (h *Handlet_) IsProxy() bool { return false } // override this for proxy handlets
-func (h *Handlet_) IsCache() bool { return false } // override this for cache handlets
+	MethodCode() uint32
+	IsGET() bool
+	IsPOST() bool
+	IsPUT() bool
+	IsDELETE() bool
+	Method() string // GET, POST, ...
+	UnsafeMethod() []byte
 
-func (h *Handlet_) UseMapper(handlet Handlet, mapper Mapper) {
-	h.mapper = mapper
-	h.rShell = reflect.ValueOf(handlet)
-}
-func (h *Handlet_) Dispatch(req Request, resp Response, notFound Handle) {
-	if h.mapper != nil {
-		if handle := h.mapper.FindHandle(req); handle != nil {
-			handle(req, resp)
-			return
-		}
-		if name := h.mapper.HandleName(req); name != "" {
-			if rMethod := h.rShell.MethodByName(name); rMethod.IsValid() {
-				rMethod.Call([]reflect.Value{reflect.ValueOf(req), reflect.ValueOf(resp)})
-				return
-			}
-		}
-	}
-	// No handle was found.
-	if notFound == nil {
-		resp.SendNotFound(nil)
-	} else {
-		notFound(req, resp)
-	}
+	Authority() string       // hostname[:port]
+	UnsafeAuthority() []byte // hostname[:port]
+	Hostname() string        // hostname
+	UnsafeHostname() []byte  // hostname
+	ColonPort() string       // :port
+	UnsafeColonPort() []byte // :port
+
+	URI() string               // /encodedPath?queryString
+	UnsafeURI() []byte         // /encodedPath?queryString
+	Path() string              // /decodedPath
+	UnsafePath() []byte        // /decodedPath
+	EncodedPath() string       // /encodedPath
+	UnsafeEncodedPath() []byte // /encodedPath
+	QueryString() string       // including '?' if query string exists, otherwise empty
+	UnsafeQueryString() []byte // including '?' if query string exists, otherwise empty
+
+	HasQueries() bool
+	AllQueries() (queries [][2]string)
+	Q(name string) string
+	Qstr(name string, defaultValue string) string
+	Qint(name string, defaultValue int) int
+	Query(name string) (value string, ok bool)
+	UnsafeQuery(name string) (value []byte, ok bool)
+	Queries(name string) (values []string, ok bool)
+	HasQuery(name string) bool
+	DelQuery(name string) (deleted bool)
+	AddQuery(name string, value string) bool
+
+	HasHeaders() bool
+	AllHeaders() (headers [][2]string)
+	H(name string) string
+	Hstr(name string, defaultValue string) string
+	Hint(name string, defaultValue int) int
+	Header(name string) (value string, ok bool)
+	UnsafeHeader(name string) (value []byte, ok bool)
+	Headers(name string) (values []string, ok bool)
+	HasHeader(name string) bool
+	DelHeader(name string) (deleted bool)
+	AddHeader(name string, value string) bool
+
+	UserAgent() string
+	UnsafeUserAgent() []byte
+
+	ContentType() string
+	UnsafeContentType() []byte
+
+	ContentSize() int64
+	UnsafeContentLength() []byte
+
+	AcceptTrailers() bool
+
+	EvalPreconditions(date int64, etag []byte, asOrigin bool) (status int16, normal bool)
+
+	HasIfRange() bool
+	EvalIfRange(date int64, etag []byte, asOrigin bool) (canRange bool)
+
+	HasRanges() bool
+	EvalRanges(size int64) []Range
+
+	HasCookies() bool
+	AllCookies() (cookies [][2]string)
+	C(name string) string
+	Cstr(name string, defaultValue string) string
+	Cint(name string, defaultValue int) int
+	Cookie(name string) (value string, ok bool)
+	UnsafeCookie(name string) (value []byte, ok bool)
+	Cookies(name string) (values []string, ok bool)
+	HasCookie(name string) bool
+	DelCookie(name string) (deleted bool)
+	AddCookie(name string, value string) bool
+
+	SetRecvTimeout(timeout time.Duration) // to defend against slowloris attack
+
+	HasContent() bool // true if content exists
+	IsVague() bool    // true if content exists and is not sized
+	Content() string
+	UnsafeContent() []byte
+
+	HasForms() bool
+	AllForms() (forms [][2]string)
+	F(name string) string
+	Fstr(name string, defaultValue string) string
+	Fint(name string, defaultValue int) int
+	Form(name string) (value string, ok bool)
+	UnsafeForm(name string) (value []byte, ok bool)
+	Forms(name string) (values []string, ok bool)
+	HasForm(name string) bool
+	AddForm(name string, value string) bool
+
+	HasUpfiles() bool
+	AllUpfiles() (upfiles []*Upfile)
+	U(name string) *Upfile
+	Upfile(name string) (upfile *Upfile, ok bool)
+	Upfiles(name string) (upfiles []*Upfile, ok bool)
+	HasUpfile(name string) bool
+
+	HasTrailers() bool
+	AllTrailers() (trailers [][2]string)
+	T(name string) string
+	Tstr(name string, defaultValue string) string
+	Tint(name string, defaultValue int) int
+	Trailer(name string) (value string, ok bool)
+	UnsafeTrailer(name string) (value []byte, ok bool)
+	Trailers(name string) (values []string, ok bool)
+	HasTrailer(name string) bool
+	DelTrailer(name string) (deleted bool)
+	AddTrailer(name string, value string) bool
+
+	UnsafeMake(size int) []byte
+
+	// Internal only
+	getPathInfo() os.FileInfo
+	unsafeAbsPath() []byte
+	makeAbsPath()
+	delHopHeaders()
+	delHopTrailers()
+	forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
+	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
+	forCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool
+	unsetHost()
+	holdContent() any
+	readContent() (p []byte, err error)
+	examineTail() bool
+	hookReviser(reviser Reviser)
+	unsafeVariable(code int16, name string) (value []byte)
 }
 
 // Upfile is a file uploaded by http client.
@@ -833,6 +935,77 @@ func (u *Upfile) Size() int64  { return u.size }
 func (u *Upfile) MoveTo(path string) error {
 	// TODO. Remember to mark as moved
 	return nil
+}
+
+// Response is the server-side http response.
+type Response interface { // for *server[1-3]Response
+	Request() Request
+
+	SetStatus(status int16) error
+	Status() int16
+
+	MakeETagFrom(date int64, size int64) ([]byte, bool) // with `""`
+	SetExpires(expires int64) bool
+	SetLastModified(lastModified int64) bool
+	AddContentType(contentType string) bool
+	AddContentTypeBytes(contentType []byte) bool
+	AddHTTPSRedirection(authority string) bool
+	AddHostnameRedirection(hostname string) bool
+	AddDirectoryRedirection() bool
+
+	AddCookie(cookie *Cookie) bool
+
+	AddHeader(name string, value string) bool
+	AddHeaderBytes(name []byte, value []byte) bool
+	Header(name string) (value string, ok bool)
+	HasHeader(name string) bool
+	DelHeader(name string) bool
+	DelHeaderBytes(name []byte) bool
+
+	IsSent() bool
+	SetSendTimeout(timeout time.Duration) // to defend against slowloris attack
+
+	Send(content string) error
+	SendBytes(content []byte) error
+	SendFile(contentPath string) error
+	SendJSON(content any) error
+	SendBadRequest(content []byte) error                             // 400
+	SendForbidden(content []byte) error                              // 403
+	SendNotFound(content []byte) error                               // 404
+	SendMethodNotAllowed(allow string, content []byte) error         // 405
+	SendRangeNotSatisfiable(contentSize int64, content []byte) error // 416
+	SendInternalServerError(content []byte) error                    // 500
+	SendNotImplemented(content []byte) error                         // 501
+	SendBadGateway(content []byte) error                             // 502
+	SendGatewayTimeout(content []byte) error                         // 504
+
+	Echo(chunk string) error
+	EchoBytes(chunk []byte) error
+	EchoFile(chunkPath string) error
+
+	AddTrailer(name string, value string) bool
+	AddTrailerBytes(name []byte, value []byte) bool
+
+	// Internal only
+	addHeader(name []byte, value []byte) bool
+	header(name []byte) (value []byte, ok bool)
+	hasHeader(name []byte) bool
+	delHeader(name []byte) bool
+	pickRanges(ranges []Range, rangeType string)
+	sendText(content []byte) error
+	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
+	sendChain() error                                             // content
+	echoHeaders() error
+	echoChain() error // chunks
+	addTrailer(name []byte, value []byte) bool
+	endVague() error
+	proxyPass1xx(resp backendResponse) bool
+	proxyPass(resp backendResponse) error
+	proxyPost(content any, hasTrailers bool) error
+	proxyCopyHead(resp backendResponse, cfg *WebExchanProxyConfig) bool
+	proxyCopyTail(resp backendResponse, cfg *WebExchanProxyConfig) bool
+	hookReviser(reviser Reviser)
+	unsafeMake(size int) []byte
 }
 
 // Cookie is a "set-cookie" header sent to client.
@@ -994,6 +1167,63 @@ func (c *Cookie) writeTo(p []byte) int {
 	return i
 }
 
+// Handle is a function which handles http request and gives http response.
+type Handle func(req Request, resp Response)
+
+// Mapper performs request mapping in handlets. Mappers are not components.
+type Mapper interface {
+	FindHandle(req Request) Handle // called firstly
+	HandleName(req Request) string // called secondly
+}
+
+// Handlet component handles the incoming request and gives an outgoing response if the request is handled.
+type Handlet interface {
+	// Imports
+	Component
+	// Methods
+	IsProxy() bool // proxies and origins are different, we must differentiate them
+	IsCache() bool // caches and proxies are different, we must differentiate them
+	Handle(req Request, resp Response) (handled bool)
+}
+
+// Handlet_ is the parent for all handlets.
+type Handlet_ struct {
+	// Parent
+	Component_
+	// Assocs
+	mapper Mapper
+	// States
+	rShell reflect.Value // the shell handlet
+}
+
+func (h *Handlet_) IsProxy() bool { return false } // override this for proxy handlets
+func (h *Handlet_) IsCache() bool { return false } // override this for cache handlets
+
+func (h *Handlet_) UseMapper(handlet Handlet, mapper Mapper) {
+	h.mapper = mapper
+	h.rShell = reflect.ValueOf(handlet)
+}
+func (h *Handlet_) Dispatch(req Request, resp Response, notFound Handle) {
+	if h.mapper != nil {
+		if handle := h.mapper.FindHandle(req); handle != nil {
+			handle(req, resp)
+			return
+		}
+		if name := h.mapper.HandleName(req); name != "" {
+			if rMethod := h.rShell.MethodByName(name); rMethod.IsValid() {
+				rMethod.Call([]reflect.Value{reflect.ValueOf(req), reflect.ValueOf(resp)})
+				return
+			}
+		}
+	}
+	// No handle was found.
+	if notFound == nil {
+		resp.SendNotFound(nil)
+	} else {
+		notFound(req, resp)
+	}
+}
+
 // Reviser component revises incoming requests and outgoing responses.
 type Reviser interface {
 	// Imports
@@ -1024,6 +1254,13 @@ type Reviser_ struct {
 
 func (r *Reviser_) ID() uint8      { return r.id }
 func (r *Reviser_) setID(id uint8) { r.id = id }
+
+// Socket is the server-side websocket.
+type Socket interface { // for *server[1-3]Socket
+	Read(p []byte) (int, error)
+	Write(p []byte) (int, error)
+	Close() error
+}
 
 // Socklet component handles the websocket.
 type Socklet interface {

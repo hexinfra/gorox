@@ -309,7 +309,7 @@ func (n *fcgiNode) OnPrepare() {
 }
 
 func (n *fcgiNode) Maintain() { // runner
-	n.Loop(time.Second, func(now time.Time) {
+	n.LoopRun(time.Second, func(now time.Time) {
 		// TODO: health check, markDown, markUp()
 	})
 	n.markDown()

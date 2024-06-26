@@ -1168,7 +1168,7 @@ func (n *http2Node) OnPrepare() {
 }
 
 func (n *http2Node) Maintain() { // runner
-	n.Loop(time.Second, func(now time.Time) {
+	n.LoopRun(time.Second, func(now time.Time) {
 		// TODO: health check, markDown, markUp()
 	})
 	// TODO: wait for all conns

@@ -653,7 +653,7 @@ func (s *server1Stream) executeSocket() { // upgrade: websocket
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nConnection: close\r\n\r\n"))
 }
 
-func (s *server1Stream) Servend() httpServend { return s.conn.gate.server }
+func (s *server1Stream) Serend() httpSerend   { return s.conn.gate.server }
 func (s *server1Stream) Conn() httpConn       { return s.conn }
 func (s *server1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
@@ -1755,7 +1755,7 @@ func (s *backend1Stream) ExecuteSocket() error { // upgrade: websocket
 	return nil
 }
 
-func (s *backend1Stream) Servend() httpServend { return s.conn.node.backend }
+func (s *backend1Stream) Serend() httpSerend   { return s.conn.node.backend }
 func (s *backend1Stream) Conn() httpConn       { return s.conn }
 func (s *backend1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
@@ -2086,9 +2086,11 @@ func (r *backend1Response) readContent() (p []byte, err error) { return r.readCo
 var poolBackend1Socket sync.Pool
 
 func getBackend1Socket(stream *backend1Stream) *backend1Socket {
+	// TODO
 	return nil
 }
 func putBackend1Socket(socket *backend1Socket) {
+	// TODO
 }
 
 // backend1Socket is the backend-side HTTP/1 websocket.

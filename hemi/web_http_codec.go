@@ -18,8 +18,8 @@ import (
 	"time"
 )
 
-// httpServend collects shared methods between HTTPServer or HTTPBackend.
-type httpServend interface {
+// httpSerend collects shared methods between *http[x3]Server and *http[1-3]Backend.
+type httpSerend interface {
 	// Imports
 	contentSaver
 	// Methods
@@ -36,7 +36,7 @@ type httpConn interface {
 
 // httpStream collects shared methods between *server[1-3]Stream and *backend[1-3]Stream.
 type httpStream interface {
-	Servend() httpServend
+	Serend() httpSerend
 	Conn() httpConn
 	remoteAddr() net.Addr
 	buffer256() []byte
@@ -143,10 +143,10 @@ func (r *httpIn_) onUse(httpVersion uint8, asResponse bool) { // for non-zeros
 	} else {
 		// HTTP/1 supports request pipelining, so input related are not set here.
 	}
-	servend := r.stream.Servend()
-	r.recvTimeout = servend.RecvTimeout()
-	r.maxContentSize = servend.MaxContentSize()
-	r.maxMemoryContentSize = servend.MaxMemoryContentSize()
+	serend := r.stream.Serend()
+	r.recvTimeout = serend.RecvTimeout()
+	r.maxContentSize = serend.MaxContentSize()
+	r.maxMemoryContentSize = serend.MaxMemoryContentSize()
 	r.contentSize = -1 // no content
 	r.httpVersion = httpVersion
 	r.asResponse = asResponse
@@ -1397,7 +1397,7 @@ func (r *httpIn_) _growArray(size int32) bool { // stock(<4K)->4K->16K->64K1->(1
 }
 
 func (r *httpIn_) saveContentFilesDir() string {
-	return r.stream.Servend().SaveContentFilesDir()
+	return r.stream.Serend().SaveContentFilesDir()
 }
 
 func (r *httpIn_) _newTempFile(retain bool) (tempFile, error) { // to save content to
@@ -1489,8 +1489,8 @@ type httpOut0 struct { // for fast reset, entirely
 
 func (r *httpOut_) onUse(httpVersion uint8, asRequest bool) { // for non-zeros
 	r.fields = r.stockFields[:]
-	servend := r.stream.Servend()
-	r.sendTimeout = servend.SendTimeout()
+	serend := r.stream.Serend()
+	r.sendTimeout = serend.SendTimeout()
 	r.contentSize = -1 // not set
 	r.httpVersion = httpVersion
 	r.asRequest = asRequest

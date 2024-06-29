@@ -317,7 +317,7 @@ func (s *server3Stream) executeSocket() { // see RFC 9220
 	// TODO
 }
 
-func (s *server3Stream) Servend() httpServend { return s.conn.gate.server }
+func (s *server3Stream) Serend() httpSerend   { return s.conn.gate.server }
 func (s *server3Stream) Conn() httpConn       { return s.conn }
 func (s *server3Stream) remoteAddr() net.Addr { return nil } // TODO
 
@@ -740,7 +740,7 @@ func (s *backend3Stream) ExecuteSocket() error { // see RFC 9220
 	return nil
 }
 
-func (s *backend3Stream) Servend() httpServend { return s.conn.node.backend }
+func (s *backend3Stream) Serend() httpSerend   { return s.conn.node.backend }
 func (s *backend3Stream) Conn() httpConn       { return s.conn }
 func (s *backend3Stream) remoteAddr() net.Addr { return nil } // TODO
 

@@ -25,9 +25,6 @@ type HTTPServer interface { // for *http[x3]Server
 	Server
 	contentSaver
 	// Methods
-	MaxMemoryContentSize() int32 // in request
-	MaxStreamsPerConn() int32
-
 	bindApps()
 	findApp(hostname []byte) *Webapp
 }
@@ -2664,9 +2661,6 @@ type HTTPBackend interface { // for *HTTP[1-3]Backend
 	Backend
 	contentSaver
 	// Methods
-	MaxMemoryContentSize() int32 // in response
-	MaxStreamsPerConn() int32
-
 	FetchStream() (backendStream, error)
 	StoreStream(stream backendStream)
 }

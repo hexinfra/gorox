@@ -922,7 +922,7 @@ func (s *server2Stream) executeSocket() { // see RFC 8441: https://datatracker.i
 	// TODO
 }
 
-func (s *server2Stream) Servend() httpServend { return s.conn.gate.server }
+func (s *server2Stream) Serend() httpSerend   { return s.conn.gate.server }
 func (s *server2Stream) Conn() httpConn       { return s.conn }
 func (s *server2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
@@ -1385,7 +1385,7 @@ func (s *backend2Stream) ExecuteSocket() error { // see RFC 8441: https://datatr
 	return nil
 }
 
-func (s *backend2Stream) Servend() httpServend { return s.conn.node.backend }
+func (s *backend2Stream) Serend() httpSerend   { return s.conn.node.backend }
 func (s *backend2Stream) Conn() httpConn       { return s.conn }
 func (s *backend2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 

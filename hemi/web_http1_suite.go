@@ -1273,7 +1273,7 @@ func (r *server1Response) addTrailer(name []byte, value []byte) bool {
 }
 func (r *server1Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }
 
-func (r *server1Response) proxyPass1xx(resp backendResponse) bool {
+func (r *server1Response) proxyPass1xx(resp response) bool {
 	resp.delHopHeaders()
 	r.status = resp.Status()
 	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
@@ -1405,11 +1405,11 @@ func (b *HTTP1Backend) CreateNode(name string) Node {
 	return node
 }
 
-func (b *HTTP1Backend) FetchStream() (backendStream, error) {
+func (b *HTTP1Backend) FetchStream() (stream, error) {
 	node := b.nodes[b.nextIndex()]
 	return node.fetchStream()
 }
-func (b *HTTP1Backend) StoreStream(stream backendStream) {
+func (b *HTTP1Backend) StoreStream(stream stream) {
 	stream1 := stream.(*backend1Stream)
 	stream1.conn.node.storeStream(stream1)
 }
@@ -1742,9 +1742,9 @@ func (s *backend1Stream) onEnd() { // for zeros
 	s.region.Free()
 }
 
-func (s *backend1Stream) Request() backendRequest   { return &s.request }
-func (s *backend1Stream) Response() backendResponse { return &s.response }
-func (s *backend1Stream) Socket() backendSocket     { return nil } // TODO
+func (s *backend1Stream) Request() request   { return &s.request }
+func (s *backend1Stream) Response() response { return &s.response }
+func (s *backend1Stream) Socket() socket     { return nil } // TODO
 
 func (s *backend1Stream) ExecuteExchan() error { // request & response
 	// TODO

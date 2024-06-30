@@ -299,7 +299,7 @@ func (r *uwsgiRequest) onEnd() {
 	// TODO
 }
 
-// uwsgiResponse must implements the backendResponse interface.
+// uwsgiResponse must implements the response interface.
 type uwsgiResponse struct { // incoming. needs parsing
 	// Assocs
 	conn *uwsgiConn

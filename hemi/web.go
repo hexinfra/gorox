@@ -676,15 +676,6 @@ func (r *Rule) notExistMatch(req Request, value []byte) bool { // value !e
 	return pathInfo == nil
 }
 
-// Handle is a function which handles http request and gives http response.
-type Handle func(req Request, resp Response)
-
-// Mapper performs request mapping in handlets. Mappers are not components.
-type Mapper interface {
-	FindHandle(req Request) Handle // called firstly
-	HandleName(req Request) string // called secondly
-}
-
 // Handlet component handles the incoming request and gives an outgoing response if the request is handled.
 type Handlet interface {
 	// Imports
@@ -733,6 +724,15 @@ func (h *Handlet_) Dispatch(req Request, resp Response, notFound Handle) {
 	}
 }
 
+// Handle is a function which handles http request and gives http response.
+type Handle func(req Request, resp Response)
+
+// Mapper performs request mapping in handlets. Mappers are not components.
+type Mapper interface {
+	FindHandle(req Request) Handle // called firstly
+	HandleName(req Request) string // called secondly
+}
+
 // Reviser component revises incoming requests and outgoing responses.
 type Reviser interface {
 	// Imports
@@ -763,13 +763,6 @@ type Reviser_ struct {
 
 func (r *Reviser_) ID() uint8      { return r.id }
 func (r *Reviser_) setID(id uint8) { r.id = id }
-
-// Socket is the server-side websocket.
-type Socket interface { // for *server[1-3]Socket
-	Read(p []byte) (int, error)
-	Write(p []byte) (int, error)
-	Close() error
-}
 
 // Socklet component handles the websocket.
 type Socklet interface {

@@ -2495,11 +2495,11 @@ type Response interface { // for *server[1-3]Response
 	echoChain() error // chunks
 	addTrailer(name []byte, value []byte) bool
 	endVague() error
-	proxyPass1xx(resp backendResponse) bool
-	proxyPass(resp backendResponse) error
+	proxyPass1xx(resp response) bool
+	proxyPass(resp response) error
 	proxyPost(content any, hasTrailers bool) error
-	proxyCopyHead(resp backendResponse, cfg *WebExchanProxyConfig) bool
-	proxyCopyTail(resp backendResponse, cfg *WebExchanProxyConfig) bool
+	proxyCopyHead(resp response, cfg *WebExchanProxyConfig) bool
+	proxyCopyTail(resp response, cfg *WebExchanProxyConfig) bool
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
 }
@@ -2802,7 +2802,7 @@ func (r *serverResponse_) deleteLastModified() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified)
 }
 
-func (r *serverResponse_) proxyPass(resp backendResponse) error { // sync content to the other side directly
+func (r *serverResponse_) proxyPass(resp response) error { // sync content to the other side directly
 	pass := r.message.passBytes
 	if resp.IsVague() || r.hasRevisers { // if we need to revise, we always use vague no matter the original content is sized or vague
 		pass = r.EchoBytes
@@ -2837,7 +2837,7 @@ func (r *serverResponse_) proxyPass(resp backendResponse) error { // sync conten
 	}
 	return nil
 }
-func (r *serverResponse_) proxyCopyHead(resp backendResponse, cfg *WebExchanProxyConfig) bool {
+func (r *serverResponse_) proxyCopyHead(resp response, cfg *WebExchanProxyConfig) bool {
 	resp.delHopHeaders()
 
 	// copy control (:status)
@@ -2858,7 +2858,7 @@ func (r *serverResponse_) proxyCopyHead(resp backendResponse, cfg *WebExchanProx
 
 	return true
 }
-func (r *serverResponse_) proxyCopyTail(resp backendResponse, cfg *WebExchanProxyConfig) bool {
+func (r *serverResponse_) proxyCopyTail(resp response, cfg *WebExchanProxyConfig) bool {
 	return resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.message.addTrailer(name, value)
 	})
@@ -2867,6 +2867,13 @@ func (r *serverResponse_) proxyCopyTail(resp backendResponse, cfg *WebExchanProx
 func (r *serverResponse_) hookReviser(reviser Reviser) {
 	r.hasRevisers = true
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
+}
+
+// Socket is the server-side websocket.
+type Socket interface { // for *server[1-3]Socket
+	Read(p []byte) (int, error)
+	Write(p []byte) (int, error)
+	Close() error
 }
 
 // serverSocket_ is the parent for server[1-3]Socket.
@@ -2891,8 +2898,8 @@ type HTTPBackend interface { // for *HTTP[1-3]Backend
 	Backend
 	contentSaver
 	// Methods
-	FetchStream() (backendStream, error)
-	StoreStream(stream backendStream)
+	FetchStream() (stream, error)
+	StoreStream(stream stream)
 }
 
 // httpBackend_ is the parent for http[1-3]Backend.
@@ -2974,11 +2981,11 @@ func (n *httpNode_) OnPrepare() {
 	n.Node_.OnPrepare()
 }
 
-// backendStream is the backend-side http stream.
-type backendStream interface { // for *backend[1-3]Stream
-	Request() backendRequest
-	Response() backendResponse
-	Socket() backendSocket
+// stream is the backend-side http stream.
+type stream interface { // for *backend[1-3]Stream
+	Request() request
+	Response() response
+	Socket() socket
 
 	ExecuteExchan() error
 	ExecuteSocket() error
@@ -2987,8 +2994,8 @@ type backendStream interface { // for *backend[1-3]Stream
 	markBroken()
 }
 
-// backendRequest is the backend-side http request.
-type backendRequest interface { // for *backend[1-3]Request
+// request is the backend-side http request.
+type request interface { // for *backend[1-3]Request
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool
 	proxyCopyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
@@ -3005,7 +3012,7 @@ type backendRequest_ struct { // outgoing. needs building
 	// Parent
 	httpOut_ // outgoing http request
 	// Assocs
-	response backendResponse // the corresponding response
+	response response // the corresponding response
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -3038,10 +3045,10 @@ func (r *backendRequest_) onEnd() { // for zeros
 	r.httpOut_.onEnd()
 }
 
-func (r *backendRequest_) Response() backendResponse { return r.response }
+func (r *backendRequest_) Response() response { return r.response }
 
 func (r *backendRequest_) SetMethodURI(method string, uri string, hasContent bool) bool {
-	return r.message.(backendRequest).setMethodURI(ConstBytes(method), ConstBytes(uri), hasContent)
+	return r.message.(request).setMethodURI(ConstBytes(method), ConstBytes(uri), hasContent)
 }
 func (r *backendRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only. HTTP/1 doesn't use this!
 	// TODO: copy `:scheme $scheme` to r.fields
@@ -3192,7 +3199,7 @@ func (r *backendRequest_) proxyCopyHead(req Request, cfg *WebExchanProxyConfig) 
 		// then the last proxy on the request chain MUST send a request-target of "*" when it forwards the request to the indicated origin server.
 		uri = bytesAsterisk
 	}
-	if !r.message.(backendRequest).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
+	if !r.message.(request).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
 		return false
 	}
 	if req.IsAbsoluteForm() || len(cfg.Hostname) != 0 || len(cfg.ColonPort) != 0 { // TODO: what about HTTP/2 and HTTP/3?
@@ -3216,7 +3223,7 @@ func (r *backendRequest_) proxyCopyHead(req Request, cfg *WebExchanProxyConfig) 
 			} else {
 				colonPort = cfg.ColonPort
 			}
-			if !r.message.(backendRequest).setAuthority(hostname, colonPort) {
+			if !r.message.(request).setAuthority(hostname, colonPort) {
 				return false
 			}
 		}
@@ -3236,7 +3243,7 @@ func (r *backendRequest_) proxyCopyHead(req Request, cfg *WebExchanProxyConfig) 
 	}
 
 	// copy selective forbidden headers (including cookie) from req
-	if req.HasCookies() && !r.message.(backendRequest).proxyCopyCookies(req) {
+	if req.HasCookies() && !r.message.(request).proxyCopyCookies(req) {
 		return false
 	}
 	if !r.message.addHeader(bytesVia, cfg.InboundViaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
@@ -3277,8 +3284,8 @@ func (r *backendRequest_) proxyCopyTail(req Request, cfg *WebExchanProxyConfig) 
 	})
 }
 
-// backendResponse is the backend-side http response.
-type backendResponse interface { // for *backend[1-3]Response
+// response is the backend-side http response.
+type response interface { // for *backend[1-3]Response
 	KeepAlive() int8
 	HeadResult() int16
 	BodyResult() int16
@@ -3676,8 +3683,8 @@ func (r *backendResponse_) applyTrailer(index uint8) bool {
 	return true
 }
 
-// backendSocket is the backend-side websocket.
-type backendSocket interface { // for *backend[1-3]Socket
+// socket is the backend-side websocket.
+type socket interface { // for *backend[1-3]Socket
 	Read(p []byte) (int, error)
 	Write(p []byte) (int, error)
 	Close() error

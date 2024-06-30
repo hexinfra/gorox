@@ -9,9 +9,11 @@ package hemi
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"strings"
 	"sync"
+	"time"
 )
 
 const ( // version codes
@@ -2448,4 +2450,265 @@ func (s *span) sub(delta int32) {
 		s.from -= delta
 		s.edge -= delta
 	}
+}
+
+// Upfile is a file uploaded by http client.
+type Upfile struct { // 48 bytes
+	hash     uint16 // hash of name, to support fast comparison
+	flags    uint8  // see upfile flags
+	errCode  int8   // error code
+	nameSize uint8  // name size
+	baseSize uint8  // base size
+	typeSize uint8  // type size
+	pathSize uint8  // path size
+	nameFrom int32  // like: "avatar"
+	baseFrom int32  // like: "michael.jpg"
+	typeFrom int32  // like: "image/jpeg"
+	pathFrom int32  // like: "/path/to/391384576"
+	size     int64  // file size
+	meta     string // cannot use []byte as it can cause memory leak if caller save file to another place
+}
+
+func (u *Upfile) nameEqualString(p []byte, x string) bool {
+	if int(u.nameSize) != len(x) {
+		return false
+	}
+	if u.metaSet() {
+		return u.meta[u.nameFrom:u.nameFrom+int32(u.nameSize)] == x
+	}
+	return string(p[u.nameFrom:u.nameFrom+int32(u.nameSize)]) == x
+}
+
+const ( // upfile flags
+	upfileFlagMetaSet = 0b10000000
+	upfileFlagIsMoved = 0b01000000
+)
+
+func (u *Upfile) setMeta(p []byte) {
+	if u.flags&upfileFlagMetaSet > 0 {
+		return
+	}
+	u.flags |= upfileFlagMetaSet
+	from := u.nameFrom
+	if u.baseFrom < from {
+		from = u.baseFrom
+	}
+	if u.pathFrom < from {
+		from = u.pathFrom
+	}
+	if u.typeFrom < from {
+		from = u.typeFrom
+	}
+	max, edge := u.typeFrom, u.typeFrom+int32(u.typeSize)
+	if u.pathFrom > max {
+		max = u.pathFrom
+		edge = u.pathFrom + int32(u.pathSize)
+	}
+	if u.baseFrom > max {
+		max = u.baseFrom
+		edge = u.baseFrom + int32(u.baseSize)
+	}
+	if u.nameFrom > max {
+		max = u.nameFrom
+		edge = u.nameFrom + int32(u.nameSize)
+	}
+	u.meta = string(p[from:edge]) // dup to avoid memory leak
+	u.nameFrom -= from
+	u.baseFrom -= from
+	u.typeFrom -= from
+	u.pathFrom -= from
+}
+func (u *Upfile) metaSet() bool { return u.flags&upfileFlagMetaSet > 0 }
+func (u *Upfile) setMoved()     { u.flags |= upfileFlagIsMoved }
+func (u *Upfile) isMoved() bool { return u.flags&upfileFlagIsMoved > 0 }
+
+const ( // upfile error codes
+	upfileOK        = 0
+	upfileError     = 1
+	upfileCantWrite = 2
+	upfileTooLarge  = 3
+	upfilePartial   = 4
+	upfileNoFile    = 5
+)
+
+var upfileErrors = [...]error{
+	nil, // no error
+	errors.New("general error"),
+	errors.New("cannot write"),
+	errors.New("too large"),
+	errors.New("partial"),
+	errors.New("no file"),
+}
+
+func (u *Upfile) IsOK() bool   { return u.errCode == 0 }
+func (u *Upfile) Error() error { return upfileErrors[u.errCode] }
+
+func (u *Upfile) Name() string { return u.meta[u.nameFrom : u.nameFrom+int32(u.nameSize)] }
+func (u *Upfile) Base() string { return u.meta[u.baseFrom : u.baseFrom+int32(u.baseSize)] }
+func (u *Upfile) Type() string { return u.meta[u.typeFrom : u.typeFrom+int32(u.typeSize)] }
+func (u *Upfile) Path() string { return u.meta[u.pathFrom : u.pathFrom+int32(u.pathSize)] }
+func (u *Upfile) Size() int64  { return u.size }
+
+func (u *Upfile) MoveTo(path string) error {
+	// TODO. Remember to mark as moved
+	return nil
+}
+
+// Cookie is a "set-cookie" header sent to client.
+type Cookie struct {
+	name     string
+	value    string
+	expires  time.Time
+	domain   string
+	path     string
+	sameSite string
+	maxAge   int32
+	secure   bool
+	httpOnly bool
+	invalid  bool
+	quote    bool // if true, quote value with ""
+	aSize    int8
+	ageBuf   [10]byte
+}
+
+func (c *Cookie) Set(name string, value string) bool {
+	// cookie-name = 1*cookie-octet
+	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
+	if name == "" {
+		c.invalid = true
+		return false
+	}
+	for i := 0; i < len(name); i++ {
+		if b := name[i]; httpKchar[b] == 0 {
+			c.invalid = true
+			return false
+		}
+	}
+	c.name = name
+	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
+	for i := 0; i < len(value); i++ {
+		b := value[i]
+		if httpKchar[b] == 1 {
+			continue
+		}
+		if b == ' ' || b == ',' {
+			c.quote = true
+			continue
+		}
+		c.invalid = true
+		return false
+	}
+	c.value = value
+	return true
+}
+
+func (c *Cookie) SetDomain(domain string) bool {
+	// TODO: check domain
+	c.domain = domain
+	return true
+}
+func (c *Cookie) SetPath(path string) bool {
+	// path-value = *av-octet
+	// av-octet = %x20-3A / %x3C-7E
+	for i := 0; i < len(path); i++ {
+		if b := path[i]; b < 0x20 || b > 0x7E || b == 0x3B {
+			c.invalid = true
+			return false
+		}
+	}
+	c.path = path
+	return true
+}
+func (c *Cookie) SetExpires(expires time.Time) bool {
+	expires = expires.UTC()
+	if expires.Year() < 1601 {
+		c.invalid = true
+		return false
+	}
+	c.expires = expires
+	return true
+}
+func (c *Cookie) SetMaxAge(maxAge int32)  { c.maxAge = maxAge }
+func (c *Cookie) SetSecure()              { c.secure = true }
+func (c *Cookie) SetHttpOnly()            { c.httpOnly = true }
+func (c *Cookie) SetSameSiteStrict()      { c.sameSite = "Strict" }
+func (c *Cookie) SetSameSiteLax()         { c.sameSite = "Lax" }
+func (c *Cookie) SetSameSiteNone()        { c.sameSite = "None" }
+func (c *Cookie) SetSameSite(mode string) { c.sameSite = mode }
+
+func (c *Cookie) size() int {
+	// set-cookie: name=value; Expires=Sun, 06 Nov 1994 08:49:37 GMT; Max-Age=123; Domain=example.com; Path=/; Secure; HttpOnly; SameSite=Strict
+	n := len(c.name) + 1 + len(c.value) // name=value
+	if c.quote {
+		n += 2 // ""
+	}
+	if !c.expires.IsZero() {
+		n += len("; Expires=Sun, 06 Nov 1994 08:49:37 GMT")
+	}
+	if c.maxAge > 0 {
+		m := i32ToDec(c.maxAge, c.ageBuf[:])
+		c.aSize = int8(m)
+		n += len("; Max-Age=") + m
+	} else if c.maxAge < 0 {
+		c.ageBuf[0] = '0'
+		c.aSize = 1
+		n += len("; Max-Age=0")
+	}
+	if c.domain != "" {
+		n += len("; Domain=") + len(c.domain)
+	}
+	if c.path != "" {
+		n += len("; Path=") + len(c.path)
+	}
+	if c.secure {
+		n += len("; Secure")
+	}
+	if c.httpOnly {
+		n += len("; HttpOnly")
+	}
+	if c.sameSite != "" {
+		n += len("; SameSite=") + len(c.sameSite)
+	}
+	return n
+}
+func (c *Cookie) writeTo(p []byte) int {
+	i := copy(p, c.name)
+	p[i] = '='
+	i++
+	if c.quote {
+		p[i] = '"'
+		i++
+		i += copy(p[i:], c.value)
+		p[i] = '"'
+		i++
+	} else {
+		i += copy(p[i:], c.value)
+	}
+	if !c.expires.IsZero() {
+		i += copy(p[i:], "; Expires=")
+		i += clockWriteHTTPDate(p[i:], c.expires)
+	}
+	if c.maxAge != 0 {
+		i += copy(p[i:], "; Max-Age=")
+		i += copy(p[i:], c.ageBuf[0:c.aSize])
+	}
+	if c.domain != "" {
+		i += copy(p[i:], "; Domain=")
+		i += copy(p[i:], c.domain)
+	}
+	if c.path != "" {
+		i += copy(p[i:], "; Path=")
+		i += copy(p[i:], c.path)
+	}
+	if c.secure {
+		i += copy(p[i:], "; Secure")
+	}
+	if c.httpOnly {
+		i += copy(p[i:], "; HttpOnly")
+	}
+	if c.sameSite != "" {
+		i += copy(p[i:], "; SameSite=")
+		i += copy(p[i:], c.sameSite)
+	}
+	return i
 }

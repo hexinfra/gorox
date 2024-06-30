@@ -27,6 +27,18 @@ type pgsqlNode struct {
 	backend *PgsqlBackend
 }
 
+func (n *pgsqlNode) onCreate(name string, backend *PgsqlBackend) {
+	n.Node_.OnCreate(name)
+	n.backend = backend
+}
+
+func (n *pgsqlNode) OnConfigure() {
+	n.Node_.OnConfigure()
+}
+func (n *pgsqlNode) OnPrepare() {
+	n.Node_.OnPrepare()
+}
+
 func (n *pgsqlNode) Maintain() { // runner
 }
 

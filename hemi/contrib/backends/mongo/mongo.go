@@ -27,6 +27,18 @@ type mongoNode struct {
 	backend *MongoBackend
 }
 
+func (n *mongoNode) onCreate(name string, backend *MongoBackend) {
+	n.Node_.OnCreate(name)
+	n.backend = backend
+}
+
+func (n *mongoNode) OnConfigure() {
+	n.Node_.OnConfigure()
+}
+func (n *mongoNode) OnPrepare() {
+	n.Node_.OnPrepare()
+}
+
 func (n *mongoNode) Maintain() { // runner
 }
 

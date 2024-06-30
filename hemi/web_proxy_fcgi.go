@@ -365,19 +365,19 @@ func (n *fcgiNode) dial() (*fcgiConn, error) {
 		Printf("fcgiNode=%s dial %s\n", n.name, n.address)
 	}
 	var (
-		fConn *fcgiConn
-		err   error
+		conn *fcgiConn
+		err  error
 	)
 	if n.IsUDS() {
-		fConn, err = n._dialUDS()
+		conn, err = n._dialUDS()
 	} else {
-		fConn, err = n._dialTCP()
+		conn, err = n._dialTCP()
 	}
 	if err != nil {
 		return nil, errNodeDown
 	}
 	n.IncSub() // conn
-	return fConn, err
+	return conn, err
 }
 func (n *fcgiNode) _dialUDS() (*fcgiConn, error) {
 	// TODO: dynamic address names?
@@ -471,6 +471,7 @@ func getFCGIConn(id int64, node *fcgiNode, netConn net.Conn, rawConn syscall.Raw
 	if x := poolFCGIConn.Get(); x == nil {
 		conn = new(fcgiConn)
 		exchan := &conn.exchan
+		exchan.conn = conn
 		req, resp := &exchan.request, &exchan.response
 		req.exchan = exchan
 		req.response = resp
@@ -535,23 +536,23 @@ func (c *fcgiConn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
+func (c *fcgiConn) isAlive() bool { return time.Now().Before(c.expire) }
+
 func (c *fcgiConn) runOut() bool {
 	return c.usedExchans.Add(1) > c.node.backend.maxExchansPerConn
 }
 
-func (c *fcgiConn) isAlive() bool { return time.Now().Before(c.expire) }
+func (c *fcgiConn) markBroken()    { c.broken.Store(true) }
+func (c *fcgiConn) isBroken() bool { return c.broken.Load() }
 
 func (c *fcgiConn) fetchExchan() (*fcgiExchan, error) {
 	exchan := &c.exchan
-	exchan.onUse(c)
+	exchan.onUse()
 	return exchan, nil
 }
 func (c *fcgiConn) storeExchan(exchan *fcgiExchan) {
 	exchan.onEnd()
 }
-
-func (c *fcgiConn) markBroken()    { c.broken.Store(true) }
-func (c *fcgiConn) isBroken() bool { return c.broken.Load() }
 
 func (c *fcgiConn) Close() error {
 	netConn := c.netConn
@@ -573,8 +574,7 @@ type fcgiExchan struct {
 	// Exchan states (zeros)
 }
 
-func (x *fcgiExchan) onUse(conn *fcgiConn) { // for non-zeros
-	x.conn = conn
+func (x *fcgiExchan) onUse() { // for non-zeros
 	x.region.Init()
 	x.request.onUse()
 	x.response.onUse()
@@ -583,11 +583,7 @@ func (x *fcgiExchan) onEnd() { // for zeros
 	x.response.onEnd()
 	x.request.onEnd()
 	x.region.Free()
-	x.conn = nil
 }
-
-func (x *fcgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
-func (x *fcgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }
 
 func (x *fcgiExchan) markBroken()    { x.conn.markBroken() }
 func (x *fcgiExchan) isBroken() bool { return x.conn.isBroken() }
@@ -623,6 +619,9 @@ func (x *fcgiExchan) read(p []byte) (int, error) { return x.conn.netConn.Read(p)
 func (x *fcgiExchan) readAtLeast(p []byte, min int) (int, error) {
 	return io.ReadAtLeast(x.conn.netConn, p, min)
 }
+
+func (x *fcgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
+func (x *fcgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }
 
 // fcgiRequest
 type fcgiRequest struct { // outgoing. needs building

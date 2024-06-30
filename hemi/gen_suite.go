@@ -393,8 +393,9 @@ func (n *Node_) OnConfigure() {
 func (n *Node_) OnPrepare() {
 }
 
-func (n *Node_) IsTLS() bool { return n.tlsMode }
-func (n *Node_) IsUDS() bool { return n.udsMode }
+func (n *Node_) IsTLS() bool            { return n.tlsMode }
+func (n *Node_) TLSConfig() *tls.Config { return n.tlsConfig }
+func (n *Node_) IsUDS() bool            { return n.udsMode }
 
 func (n *Node_) markDown()    { n.down.Store(true) }
 func (n *Node_) markUp()      { n.down.Store(false) }

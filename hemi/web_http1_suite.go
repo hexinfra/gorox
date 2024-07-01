@@ -445,7 +445,7 @@ type server1Stream struct {
 	conn     *server1Conn
 	request  server1Request  // the server-side http/1 request.
 	response server1Response // the server-side http/1 response.
-	socket   *server1Socket  // the server-side http/1 websocket.
+	socket   *server1Socket  // the server-side http/1 webSocket.
 	// Stream states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Stream states (controlled)
@@ -1357,7 +1357,7 @@ func getServer1Socket(stream *server1Stream) *server1Socket {
 func putServer1Socket(socket *server1Socket) {
 }
 
-// server1Socket is the server-side HTTP/1 websocket.
+// server1Socket is the server-side HTTP/1 webSocket.
 type server1Socket struct {
 	// Parent
 	serverSocket_
@@ -1718,7 +1718,7 @@ type backend1Stream struct {
 	conn     *backend1Conn    // the backend-side http/1 conn
 	request  backend1Request  // the backend-side http/1 request
 	response backend1Response // the backend-side http/1 response
-	socket   *backend1Socket  // the backend-side http/1 websocket
+	socket   *backend1Socket  // the backend-side http/1 webSocket
 	// Stream states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Stream states (controlled)
@@ -2093,7 +2093,7 @@ func putBackend1Socket(socket *backend1Socket) {
 	// TODO
 }
 
-// backend1Socket is the backend-side HTTP/1 websocket.
+// backend1Socket is the backend-side HTTP/1 webSocket.
 type backend1Socket struct {
 	// Parent
 	backendSocket_
@@ -3009,7 +3009,7 @@ func (r *httpOut_) writeBytes1(p []byte) error {
 	return r._slowCheck(err)
 }
 
-// HTTP/1 websocket
+// HTTP/1 webSocket
 
 func (s *webSocket_) example1() {
 	// TODO

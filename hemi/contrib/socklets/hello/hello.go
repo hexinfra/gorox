@@ -46,6 +46,6 @@ func (s *helloSocklet) OnPrepare() {
 }
 
 func (s *helloSocklet) Serve(req Request, sock Socket) {
-	sock.Write([]byte("hello, websocket!"))
+	sock.Write([]byte("hello, webSocket!"))
 	sock.Close()
 }

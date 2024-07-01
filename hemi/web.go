@@ -764,7 +764,7 @@ type Reviser_ struct {
 func (r *Reviser_) ID() uint8      { return r.id }
 func (r *Reviser_) setID(id uint8) { r.id = id }
 
-// Socklet component handles the websocket.
+// Socklet component handles the webSocket.
 type Socklet interface {
 	// Imports
 	Component

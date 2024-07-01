@@ -720,7 +720,7 @@ func (r *serverRequest_) examineHead() bool {
 		// RFC 6455 (section 4.1):
 		// The method of the request MUST be GET, and the HTTP version MUST be at least 1.1.
 		if r.methodCode != MethodGET || r.httpVersion == Version1_0 || r.contentSize != -1 {
-			r.headResult, r.failReason = StatusMethodNotAllowed, "websocket only supports GET method and HTTP version >= 1.1, without content"
+			r.headResult, r.failReason = StatusMethodNotAllowed, "webSocket only supports GET method and HTTP version >= 1.1, without content"
 			return false
 		}
 	}
@@ -2869,7 +2869,7 @@ func (r *serverResponse_) hookReviser(reviser Reviser) {
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
 }
 
-// Socket is the server-side websocket.
+// Socket is the server-side webSocket.
 type Socket interface { // for *server[1-3]Socket
 	Read(p []byte) (int, error)
 	Write(p []byte) (int, error)
@@ -3630,7 +3630,7 @@ func (r *backendResponse_) checkUpgrade(pairs []pair, from uint8, edge uint8) bo
 		r.headResult, r.failReason = StatusBadRequest, "upgrade is not supported in http/2 and http/3"
 		return false
 	}
-	// TODO: what about websocket?
+	// TODO: what about webSocket?
 	r.headResult, r.failReason = StatusBadRequest, "upgrade is not supported in exchan mode"
 	return false
 }
@@ -3683,7 +3683,7 @@ func (r *backendResponse_) applyTrailer(index uint8) bool {
 	return true
 }
 
-// socket is the backend-side websocket.
+// socket is the backend-side webSocket.
 type socket interface { // for *backend[1-3]Socket
 	Read(p []byte) (int, error)
 	Write(p []byte) (int, error)
@@ -5586,6 +5586,6 @@ func (s *webSocket_) onEnd() {
 func (s *webSocket_) example() {
 }
 
-var ( // websocket errors
+var ( // webSocket errors
 	webSocketWriteBroken = errors.New("write broken")
 )

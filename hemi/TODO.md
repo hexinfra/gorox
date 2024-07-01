@@ -2,7 +2,7 @@
 * [TODO] rpc system design and implementation.
 * [TODO] web rewrite handlet design and implementation.
 * [TODO] web reviser design and implementation.
-* [TODO] websocket implementation.
+* [TODO] webSocket implementation.
 * [TODO] http/2 implementation.
 * [TODO] quic and http/3 implementation.
 * [TODO] cacher implementation.

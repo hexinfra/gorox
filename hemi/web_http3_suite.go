@@ -467,7 +467,7 @@ func getServer3Socket(stream *server3Stream) *server3Socket {
 func putServer3Socket(socket *server3Socket) {
 }
 
-// server3Socket is the server-side HTTP/3 websocket.
+// server3Socket is the server-side HTTP/3 webSocket.
 type server3Socket struct {
 	// Parent
 	serverSocket_
@@ -855,7 +855,7 @@ func getBackend3Socket(stream *backend3Stream) *backend3Socket {
 func putBackend3Socket(socket *backend3Socket) {
 }
 
-// backend3Socket is the backend-side HTTP/3 websocket.
+// backend3Socket is the backend-side HTTP/3 webSocket.
 type backend3Socket struct {
 	// Parent
 	backendSocket_
@@ -957,7 +957,7 @@ func (r *httpOut_) writeBytes3(p []byte) error {
 	return nil
 }
 
-// HTTP/3 websocket
+// HTTP/3 webSocket
 
 func (s *webSocket_) example3() {
 }

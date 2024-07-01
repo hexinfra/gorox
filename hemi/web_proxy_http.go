@@ -95,7 +95,7 @@ func WebExchanReverseProxy(req Request, resp Response, backend HTTPBackend, cfg 
 	backResp := backStream.Response()
 	for { // until we found a non-1xx status (>= 200)
 		backResp.recvHead()
-		if backResp.HeadResult() != StatusOK || backResp.Status() == StatusSwitchingProtocols { // websocket is not served in handlets.
+		if backResp.HeadResult() != StatusOK || backResp.Status() == StatusSwitchingProtocols { // webSocket is not served in handlets.
 			backStream.markBroken()
 			if backResp.HeadResult() == StatusRequestTimeout {
 				resp.SendGatewayTimeout(nil)
@@ -274,7 +274,7 @@ type WebSocketProxyConfig struct {
 func WebSocketReverseProxy(req Request, sock Socket, backend HTTPBackend, cfg *WebSocketProxyConfig) {
 }
 
-// sockProxy socklet passes websockets to http backends.
+// sockProxy socklet passes webSockets to http backends.
 type sockProxy struct {
 	// Parent
 	Socklet_
@@ -307,7 +307,7 @@ func (s *sockProxy) OnConfigure() {
 			UseExitln("invalid toBackend")
 		}
 	} else {
-		UseExitln("toBackend is required for websocket proxy")
+		UseExitln("toBackend is required for webSocket proxy")
 	}
 }
 func (s *sockProxy) OnPrepare() {

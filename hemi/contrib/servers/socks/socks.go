@@ -5,7 +5,7 @@
 
 // SOCKS 5 proxy server.
 
-// Don't confuse SOCKS with sock. We use "sock" as an abbreviation of "websocket".
+// Don't confuse SOCKS with sock. We use "sock" as an abbreviation of "webSocket".
 
 package socks
 

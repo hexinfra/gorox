@@ -1085,7 +1085,7 @@ func getServer2Socket(stream *server2Stream) *server2Socket {
 func putServer2Socket(socket *server2Socket) {
 }
 
-// server2Socket is the server-side HTTP/2 websocket.
+// server2Socket is the server-side HTTP/2 webSocket.
 type server2Socket struct {
 	// Parent
 	serverSocket_
@@ -1500,7 +1500,7 @@ func getBackend2Socket(stream *backend2Stream) *backend2Socket {
 func putBackend2Socket(socket *backend2Socket) {
 }
 
-// backend2Socket is the backend-side HTTP/2 websocket.
+// backend2Socket is the backend-side HTTP/2 webSocket.
 type backend2Socket struct {
 	// Parent
 	backendSocket_
@@ -1613,7 +1613,7 @@ func (r *httpOut_) writeBytes2(p []byte) error {
 	return nil
 }
 
-// HTTP/2 websocket
+// HTTP/2 webSocket
 
 func (s *webSocket_) example2() {
 }

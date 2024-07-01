@@ -160,7 +160,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 	fcgiResp := &fcgiExchan.response
 	for { // until we found a non-1xx status (>= 200)
 		fcgiResp.recvHead()
-		if fcgiResp.HeadResult() != StatusOK || fcgiResp.status == StatusSwitchingProtocols { // websocket is not served in handlets.
+		if fcgiResp.HeadResult() != StatusOK || fcgiResp.status == StatusSwitchingProtocols { // webSocket is not served in handlets.
 			fcgiExchan.markBroken()
 			resp.SendBadGateway(nil)
 			return

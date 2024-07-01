@@ -24,7 +24,7 @@ type Stater_ struct {
 	Component_
 }
 
-// Session is an HTTP session in stater
+// Session is an HTTP session in stater.
 type Session struct {
 	// TODO
 	ID      [40]byte // session id

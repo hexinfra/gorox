@@ -163,6 +163,17 @@ func (s *httpServer_[G]) findApp(hostname []byte) *Webapp {
 func (s *httpServer_[G]) MaxMemoryContentSize() int32 { return s.maxMemoryContentSize }
 func (s *httpServer_[G]) MaxStreamsPerConn() int32    { return s.maxStreamsPerConn }
 
+// httpGate_ is the parent for http[x3]Gate.
+type httpGate_ struct {
+	// Parent
+	Gate_
+	// States
+}
+
+func (g *httpGate_) init(id int32, maxConnsPerGate int32) {
+	g.Gate_.Init(id, maxConnsPerGate)
+}
+
 // Request is the server-side http request.
 type Request interface { // for *server[1-3]Request
 	RemoteAddr() net.Addr
@@ -2757,13 +2768,13 @@ var ( // perfect hash table for response critical headers
 		0: {hashServer, bytesServer, nil, nil},       // restricted
 		1: {hashSetCookie, bytesSetCookie, nil, nil}, // restricted
 		2: {hashUpgrade, bytesUpgrade, nil, nil},     // restricted
-		3: {hashDate, bytesDate, (*serverResponse_).appendDate, (*serverResponse_).deleteDate},
+		3: {hashDate, bytesDate, (*serverResponse_)._insertDate, (*serverResponse_)._removeDate},
 		4: {hashTransferEncoding, bytesTransferEncoding, nil, nil}, // restricted
 		5: {hashConnection, bytesConnection, nil, nil},             // restricted
-		6: {hashLastModified, bytesLastModified, (*serverResponse_).appendLastModified, (*serverResponse_).deleteLastModified},
-		7: {hashExpires, bytesExpires, (*serverResponse_).appendExpires, (*serverResponse_).deleteExpires},
+		6: {hashLastModified, bytesLastModified, (*serverResponse_)._insertLastModified, (*serverResponse_)._removeLastModified},
+		7: {hashExpires, bytesExpires, (*serverResponse_)._insertExpires, (*serverResponse_)._removeExpires},
 		8: {hashContentLength, bytesContentLength, nil, nil}, // restricted
-		9: {hashContentType, bytesContentType, (*serverResponse_).appendContentType, (*serverResponse_).deleteContentType},
+		9: {hashContentType, bytesContentType, (*serverResponse_)._insertContentType, (*serverResponse_)._removeContentType},
 	}
 	serverResponseCriticalHeaderFind = func(hash uint16) int { return (113100 / int(hash)) % 10 }
 )
@@ -2778,10 +2789,10 @@ func (r *serverResponse_) insertHeader(hash uint16, name []byte, value []byte) b
 	}
 	return r.message.addHeader(name, value)
 }
-func (r *serverResponse_) appendExpires(expires []byte) (ok bool) {
+func (r *serverResponse_) _insertExpires(expires []byte) (ok bool) {
 	return r._addUnixTime(&r.unixTimes.expires, &r.indexes.expires, bytesExpires, expires)
 }
-func (r *serverResponse_) appendLastModified(lastModified []byte) (ok bool) {
+func (r *serverResponse_) _insertLastModified(lastModified []byte) (ok bool) {
 	return r._addUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified, bytesLastModified, lastModified)
 }
 
@@ -2795,14 +2806,14 @@ func (r *serverResponse_) removeHeader(hash uint16, name []byte) bool {
 	}
 	return r.message.delHeader(name)
 }
-func (r *serverResponse_) deleteExpires() (deleted bool) {
+func (r *serverResponse_) _removeExpires() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.expires, &r.indexes.expires)
 }
-func (r *serverResponse_) deleteLastModified() (deleted bool) {
+func (r *serverResponse_) _removeLastModified() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified)
 }
 
-func (r *serverResponse_) proxyPass(resp response) error { // sync content to the other side directly
+func (r *serverResponse_) proxyPass(resp response) error { // sync content to client directly
 	pass := r.message.passBytes
 	if resp.IsVague() || r.hasRevisers { // if we need to revise, we always use vague no matter the original content is sized or vague
 		pass = r.EchoBytes
@@ -2898,8 +2909,8 @@ type HTTPBackend interface { // for *HTTP[1-3]Backend
 	Backend
 	contentSaver
 	// Methods
-	FetchStream() (stream, error)
-	StoreStream(stream stream)
+	FetchStream() (backendStream, error)
+	StoreStream(stream backendStream)
 }
 
 // httpBackend_ is the parent for http[1-3]Backend.
@@ -2981,14 +2992,13 @@ func (n *httpNode_) OnPrepare() {
 	n.Node_.OnPrepare()
 }
 
-// stream is the backend-side http stream.
-type stream interface { // for *backend[1-3]Stream
+// backendStream is the backend-side http stream.
+type backendStream interface { // for *backend[1-3]Stream
 	Request() request
+	Exchange() error
 	Response() response
-	Socket() socket
 
-	ExecuteExchan() error
-	ExecuteSocket() error
+	Socket() socket
 
 	isBroken() bool
 	markBroken()
@@ -3093,15 +3103,15 @@ var ( // perfect hash table for request critical headers
 	}{ // connection content-length content-type cookie date host if-modified-since if-range if-unmodified-since transfer-encoding upgrade via
 		0:  {hashContentLength, bytesContentLength, nil, nil}, // restricted
 		1:  {hashConnection, bytesConnection, nil, nil},       // restricted
-		2:  {hashIfRange, bytesIfRange, (*backendRequest_).appendIfRange, (*backendRequest_).deleteIfRange},
+		2:  {hashIfRange, bytesIfRange, (*backendRequest_)._insertIfRange, (*backendRequest_)._removeIfRange},
 		3:  {hashUpgrade, bytesUpgrade, nil, nil}, // restricted
-		4:  {hashIfModifiedSince, bytesIfModifiedSince, (*backendRequest_).appendIfModifiedSince, (*backendRequest_).deleteIfModifiedSince},
-		5:  {hashIfUnmodifiedSince, bytesIfUnmodifiedSince, (*backendRequest_).appendIfUnmodifiedSince, (*backendRequest_).deleteIfUnmodifiedSince},
-		6:  {hashHost, bytesHost, (*backendRequest_).appendHost, (*backendRequest_).deleteHost},
+		4:  {hashIfModifiedSince, bytesIfModifiedSince, (*backendRequest_)._insertIfModifiedSince, (*backendRequest_)._removeIfModifiedSince},
+		5:  {hashIfUnmodifiedSince, bytesIfUnmodifiedSince, (*backendRequest_)._insertIfUnmodifiedSince, (*backendRequest_)._removeIfUnmodifiedSince},
+		6:  {hashHost, bytesHost, (*backendRequest_)._insertHost, (*backendRequest_)._removeHost},
 		7:  {hashTransferEncoding, bytesTransferEncoding, nil, nil}, // restricted
-		8:  {hashContentType, bytesContentType, (*backendRequest_).appendContentType, (*backendRequest_).deleteContentType},
+		8:  {hashContentType, bytesContentType, (*backendRequest_)._insertContentType, (*backendRequest_)._removeContentType},
 		9:  {hashCookie, bytesCookie, nil, nil}, // restricted
-		10: {hashDate, bytesDate, (*backendRequest_).appendDate, (*backendRequest_).deleteDate},
+		10: {hashDate, bytesDate, (*backendRequest_)._insertDate, (*backendRequest_)._removeDate},
 		11: {hashVia, bytesVia, nil, nil}, // restricted
 	}
 	backendRequestCriticalHeaderFind = func(hash uint16) int { return (645048 / int(hash)) % 12 }
@@ -3117,17 +3127,17 @@ func (r *backendRequest_) insertHeader(hash uint16, name []byte, value []byte) b
 	}
 	return r.message.addHeader(name, value)
 }
-func (r *backendRequest_) appendHost(host []byte) (ok bool) {
+func (r *backendRequest_) _insertHost(host []byte) (ok bool) {
 	return r._appendSingleton(&r.indexes.host, bytesHost, host)
 }
-func (r *backendRequest_) appendIfModifiedSince(since []byte) (ok bool) {
+func (r *backendRequest_) _insertIfRange(ifRange []byte) (ok bool) {
+	return r._appendSingleton(&r.indexes.ifRange, bytesIfRange, ifRange)
+}
+func (r *backendRequest_) _insertIfModifiedSince(since []byte) (ok bool) {
 	return r._addUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince, bytesIfModifiedSince, since)
 }
-func (r *backendRequest_) appendIfUnmodifiedSince(since []byte) (ok bool) {
+func (r *backendRequest_) _insertIfUnmodifiedSince(since []byte) (ok bool) {
 	return r._addUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, bytesIfUnmodifiedSince, since)
-}
-func (r *backendRequest_) appendIfRange(ifRange []byte) (ok bool) {
-	return r._appendSingleton(&r.indexes.ifRange, bytesIfRange, ifRange)
 }
 
 func (r *backendRequest_) removeHeader(hash uint16, name []byte) bool {
@@ -3140,17 +3150,17 @@ func (r *backendRequest_) removeHeader(hash uint16, name []byte) bool {
 	}
 	return r.message.delHeader(name)
 }
-func (r *backendRequest_) deleteHost() (deleted bool) {
+func (r *backendRequest_) _removeHost() (deleted bool) {
 	return r._deleteSingleton(&r.indexes.host)
 }
-func (r *backendRequest_) deleteIfModifiedSince() (deleted bool) {
+func (r *backendRequest_) _removeIfRange() (deleted bool) {
+	return r._deleteSingleton(&r.indexes.ifRange)
+}
+func (r *backendRequest_) _removeIfModifiedSince() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince)
 }
-func (r *backendRequest_) deleteIfUnmodifiedSince() (deleted bool) {
+func (r *backendRequest_) _removeIfUnmodifiedSince() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince)
-}
-func (r *backendRequest_) deleteIfRange() (deleted bool) {
-	return r._deleteSingleton(&r.indexes.ifRange)
 }
 
 func (r *backendRequest_) proxyPass(req Request) error { // sync content to backend directly
@@ -3705,8 +3715,8 @@ func (s *backendSocket_) onEnd() {
 	s.webSocket_.onEnd()
 }
 
-// httpSerend collects shared methods between *http[x3]Server and *http[1-3]Backend.
-type httpSerend interface {
+// httpHolder collects shared methods between *http[x3]Server and *http[1-3]Backend.
+type httpHolder interface {
 	// Imports
 	contentSaver
 	// Methods
@@ -3723,8 +3733,9 @@ type httpConn interface {
 
 // httpStream collects shared methods between *server[1-3]Stream and *backend[1-3]Stream.
 type httpStream interface {
-	Serend() httpSerend
+	Holder() httpHolder
 	Conn() httpConn
+
 	remoteAddr() net.Addr
 	buffer256() []byte
 	unsafeMake(size int) []byte
@@ -3741,11 +3752,11 @@ type httpStream interface {
 // httpIn_ is the parent for serverRequest_ and backendResponse_.
 type httpIn_ struct { // incoming. needs parsing
 	// Assocs
+	stream  httpStream  // *server[1-3]Stream, *backend[1-3]Stream
 	message interface { // *server[1-3]Request, *backend[1-3]Response
 		readContent() (p []byte, err error)
 		examineTail() bool
 	}
-	stream httpStream // *server[1-3]Stream, *backend[1-3]Stream
 	// Stream states (stocks)
 	stockPrimes [40]pair   // for r.primes
 	stockExtras [30]pair   // for r.extras
@@ -3830,10 +3841,10 @@ func (r *httpIn_) onUse(httpVersion uint8, asResponse bool) { // for non-zeros
 	} else {
 		// HTTP/1 supports request pipelining, so input related are not set here.
 	}
-	serend := r.stream.Serend()
-	r.recvTimeout = serend.RecvTimeout()
-	r.maxContentSize = serend.MaxContentSize()
-	r.maxMemoryContentSize = serend.MaxMemoryContentSize()
+	holder := r.stream.Holder()
+	r.recvTimeout = holder.RecvTimeout()
+	r.maxContentSize = holder.MaxContentSize()
+	r.maxMemoryContentSize = holder.MaxMemoryContentSize()
 	r.contentSize = -1 // no content
 	r.httpVersion = httpVersion
 	r.asResponse = asResponse
@@ -5084,19 +5095,21 @@ func (r *httpIn_) _growArray(size int32) bool { // stock(<4K)->4K->16K->64K1->(1
 }
 
 func (r *httpIn_) saveContentFilesDir() string {
-	return r.stream.Serend().SaveContentFilesDir()
+	return r.stream.Holder().SaveContentFilesDir()
 }
 
 func (r *httpIn_) _newTempFile(retain bool) (tempFile, error) { // to save content to
-	if !retain { // since data is not used by upper caller, we don't need to actually write data to file.
+	if retain {
+		filesDir := r.saveContentFilesDir()
+		pathBuffer := r.UnsafeMake(len(filesDir) + 19) // 19 bytes is enough for an int64
+		n := copy(pathBuffer, filesDir)
+		n += r.stream.Conn().MakeTempName(pathBuffer[n:], r.recvTime.Unix())
+		return os.OpenFile(WeakString(pathBuffer[:n]), os.O_RDWR|os.O_CREATE, 0644)
+	} else { // since data is not used by upper caller, we don't need to actually write data to file.
 		return fakeFile, nil
 	}
-	filesDir := r.saveContentFilesDir()
-	pathBuffer := r.UnsafeMake(len(filesDir) + 19) // 19 bytes is enough for an int64
-	n := copy(pathBuffer, filesDir)
-	n += r.stream.Conn().MakeTempName(pathBuffer[n:], r.recvTime.Unix())
-	return os.OpenFile(WeakString(pathBuffer[:n]), os.O_RDWR|os.O_CREATE, 0644)
 }
+
 func (r *httpIn_) _beforeRead(toTime *time.Time) error {
 	if toTime.IsZero() {
 		*toTime = time.Now()
@@ -5107,7 +5120,7 @@ func (r *httpIn_) _tooSlow() bool { // reports whether the speed of incoming con
 	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
 }
 
-var ( // http incoming message errors
+var ( // incoming errors
 	httpInBadChunk = errors.New("bad incoming http chunk")
 	httpInTooSlow  = errors.New("http incoming too slow")
 )
@@ -5115,6 +5128,7 @@ var ( // http incoming message errors
 // httpOut_ is the parent for serverResponse_ and backendRequest_.
 type httpOut_ struct { // outgoing. needs building
 	// Assocs
+	stream  httpStream  // *server[1-3]Stream, *backend[1-3]Stream
 	message interface { // *server[1-3]Response, *backend[1-3]Request
 		control() []byte
 		addHeader(name []byte, value []byte) bool
@@ -5140,11 +5154,10 @@ type httpOut_ struct { // outgoing. needs building
 		passHeaders() error
 		passBytes(p []byte) error
 	}
-	stream httpStream // *server[1-3]Stream, *backend[1-3]Stream
 	// Stream states (stocks)
 	stockFields [1536]byte // for r.fields
 	// Stream states (controlled)
-	edges [128]uint16 // edges of headers or trailers in r.fields. not used at the same time. controlled by r.nHeaders or r.nTrailers. edges[0] is not used!
+	edges [128]uint16 // edges of headers or trailers in r.fields, but not used at the same time. controlled by r.nHeaders or r.nTrailers. edges[0] is not used!
 	piece Piece       // for r.chain. used when sending content or echoing chunks
 	chain Chain       // outgoing piece chain. used when sending content or echoing chunks
 	// Stream states (non-zeros)
@@ -5176,8 +5189,8 @@ type httpOut0 struct { // for fast reset, entirely
 
 func (r *httpOut_) onUse(httpVersion uint8, asRequest bool) { // for non-zeros
 	r.fields = r.stockFields[:]
-	serend := r.stream.Serend()
-	r.sendTimeout = serend.SendTimeout()
+	holder := r.stream.Holder()
+	r.sendTimeout = holder.SendTimeout()
 	r.contentSize = -1 // not set
 	r.httpVersion = httpVersion
 	r.asRequest = asRequest
@@ -5275,16 +5288,12 @@ func (r *httpOut_) _nameCheck(name []byte) (hash uint16, valid bool, lower []byt
 func (r *httpOut_) isVague() bool { return r.contentSize == -2 }
 func (r *httpOut_) IsSent() bool  { return r.isSent }
 
-func (r *httpOut_) appendContentType(contentType []byte) (ok bool) {
+func (r *httpOut_) _insertContentType(contentType []byte) (ok bool) {
 	return r._appendSingleton(&r.iContentType, bytesContentType, contentType)
 }
-func (r *httpOut_) appendDate(date []byte) (ok bool) { // rarely used in backend request
+func (r *httpOut_) _insertDate(date []byte) (ok bool) { // rarely used in backend request
 	return r._appendSingleton(&r.iDate, bytesDate, date)
 }
-
-func (r *httpOut_) deleteContentType() (deleted bool) { return r._deleteSingleton(&r.iContentType) }
-func (r *httpOut_) deleteDate() (deleted bool)        { return r._deleteSingleton(&r.iDate) }
-
 func (r *httpOut_) _appendSingleton(pIndex *uint8, name []byte, value []byte) bool {
 	if *pIndex > 0 || !r.message.addHeader(name, value) {
 		return false
@@ -5292,6 +5301,9 @@ func (r *httpOut_) _appendSingleton(pIndex *uint8, name []byte, value []byte) bo
 	*pIndex = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
 	return true
 }
+
+func (r *httpOut_) _removeContentType() (deleted bool) { return r._deleteSingleton(&r.iContentType) }
+func (r *httpOut_) _removeDate() (deleted bool)        { return r._deleteSingleton(&r.iDate) }
 func (r *httpOut_) _deleteSingleton(pIndex *uint8) bool {
 	if *pIndex == 0 { // not exist
 		return false
@@ -5335,6 +5347,11 @@ func (r *httpOut_) _delUnixTime(pUnixTime *int64, pIndex *uint8) bool {
 	}
 	*pUnixTime = -1
 	return true
+}
+
+func (r *httpOut_) pickRanges(contentRanges []Range, rangeType string) {
+	r.contentRanges = contentRanges
+	r.rangeType = rangeType
 }
 
 func (r *httpOut_) SetSendTimeout(timeout time.Duration) { r.sendTimeout = timeout }
@@ -5416,11 +5433,6 @@ func (r *httpOut_) proxyPost(content any, hasTrailers bool) error { // post held
 		r.forbidContent = true
 		return r.message.doSend()
 	}
-}
-
-func (r *httpOut_) pickRanges(contentRanges []Range, rangeType string) {
-	r.contentRanges = contentRanges
-	r.rangeType = rangeType
 }
 
 func (r *httpOut_) sendText(content []byte) error {
@@ -5550,7 +5562,7 @@ func (r *httpOut_) _tooSlow() bool { // reports whether the speed of outgoing co
 	return r.sendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.sendTimeout
 }
 
-var ( // http outgoing message errors
+var ( // outgoing errors
 	httpOutTooSlow       = errors.New("http outgoing too slow")
 	httpOutWriteBroken   = errors.New("write broken")
 	httpOutUnknownStatus = errors.New("unknown status")
@@ -5563,12 +5575,12 @@ var ( // http outgoing message errors
 // webSocket_
 type webSocket_ struct {
 	// Assocs
-	webSocket interface { // *server[1-3]Socket, *backend[1-3]Socket
+	stream httpStream  // *server[1-3]Stream, *backend[1-3]Stream
+	socket interface { // *server[1-3]Socket, *backend[1-3]Socket
 		Read(p []byte) (int, error)
 		Write(p []byte) (int, error)
 		Close() error
 	}
-	stream httpStream // *server[1-3]Stream, *backend[1-3]Stream
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

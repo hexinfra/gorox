@@ -836,10 +836,10 @@ func getServer2Stream(conn *server2Conn, id uint32, outWindow int32) *server2Str
 	if x := poolServer2Stream.Get(); x == nil {
 		stream = new(server2Stream)
 		req, resp := &stream.request, &stream.response
-		req.message = req
 		req.stream = stream
-		resp.message = resp
+		req.message = req
 		resp.stream = stream
+		resp.message = resp
 		resp.request = req
 	} else {
 		stream = x.(*server2Stream)
@@ -922,7 +922,7 @@ func (s *server2Stream) executeSocket() { // see RFC 8441: https://datatracker.i
 	// TODO
 }
 
-func (s *server2Stream) Serend() httpSerend   { return s.conn.gate.server }
+func (s *server2Stream) Holder() httpHolder   { return s.conn.gate.server }
 func (s *server2Stream) Conn() httpConn       { return s.conn }
 func (s *server2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
@@ -1080,9 +1080,11 @@ func (r *server2Response) fixedHeaders() []byte { return nil } // TODO
 var poolServer2Socket sync.Pool
 
 func getServer2Socket(stream *server2Stream) *server2Socket {
+	// TODO
 	return nil
 }
 func putServer2Socket(socket *server2Socket) {
+	// TODO
 }
 
 // server2Socket is the server-side HTTP/2 webSocket.
@@ -1133,11 +1135,11 @@ func (b *HTTP2Backend) CreateNode(name string) Node {
 	return node
 }
 
-func (b *HTTP2Backend) FetchStream() (stream, error) {
+func (b *HTTP2Backend) FetchStream() (backendStream, error) {
 	node := b.nodes[b.nextIndex()]
 	return node.fetchStream()
 }
-func (b *HTTP2Backend) StoreStream(stream stream) {
+func (b *HTTP2Backend) StoreStream(stream backendStream) {
 	stream2 := stream.(*backend2Stream)
 	stream2.conn.node.storeStream(stream2)
 }
@@ -1322,11 +1324,11 @@ func getBackend2Stream(conn *backend2Conn, id uint32) *backend2Stream {
 	if x := poolBackend2Stream.Get(); x == nil {
 		stream = new(backend2Stream)
 		req, resp := &stream.request, &stream.response
-		req.message = req
 		req.stream = stream
+		req.message = req
 		req.response = resp
-		resp.message = resp
 		resp.stream = stream
+		resp.message = resp
 	} else {
 		stream = x.(*backend2Stream)
 	}
@@ -1352,6 +1354,9 @@ type backend2Stream struct {
 	id     uint32
 	region Region // a region-based memory pool
 	// Stream states (zeros)
+	backend2Stream0 // all values must be zero by default in this struct!
+}
+type backend2Stream0 struct { // for fast reset, entirely
 }
 
 func (s *backend2Stream) onUse(conn *backend2Conn, id uint32) { // for non-zeros
@@ -1369,23 +1374,20 @@ func (s *backend2Stream) onEnd() { // for zeros
 		s.socket = nil
 	}
 	s.conn = nil
+	s.backend2Stream0 = backend2Stream0{}
 	s.region.Free()
 }
 
-func (s *backend2Stream) Request() request   { return &s.request }
+func (s *backend2Stream) Request() request { return &s.request }
+func (s *backend2Stream) Exchange() error { // request & response
+	// TODO
+	return nil
+}
 func (s *backend2Stream) Response() response { return &s.response }
-func (s *backend2Stream) Socket() socket     { return nil } // TODO
 
-func (s *backend2Stream) ExecuteExchan() error { // request & response
-	// TODO
-	return nil
-}
-func (s *backend2Stream) ExecuteSocket() error { // see RFC 8441: https://datatracker.ietf.org/doc/html/rfc8441
-	// TODO
-	return nil
-}
+func (s *backend2Stream) Socket() socket { return nil } // TODO. See RFC 8441: https://datatracker.ietf.org/doc/html/rfc8441
 
-func (s *backend2Stream) Serend() httpSerend   { return s.conn.node.backend }
+func (s *backend2Stream) Holder() httpHolder   { return s.conn.node.backend }
 func (s *backend2Stream) Conn() httpConn       { return s.conn }
 func (s *backend2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
@@ -1495,9 +1497,11 @@ func (r *backend2Response) readContent() (p []byte, err error) { return r.readCo
 var poolBackend2Socket sync.Pool
 
 func getBackend2Socket(stream *backend2Stream) *backend2Socket {
+	// TODO
 	return nil
 }
 func putBackend2Socket(socket *backend2Socket) {
+	// TODO
 }
 
 // backend2Socket is the backend-side HTTP/2 webSocket.

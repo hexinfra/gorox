@@ -126,11 +126,11 @@ func (g *socksGate) serve() { // runner
 		g.IncConn()
 		if actives := g.IncActives(); g.ReachLimit(actives) {
 			g.justClose(tcpConn)
-		} else {
-			socksConn := getSocksConn(connID, g, tcpConn)
-			go g.server.serveConn(socksConn) // socksConn is put to pool in serve()
-			connID++
+			continue
 		}
+		socksConn := getSocksConn(connID, g, tcpConn)
+		go g.server.serveConn(socksConn) // socksConn is put to pool in serve()
+		connID++
 	}
 	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {

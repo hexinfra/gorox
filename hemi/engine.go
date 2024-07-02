@@ -1343,9 +1343,9 @@ func (v *Value) StringDict() (dict map[string]string, ok bool) {
 	return
 }
 
-func (v *Value) BytesVar(holder varHolder) []byte {
-	return holder.unsafeVariable(v.code, v.name)
+func (v *Value) BytesVar(keeper varKeeper) []byte {
+	return keeper.unsafeVariable(v.code, v.name)
 }
-func (v *Value) StringVar(holder varHolder) string {
-	return string(holder.unsafeVariable(v.code, v.name))
+func (v *Value) StringVar(keeper varKeeper) string {
+	return string(keeper.unsafeVariable(v.code, v.name))
 }

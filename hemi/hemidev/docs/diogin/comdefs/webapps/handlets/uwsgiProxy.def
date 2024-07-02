@@ -1,5 +1,4 @@
 uwsgiProxy "up1" {
-	.saveContentFilesDir = %tmpDir + "/web/backends/up1"
 	.toBackend = "python-app"
 	.bufferClientContent = true
 	.bufferServerContent = true

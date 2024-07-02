@@ -126,7 +126,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 	if hasContent && (h.BufferClientContent || req.IsVague()) { // including size 0
 		content = req.holdContent()
 		if content == nil { // take failed
-			// stream is marked as broken
+			// stream was marked as broken
 			resp.SetStatus(StatusBadRequest)
 			resp.SendBytes(nil)
 			return
@@ -192,7 +192,7 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 	if fcgiHasContent && h.BufferServerContent { // including size 0
 		fcgiContent = fcgiResp.holdContent()
 		if fcgiContent == nil { // take failed
-			// fcgiExchan is marked as broken
+			// fcgiExchan was marked as broken
 			resp.SendBadGateway(nil)
 			return
 		}
@@ -1607,6 +1607,7 @@ func (r *fcgiResponse) _newTempFile() (tempFile, error) { // to save content to
 	n += r.exchan.conn.MakeTempName(filePath[n:], r.recvTime.Unix())
 	return os.OpenFile(WeakString(filePath[:n]), os.O_RDWR|os.O_CREATE, 0644)
 }
+
 func (r *fcgiResponse) _beforeRead() error {
 	if r.recvTime.IsZero() {
 		r.recvTime = time.Now()

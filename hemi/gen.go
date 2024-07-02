@@ -124,8 +124,8 @@ type hostnameTo[T Component] struct {
 	target   T
 }
 
-// varHolder holdes values of variables.
-type varHolder interface {
+// varKeeper holdes values of variables.
+type varKeeper interface {
 	unsafeVariable(code int16, name string) (value []byte)
 }
 

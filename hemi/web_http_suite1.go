@@ -123,7 +123,7 @@ func (s *httpxServer) Serve() { // runner
 // httpxGate is a gate of httpxServer.
 type httpxGate struct {
 	// Parent
-	Gate_
+	httpGate_
 	// Assocs
 	server *httpxServer
 	// States
@@ -131,7 +131,7 @@ type httpxGate struct {
 }
 
 func (g *httpxGate) init(id int32, server *httpxServer) {
-	g.Gate_.Init(id, server.MaxConnsPerGate())
+	g.httpGate_.init(id, server.MaxConnsPerGate())
 	g.server = server
 }
 
@@ -196,21 +196,21 @@ func (g *httpxGate) serveTLS() { // runner
 		g.IncConn()
 		if actives := g.IncActives(); g.ReachLimit(actives) {
 			g.justClose(tcpConn)
-		} else {
-			tlsConn := tls.Server(tcpConn, g.server.TLSConfig())
-			if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
-				g.justClose(tlsConn)
-				continue
-			}
-			if connState := tlsConn.ConnectionState(); connState.NegotiatedProtocol == "h2" {
-				serverConn := getServer2Conn(connID, g, tlsConn, nil)
-				go serverConn.serve() // serverConn is put to pool in serve()
-			} else {
-				serverConn := getServer1Conn(connID, g, tlsConn, nil)
-				go serverConn.serve() // serverConn is put to pool in serve()
-			}
-			connID++
+			continue
 		}
+		tlsConn := tls.Server(tcpConn, g.server.TLSConfig())
+		if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
+			g.justClose(tlsConn)
+			continue
+		}
+		if connState := tlsConn.ConnectionState(); connState.NegotiatedProtocol == "h2" {
+			serverConn := getServer2Conn(connID, g, tlsConn, nil)
+			go serverConn.serve() // serverConn is put to pool in serve()
+		} else {
+			serverConn := getServer1Conn(connID, g, tlsConn, nil)
+			go serverConn.serve() // serverConn is put to pool in serve()
+		}
+		connID++
 	}
 	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
@@ -234,22 +234,22 @@ func (g *httpxGate) serveUDS() { // runner
 		g.IncConn()
 		if actives := g.IncActives(); g.ReachLimit(actives) {
 			g.justClose(unixConn)
-		} else {
-			rawConn, err := unixConn.SyscallConn()
-			if err != nil {
-				g.justClose(unixConn)
-				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
-				continue
-			}
-			if g.server.httpMode == 2 {
-				serverConn := getServer2Conn(connID, g, unixConn, rawConn)
-				go serverConn.serve() // serverConn is put to pool in serve()
-			} else {
-				serverConn := getServer1Conn(connID, g, unixConn, rawConn)
-				go serverConn.serve() // serverConn is put to pool in serve()
-			}
-			connID++
+			continue
 		}
+		rawConn, err := unixConn.SyscallConn()
+		if err != nil {
+			g.justClose(unixConn)
+			//g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
+			continue
+		}
+		if g.server.httpMode == 2 {
+			serverConn := getServer2Conn(connID, g, unixConn, rawConn)
+			go serverConn.serve() // serverConn is put to pool in serve()
+		} else {
+			serverConn := getServer1Conn(connID, g, unixConn, rawConn)
+			go serverConn.serve() // serverConn is put to pool in serve()
+		}
+		connID++
 	}
 	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
@@ -273,22 +273,22 @@ func (g *httpxGate) serveTCP() { // runner
 		g.IncConn()
 		if actives := g.IncActives(); g.ReachLimit(actives) {
 			g.justClose(tcpConn)
-		} else {
-			rawConn, err := tcpConn.SyscallConn()
-			if err != nil {
-				g.justClose(tcpConn)
-				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
-				continue
-			}
-			if g.server.httpMode == 2 {
-				serverConn := getServer2Conn(connID, g, tcpConn, rawConn)
-				go serverConn.serve() // serverConn is put to pool in serve()
-			} else {
-				serverConn := getServer1Conn(connID, g, tcpConn, rawConn)
-				go serverConn.serve() // serverConn is put to pool in serve()
-			}
-			connID++
+			continue
 		}
+		rawConn, err := tcpConn.SyscallConn()
+		if err != nil {
+			g.justClose(tcpConn)
+			//g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
+			continue
+		}
+		if g.server.httpMode == 2 {
+			serverConn := getServer2Conn(connID, g, tcpConn, rawConn)
+			go serverConn.serve() // serverConn is put to pool in serve()
+		} else {
+			serverConn := getServer1Conn(connID, g, tcpConn, rawConn)
+			go serverConn.serve() // serverConn is put to pool in serve()
+		}
+		connID++
 	}
 	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
@@ -313,10 +313,10 @@ func getServer1Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall
 		stream := &serverConn.stream
 		stream.conn = serverConn
 		req, resp := &stream.request, &stream.response
-		req.message = req
 		req.stream = stream
-		resp.message = resp
+		req.message = req
 		resp.stream = stream
+		resp.message = resp
 		resp.request = req
 	} else {
 		serverConn = x.(*server1Conn)
@@ -653,7 +653,7 @@ func (s *server1Stream) executeSocket() { // upgrade: websocket
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nConnection: close\r\n\r\n"))
 }
 
-func (s *server1Stream) Serend() httpSerend   { return s.conn.gate.server }
+func (s *server1Stream) Holder() httpHolder   { return s.conn.gate.server }
 func (s *server1Stream) Conn() httpConn       { return s.conn }
 func (s *server1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
@@ -1352,9 +1352,11 @@ func (r *server1Response) fixedHeaders() []byte { return http1BytesFixedResponse
 var poolServer1Socket sync.Pool
 
 func getServer1Socket(stream *server1Stream) *server1Socket {
+	// TODO
 	return nil
 }
 func putServer1Socket(socket *server1Socket) {
+	// TODO
 }
 
 // server1Socket is the server-side HTTP/1 webSocket.
@@ -1405,11 +1407,11 @@ func (b *HTTP1Backend) CreateNode(name string) Node {
 	return node
 }
 
-func (b *HTTP1Backend) FetchStream() (stream, error) {
+func (b *HTTP1Backend) FetchStream() (backendStream, error) {
 	node := b.nodes[b.nextIndex()]
 	return node.fetchStream()
 }
-func (b *HTTP1Backend) StoreStream(stream stream) {
+func (b *HTTP1Backend) StoreStream(stream backendStream) {
 	stream1 := stream.(*backend1Stream)
 	stream1.conn.node.storeStream(stream1)
 }
@@ -1621,11 +1623,11 @@ func getBackend1Conn(id int64, node *http1Node, netConn net.Conn, rawConn syscal
 		stream := &backendConn.stream
 		stream.conn = backendConn
 		req, resp := &stream.request, &stream.response
-		req.message = req
 		req.stream = stream
+		req.message = req
 		req.response = resp
-		resp.message = resp
 		resp.stream = stream
+		resp.message = resp
 	} else {
 		backendConn = x.(*backend1Conn)
 	}
@@ -1742,20 +1744,16 @@ func (s *backend1Stream) onEnd() { // for zeros
 	s.region.Free()
 }
 
-func (s *backend1Stream) Request() request   { return &s.request }
+func (s *backend1Stream) Request() request { return &s.request }
+func (s *backend1Stream) Exchange() error { // request & response
+	// TODO
+	return nil
+}
 func (s *backend1Stream) Response() response { return &s.response }
-func (s *backend1Stream) Socket() socket     { return nil } // TODO
 
-func (s *backend1Stream) ExecuteExchan() error { // request & response
-	// TODO
-	return nil
-}
-func (s *backend1Stream) ExecuteSocket() error { // upgrade: websocket
-	// TODO
-	return nil
-}
+func (s *backend1Stream) Socket() socket { return nil } // TODO
 
-func (s *backend1Stream) Serend() httpSerend   { return s.conn.node.backend }
+func (s *backend1Stream) Holder() httpHolder   { return s.conn.node.backend }
 func (s *backend1Stream) Conn() httpConn       { return s.conn }
 func (s *backend1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
@@ -2730,7 +2728,7 @@ func (r *httpOut_) sendChain1() error { // TODO: if conn is TLS, don't use write
 		return r._sendEntireChain1()
 	}
 	// Partial content.
-	if !r.asRequest {
+	if !r.asRequest { // as response
 		r.message.(Response).SetStatus(StatusPartialContent)
 	}
 	if nContentRanges == 1 {

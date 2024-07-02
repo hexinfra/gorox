@@ -230,16 +230,16 @@ func (g *tcpxGate) serveTLS() { // runner
 		if actives := g.IncActives(); g.ReachLimit(actives) {
 			g.router.Logf("tcpxGate=%d: too many TLS connections!\n", g.id)
 			g.justClose(tcpConn)
-		} else {
-			tlsConn := tls.Server(tcpConn, g.router.TLSConfig())
-			if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
-				g.justClose(tlsConn)
-				continue
-			}
-			conn := getTCPXConn(connID, g, tlsConn, nil)
-			go g.router.serveConn(conn) // conn is put to pool in serveConn()
-			connID++
+			continue
 		}
+		tlsConn := tls.Server(tcpConn, g.router.TLSConfig())
+		if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
+			g.justClose(tlsConn)
+			continue
+		}
+		conn := getTCPXConn(connID, g, tlsConn, nil)
+		go g.router.serveConn(conn) // conn is put to pool in serveConn()
+		connID++
 	}
 	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
@@ -263,16 +263,16 @@ func (g *tcpxGate) serveUDS() { // runner
 		if actives := g.IncActives(); g.ReachLimit(actives) {
 			g.router.Logf("tcpxGate=%d: too many UDS connections!\n", g.id)
 			g.justClose(unixConn)
-		} else {
-			rawConn, err := unixConn.SyscallConn()
-			if err != nil {
-				g.justClose(unixConn)
-				continue
-			}
-			conn := getTCPXConn(connID, g, unixConn, rawConn)
-			go g.router.serveConn(conn) // conn is put to pool in serveConn()
-			connID++
+			continue
 		}
+		rawConn, err := unixConn.SyscallConn()
+		if err != nil {
+			g.justClose(unixConn)
+			continue
+		}
+		conn := getTCPXConn(connID, g, unixConn, rawConn)
+		go g.router.serveConn(conn) // conn is put to pool in serveConn()
+		connID++
 	}
 	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
@@ -296,19 +296,19 @@ func (g *tcpxGate) serveTCP() { // runner
 		if actives := g.IncActives(); g.ReachLimit(actives) {
 			g.router.Logf("tcpxGate=%d: too many TCP connections!\n", g.id)
 			g.justClose(tcpConn)
-		} else {
-			rawConn, err := tcpConn.SyscallConn()
-			if err != nil {
-				g.justClose(tcpConn)
-				continue
-			}
-			conn := getTCPXConn(connID, g, tcpConn, rawConn)
-			if DebugLevel() >= 2 {
-				Printf("%+v\n", conn)
-			}
-			go g.router.serveConn(conn) // conn is put to pool in serveConn()
-			connID++
+			continue
 		}
+		rawConn, err := tcpConn.SyscallConn()
+		if err != nil {
+			g.justClose(tcpConn)
+			continue
+		}
+		conn := getTCPXConn(connID, g, tcpConn, rawConn)
+		if DebugLevel() >= 2 {
+			Printf("%+v\n", conn)
+		}
+		go g.router.serveConn(conn) // conn is put to pool in serveConn()
+		connID++
 	}
 	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {

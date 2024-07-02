@@ -73,7 +73,7 @@ func (s *http3Server) Serve() { // runner
 // http3Gate is a gate of http3Server.
 type http3Gate struct {
 	// Parent
-	Gate_
+	httpGate_
 	// Assocs
 	server *http3Server
 	// States
@@ -81,7 +81,7 @@ type http3Gate struct {
 }
 
 func (g *http3Gate) init(id int32, server *http3Server) {
-	g.Gate_.Init(id, server.MaxConnsPerGate())
+	g.httpGate_.init(id, server.MaxConnsPerGate())
 	g.server = server
 }
 
@@ -117,11 +117,11 @@ func (g *http3Gate) serve() { // runner
 		g.IncConn()
 		if actives := g.IncActives(); g.ReachLimit(actives) {
 			g.justClose(quicConn)
-		} else {
-			server3Conn := getServer3Conn(connID, g, quicConn)
-			go server3Conn.serve() // server3Conn is put to pool in serve()
-			connID++
+			continue
 		}
+		server3Conn := getServer3Conn(connID, g, quicConn)
+		go server3Conn.serve() // server3Conn is put to pool in serve()
+		connID++
 	}
 	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
@@ -237,10 +237,10 @@ func getServer3Stream(conn *server3Conn, quicStream *quic.Stream) *server3Stream
 	if x := poolServer3Stream.Get(); x == nil {
 		stream = new(server3Stream)
 		req, resp := &stream.request, &stream.response
-		req.message = req
 		req.stream = stream
-		resp.message = resp
+		req.message = req
 		resp.stream = stream
+		resp.message = resp
 		resp.request = req
 	} else {
 		stream = x.(*server3Stream)
@@ -317,7 +317,7 @@ func (s *server3Stream) executeSocket() { // see RFC 9220
 	// TODO
 }
 
-func (s *server3Stream) Serend() httpSerend   { return s.conn.gate.server }
+func (s *server3Stream) Holder() httpHolder   { return s.conn.gate.server }
 func (s *server3Stream) Conn() httpConn       { return s.conn }
 func (s *server3Stream) remoteAddr() net.Addr { return nil } // TODO
 
@@ -462,9 +462,11 @@ func (r *server3Response) fixedHeaders() []byte { return nil }
 var poolServer3Socket sync.Pool
 
 func getServer3Socket(stream *server3Stream) *server3Socket {
+	// TODO
 	return nil
 }
 func putServer3Socket(socket *server3Socket) {
+	// TODO
 }
 
 // server3Socket is the server-side HTTP/3 webSocket.
@@ -515,11 +517,11 @@ func (b *HTTP3Backend) CreateNode(name string) Node {
 	return node
 }
 
-func (b *HTTP3Backend) FetchStream() (stream, error) {
+func (b *HTTP3Backend) FetchStream() (backendStream, error) {
 	node := b.nodes[b.nextIndex()]
 	return node.fetchStream()
 }
-func (b *HTTP3Backend) StoreStream(stream stream) {
+func (b *HTTP3Backend) StoreStream(stream backendStream) {
 	stream3 := stream.(*backend3Stream)
 	stream3.conn.node.storeStream(stream3)
 }
@@ -676,11 +678,11 @@ func getBackend3Stream(conn *backend3Conn, quicStream *quic.Stream) *backend3Str
 	if x := poolBackend3Stream.Get(); x == nil {
 		stream = new(backend3Stream)
 		req, resp := &stream.request, &stream.response
-		req.message = req
 		req.stream = stream
+		req.message = req
 		req.response = resp
-		resp.message = resp
 		resp.stream = stream
+		resp.message = resp
 	} else {
 		stream = x.(*backend3Stream)
 	}
@@ -706,6 +708,9 @@ type backend3Stream struct {
 	quicStream *quic.Stream // the underlying quic stream
 	region     Region       // a region-based memory pool
 	// Stream states (zeros)
+	backend3Stream0 // all values must be zero by default in this struct!
+}
+type backend3Stream0 struct { // for fast reset, entirely
 }
 
 func (s *backend3Stream) onUse(conn *backend3Conn, quicStream *quic.Stream) { // for non-zeros
@@ -724,23 +729,20 @@ func (s *backend3Stream) onEnd() { // for zeros
 	}
 	s.conn = nil
 	s.quicStream = nil
+	s.backend3Stream0 = backend3Stream0{}
 	s.region.Free()
 }
 
-func (s *backend3Stream) Request() request   { return &s.request }
+func (s *backend3Stream) Request() request { return &s.request }
+func (s *backend3Stream) Exchange() error { // request & response
+	// TODO
+	return nil
+}
 func (s *backend3Stream) Response() response { return &s.response }
-func (s *backend3Stream) Socket() socket     { return nil } // TODO
 
-func (s *backend3Stream) ExecuteExchan() error { // request & response
-	// TODO
-	return nil
-}
-func (s *backend3Stream) ExecuteSocket() error { // see RFC 9220
-	// TODO
-	return nil
-}
+func (s *backend3Stream) Socket() socket { return nil } // TODO. See RFC 9220
 
-func (s *backend3Stream) Serend() httpSerend   { return s.conn.node.backend }
+func (s *backend3Stream) Holder() httpHolder   { return s.conn.node.backend }
 func (s *backend3Stream) Conn() httpConn       { return s.conn }
 func (s *backend3Stream) remoteAddr() net.Addr { return nil } // TODO
 
@@ -850,9 +852,11 @@ func (r *backend3Response) readContent() (p []byte, err error) { return r.readCo
 var poolBackend3Socket sync.Pool
 
 func getBackend3Socket(stream *backend3Stream) *backend3Socket {
+	// TODO
 	return nil
 }
 func putBackend3Socket(socket *backend3Socket) {
+	// TODO
 }
 
 // backend3Socket is the backend-side HTTP/3 webSocket.

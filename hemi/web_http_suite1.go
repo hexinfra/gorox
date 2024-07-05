@@ -89,7 +89,7 @@ func (s *httpxServer) OnPrepare() {
 			nextProtos = []string{"h2"}
 		case 1:
 			nextProtos = []string{"http/1.1"}
-		default:
+		default: // adaptive
 			nextProtos = []string{"h2", "http/1.1"}
 		}
 		s.tlsConfig.NextProtos = nextProtos
@@ -336,8 +336,8 @@ type server1Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id         int64
-	gate       *httpxGate
+	id         int64           // conn id
+	gate       *httpxGate      // the gate to which the conn belongs
 	netConn    net.Conn        // the connection (UDS/TCP/TLS)
 	rawConn    syscall.RawConn // for syscall, only when netConn is UDS/TCP
 	persistent bool            // keep the connection after current stream? true by default
@@ -358,27 +358,28 @@ func (c *server1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn
 	c.persistent = true
 	c.closeSafe = true
 
+	// Input is conn scoped but put in stream scoped request for convenience
 	req := &c.stream.request
-	req.input = req.stockInput[:] // input is conn scoped but put in stream scoped request for convenience
+	req.input = req.stockInput[:]
 }
 func (c *server1Conn) onPut() {
+	// Input, inputNext, and inputEdge are conn scoped but put in stream scoped request for convenience
 	req := &c.stream.request
 	if cap(req.input) != cap(req.stockInput) { // fetched from pool
-		// req.input is conn scoped but put in stream scoped c.request for convenience
 		PutNK(req.input)
 		req.input = nil
 	}
-	req.inputNext, req.inputEdge = 0, 0 // inputNext and inputEdge are conn scoped but put in stream scoped request for convenience
+	req.inputNext, req.inputEdge = 0, 0
 
 	c.netConn = nil
 	c.rawConn = nil
 	c.gate = nil
 
+	c.usedStreams.Store(0)
+	c.broken.Store(false)
 	c.counter.Store(0)
 	c.lastRead = time.Time{}
 	c.lastWrite = time.Time{}
-	c.usedStreams.Store(0)
-	c.broken.Store(false)
 }
 
 func (c *server1Conn) ID() int64 { return c.id }
@@ -394,8 +395,6 @@ func (c *server1Conn) markBroken()    { c.broken.Store(true) }
 func (c *server1Conn) isBroken() bool { return c.broken.Load() }
 
 func (c *server1Conn) serve() { // runner
-	defer putServer1Conn(c)
-
 	stream := &c.stream
 	for c.persistent { // each queued stream
 		stream.onUse()
@@ -435,8 +434,10 @@ func (c *server1Conn) serve() { // runner
 		time.Sleep(time.Second)
 	}
 	netConn.Close()
+
 	c.gate.DecActives()
 	c.gate.DecConn()
+	putServer1Conn(c)
 }
 
 // server1Stream is the server-side HTTP/1 stream.
@@ -527,7 +528,7 @@ func (s *server1Stream) execute() {
 	resp.webapp = webapp
 
 	if !req.upgradeSocket { // exchan mode
-		if req.formKind != httpFormNotForm {
+		if req.formKind != httpFormNotForm { // content is html form
 			if req.formKind == httpFormMultipart { // we allow a larger content size for uploading through multipart/form-data (large files are written to disk).
 				req.maxContentSize = webapp.maxMultiformSize
 			} else { // application/x-www-form-urlencoded is limited in a smaller size.
@@ -574,7 +575,6 @@ func (s *server1Stream) execute() {
 }
 
 func (s *server1Stream) writeContinue() bool { // 100 continue
-	conn := s.conn
 	// This is an interim response, write directly.
 	if s.setWriteDeadline() == nil {
 		if _, err := s.write(http1BytesContinue); err == nil {
@@ -582,7 +582,7 @@ func (s *server1Stream) writeContinue() bool { // 100 continue
 		}
 	}
 	// i/o error
-	conn.persistent = false
+	s.conn.persistent = false
 	return false
 }
 
@@ -600,11 +600,10 @@ func (s *server1Stream) executeExchan(webapp *Webapp, req *server1Request, resp 
 	}
 }
 func (s *server1Stream) serveAbnormal(req *server1Request, resp *server1Response) { // 4xx & 5xx
-	conn := s.conn
 	if DebugLevel() >= 2 {
-		Printf("server=%s gate=%d conn=%d headResult=%d\n", conn.gate.server.Name(), conn.gate.ID(), conn.id, s.request.headResult)
+		Printf("server=%s gate=%d conn=%d headResult=%d\n", s.conn.gate.server.Name(), s.conn.gate.ID(), s.conn.id, s.request.headResult)
 	}
-	conn.persistent = false // close anyway.
+	s.conn.persistent = false // close anyway.
 
 	status := req.headResult
 	if status == -1 || (status == StatusRequestTimeout && !req.gotInput) {
@@ -613,7 +612,7 @@ func (s *server1Stream) serveAbnormal(req *server1Request, resp *server1Response
 	// So we need to send something...
 	if status == StatusContentTooLarge || status == StatusURITooLong || status == StatusRequestHeaderFieldsTooLarge {
 		// The receiving side may has data when we close the connection
-		conn.closeSafe = false
+		s.conn.closeSafe = false
 	}
 	var content []byte
 	if errorPage, ok := serverErrorPages[status]; !ok {
@@ -661,24 +660,22 @@ func (s *server1Stream) markBroken()    { s.conn.markBroken() }
 func (s *server1Stream) isBroken() bool { return s.conn.isBroken() }
 
 func (s *server1Stream) setReadDeadline() error {
-	conn := s.conn
-	deadline := time.Now().Add(conn.gate.server.ReadTimeout())
-	if deadline.Sub(conn.lastRead) >= time.Second {
-		if err := conn.netConn.SetReadDeadline(deadline); err != nil {
+	deadline := time.Now().Add(s.conn.gate.server.ReadTimeout())
+	if deadline.Sub(s.conn.lastRead) >= time.Second {
+		if err := s.conn.netConn.SetReadDeadline(deadline); err != nil {
 			return err
 		}
-		conn.lastRead = deadline
+		s.conn.lastRead = deadline
 	}
 	return nil
 }
 func (s *server1Stream) setWriteDeadline() error {
-	conn := s.conn
-	deadline := time.Now().Add(conn.gate.server.WriteTimeout())
-	if deadline.Sub(conn.lastWrite) >= time.Second {
-		if err := conn.netConn.SetWriteDeadline(deadline); err != nil {
+	deadline := time.Now().Add(s.conn.gate.server.WriteTimeout())
+	if deadline.Sub(s.conn.lastWrite) >= time.Second {
+		if err := s.conn.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
 		}
-		conn.lastWrite = deadline
+		s.conn.lastWrite = deadline
 	}
 	return nil
 }
@@ -1761,24 +1758,22 @@ func (s *backend1Stream) markBroken()    { s.conn.markBroken() }
 func (s *backend1Stream) isBroken() bool { return s.conn.isBroken() }
 
 func (s *backend1Stream) setWriteDeadline() error {
-	conn := s.conn
-	deadline := time.Now().Add(conn.node.backend.WriteTimeout())
-	if deadline.Sub(conn.lastWrite) >= time.Second {
-		if err := conn.netConn.SetWriteDeadline(deadline); err != nil {
+	deadline := time.Now().Add(s.conn.node.backend.WriteTimeout())
+	if deadline.Sub(s.conn.lastWrite) >= time.Second {
+		if err := s.conn.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
 		}
-		conn.lastWrite = deadline
+		s.conn.lastWrite = deadline
 	}
 	return nil
 }
 func (s *backend1Stream) setReadDeadline() error {
-	conn := s.conn
-	deadline := time.Now().Add(conn.node.backend.ReadTimeout())
-	if deadline.Sub(conn.lastRead) >= time.Second {
-		if err := conn.netConn.SetReadDeadline(deadline); err != nil {
+	deadline := time.Now().Add(s.conn.node.backend.ReadTimeout())
+	if deadline.Sub(s.conn.lastRead) >= time.Second {
+		if err := s.conn.netConn.SetReadDeadline(deadline); err != nil {
 			return err
 		}
-		conn.lastRead = deadline
+		s.conn.lastRead = deadline
 	}
 	return nil
 }

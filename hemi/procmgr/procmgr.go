@@ -162,13 +162,13 @@ func Main(args *Args) {
 		setDir(&common.VarDir, "var", hemi.SetVarDir)
 
 		if action == "check" { // dry run
-			if _, err := hemi.NewStageFromFile(common.GetConfig()); err != nil {
+			if _, err := hemi.StageFromFile(common.GetConfig()); err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
 			} else {
 				fmt.Println("PASS")
 			}
 		} else if common.SingleMode { // run as single foreground process. for single mode
-			if stage, err := hemi.NewStageFromFile(common.GetConfig()); err == nil {
+			if stage, err := hemi.StageFromFile(common.GetConfig()); err == nil {
 				stage.Start(0)
 				select {} // waiting forever
 			} else {

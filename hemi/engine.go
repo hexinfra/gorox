@@ -21,56 +21,6 @@ import (
 
 const Version = "0.2.0-alpha"
 
-func Print(args ...any) {
-	_printTime(os.Stdout)
-	fmt.Fprint(os.Stdout, args...)
-}
-func Println(args ...any) {
-	_printTime(os.Stdout)
-	fmt.Fprintln(os.Stdout, args...)
-}
-func Printf(format string, args ...any) {
-	_printTime(os.Stdout)
-	fmt.Fprintf(os.Stdout, format, args...)
-}
-func Error(args ...any) {
-	_printTime(os.Stderr)
-	fmt.Fprint(os.Stderr, args...)
-}
-func Errorln(args ...any) {
-	_printTime(os.Stderr)
-	fmt.Fprintln(os.Stderr, args...)
-}
-func Errorf(format string, args ...any) {
-	_printTime(os.Stderr)
-	fmt.Fprintf(os.Stderr, format, args...)
-}
-func _printTime(file *os.File) {
-	fmt.Fprintf(file, "[%s] ", time.Now().Format("2006-01-02 15:04:05 MST"))
-}
-
-const ( // exit codes
-	CodeBug = 20
-	CodeUse = 21
-	CodeEnv = 22
-)
-
-func BugExitln(args ...any)               { _exitln(CodeBug, "[BUG] ", args...) }
-func UseExitln(args ...any)               { _exitln(CodeUse, "[USE] ", args...) }
-func EnvExitln(args ...any)               { _exitln(CodeEnv, "[ENV] ", args...) }
-func BugExitf(format string, args ...any) { _exitf(CodeBug, "[BUG] ", format, args...) }
-func UseExitf(format string, args ...any) { _exitf(CodeUse, "[USE] ", format, args...) }
-func EnvExitf(format string, args ...any) { _exitf(CodeEnv, "[ENV] ", format, args...) }
-func _exitln(exitCode int, prefix string, args ...any) {
-	fmt.Fprint(os.Stderr, prefix)
-	fmt.Fprintln(os.Stderr, args...)
-	os.Exit(exitCode)
-}
-func _exitf(exitCode int, prefix, format string, args ...any) {
-	fmt.Fprintf(os.Stderr, prefix+format, args...)
-	os.Exit(exitCode)
-}
-
 var _debugLevel atomic.Int32 // debug level
 
 func SetDebugLevel(level int32) { _debugLevel.Store(level) }
@@ -123,15 +73,15 @@ func LogDir() string { return _logDir.Load().(string) }
 func TmpDir() string { return _tmpDir.Load().(string) }
 func VarDir() string { return _varDir.Load().(string) }
 
-func NewStageFromText(text string) (*Stage, error) {
+func StageFromText(text string) (*Stage, error) {
 	_checkDirs()
 	var c configurator
-	return c.newStageFromText(text)
+	return c.stageFromText(text)
 }
-func NewStageFromFile(base string, file string) (*Stage, error) {
+func StageFromFile(base string, file string) (*Stage, error) {
 	_checkDirs()
 	var c configurator
-	return c.newStageFromFile(base, file)
+	return c.stageFromFile(base, file)
 }
 func _checkDirs() {
 	if _topDir.Load() == nil || _logDir.Load() == nil || _tmpDir.Load() == nil || _varDir.Load() == nil {
@@ -148,7 +98,7 @@ type configurator struct {
 	counter int     // the name for components without a name
 }
 
-func (c *configurator) newStageFromText(text string) (stage *Stage, err error) {
+func (c *configurator) stageFromText(text string) (stage *Stage, err error) {
 	defer func() {
 		if x := recover(); x != nil {
 			err = x.(error)
@@ -158,7 +108,7 @@ func (c *configurator) newStageFromText(text string) (stage *Stage, err error) {
 	c.tokens = l.scanText(text)
 	return c.parse()
 }
-func (c *configurator) newStageFromFile(base string, path string) (stage *Stage, err error) {
+func (c *configurator) stageFromFile(base string, path string) (stage *Stage, err error) {
 	defer func() {
 		if x := recover(); x != nil {
 			err = x.(error)

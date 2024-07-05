@@ -101,6 +101,9 @@ func (s *httpServer_[G]) onPrepare() {
 	s._contentSaver_.onPrepare(s, 0755)
 }
 
+func (s *httpServer_[G]) MaxMemoryContentSize() int32 { return s.maxMemoryContentSize }
+func (s *httpServer_[G]) MaxStreamsPerConn() int32    { return s.maxStreamsPerConn }
+
 func (s *httpServer_[G]) bindApps() {
 	for _, appName := range s.webapps {
 		webapp := s.stage.Webapp(appName)
@@ -159,9 +162,6 @@ func (s *httpServer_[G]) findApp(hostname []byte) *Webapp {
 	}
 	return s.defaultApp // may be nil
 }
-
-func (s *httpServer_[G]) MaxMemoryContentSize() int32 { return s.maxMemoryContentSize }
-func (s *httpServer_[G]) MaxStreamsPerConn() int32    { return s.maxStreamsPerConn }
 
 // httpGate_ is the parent for http[x3]Gate.
 type httpGate_ struct {
@@ -847,7 +847,7 @@ func (r *serverRequest_) applyHeader(index uint8) bool {
 	name := header.nameAt(r.input)
 	if sh := &serverRequestSingletonHeaderTable[serverRequestSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, name) {
 		header.setSingleton()
-		if !sh.parse { // unnecessary to parse
+		if !sh.parse { // unnecessary to parse generally
 			header.setParsed()
 			header.dataEdge = header.value.edge
 		} else if !r._parseField(header, &sh.fdesc, r.input, true) { // fully
@@ -3432,7 +3432,7 @@ func (r *backendResponse_) applyHeader(index uint8) bool {
 	name := header.nameAt(r.input)
 	if sh := &backendResponseSingletonHeaderTable[backendResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, name) {
 		header.setSingleton()
-		if !sh.parse { // unnecessary to parse
+		if !sh.parse { // unnecessary to parse generally
 			header.setParsed()
 			header.dataEdge = header.value.edge
 		} else if !r._parseField(header, &sh.fdesc, r.input, true) { // fully
@@ -3640,7 +3640,7 @@ func (r *backendResponse_) checkUpgrade(pairs []pair, from uint8, edge uint8) bo
 		r.headResult, r.failReason = StatusBadRequest, "upgrade is not supported in http/2 and http/3"
 		return false
 	}
-	// TODO: what about webSocket?
+	// TODO: what about upgrade: websocket?
 	r.headResult, r.failReason = StatusBadRequest, "upgrade is not supported in exchan mode"
 	return false
 }

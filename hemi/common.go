@@ -14,11 +14,62 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"os"
 	"strings"
 	"sync"
 	"time"
 	"unsafe"
 )
+
+func Print(args ...any) {
+	_printTime(os.Stdout)
+	fmt.Fprint(os.Stdout, args...)
+}
+func Println(args ...any) {
+	_printTime(os.Stdout)
+	fmt.Fprintln(os.Stdout, args...)
+}
+func Printf(format string, args ...any) {
+	_printTime(os.Stdout)
+	fmt.Fprintf(os.Stdout, format, args...)
+}
+func Error(args ...any) {
+	_printTime(os.Stderr)
+	fmt.Fprint(os.Stderr, args...)
+}
+func Errorln(args ...any) {
+	_printTime(os.Stderr)
+	fmt.Fprintln(os.Stderr, args...)
+}
+func Errorf(format string, args ...any) {
+	_printTime(os.Stderr)
+	fmt.Fprintf(os.Stderr, format, args...)
+}
+func _printTime(file *os.File) {
+	fmt.Fprintf(file, "[%s] ", time.Now().Format("2006-01-02 15:04:05 MST"))
+}
+
+const ( // exit codes
+	CodeBug = 20
+	CodeUse = 21
+	CodeEnv = 22
+)
+
+func BugExitln(args ...any)               { _exitln(CodeBug, "[BUG] ", args...) }
+func UseExitln(args ...any)               { _exitln(CodeUse, "[USE] ", args...) }
+func EnvExitln(args ...any)               { _exitln(CodeEnv, "[ENV] ", args...) }
+func BugExitf(format string, args ...any) { _exitf(CodeBug, "[BUG] ", format, args...) }
+func UseExitf(format string, args ...any) { _exitf(CodeUse, "[USE] ", format, args...) }
+func EnvExitf(format string, args ...any) { _exitf(CodeEnv, "[ENV] ", format, args...) }
+func _exitln(exitCode int, prefix string, args ...any) {
+	fmt.Fprint(os.Stderr, prefix)
+	fmt.Fprintln(os.Stderr, args...)
+	os.Exit(exitCode)
+}
+func _exitf(exitCode int, prefix, format string, args ...any) {
+	fmt.Fprintf(os.Stderr, prefix+format, args...)
+	os.Exit(exitCode)
+}
 
 const ( // units
 	K = 1 << 10

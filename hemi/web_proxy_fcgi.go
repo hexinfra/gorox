@@ -1374,7 +1374,7 @@ func (r *fcgiResponse) applyHeader(index int) bool {
 	headerName := header.nameAt(r.input)
 	if sh := &fcgiResponseSingletonHeaderTable[fcgiResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, headerName) {
 		header.setSingleton()
-		if !sh.parse { // unnecessary to parse
+		if !sh.parse { // unnecessary to parse generally
 			header.setParsed()
 		} else if !r._parseHeader(header, &sh.fdesc, true) {
 			// r.headResult is set.

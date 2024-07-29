@@ -26,6 +26,9 @@ type Cacher_ struct {
 	// States
 }
 
+func (c *Cacher_) todo() {
+}
+
 // Hobject is an HTTP object in Cacher.
 type Hobject struct {
 	// TODO

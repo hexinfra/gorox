@@ -26,7 +26,7 @@ func TestHTTPMethods(t *testing.T) {
 	methods := bytes.Split(httpMethodBytes, []byte(" "))
 	for _, method := range methods {
 		hash := bytesHash(method)
-		m := httpMethodTable[httpMethodFind(hash)]
+		m := serverMethodTable[serverMethodFind(hash)]
 		if m.hash != hash {
 			t.Error("invalid hash")
 		}

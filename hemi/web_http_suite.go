@@ -455,23 +455,52 @@ func (r *serverRequest_) IsAbsoluteForm() bool    { return r.targetForm == httpT
 func (r *serverRequest_) IsAsteriskOptions() bool { return r.asteriskOptions }
 
 func (r *serverRequest_) SchemeCode() uint8    { return r.schemeCode }
-func (r *serverRequest_) Scheme() string       { return webSchemeStrings[r.schemeCode] }
-func (r *serverRequest_) UnsafeScheme() []byte { return webSchemeByteses[r.schemeCode] }
 func (r *serverRequest_) IsHTTP() bool         { return r.schemeCode == SchemeHTTP }
 func (r *serverRequest_) IsHTTPS() bool        { return r.schemeCode == SchemeHTTPS }
+func (r *serverRequest_) Scheme() string       { return serverSchemeStrings[r.schemeCode] }
+func (r *serverRequest_) UnsafeScheme() []byte { return serverSchemeByteses[r.schemeCode] }
+
+var serverSchemeStrings = [...]string{
+	SchemeHTTP:  stringHTTP,
+	SchemeHTTPS: stringHTTPS,
+}
+var serverSchemeByteses = [...][]byte{
+	SchemeHTTP:  bytesHTTP,
+	SchemeHTTPS: bytesHTTPS,
+}
 
 func (r *serverRequest_) MethodCode() uint32   { return r.methodCode }
-func (r *serverRequest_) Method() string       { return string(r.UnsafeMethod()) }
-func (r *serverRequest_) UnsafeMethod() []byte { return r.input[r.method.from:r.method.edge] }
 func (r *serverRequest_) IsGET() bool          { return r.methodCode == MethodGET }
 func (r *serverRequest_) IsPOST() bool         { return r.methodCode == MethodPOST }
 func (r *serverRequest_) IsPUT() bool          { return r.methodCode == MethodPUT }
 func (r *serverRequest_) IsDELETE() bool       { return r.methodCode == MethodDELETE }
+func (r *serverRequest_) Method() string       { return string(r.UnsafeMethod()) }
+func (r *serverRequest_) UnsafeMethod() []byte { return r.input[r.method.from:r.method.edge] }
 func (r *serverRequest_) recognizeMethod(method []byte, hash uint16) {
-	if m := httpMethodTable[httpMethodFind(hash)]; m.hash == hash && bytes.Equal(httpMethodBytes[m.from:m.edge], method) {
+	if m := serverMethodTable[serverMethodFind(hash)]; m.hash == hash && bytes.Equal(httpMethodBytes[m.from:m.edge], method) {
 		r.methodCode = m.code
 	}
 }
+
+var ( // method hash table
+	httpMethodBytes   = []byte("GET HEAD POST PUT DELETE CONNECT OPTIONS TRACE")
+	serverMethodTable = [8]struct {
+		hash uint16
+		from uint8
+		edge uint8
+		code uint32
+	}{
+		0: {326, 9, 13, MethodPOST},
+		1: {274, 4, 8, MethodHEAD},
+		2: {249, 14, 17, MethodPUT},
+		3: {224, 0, 3, MethodGET},
+		4: {556, 33, 40, MethodOPTIONS},
+		5: {522, 25, 32, MethodCONNECT},
+		6: {435, 18, 24, MethodDELETE},
+		7: {367, 41, 46, MethodTRACE},
+	}
+	serverMethodFind = func(hash uint16) int { return (2610 / int(hash)) % 8 }
+)
 
 func (r *serverRequest_) Authority() string { return string(r.UnsafeAuthority()) }
 func (r *serverRequest_) UnsafeAuthority() []byte {
@@ -2444,6 +2473,108 @@ var serverRequestVariables = [...]func(*serverRequest_) []byte{ // keep sync wit
 	(*serverRequest_).UnsafeContentType, // contentType
 }
 
+// Upfile is a file uploaded by http client.
+type Upfile struct { // 48 bytes
+	hash     uint16 // hash of name, to support fast comparison
+	flags    uint8  // see upfile flags
+	errCode  int8   // error code
+	nameSize uint8  // name size
+	baseSize uint8  // base size
+	typeSize uint8  // type size
+	pathSize uint8  // path size
+	nameFrom int32  // like: "avatar"
+	baseFrom int32  // like: "michael.jpg"
+	typeFrom int32  // like: "image/jpeg"
+	pathFrom int32  // like: "/path/to/391384576"
+	size     int64  // file size
+	meta     string // cannot use []byte as it can cause memory leak if caller save file to another place
+}
+
+func (u *Upfile) nameEqualString(p []byte, x string) bool {
+	if int(u.nameSize) != len(x) {
+		return false
+	}
+	if u.metaSet() {
+		return u.meta[u.nameFrom:u.nameFrom+int32(u.nameSize)] == x
+	}
+	return string(p[u.nameFrom:u.nameFrom+int32(u.nameSize)]) == x
+}
+
+const ( // upfile flags
+	upfileFlagMetaSet = 0b10000000
+	upfileFlagIsMoved = 0b01000000
+)
+
+func (u *Upfile) setMeta(p []byte) {
+	if u.flags&upfileFlagMetaSet > 0 {
+		return
+	}
+	u.flags |= upfileFlagMetaSet
+	from := u.nameFrom
+	if u.baseFrom < from {
+		from = u.baseFrom
+	}
+	if u.pathFrom < from {
+		from = u.pathFrom
+	}
+	if u.typeFrom < from {
+		from = u.typeFrom
+	}
+	max, edge := u.typeFrom, u.typeFrom+int32(u.typeSize)
+	if u.pathFrom > max {
+		max = u.pathFrom
+		edge = u.pathFrom + int32(u.pathSize)
+	}
+	if u.baseFrom > max {
+		max = u.baseFrom
+		edge = u.baseFrom + int32(u.baseSize)
+	}
+	if u.nameFrom > max {
+		max = u.nameFrom
+		edge = u.nameFrom + int32(u.nameSize)
+	}
+	u.meta = string(p[from:edge]) // dup to avoid memory leak
+	u.nameFrom -= from
+	u.baseFrom -= from
+	u.typeFrom -= from
+	u.pathFrom -= from
+}
+func (u *Upfile) metaSet() bool { return u.flags&upfileFlagMetaSet > 0 }
+func (u *Upfile) setMoved()     { u.flags |= upfileFlagIsMoved }
+func (u *Upfile) isMoved() bool { return u.flags&upfileFlagIsMoved > 0 }
+
+const ( // upfile error codes
+	upfileOK        = 0
+	upfileError     = 1
+	upfileCantWrite = 2
+	upfileTooLarge  = 3
+	upfilePartial   = 4
+	upfileNoFile    = 5
+)
+
+var upfileErrors = [...]error{
+	nil, // no error
+	errors.New("general error"),
+	errors.New("cannot write"),
+	errors.New("too large"),
+	errors.New("partial"),
+	errors.New("no file"),
+}
+
+func (u *Upfile) IsOK() bool   { return u.errCode == 0 }
+func (u *Upfile) Error() error { return upfileErrors[u.errCode] }
+
+func (u *Upfile) Name() string { return u.meta[u.nameFrom : u.nameFrom+int32(u.nameSize)] }
+func (u *Upfile) Base() string { return u.meta[u.baseFrom : u.baseFrom+int32(u.baseSize)] }
+func (u *Upfile) Type() string { return u.meta[u.typeFrom : u.typeFrom+int32(u.typeSize)] }
+func (u *Upfile) Path() string { return u.meta[u.pathFrom : u.pathFrom+int32(u.pathSize)] }
+func (u *Upfile) Size() int64  { return u.size }
+
+func (u *Upfile) MoveTo(path string) error {
+	// TODO. Remember to mark as moved
+	return nil
+}
+
 // Response is the server-side http response.
 type Response interface { // for *server[1-3]Response
 	Request() Request
@@ -2878,6 +3009,165 @@ func (r *serverResponse_) proxyCopyTail(resp response, cfg *WebExchanProxyConfig
 func (r *serverResponse_) hookReviser(reviser Reviser) {
 	r.hasRevisers = true
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
+}
+
+// Cookie is a "set-cookie" header sent to client.
+type Cookie struct {
+	name     string
+	value    string
+	expires  time.Time
+	domain   string
+	path     string
+	sameSite string
+	maxAge   int32
+	secure   bool
+	httpOnly bool
+	invalid  bool
+	quote    bool // if true, quote value with ""
+	aSize    int8
+	ageBuf   [10]byte
+}
+
+func (c *Cookie) Set(name string, value string) bool {
+	// cookie-name = 1*cookie-octet
+	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
+	if name == "" {
+		c.invalid = true
+		return false
+	}
+	for i := 0; i < len(name); i++ {
+		if b := name[i]; httpKchar[b] == 0 {
+			c.invalid = true
+			return false
+		}
+	}
+	c.name = name
+	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
+	for i := 0; i < len(value); i++ {
+		b := value[i]
+		if httpKchar[b] == 1 {
+			continue
+		}
+		if b == ' ' || b == ',' {
+			c.quote = true
+			continue
+		}
+		c.invalid = true
+		return false
+	}
+	c.value = value
+	return true
+}
+
+func (c *Cookie) SetDomain(domain string) bool {
+	// TODO: check domain
+	c.domain = domain
+	return true
+}
+func (c *Cookie) SetPath(path string) bool {
+	// path-value = *av-octet
+	// av-octet = %x20-3A / %x3C-7E
+	for i := 0; i < len(path); i++ {
+		if b := path[i]; b < 0x20 || b > 0x7E || b == 0x3B {
+			c.invalid = true
+			return false
+		}
+	}
+	c.path = path
+	return true
+}
+func (c *Cookie) SetExpires(expires time.Time) bool {
+	expires = expires.UTC()
+	if expires.Year() < 1601 {
+		c.invalid = true
+		return false
+	}
+	c.expires = expires
+	return true
+}
+func (c *Cookie) SetMaxAge(maxAge int32)  { c.maxAge = maxAge }
+func (c *Cookie) SetSecure()              { c.secure = true }
+func (c *Cookie) SetHttpOnly()            { c.httpOnly = true }
+func (c *Cookie) SetSameSiteStrict()      { c.sameSite = "Strict" }
+func (c *Cookie) SetSameSiteLax()         { c.sameSite = "Lax" }
+func (c *Cookie) SetSameSiteNone()        { c.sameSite = "None" }
+func (c *Cookie) SetSameSite(mode string) { c.sameSite = mode }
+
+func (c *Cookie) size() int {
+	// set-cookie: name=value; Expires=Sun, 06 Nov 1994 08:49:37 GMT; Max-Age=123; Domain=example.com; Path=/; Secure; HttpOnly; SameSite=Strict
+	n := len(c.name) + 1 + len(c.value) // name=value
+	if c.quote {
+		n += 2 // ""
+	}
+	if !c.expires.IsZero() {
+		n += len("; Expires=Sun, 06 Nov 1994 08:49:37 GMT")
+	}
+	if c.maxAge > 0 {
+		m := i32ToDec(c.maxAge, c.ageBuf[:])
+		c.aSize = int8(m)
+		n += len("; Max-Age=") + m
+	} else if c.maxAge < 0 {
+		c.ageBuf[0] = '0'
+		c.aSize = 1
+		n += len("; Max-Age=0")
+	}
+	if c.domain != "" {
+		n += len("; Domain=") + len(c.domain)
+	}
+	if c.path != "" {
+		n += len("; Path=") + len(c.path)
+	}
+	if c.secure {
+		n += len("; Secure")
+	}
+	if c.httpOnly {
+		n += len("; HttpOnly")
+	}
+	if c.sameSite != "" {
+		n += len("; SameSite=") + len(c.sameSite)
+	}
+	return n
+}
+func (c *Cookie) writeTo(p []byte) int {
+	i := copy(p, c.name)
+	p[i] = '='
+	i++
+	if c.quote {
+		p[i] = '"'
+		i++
+		i += copy(p[i:], c.value)
+		p[i] = '"'
+		i++
+	} else {
+		i += copy(p[i:], c.value)
+	}
+	if !c.expires.IsZero() {
+		i += copy(p[i:], "; Expires=")
+		i += clockWriteHTTPDate(p[i:], c.expires)
+	}
+	if c.maxAge != 0 {
+		i += copy(p[i:], "; Max-Age=")
+		i += copy(p[i:], c.ageBuf[0:c.aSize])
+	}
+	if c.domain != "" {
+		i += copy(p[i:], "; Domain=")
+		i += copy(p[i:], c.domain)
+	}
+	if c.path != "" {
+		i += copy(p[i:], "; Path=")
+		i += copy(p[i:], c.path)
+	}
+	if c.secure {
+		i += copy(p[i:], "; Secure")
+	}
+	if c.httpOnly {
+		i += copy(p[i:], "; HttpOnly")
+	}
+	if c.sameSite != "" {
+		i += copy(p[i:], "; SameSite=")
+		i += copy(p[i:], c.sameSite)
+	}
+	return i
 }
 
 // Socket is the server-side webSocket.
@@ -3928,6 +4218,19 @@ func (r *httpIn_) IsHTTP3() bool         { return r.httpVersion == Version3 }
 func (r *httpIn_) Version() string       { return httpVersionStrings[r.httpVersion] }
 func (r *httpIn_) UnsafeVersion() []byte { return httpVersionByteses[r.httpVersion] }
 
+var httpVersionStrings = [...]string{
+	Version1_0: stringHTTP1_0,
+	Version1_1: stringHTTP1_1,
+	Version2:   stringHTTP2,
+	Version3:   stringHTTP3,
+}
+var httpVersionByteses = [...][]byte{
+	Version1_0: bytesHTTP1_0,
+	Version1_1: bytesHTTP1_1,
+	Version2:   bytesHTTP2,
+	Version3:   bytesHTTP3,
+}
+
 func (r *httpIn_) KeepAlive() int8   { return r.keepAlive }
 func (r *httpIn_) HeadResult() int16 { return r.headResult }
 func (r *httpIn_) BodyResult() int16 { return r.bodyResult }
@@ -3988,6 +4291,70 @@ func (r *httpIn_) AddHeader(name string, value string) bool { // as extra
 	return r.addExtra(name, value, 0, pairHeader)
 }
 
+func (r *httpIn_) _splitField(field *pair, fdesc *fdesc, p []byte) bool { // split: #element => [ element ] *( OWS "," OWS [ element ] )
+	field.setParsed()
+
+	subField := *field
+	subField.setSubField()
+	var bakField pair
+	numSubs, needComma := 0, false
+
+	for { // each sub value
+		haveComma := false
+	forComma:
+		for subField.value.from < field.value.edge {
+			switch b := p[subField.value.from]; b {
+			case ' ', '\t':
+				subField.value.from++
+			case ',':
+				haveComma = true
+				subField.value.from++
+			default:
+				break forComma
+			}
+		}
+		if subField.value.from == field.value.edge {
+			break
+		}
+		if needComma && !haveComma {
+			r.failReason = "comma needed in multi-value field"
+			return false
+		}
+		subField.value.edge = field.value.edge
+		if !r._parseField(&subField, fdesc, p, false) { // parse one sub field
+			// r.failReason is set.
+			return false
+		}
+		if numSubs == 0 { // first sub field, save as backup
+			bakField = subField
+		} else { // numSubs >= 1, sub fields exist
+			if numSubs == 1 { // got the second sub field
+				field.setCommaValue() // mark main field as comma-value
+				if !r._addExtra(&bakField) {
+					r.failReason = "too many extra fields"
+					return false
+				}
+			}
+			if !r._addExtra(&subField) {
+				r.failReason = "too many sub fields"
+				return false
+			}
+		}
+		numSubs++
+		subField.value.from = subField.value.edge
+		needComma = true
+	}
+	if numSubs == 1 {
+		if bakField.isQuoted() {
+			field.setQuoted()
+		}
+		field.params = bakField.params
+		field.dataEdge = bakField.dataEdge
+	} else if numSubs == 0 {
+		field.dataEdge = field.value.edge
+	}
+	return true
+}
 func (r *httpIn_) _parseField(field *pair, fdesc *fdesc, p []byte, fully bool) bool { // for field data and value params
 	field.setParsed()
 
@@ -4203,70 +4570,6 @@ func (r *httpIn_) _parseField(field *pair, fdesc *fdesc, p []byte, fully bool) b
 
 		text.from = text.edge // for next parameter
 	}
-}
-func (r *httpIn_) _splitField(field *pair, fdesc *fdesc, p []byte) bool { // split: #element => [ element ] *( OWS "," OWS [ element ] )
-	field.setParsed()
-
-	subField := *field
-	subField.setSubField()
-	var bakField pair
-	numSubs, needComma := 0, false
-
-	for { // each sub value
-		haveComma := false
-	forComma:
-		for subField.value.from < field.value.edge {
-			switch b := p[subField.value.from]; b {
-			case ' ', '\t':
-				subField.value.from++
-			case ',':
-				haveComma = true
-				subField.value.from++
-			default:
-				break forComma
-			}
-		}
-		if subField.value.from == field.value.edge {
-			break
-		}
-		if needComma && !haveComma {
-			r.failReason = "comma needed in multi-value field"
-			return false
-		}
-		subField.value.edge = field.value.edge
-		if !r._parseField(&subField, fdesc, p, false) { // parse one sub field
-			// r.failReason is set.
-			return false
-		}
-		if numSubs == 0 { // first sub field, save as backup
-			bakField = subField
-		} else { // numSubs >= 1, sub fields exist
-			if numSubs == 1 { // got the second sub field
-				field.setCommaValue() // mark main field as comma-value
-				if !r._addExtra(&bakField) {
-					r.failReason = "too many extra fields"
-					return false
-				}
-			}
-			if !r._addExtra(&subField) {
-				r.failReason = "too many sub fields"
-				return false
-			}
-		}
-		numSubs++
-		subField.value.from = subField.value.edge
-		needComma = true
-	}
-	if numSubs == 1 {
-		if bakField.isQuoted() {
-			field.setQuoted()
-		}
-		field.params = bakField.params
-		field.dataEdge = bakField.dataEdge
-	} else if numSubs == 0 {
-		field.dataEdge = field.value.edge
-	}
-	return true
 }
 
 func (r *httpIn_) checkContentLength(header *pair, index uint8) bool { // Content-Length = 1*DIGIT

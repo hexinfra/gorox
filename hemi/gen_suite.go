@@ -87,7 +87,7 @@ func (s *Server_[G]) OnConfigure() {
 			}
 			s.address = address
 		} else {
-			UseExitln("address should be of string type")
+			UseExitln(".address should be of string type")
 		}
 	} else {
 		UseExitln(".address is required for servers")

@@ -2462,14 +2462,14 @@ func (r *serverRequest_) unsafeVariable(code int16, name string) (value []byte) 
 		if v, ok := r.UnsafeHeader(name); ok {
 			return v
 		}
-	} else if strings.HasPrefix(name, "query_") {
-		name = name[len("query_"):]
-		if v, ok := r.UnsafeQuery(name); ok {
-			return v
-		}
 	} else if strings.HasPrefix(name, "cookie_") {
 		name = name[len("cookie_"):]
 		if v, ok := r.UnsafeCookie(name); ok {
+			return v
+		}
+	} else if strings.HasPrefix(name, "query_") {
+		name = name[len("query_"):]
+		if v, ok := r.UnsafeQuery(name); ok {
 			return v
 		}
 	}
@@ -2709,7 +2709,7 @@ func (r *serverResponse_) onEnd() { // for zeros
 func (r *serverResponse_) Request() Request { return r.request }
 
 func (r *serverResponse_) SetStatus(status int16) error {
-	if status >= 200 && status < 1000 {
+	if status >= 200 && status <= 999 {
 		r.status = status
 		if status == StatusNoContent {
 			r.forbidFraming = true
@@ -3615,7 +3615,7 @@ func (r *Rule) OnConfigure() {
 
 	// returnCode
 	r.ConfigureInt16("returnCode", &r.returnCode, func(value int16) error {
-		if value >= 200 && value < 1000 {
+		if value >= 200 && value <= 999 {
 			return nil
 		}
 		return errors.New(".returnCode has an invalid value")
@@ -4296,6 +4296,7 @@ type WebSocketProxyConfig struct {
 }
 
 func WebSocketReverseProxy(req Request, sock Socket, backend HTTPBackend, cfg *WebSocketProxyConfig) {
+	// TODO
 }
 
 // sockProxy socklet passes webSockets to http backends.

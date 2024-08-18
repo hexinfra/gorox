@@ -75,3 +75,36 @@ A program (like Gorox) using Hemi engine typically has these dependencies:
   +-----------------------+   +---------------------------------+
 ```
 
+
+Hacking
+=======
+
+To be written.
+
+
+TODO
+====
+
+* net system design and implementation.
+* rpc system design and implementation.
+* web rewrite handlet design and implementation.
+* web reviser design and implementation.
+* webSocket implementation.
+* http/2 implementation.
+* quic and http/3 implementation.
+* cacher implementation.
+* tcpoh (tcp over http) server implementation.
+* udpoh (udp over http) server implementation.
+* ipoh (ip over http) server implementation.
+* web application framework implementation.
+* documentation.
+* official websites.
+* logger implementation.
+* goben design and implementation.
+* more unit tests.
+* black/white box tests.
+* online parsing algorithm for forms.
+* fetch config through url.
+* ktls support?
+* ...
+

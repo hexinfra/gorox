@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// General HTTP server and backend. See RFC 9110.
+// General HTTP server, reverse proxy, and backend. See RFC 9110 and 9111.
 
 package hemi
 
@@ -4013,6 +4013,40 @@ func (s *Session) init() {
 func (s *Session) Get(name string) string        { return s.states[name] }
 func (s *Session) Set(name string, value string) { s.states[name] = value }
 func (s *Session) Del(name string)               { delete(s.states, name) }
+
+// Cacher component is the interface to storages of HTTP caching.
+type Cacher interface {
+	// Imports
+	Component
+	// Methods
+	Maintain() // runner
+	Set(key []byte, hobject *Hobject)
+	Get(key []byte) (hobject *Hobject)
+	Del(key []byte) bool
+}
+
+// Cacher_ is the parent for all cachers.
+type Cacher_ struct {
+	// Parent
+	Component_
+	// Assocs
+	// States
+}
+
+func (c *Cacher_) todo() {
+}
+
+// Hobject is an HTTP object in Cacher.
+type Hobject struct {
+	// TODO
+	uri      []byte
+	headers  any
+	content  any
+	trailers any
+}
+
+func (o *Hobject) todo() {
+}
 
 // WebExchanProxyConfig
 type WebExchanProxyConfig struct {

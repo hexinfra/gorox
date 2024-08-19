@@ -296,10 +296,10 @@ func (s *_contentSaver_) MaxContentSize() int64       { return s.maxContentSize 
 
 // LogConfig
 type LogConfig struct {
-	logFile string
-	rotate  string
-	format  string
-	bufSize int
+	filePath string
+	rotate   string
+	format   string
+	bufSize  int
 }
 
 // Logger is logger for routers, services, and webapps.
@@ -311,8 +311,8 @@ type Logger struct {
 	used   int
 }
 
-func NewLogger(logFile string) (*Logger, error) {
-	file, err := os.OpenFile(logFile, os.O_WRONLY|os.O_CREATE, 0700)
+func NewLogger(filePath string) (*Logger, error) {
+	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE, 0700)
 	if err != nil {
 		return nil, err
 	}

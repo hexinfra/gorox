@@ -60,7 +60,7 @@ func (r *UDPXRouter) OnPrepare() {
 
 	// accessLog, TODO
 	if r.accessLog != nil {
-		//r.logger = NewLogger(r.accessLog.logFile, r.accessLog.rotate)
+		//r.logger = NewLogger(r.accessLog.filePath, r.accessLog.rotate)
 	}
 
 	// sub components
@@ -290,10 +290,10 @@ func (c *UDPXConn) unsafeVariable(code int16, name string) (value []byte) {
 // udpxConnVariables
 var udpxConnVariables = [...]func(*UDPXConn) []byte{ // keep sync with varCodes
 	// TODO
-	nil, // srcHost
-	nil, // srcPort
-	nil, // isTLS
-	nil, // isUDS
+	0: nil, // srcHost
+	1: nil, // srcPort
+	2: nil, // isTLS
+	3: nil, // isUDS
 }
 
 // udpxCase
@@ -428,7 +428,7 @@ type UDPXDealet_ struct {
 	// States
 }
 
-// udpxProxy passes UDPX connections to UDPX backends.
+// udpxProxy dealet passes UDPX connections to UDPX backends.
 type udpxProxy struct {
 	// Parent
 	UDPXDealet_

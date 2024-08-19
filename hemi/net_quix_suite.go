@@ -59,7 +59,7 @@ func (r *QUIXRouter) OnPrepare() {
 
 	// accessLog, TODO
 	if r.accessLog != nil {
-		//r.logger = NewLogger(r.accessLog.logFile, r.accessLog.rotate)
+		//r.logger = NewLogger(r.accessLog.filePath, r.accessLog.rotate)
 	}
 
 	// sub components
@@ -261,10 +261,10 @@ func (c *QUIXConn) unsafeVariable(code int16, name string) (value []byte) {
 // quixConnVariables
 var quixConnVariables = [...]func(*QUIXConn) []byte{ // keep sync with varCodes
 	// TODO
-	nil, // srcHost
-	nil, // srcPort
-	nil, // isTLS
-	nil, // isUDS
+	0: nil, // srcHost
+	1: nil, // srcPort
+	2: nil, // isTLS
+	3: nil, // isUDS
 }
 
 // QUIXStream
@@ -412,7 +412,7 @@ type QUIXDealet_ struct {
 	// States
 }
 
-// quixProxy passes QUIX connections to QUIX backends.
+// quixProxy dealet passes QUIX connections to QUIX backends.
 type quixProxy struct {
 	// Parent
 	QUIXDealet_

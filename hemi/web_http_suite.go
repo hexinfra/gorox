@@ -55,12 +55,12 @@ type httpServer_[G Gate] struct {
 	// Assocs
 	defaultApp *Webapp // default webapp if not found
 	// States
-	maxMemoryContentSize int32                  // max content size that can be loaded into memory directly
-	maxStreamsPerConn    int32                  // max streams of one conn. 0 means infinite
 	webapps              []string               // for what webapps
 	exactApps            []*hostnameTo[*Webapp] // like: ("example.com")
 	suffixApps           []*hostnameTo[*Webapp] // like: ("*.example.com")
 	prefixApps           []*hostnameTo[*Webapp] // like: ("www.example.*")
+	maxMemoryContentSize int32                  // max content size that can be loaded into memory directly
+	maxStreamsPerConn    int32                  // max streams of one conn. 0 means infinite
 	forceScheme          int8                   // scheme (http/https) that must be used
 	adjustScheme         bool                   // use https scheme for TLS and http scheme for others?
 }
@@ -74,6 +74,9 @@ func (s *httpServer_[G]) onCreate(name string, stage *Stage) {
 func (s *httpServer_[G]) onConfigure() {
 	s.Server_.OnConfigure()
 	s._contentSaver_.onConfigure(s, TmpDir()+"/web/servers/"+s.name, 120*time.Second, 120*time.Second)
+
+	// webapps
+	s.ConfigureStringList("webapps", &s.webapps, nil, []string{})
 
 	// maxMemoryContentSize
 	s.ConfigureInt32("maxMemoryContentSize", &s.maxMemoryContentSize, func(value int32) error {
@@ -90,9 +93,6 @@ func (s *httpServer_[G]) onConfigure() {
 		}
 		return errors.New(".maxStreamsPerConn has an invalid value")
 	}, 1000)
-
-	// webapps
-	s.ConfigureStringList("webapps", &s.webapps, nil, []string{})
 
 	// forceScheme
 	var scheme string
@@ -363,7 +363,7 @@ type serverRequest_ struct { // incoming. needs parsing
 	path           []byte      // decoded path. only a reference. refers to r.array or region if rewrited, so can't be a span
 	absPath        []byte      // webapp.webRoot + r.UnsafePath(). if webapp.webRoot is not set then this is nil. set when dispatching to handlets. only a reference
 	pathInfo       os.FileInfo // cached result of os.Stat(r.absPath) if r.absPath is not nil
-	formWindow     []byte      // a window used when reading and parsing content as multipart/form-data. [<none>/r.contentText/4K/16K]
+	formWindow     []byte      // a window used for reading and parsing content as multipart/form-data. [<none>/r.contentText/4K/16K]
 	serverRequest0             // all values must be zero by default in this struct!
 }
 type serverRequest0 struct { // for fast reset, entirely
@@ -470,16 +470,18 @@ func (r *serverRequest_) Webapp() *Webapp { return r.webapp }
 func (r *serverRequest_) IsAbsoluteForm() bool    { return r.targetForm == httpTargetAbsolute }
 func (r *serverRequest_) IsAsteriskOptions() bool { return r.asteriskOptions }
 
-func (r *serverRequest_) SchemeCode() uint8    { return r.schemeCode }
-func (r *serverRequest_) IsHTTP() bool         { return r.schemeCode == SchemeHTTP }
-func (r *serverRequest_) IsHTTPS() bool        { return r.schemeCode == SchemeHTTPS }
-func (r *serverRequest_) Scheme() string       { return serverSchemeStrings[r.schemeCode] }
-func (r *serverRequest_) UnsafeScheme() []byte { return serverSchemeByteses[r.schemeCode] }
+func (r *serverRequest_) SchemeCode() uint8 { return r.schemeCode }
+func (r *serverRequest_) IsHTTP() bool      { return r.schemeCode == SchemeHTTP }
+func (r *serverRequest_) IsHTTPS() bool     { return r.schemeCode == SchemeHTTPS }
+func (r *serverRequest_) Scheme() string    { return serverSchemeStrings[r.schemeCode] }
 
 var serverSchemeStrings = [...]string{
 	SchemeHTTP:  stringHTTP,
 	SchemeHTTPS: stringHTTPS,
 }
+
+func (r *serverRequest_) UnsafeScheme() []byte { return serverSchemeByteses[r.schemeCode] }
+
 var serverSchemeByteses = [...][]byte{
 	SchemeHTTP:  bytesHTTP,
 	SchemeHTTPS: bytesHTTPS,
@@ -493,13 +495,13 @@ func (r *serverRequest_) IsDELETE() bool       { return r.methodCode == MethodDE
 func (r *serverRequest_) Method() string       { return string(r.UnsafeMethod()) }
 func (r *serverRequest_) UnsafeMethod() []byte { return r.input[r.method.from:r.method.edge] }
 func (r *serverRequest_) recognizeMethod(method []byte, hash uint16) {
-	if m := serverMethodTable[serverMethodFind(hash)]; m.hash == hash && bytes.Equal(httpMethodBytes[m.from:m.edge], method) {
+	if m := serverMethodTable[serverMethodFind(hash)]; m.hash == hash && bytes.Equal(serverMethodBytes[m.from:m.edge], method) {
 		r.methodCode = m.code
 	}
 }
 
 var ( // method hash table
-	httpMethodBytes   = []byte("GET HEAD POST PUT DELETE CONNECT OPTIONS TRACE")
+	serverMethodBytes = []byte("GET HEAD POST PUT DELETE CONNECT OPTIONS TRACE")
 	serverMethodTable = [8]struct {
 		hash uint16
 		from uint8
@@ -2477,16 +2479,16 @@ func (r *serverRequest_) unsafeVariable(code int16, name string) (value []byte) 
 }
 
 var serverRequestVariables = [...]func(*serverRequest_) []byte{ // keep sync with varCodes
-	(*serverRequest_).UnsafeMethod,      // method
-	(*serverRequest_).UnsafeScheme,      // scheme
-	(*serverRequest_).UnsafeAuthority,   // authority
-	(*serverRequest_).UnsafeHostname,    // hostname
-	(*serverRequest_).UnsafeColonPort,   // colonPort
-	(*serverRequest_).UnsafePath,        // path
-	(*serverRequest_).UnsafeURI,         // uri
-	(*serverRequest_).UnsafeEncodedPath, // encodedPath
-	(*serverRequest_).UnsafeQueryString, // queryString
-	(*serverRequest_).UnsafeContentType, // contentType
+	0: (*serverRequest_).UnsafeMethod,      // method
+	1: (*serverRequest_).UnsafeScheme,      // scheme
+	2: (*serverRequest_).UnsafeAuthority,   // authority
+	3: (*serverRequest_).UnsafeHostname,    // hostname
+	4: (*serverRequest_).UnsafeColonPort,   // colonPort
+	5: (*serverRequest_).UnsafePath,        // path
+	6: (*serverRequest_).UnsafeURI,         // uri
+	7: (*serverRequest_).UnsafeEncodedPath, // encodedPath
+	8: (*serverRequest_).UnsafeQueryString, // queryString
+	9: (*serverRequest_).UnsafeContentType, // contentType
 }
 
 // Upfile is a file uploaded by http client.
@@ -3363,7 +3365,7 @@ func (a *Webapp) OnConfigure() {
 }
 func (a *Webapp) OnPrepare() {
 	if a.accessLog != nil {
-		//a.logger = NewLogger(a.accessLog.logFile, a.accessLog.rotate)
+		//a.logger = NewLogger(a.accessLog.filePath, a.accessLog.rotate)
 	}
 	if a.file404 != "" {
 		if data, err := os.ReadFile(a.file404); err == nil {
@@ -4831,7 +4833,7 @@ func (r *backendResponse_) examineHead() bool {
 			return false
 		}
 	}
-	if DebugLevel() >= 2 {
+	if DebugLevel() >= 3 {
 		for i := 0; i < len(r.primes); i++ {
 			prime := &r.primes[i]
 			prime.show(r._placeOf(prime))

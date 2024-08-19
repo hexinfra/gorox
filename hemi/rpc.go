@@ -49,7 +49,7 @@ func (s *Service) OnConfigure() {
 }
 func (s *Service) OnPrepare() {
 	if s.accessLog != nil {
-		//s.logger = NewLogger(s.accessLog.logFile, s.accessLog.rotate)
+		//s.logger = NewLogger(s.accessLog.filePath, s.accessLog.rotate)
 	}
 
 	initsLock.RLock()

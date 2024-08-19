@@ -10,7 +10,7 @@ Layout
 Hemi contains these directories:
 
   * contrib/  - Place optional components,
-  * hemidev/  - A prototype application used to develop Hemi,
+  * hemicar/  - A prototype application used to develop Hemi,
   * library/  - Place general purpose libraries,
   * procmgr/  - A process manager for programs using Hemi,
   * toolkit/  - Place useful commands.

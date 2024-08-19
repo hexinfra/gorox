@@ -69,13 +69,16 @@ func (b *RedisBackend) CreateNode(name string) Node {
 }
 
 func (b *RedisBackend) Dial() (*RedisConn, error) {
+	// TODO
 	return nil, nil
 }
 
 func (b *RedisBackend) FetchConn() (*RedisConn, error) {
+	// TODO
 	return nil, nil
 }
 func (b *RedisBackend) StoreConn(redisConn *RedisConn) {
+	// TODO
 }
 
 // redisNode is a node in RedisBackend.
@@ -103,16 +106,20 @@ func (n *redisNode) Maintain() { // runner
 }
 
 func (n *redisNode) dial() (*RedisConn, error) {
+	// TODO
 	return nil, nil
 }
 
 func (n *redisNode) fetchConn() (*RedisConn, error) {
+	// TODO
 	return nil, nil
 }
 func (n *redisNode) storeConn(redisConn *RedisConn) {
+	// TODO
 }
 
 func (n *redisNode) closeConn(redisConn *RedisConn) {
+	// TODO
 }
 
 var poolRedisConn sync.Pool

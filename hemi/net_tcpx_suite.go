@@ -65,7 +65,7 @@ func (r *TCPXRouter) OnPrepare() {
 
 	// accessLog, TODO
 	if r.accessLog != nil {
-		//r.logger = NewLogger(r.accessLog.logFile, r.accessLog.rotate)
+		//r.logger = NewLogger(r.accessLog.filePath, r.accessLog.rotate)
 	}
 
 	// sub components
@@ -192,8 +192,7 @@ func (g *tcpxGate) Open() error {
 		// UDS doesn't support SO_REUSEADDR or SO_REUSEPORT, so we have to remove it first.
 		// This affects graceful upgrading, maybe we can implement fd transfer in the future.
 		os.Remove(address)
-		listener, err = net.Listen("unix", address)
-		if err == nil {
+		if listener, err = net.Listen("unix", address); err == nil {
 			g.listener = listener.(*net.UnixListener)
 		}
 	} else {
@@ -202,8 +201,7 @@ func (g *tcpxGate) Open() error {
 			// Don't use SetDeferAccept here as it assumes that clients send data first. Maybe we can make this as a config option?
 			return system.SetReusePort(rawConn)
 		}
-		listener, err = listenConfig.Listen(context.Background(), "tcp", g.Address())
-		if err == nil {
+		if listener, err = listenConfig.Listen(context.Background(), "tcp", g.Address()); err == nil {
 			g.listener = listener.(*net.TCPListener)
 		}
 	}
@@ -453,12 +451,12 @@ func (c *TCPXConn) unsafeVariable(code int16, name string) (value []byte) {
 // tcpxConnVariables
 var tcpxConnVariables = [...]func(*TCPXConn) []byte{ // keep sync with varCodes
 	// TODO
-	nil, // srcHost
-	nil, // srcPort
-	nil, // isTLS
-	nil, // isUDS
-	nil, // serverName
-	nil, // nextProto
+	0: nil, // srcHost
+	1: nil, // srcPort
+	2: nil, // isTLS
+	3: nil, // isUDS
+	4: nil, // serverName
+	5: nil, // nextProto
 }
 
 // tcpxCase
@@ -593,7 +591,7 @@ type TCPXDealet_ struct {
 	// States
 }
 
-// tcpxProxy passes TCPX connections to TCPX backends.
+// tcpxProxy dealet passes TCPX connections to TCPX backends.
 type tcpxProxy struct {
 	// Parent
 	TCPXDealet_

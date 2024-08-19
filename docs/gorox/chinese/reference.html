@@ -498,9 +498,9 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		.hostnames = ("example.com" "*.example.com" "www.example*")
 		.webRoot = %topDir + "/apps/proxy/root"
 		.accessLog = [
-			"logFile": %logDir + "/webapps/proxy.log",
-			"rotate" : "day",
-			"format" : "%T",
+			"filePath": %logDir + "/webapps/proxy.log",
+			"rotate"  : "day",
+			"format"  : "%T",
 		]
 		.maxMultiformSize = 128M
 		.settings = []

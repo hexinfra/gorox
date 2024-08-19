@@ -8,5 +8,5 @@
 package svcs
 
 import (
-	_ "github.com/hexinfra/gorox/hemi/hemidev/svcs/shared"
+	_ "github.com/hexinfra/gorox/hemi/hemicar/svcs/shared"
 )

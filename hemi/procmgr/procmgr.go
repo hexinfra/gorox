@@ -89,7 +89,7 @@ type Args struct {
 	Usage      string
 }
 
-// Main is the main() for both leader process and worker process.
+// Main is the main() for client process, leader process, and worker process.
 func Main(args *Args) {
 	if !system.Check() {
 		common.Crash("current platform (os + arch) is not supported.")

@@ -150,8 +150,7 @@ func (g *httpxGate) Open() error {
 		// UDS doesn't support SO_REUSEADDR or SO_REUSEPORT, so we have to remove it first.
 		// This affects graceful upgrading, maybe we can implement fd transfer in the future.
 		os.Remove(address)
-		listener, err = net.Listen("unix", address)
-		if err == nil {
+		if listener, err = net.Listen("unix", address); err == nil {
 			g.listener = listener.(*net.UnixListener)
 			if DebugLevel() >= 1 {
 				Printf("httpxGate id=%d address=%s opened!\n", g.id, g.Address())
@@ -165,8 +164,7 @@ func (g *httpxGate) Open() error {
 			}
 			return system.SetDeferAccept(rawConn)
 		}
-		listener, err = listenConfig.Listen(context.Background(), "tcp", g.Address())
-		if err == nil {
+		if listener, err = listenConfig.Listen(context.Background(), "tcp", g.Address()); err == nil {
 			g.listener = listener.(*net.TCPListener)
 			if DebugLevel() >= 1 {
 				Printf("httpxGate id=%d address=%s opened!\n", g.id, g.Address())
@@ -528,7 +526,7 @@ func (s *server1Stream) execute() {
 	resp.webapp = webapp
 
 	if !req.upgradeSocket { // exchan mode
-		if req.formKind != httpFormNotForm { // content is html form
+		if req.formKind != httpFormNotForm { // content is an html form
 			if req.formKind == httpFormMultipart { // we allow a larger content size for uploading through multipart/form-data (large files are written to disk).
 				req.maxContentSize = webapp.maxMultiformSize
 			} else { // application/x-www-form-urlencoded is limited in a smaller size.

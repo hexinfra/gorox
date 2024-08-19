@@ -51,7 +51,7 @@ type httpxServer struct {
 func (s *httpxServer) onCreate(name string, stage *Stage) {
 	s.httpServer_.onCreate(name, stage)
 
-	s.httpMode = 1 // http/1 by default. change to adaptive after http/2 server has been fully implemented
+	s.httpMode = 1 // http/1 by default. change to adaptive mode after http/2 server has been fully implemented
 }
 
 func (s *httpxServer) OnConfigure() {
@@ -89,7 +89,7 @@ func (s *httpxServer) OnPrepare() {
 			nextProtos = []string{"h2"}
 		case 1:
 			nextProtos = []string{"http/1.1"}
-		default: // adaptive
+		default: // adaptive mode
 			nextProtos = []string{"h2", "http/1.1"}
 		}
 		s.tlsConfig.NextProtos = nextProtos
@@ -3002,7 +3002,7 @@ func (r *httpOut_) writeBytes1(p []byte) error {
 
 // HTTP/1 webSocket
 
-func (s *webSocket_) example1() {
+func (s *webSocket_) todo1() {
 	// TODO
 }
 

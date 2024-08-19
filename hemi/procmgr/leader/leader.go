@@ -30,20 +30,20 @@ func Main() {
 		common.Crash("leader: " + err.Error())
 	}
 
-	// Config check passed, now start the worker
+	// Config check passed. Now start the worker
 	keeperChan = make(chan chan *msgx.Message)
 	go workerKeeper(configBase, configFile)
 	<-keeperChan // wait for workerKeeper() to ensure worker is started.
 
-	if common.MyroxAddr != "" {
-		go myroxClient()
-	} else {
+	if common.MyroxAddr == "" {
 		// TODO: sync?
 		go webuiServer()
 		go cmduiServer()
+	} else {
+		go myroxClient()
 	}
 
-	select {} // waiting forever
+	select {} // sleep forever
 }
 
 var keeperChan chan chan *msgx.Message
@@ -64,7 +64,7 @@ func workerKeeper(configBase string, configFile string) { // runner
 	if hemi.DebugLevel() >= 1 {
 		hemi.Printf("[leader] worker process id=%d started\n", worker.pid())
 	}
-	keeperChan <- nil // reply that we have created the worker.
+	keeperChan <- nil // reply to Main() that we have created the worker.
 
 	for { // each event from cmduiServer()/webuiServer()/myroxClient() and worker process
 		select {
@@ -131,7 +131,7 @@ func workerKeeper(configBase string, configFile string) { // runner
 type worker struct {
 	process *os.Process
 	connKey string
-	admConn net.Conn
+	admConn net.Conn // used to communicate with worker process
 	lastDie time.Time
 }
 
@@ -143,14 +143,14 @@ func newWorker(connKey string) *worker {
 
 func (w *worker) start(configBase string, configFile string, dieChan chan int) {
 	// Open temporary gate
-	tmpGate, err := net.Listen("tcp", "127.0.0.1:0") // port is random
+	admGate, err := net.Listen("tcp", "127.0.0.1:0") // port is random
 	if err != nil {
 		common.Crash(err.Error())
 	}
 
 	// Create worker process
 	process, err := os.StartProcess(system.ExePath, common.ExeArgs, &os.ProcAttr{
-		Env:   []string{"_DAEMON_=" + tmpGate.Addr().String() + "|" + w.connKey, "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
+		Env:   []string{"_DAEMON_=" + admGate.Addr().String() + "|" + w.connKey, "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
 		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr}, // inherit standard files from leader
 		Sys:   system.DaemonSysAttr(),
 	})
@@ -160,13 +160,13 @@ func (w *worker) start(configBase string, configFile string, dieChan chan int) {
 	w.process = process
 
 	// Accept admConn from worker
-	admConn, err := tmpGate.Accept()
+	admConn, err := admGate.Accept()
 	if err != nil {
 		common.Crash(err.Error())
 	}
 
 	// Close temporary gate
-	tmpGate.Close()
+	admGate.Close()
 
 	// Now that admConn is established, we register worker process
 	loginReq, err := msgx.Recv(admConn, 16<<10)

@@ -54,13 +54,13 @@ func Main(token string) {
 	}
 	curStage.Start(0)
 
-	// Initial stage started, now waiting for leader's commands.
+	// Initial stage started. Now waiting for leader's commands
 	for { // each message from leader process
 		req, err := msgx.Recv(admConn, 16<<20)
 		if err != nil { // leader must be gone
 			break
 		}
-		hemi.Printf("[worker] recv: %+v\n", req)
+		hemi.Printf("[worker] recv from leader: %+v\n", req)
 		if req.IsCall() {
 			resp := msgx.NewMessage(req.Comd, 0, nil)
 			if onCall, ok := onCalls[req.Comd]; ok {
@@ -78,7 +78,7 @@ func Main(token string) {
 		}
 	}
 
-	common.Stop() // the loop is broken. simply stop worker
+	common.Stop() // the loop is broken. simply stop worker process
 }
 
 var onCalls = map[uint8]func(req *msgx.Message, resp *msgx.Message){
@@ -86,16 +86,15 @@ var onCalls = map[uint8]func(req *msgx.Message, resp *msgx.Message){
 		resp.Set("goroutines", strconv.Itoa(runtime.NumGoroutine())) // TODO: other infos
 	},
 	common.ComdReload: func(req *msgx.Message, resp *msgx.Message) {
-		newStage, err := hemi.StageFromFile(configBase, configFile)
-		if err != nil {
+		if newStage, err := hemi.StageFromFile(configBase, configFile); err == nil {
+			oldStage := curStage
+			newStage.Start(oldStage.ID() + 1)
+			curStage = newStage
+			oldStage.Quit()
+		} else {
 			hemi.Errorln(err.Error())
 			resp.Flag = 500
-			return
 		}
-		oldStage := curStage
-		newStage.Start(oldStage.ID() + 1)
-		curStage = newStage
-		oldStage.Quit()
 	},
 }
 

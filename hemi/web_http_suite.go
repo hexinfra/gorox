@@ -107,6 +107,8 @@ func (s *httpServer_[G]) onConfigure() {
 		s.forceScheme = SchemeHTTP
 	case "https":
 		s.forceScheme = SchemeHTTPS
+	default:
+		BugExitln("unknown scheme")
 	}
 
 	// adjustScheme
@@ -1213,14 +1215,8 @@ func (r *serverRequest_) checkAcceptLanguage(pairs []pair, from uint8, edge uint
 		r.zones.acceptLanguage.from = from
 	}
 	r.zones.acceptLanguage.edge = edge
-	if DebugLevel() >= 2 {
-		/*
-			for i := from; i < edge; i++ {
-				// NOTE: test pair.kind == pairHeader
-				data := pairs[i].dataAt(r.input)
-				Printf("lang=%s\n", string(data))
-			}
-		*/
+	for i := from; i < edge; i++ {
+		// TODO: check syntax
 	}
 	return true
 }
@@ -1367,6 +1363,9 @@ func (r *serverRequest_) checkXForwardedFor(pairs []pair, from uint8, edge uint8
 		r.zones.xForwardedFor.from = from
 	}
 	r.zones.xForwardedFor.edge = edge
+	for i := from; i < edge; i++ {
+		// TODO: check syntax
+	}
 	return true
 }
 
@@ -4936,7 +4935,7 @@ func (r *backendResponse_) checkAge(header *pair, index uint8) bool { // Age = d
 		r.headResult, r.failReason = StatusBadRequest, "empty age"
 		return false
 	}
-	// TODO: check
+	// TODO: check and write to r.age
 	return true
 }
 func (r *backendResponse_) checkETag(header *pair, index uint8) bool { // ETag = entity-tag
@@ -5030,6 +5029,9 @@ func (r *backendResponse_) checkAllow(pairs []pair, from uint8, edge uint8) bool
 		r.zones.allow.from = from
 	}
 	r.zones.allow.edge = edge
+	for i := from; i < edge; i++ {
+		// TODO: check syntax
+	}
 	return true
 }
 func (r *backendResponse_) checkAltSvc(pairs []pair, from uint8, edge uint8) bool { // Alt-Svc = clear / 1#alt-value
@@ -5041,6 +5043,9 @@ func (r *backendResponse_) checkAltSvc(pairs []pair, from uint8, edge uint8) boo
 		r.zones.altSvc.from = from
 	}
 	r.zones.altSvc.edge = edge
+	for i := from; i < edge; i++ {
+		// TODO: check syntax
+	}
 	return true
 }
 func (r *backendResponse_) checkCacheControl(pairs []pair, from uint8, edge uint8) bool { // Cache-Control = #cache-directive
@@ -5051,11 +5056,15 @@ func (r *backendResponse_) checkCacheControl(pairs []pair, from uint8, edge uint
 	return true
 }
 func (r *backendResponse_) checkCacheStatus(pairs []pair, from uint8, edge uint8) bool { // ?
-	// TODO
+	for i := from; i < edge; i++ {
+		// TODO
+	}
 	return true
 }
 func (r *backendResponse_) checkCDNCacheControl(pairs []pair, from uint8, edge uint8) bool { // ?
-	// TODO
+	for i := from; i < edge; i++ {
+		// TODO
+	}
 	return true
 }
 func (r *backendResponse_) checkProxyAuthenticate(pairs []pair, from uint8, edge uint8) bool { // Proxy-Authenticate = #challenge
@@ -5067,7 +5076,9 @@ func (r *backendResponse_) checkWWWAuthenticate(pairs []pair, from uint8, edge u
 	return true
 }
 func (r *backendResponse_) _checkChallenge(pairs []pair, from uint8, edge uint8) bool { // challenge = auth-scheme [ 1*SP ( token68 / [ auth-param *( OWS "," OWS auth-param ) ] ) ]
-	// TODO
+	for i := from; i < edge; i++ {
+		// TODO
+	}
 	return true
 }
 func (r *backendResponse_) checkTransferEncoding(pairs []pair, from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
@@ -5094,6 +5105,9 @@ func (r *backendResponse_) checkVary(pairs []pair, from uint8, edge uint8) bool 
 		r.zones.vary.from = from
 	}
 	r.zones.vary.edge = edge
+	for i := from; i < edge; i++ {
+		// TODO
+	}
 	return true
 }
 
@@ -5217,21 +5231,21 @@ type httpIn_ struct { // incoming. needs parsing
 	primes               []pair        // hold prime queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockPrimes>/max]
 	extras               []pair        // hold extra queries, headers(main+subs), cookies, forms, trailers(main+subs), and params. [<r.stockExtras>/max]
 	array                []byte        // store parsed, dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
-	input                []byte        // bytes of incoming message heads. [<r.stockInput>/4K/16K]
+	input                []byte        // bytes of raw incoming message heads. [<r.stockInput>/4K/16K]
 	recvTimeout          time.Duration // timeout to recv the whole message content. zero means no timeout
 	maxContentSize       int64         // max content size allowed for current message. if the content is vague, size will be calculated on receiving
-	maxMemoryContentSize int32         // max content size allowed to load into memory
+	maxMemoryContentSize int32         // max content size allowed for loading the content into memory
 	_                    int32         // padding
-	contentSize          int64         // info about incoming content. >=0: content size, -1: no content, -2: vague content
+	contentSize          int64         // size info about incoming content. >=0: content size, -1: no content, -2: vague content
 	httpVersion          uint8         // Version1_0, Version1_1, Version2, Version3
-	asResponse           bool          // treat this message as a response?
+	asResponse           bool          // treat this incoming message as a response?
 	keepAlive            int8          // used by HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
 	_                    byte          // padding
 	headResult           int16         // result of receiving message head. values are as same as http status for convenience
 	bodyResult           int16         // result of receiving message body. values are as same as http status for convenience
 	// Stream states (zeros)
-	bodyWindow  []byte    // a window used for receiving body. sizes must be same with r.input for HTTP/1. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
 	failReason  string    // the fail reason of headResult or bodyResult
+	bodyWindow  []byte    // a window used for receiving body. for HTTP/1, sizes must be same with r.input. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
 	recvTime    time.Time // the time when we begin receiving message
 	bodyTime    time.Time // the time when first body read operation is performed on this stream
 	contentText []byte    // if loadable, the received and loaded content of current message is at r.contentText[:r.receivedSize]. [<none>/r.input/4K/16K/64K1/(make)]
@@ -5239,8 +5253,8 @@ type httpIn_ struct { // incoming. needs parsing
 	httpIn0               // all values must be zero by default in this struct!
 }
 type httpIn0 struct { // for fast reset, entirely
-	pBack            int32   // element begins from. for parsing control & headers & content & trailers elements
-	pFore            int32   // element spanning to. for parsing control & headers & content & trailers elements
+	pBack            int32   // element begins from. for parsing elements in control & headers & content & trailers
+	pFore            int32   // element spanning to. for parsing elements in control & headers & content & trailers
 	head             span    // head (control + headers) of current message -> r.input. set after head is received. only for debugging
 	imme             span    // HTTP/1 only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
 	hasExtra         [8]bool // has extra pairs? see pairXXX for indexes
@@ -5310,7 +5324,7 @@ func (r *httpIn_) onEnd() { // for zeros
 		PutNK(r.array)
 	}
 	r.array = nil                                  // array of other kinds is only a reference, so just reset.
-	if r.httpVersion >= Version2 || r.asResponse { // as we don't pipeline outgoing requests, incoming responses are not pipelined.
+	if r.httpVersion >= Version2 || r.asResponse { // as we don't pipeline outgoing requests, incoming responses are not pipelined too.
 		if cap(r.input) != cap(r.stockInput) {
 			PutNK(r.input)
 		}
@@ -5319,6 +5333,8 @@ func (r *httpIn_) onEnd() { // for zeros
 	} else {
 		// HTTP/1 supports request pipelining, so input related are not reset here.
 	}
+
+	r.failReason = ""
 
 	if r.inputNext != 0 { // only happens in HTTP/1.1 request pipelining
 		if r.overChunked { // only happens in HTTP/1.1 chunked mode
@@ -5337,8 +5353,6 @@ func (r *httpIn_) onEnd() { // for zeros
 		PutNK(r.bodyWindow)
 	}
 	r.bodyWindow = nil
-
-	r.failReason = ""
 
 	r.recvTime = time.Time{}
 	r.bodyTime = time.Time{}
@@ -5364,14 +5378,13 @@ func (r *httpIn_) onEnd() { // for zeros
 func (r *httpIn_) UnsafeMake(size int) []byte { return r.stream.unsafeMake(size) }
 func (r *httpIn_) RemoteAddr() net.Addr       { return r.stream.remoteAddr() }
 
-func (r *httpIn_) VersionCode() uint8    { return r.httpVersion }
-func (r *httpIn_) IsHTTP1_0() bool       { return r.httpVersion == Version1_0 }
-func (r *httpIn_) IsHTTP1_1() bool       { return r.httpVersion == Version1_1 }
-func (r *httpIn_) IsHTTP1() bool         { return r.httpVersion <= Version1_1 }
-func (r *httpIn_) IsHTTP2() bool         { return r.httpVersion == Version2 }
-func (r *httpIn_) IsHTTP3() bool         { return r.httpVersion == Version3 }
-func (r *httpIn_) Version() string       { return httpVersionStrings[r.httpVersion] }
-func (r *httpIn_) UnsafeVersion() []byte { return httpVersionByteses[r.httpVersion] }
+func (r *httpIn_) VersionCode() uint8 { return r.httpVersion }
+func (r *httpIn_) IsHTTP1_0() bool    { return r.httpVersion == Version1_0 }
+func (r *httpIn_) IsHTTP1_1() bool    { return r.httpVersion == Version1_1 }
+func (r *httpIn_) IsHTTP1() bool      { return r.httpVersion <= Version1_1 }
+func (r *httpIn_) IsHTTP2() bool      { return r.httpVersion == Version2 }
+func (r *httpIn_) IsHTTP3() bool      { return r.httpVersion == Version3 }
+func (r *httpIn_) Version() string    { return httpVersionStrings[r.httpVersion] }
 
 var httpVersionStrings = [...]string{
 	Version1_0: stringHTTP1_0,
@@ -5379,6 +5392,9 @@ var httpVersionStrings = [...]string{
 	Version2:   stringHTTP2,
 	Version3:   stringHTTP3,
 }
+
+func (r *httpIn_) UnsafeVersion() []byte { return httpVersionByteses[r.httpVersion] }
+
 var httpVersionByteses = [...][]byte{
 	Version1_0: bytesHTTP1_0,
 	Version1_1: bytesHTTP1_1,
@@ -5893,7 +5909,9 @@ func (r *httpIn_) checkContentLanguage(pairs []pair, from uint8, edge uint8) boo
 		r.zContentLanguage.from = from
 	}
 	r.zContentLanguage.edge = edge
-	// TODO: check syntax
+	for i := from; i < edge; i++ {
+		// TODO: check syntax
+	}
 	return true
 }
 func (r *httpIn_) checkTrailer(pairs []pair, from uint8, edge uint8) bool { // Trailer = #field-name
@@ -5902,7 +5920,9 @@ func (r *httpIn_) checkTrailer(pairs []pair, from uint8, edge uint8) bool { // T
 	}
 	r.zTrailer.edge = edge
 	// field-name = token
-	// TODO: check syntax
+	for i := from; i < edge; i++ {
+		// TODO: check syntax
+	}
 	return true
 }
 func (r *httpIn_) checkTransferEncoding(pairs []pair, from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
@@ -5931,7 +5951,9 @@ func (r *httpIn_) checkVia(pairs []pair, from uint8, edge uint8) bool { // Via =
 		r.zVia.from = from
 	}
 	r.zVia.edge = edge
-	// TODO: check syntax
+	for i := from; i < edge; i++ {
+		// TODO: check syntax
+	}
 	return true
 }
 
@@ -6623,7 +6645,7 @@ type httpOut_ struct { // outgoing. needs building
 	sendTimeout time.Duration // timeout to send the whole message. zero means no timeout
 	contentSize int64         // info of outgoing content. -1: not set, -2: vague, >=0: size
 	httpVersion uint8         // Version1_1, Version2, Version3
-	asRequest   bool          // treat this message as request?
+	asRequest   bool          // treat this outgoing message as request?
 	nHeaders    uint8         // 1+num of added headers, starts from 1 because edges[0] is not used
 	nTrailers   uint8         // 1+num of added trailers, starts from 1 because edges[0] is not used
 	// Stream states (zeros)
@@ -7053,7 +7075,7 @@ func (s *webSocket_) onUse() {
 func (s *webSocket_) onEnd() {
 }
 
-func (s *webSocket_) example() {
+func (s *webSocket_) todo() {
 }
 
 var ( // webSocket errors

@@ -324,7 +324,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 
 	webapp "proxy" {
 		.hostnames = ("*")
-		rule { // match all url
+		rule {
 			httpProxy {
 				.toBackend = "h1b"
 			}

@@ -123,7 +123,7 @@ func (s *httpxServer) Serve() { // runner
 // httpxGate is a gate of httpxServer.
 type httpxGate struct {
 	// Parent
-	httpGate_
+	Gate_
 	// Assocs
 	server *httpxServer
 	// States
@@ -131,7 +131,7 @@ type httpxGate struct {
 }
 
 func (g *httpxGate) init(id int32, server *httpxServer) {
-	g.httpGate_.init(id, server.MaxConnsPerGate())
+	g.Gate_.Init(id, server.MaxConnsPerGate())
 	g.server = server
 }
 

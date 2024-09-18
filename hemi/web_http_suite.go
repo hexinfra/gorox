@@ -107,8 +107,6 @@ func (s *httpServer_[G]) onConfigure() {
 		s.forceScheme = SchemeHTTP
 	case "https":
 		s.forceScheme = SchemeHTTPS
-	default:
-		BugExitln("unknown scheme")
 	}
 
 	// adjustScheme
@@ -179,17 +177,6 @@ func (s *httpServer_[G]) findApp(hostname []byte) *Webapp {
 		}
 	}
 	return s.defaultApp // may be nil
-}
-
-// httpGate_ is the parent for http[x3]Gate.
-type httpGate_ struct {
-	// Parent
-	Gate_
-	// States
-}
-
-func (g *httpGate_) init(id int32, maxConnsPerGate int32) {
-	g.Gate_.Init(id, maxConnsPerGate)
 }
 
 // Request is the server-side http request.
@@ -343,7 +330,7 @@ type Request interface { // for *server[1-3]Request
 	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
 	forCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool
 	unsetHost()
-	holdContent() any
+	takeContent() any // used by proxies
 	readContent() (p []byte, err error)
 	examineTail() bool
 	hookReviser(reviser Reviser)
@@ -4069,7 +4056,7 @@ func WebExchanReverseProxy(req Request, resp Response, backend HTTPBackend, cfg 
 	var content any
 	hasContent := req.HasContent()
 	if hasContent && cfg.BufferClientContent { // including size 0
-		content = req.holdContent()
+		content = req.takeContent()
 		if content == nil { // take failed
 			// stream was marked as broken
 			resp.SetStatus(StatusBadRequest)
@@ -4158,7 +4145,7 @@ func WebExchanReverseProxy(req Request, resp Response, backend HTTPBackend, cfg 
 		backHasContent = backResp.HasContent()
 	}
 	if backHasContent && cfg.BufferServerContent { // including size 0
-		backContent = backResp.holdContent()
+		backContent = backResp.takeContent()
 		if backContent == nil { // take failed
 			// backStream was marked as broken
 			resp.SendBadGateway(nil)
@@ -4749,7 +4736,7 @@ type response interface { // for *backend[1-3]Response
 	HasTrailers() bool
 	IsVague() bool
 	examineTail() bool
-	holdContent() any
+	takeContent() any // used by proxies
 	readContent() (p []byte, err error)
 	delHopHeaders()
 	delHopTrailers()
@@ -5997,7 +5984,7 @@ func (r *httpIn_) UnsafeContentType() []byte {
 
 func (r *httpIn_) SetRecvTimeout(timeout time.Duration) { r.recvTimeout = timeout }
 
-func (r *httpIn_) unsafeContent() []byte { // load content into memory anyway
+func (r *httpIn_) unsafeContent() []byte { // load message content into memory
 	r._loadContent()
 	if r.stream.isBroken() {
 		return nil
@@ -6042,7 +6029,7 @@ func (r *httpIn_) _loadContent() { // into memory. [0, r.maxContentSize]
 		r.stream.markBroken()
 	}
 }
-func (r *httpIn_) holdContent() any { // used by proxies
+func (r *httpIn_) takeContent() any { // used by proxies
 	if r.contentReceived {
 		if r.contentFile == nil {
 			return r.contentText // immediate

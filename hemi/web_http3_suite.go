@@ -73,7 +73,7 @@ func (s *http3Server) Serve() { // runner
 // http3Gate is a gate of http3Server.
 type http3Gate struct {
 	// Parent
-	httpGate_
+	Gate_
 	// Assocs
 	server *http3Server
 	// States
@@ -81,7 +81,7 @@ type http3Gate struct {
 }
 
 func (g *http3Gate) init(id int32, server *http3Server) {
-	g.httpGate_.init(id, server.MaxConnsPerGate())
+	g.Gate_.Init(id, server.MaxConnsPerGate())
 	g.server = server
 }
 

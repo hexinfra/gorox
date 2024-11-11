@@ -126,28 +126,28 @@ func (c *configurator) showTokens() {
 	}
 }
 
-func (c *configurator) current() *token { return &c.tokens[c.index] }
-func (c *configurator) forward() *token {
+func (c *configurator) currentToken() *token { return &c.tokens[c.index] }
+func (c *configurator) forwardToken() *token {
 	c._forwardCheckEOF()
 	return &c.tokens[c.index]
 }
-func (c *configurator) currentIs(kind int16) bool { return c.tokens[c.index].kind == kind }
-func (c *configurator) nextIs(kind int16) bool {
+func (c *configurator) currentTokenIs(kind int16) bool { return c.tokens[c.index].kind == kind }
+func (c *configurator) nextTokenIs(kind int16) bool {
 	if c.index == c.limit {
 		return false
 	}
 	return c.tokens[c.index+1].kind == kind
 }
-func (c *configurator) expect(kind int16) *token {
+func (c *configurator) expectToken(kind int16) *token {
 	current := &c.tokens[c.index]
 	if current.kind != kind {
 		panic(fmt.Errorf("configurator: expect %s, but get %s=%s (in line %d)\n", tokenNames[kind], tokenNames[current.kind], current.text, current.line))
 	}
 	return current
 }
-func (c *configurator) forwardExpect(kind int16) *token {
+func (c *configurator) forwardExpectToken(kind int16) *token {
 	c._forwardCheckEOF()
-	return c.expect(kind)
+	return c.expectToken(kind)
 }
 func (c *configurator) _forwardCheckEOF() {
 	if c.index++; c.index == c.limit {
@@ -161,7 +161,7 @@ func (c *configurator) newName() string {
 }
 
 func (c *configurator) parse() (stage *Stage, err error) {
-	if current := c.current(); current.kind != tokenComponent || current.info != compStage {
+	if current := c.currentToken(); current.kind != tokenComponent || current.info != compStage {
 		panic(errors.New("configurator error: root component is not stage"))
 	}
 	stage = newStage()
@@ -171,9 +171,9 @@ func (c *configurator) parse() (stage *Stage, err error) {
 }
 
 func (c *configurator) parseStage(stage *Stage) { // stage {}
-	c.forwardExpect(tokenLeftBrace) // {
+	c.forwardExpectToken(tokenLeftBrace) // {
 	for {
-		current := c.forward()
+		current := c.forwardToken()
 		if current.kind == tokenRightBrace { // }
 			return
 		}
@@ -219,16 +219,16 @@ func (c *configurator) parseFixture(sign *token, stage *Stage) { // xxxFixture {
 		panic(errors.New("configurator error: unknown fixture: " + fixtureSign))
 	}
 	fixture.setParent(stage)
-	c.forward()
+	c.forwardToken()
 	c._parseLeaf(fixture)
 }
 func (c *configurator) parseBackend(sign *token, stage *Stage) { // xxxBackend <name> {}
-	backendName := c.forwardExpect(tokenString)
+	backendName := c.forwardExpectToken(tokenString)
 	backend := stage.createBackend(sign.text, backendName.text)
 	backend.setParent(stage)
-	c.forwardExpect(tokenLeftBrace) // {
+	c.forwardExpectToken(tokenLeftBrace) // {
 	for {
-		current := c.forward()
+		current := c.forwardToken()
 		if current.kind == tokenRightBrace { // }
 			return
 		}
@@ -249,9 +249,9 @@ func (c *configurator) parseBackend(sign *token, stage *Stage) { // xxxBackend <
 }
 func (c *configurator) parseNode(backend Backend) { // node <name> {}
 	var nodeName string
-	if current := c.forward(); current.kind == tokenString {
+	if current := c.forwardToken(); current.kind == tokenString {
 		nodeName = current.text
-		c.forward()
+		c.forwardToken()
 	} else {
 		nodeName = c.newName()
 	}
@@ -280,21 +280,21 @@ func (c *configurator) parseUDPXDealet(sign *token, router *UDPXRouter, kase *ud
 func (c *configurator) parseQUIXCase(router *QUIXRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
 	kase := router.createCase(c.newName()) // use a temp name by default
 	kase.setParent(router)
-	c.forward()
-	if !c.currentIs(tokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
-		if c.currentIs(tokenString) { // case <name> {}, case <name> <cond> {}
-			if caseName := c.current().text; caseName != "" {
+	c.forwardToken()
+	if !c.currentTokenIs(tokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
+		if c.currentTokenIs(tokenString) { // case <name> {}, case <name> <cond> {}
+			if caseName := c.currentToken().text; caseName != "" {
 				kase.setName(caseName) // change name
 			}
-			c.forward()
+			c.forwardToken()
 		}
-		if !c.currentIs(tokenLeftBrace) { // case <name> <cond> {}
+		if !c.currentTokenIs(tokenLeftBrace) { // case <name> <cond> {}
 			c.parseCaseCond(kase)
-			c.forwardExpect(tokenLeftBrace)
+			c.forwardExpectToken(tokenLeftBrace)
 		}
 	}
 	for {
-		current := c.forward()
+		current := c.forwardToken()
 		if current.kind == tokenRightBrace { // }
 			return
 		}
@@ -316,21 +316,21 @@ func (c *configurator) parseQUIXCase(router *QUIXRouter) { // case <name> {}, ca
 func (c *configurator) parseTCPXCase(router *TCPXRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
 	kase := router.createCase(c.newName()) // use a temp name by default
 	kase.setParent(router)
-	c.forward()
-	if !c.currentIs(tokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
-		if c.currentIs(tokenString) { // case <name> {}, case <name> <cond> {}
-			if caseName := c.current().text; caseName != "" {
+	c.forwardToken()
+	if !c.currentTokenIs(tokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
+		if c.currentTokenIs(tokenString) { // case <name> {}, case <name> <cond> {}
+			if caseName := c.currentToken().text; caseName != "" {
 				kase.setName(caseName) // change name
 			}
-			c.forward()
+			c.forwardToken()
 		}
-		if !c.currentIs(tokenLeftBrace) { // case <name> <cond> {}
+		if !c.currentTokenIs(tokenLeftBrace) { // case <name> <cond> {}
 			c.parseCaseCond(kase)
-			c.forwardExpect(tokenLeftBrace)
+			c.forwardExpectToken(tokenLeftBrace)
 		}
 	}
 	for {
-		current := c.forward()
+		current := c.forwardToken()
 		if current.kind == tokenRightBrace { // }
 			return
 		}
@@ -352,21 +352,21 @@ func (c *configurator) parseTCPXCase(router *TCPXRouter) { // case <name> {}, ca
 func (c *configurator) parseUDPXCase(router *UDPXRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
 	kase := router.createCase(c.newName()) // use a temp name by default
 	kase.setParent(router)
-	c.forward()
-	if !c.currentIs(tokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
-		if c.currentIs(tokenString) { // case <name> {}, case <name> <cond> {}
-			if caseName := c.current().text; caseName != "" {
+	c.forwardToken()
+	if !c.currentTokenIs(tokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
+		if c.currentTokenIs(tokenString) { // case <name> {}, case <name> <cond> {}
+			if caseName := c.currentToken().text; caseName != "" {
 				kase.setName(caseName) // change name
 			}
-			c.forward()
+			c.forwardToken()
 		}
-		if !c.currentIs(tokenLeftBrace) { // case <name> <cond> {}
+		if !c.currentTokenIs(tokenLeftBrace) { // case <name> <cond> {}
 			c.parseCaseCond(kase)
-			c.forwardExpect(tokenLeftBrace)
+			c.forwardExpectToken(tokenLeftBrace)
 		}
 	}
 	for {
-		current := c.forward()
+		current := c.forwardToken()
 		if current.kind == tokenRightBrace { // }
 			return
 		}
@@ -386,19 +386,19 @@ func (c *configurator) parseUDPXCase(router *UDPXRouter) { // case <name> {}, ca
 	}
 }
 func (c *configurator) parseCaseCond(kase interface{ setInfo(info any) }) {
-	variable := c.expect(tokenVariable)
-	c.forward()
-	if c.currentIs(tokenFSCheck) {
+	variable := c.expectToken(tokenVariable)
+	c.forwardToken()
+	if c.currentTokenIs(tokenFSCheck) {
 		panic(errors.New("configurator error: fs check is not allowed in case"))
 	}
 	cond := caseCond{varCode: variable.info, varName: variable.text}
-	compare := c.expect(tokenCompare)
+	compare := c.expectToken(tokenCompare)
 	patterns := []string{}
-	if current := c.forward(); current.kind == tokenString {
+	if current := c.forwardToken(); current.kind == tokenString {
 		patterns = append(patterns, current.text)
 	} else if current.kind == tokenLeftParen { // (
 		for { // each element
-			current = c.forward()
+			current = c.forwardToken()
 			if current.kind == tokenRightParen { // )
 				break
 			} else if current.kind == tokenString {
@@ -406,7 +406,7 @@ func (c *configurator) parseCaseCond(kase interface{ setInfo(info any) }) {
 			} else {
 				panic(errors.New("configurator error: only strings are allowed in cond"))
 			}
-			current = c.forward()
+			current = c.forwardToken()
 			if current.kind == tokenRightParen { // )
 				break
 			} else if current.kind != tokenComma {
@@ -421,10 +421,10 @@ func (c *configurator) parseCaseCond(kase interface{ setInfo(info any) }) {
 	kase.setInfo(cond)
 }
 func (c *configurator) parseService(sign *token, stage *Stage) { // service <name> {}
-	serviceName := c.forwardExpect(tokenString)
+	serviceName := c.forwardExpectToken(tokenString)
 	service := stage.createService(serviceName.text)
 	service.setParent(stage)
-	c.forward()
+	c.forwardToken()
 	c._parseLeaf(service)
 }
 func (c *configurator) parseStater(sign *token, stage *Stage) { // xxxStater <name> {}
@@ -434,12 +434,12 @@ func (c *configurator) parseCacher(sign *token, stage *Stage) { // xxxCacher <na
 	parseComponent0(c, sign, stage, stage.createCacher)
 }
 func (c *configurator) parseWebapp(sign *token, stage *Stage) { // webapp <name> {}
-	webappName := c.forwardExpect(tokenString)
+	webappName := c.forwardExpectToken(tokenString)
 	webapp := stage.createWebapp(webappName.text)
 	webapp.setParent(stage)
-	c.forwardExpect(tokenLeftBrace) // {
+	c.forwardExpectToken(tokenLeftBrace) // {
 	for {
-		current := c.forward()
+		current := c.forwardToken()
 		if current.kind == tokenRightBrace { // }
 			return
 		}
@@ -476,21 +476,21 @@ func (c *configurator) parseSocklet(sign *token, webapp *Webapp, rule *Rule) { /
 func (c *configurator) parseRule(webapp *Webapp) { // rule <name> {}, rule <name> <cond> {}, rule <cond> {}, rule {}
 	rule := webapp.createRule(c.newName()) // use a temp name by default
 	rule.setParent(webapp)
-	c.forward()
-	if !c.currentIs(tokenLeftBrace) { // rule <name> {}, rule <name> <cond> {}, rule <cond> {}
-		if c.currentIs(tokenString) { // rule <name> {}, rule <name> <cond> {}
-			if ruleName := c.current().text; ruleName != "" {
+	c.forwardToken()
+	if !c.currentTokenIs(tokenLeftBrace) { // rule <name> {}, rule <name> <cond> {}, rule <cond> {}
+		if c.currentTokenIs(tokenString) { // rule <name> {}, rule <name> <cond> {}
+			if ruleName := c.currentToken().text; ruleName != "" {
 				rule.setName(ruleName) // change name
 			}
-			c.forward()
+			c.forwardToken()
 		}
-		if !c.currentIs(tokenLeftBrace) { // rule <name> <cond> {}
+		if !c.currentTokenIs(tokenLeftBrace) { // rule <name> <cond> {}
 			c.parseRuleCond(rule)
-			c.forwardExpect(tokenLeftBrace)
+			c.forwardExpectToken(tokenLeftBrace)
 		}
 	}
 	for {
-		current := c.forward()
+		current := c.forwardToken()
 		if current.kind == tokenRightBrace { // }
 			return
 		}
@@ -514,23 +514,23 @@ func (c *configurator) parseRule(webapp *Webapp) { // rule <name> {}, rule <name
 	}
 }
 func (c *configurator) parseRuleCond(rule *Rule) {
-	variable := c.expect(tokenVariable)
-	c.forward()
+	variable := c.expectToken(tokenVariable)
+	c.forwardToken()
 	cond := ruleCond{varCode: variable.info, varName: variable.text}
 	var compare *token
-	if c.currentIs(tokenFSCheck) {
+	if c.currentTokenIs(tokenFSCheck) {
 		if variable.text != "path" {
 			panic(fmt.Errorf("configurator error: only path is allowed to test against file system, but got %s\n", variable.text))
 		}
-		compare = c.current()
+		compare = c.currentToken()
 	} else {
-		compare = c.expect(tokenCompare)
+		compare = c.expectToken(tokenCompare)
 		patterns := []string{}
-		if current := c.forward(); current.kind == tokenString {
+		if current := c.forwardToken(); current.kind == tokenString {
 			patterns = append(patterns, current.text)
 		} else if current.kind == tokenLeftParen { // (
 			for { // each element
-				current = c.forward()
+				current = c.forwardToken()
 				if current.kind == tokenRightParen { // )
 					break
 				} else if current.kind == tokenString {
@@ -538,7 +538,7 @@ func (c *configurator) parseRuleCond(rule *Rule) {
 				} else {
 					panic(errors.New("configurator error: only strings are allowed in cond"))
 				}
-				current = c.forward()
+				current = c.forwardToken()
 				if current.kind == tokenRightParen { // )
 					break
 				} else if current.kind != tokenComma {
@@ -561,9 +561,9 @@ func (c *configurator) parseCronjob(sign *token, stage *Stage) { // xxxCronjob <
 }
 
 func (c *configurator) _parseLeaf(component Component) {
-	c.expect(tokenLeftBrace) // {
+	c.expectToken(tokenLeftBrace) // {
 	for {
-		current := c.forward()
+		current := c.forwardToken()
 		if current.kind == tokenRightBrace { // }
 			return
 		}
@@ -575,18 +575,18 @@ func (c *configurator) _parseLeaf(component Component) {
 	}
 }
 func (c *configurator) _parseAssign(prop *token, component Component) {
-	if c.nextIs(tokenLeftBrace) { // {
+	if c.nextTokenIs(tokenLeftBrace) { // {
 		panic(fmt.Errorf("configurator error: unknown component '%s' (in line %d)\n", prop.text, prop.line))
 	}
-	c.forwardExpect(tokenEqual) // =
-	c.forward()
+	c.forwardExpectToken(tokenEqual) // =
+	c.forwardToken()
 	var value Value
 	c._parseValue(component, prop.text, &value)
 	component.setProp(prop.text, value)
 }
 
 func (c *configurator) _parseValue(component Component, prop string, value *Value) {
-	current := c.current()
+	current := c.currentToken()
 	switch current.kind {
 	case tokenBool:
 		value.kind, value.value = tokenBool, current.text == "true"
@@ -669,18 +669,18 @@ func (c *configurator) _parseValue(component Component, prop string, value *Valu
 	}
 
 	for {
-		if !c.nextIs(tokenPlus) { // any concatenations?
+		if !c.nextTokenIs(tokenPlus) { // any concatenations?
 			break
 		}
 		// Yes.
-		c.forward() // +
-		current = c.forward()
+		c.forwardToken() // +
+		current = c.forwardToken()
 		var str Value
 		isString := false
-		if c.currentIs(tokenString) {
+		if c.currentTokenIs(tokenString) {
 			isString = true
 			c._parseValue(component, prop, &str)
-		} else if c.currentIs(tokenProperty) {
+		} else if c.currentTokenIs(tokenProperty) {
 			if propRef := current.text; prop == "" || prop == propRef {
 				panic(errors.New("configurator error: cannot refer to self"))
 			} else if valueRef, ok := component.Find(propRef); !ok {
@@ -696,22 +696,22 @@ func (c *configurator) _parseValue(component Component, prop string, value *Valu
 			value.value = value.value.(string) + str.value.(string)
 			value.bytes = append(value.bytes, str.bytes...)
 		} else {
-			panic(errors.New("configurator error: cannot concat string with other types. token=" + c.current().text))
+			panic(errors.New("configurator error: cannot concat string with other types. token=" + c.currentToken().text))
 		}
 	}
 }
 func (c *configurator) _parseList(component Component, prop string, value *Value) {
 	list := []Value{}
-	c.expect(tokenLeftParen) // (
+	c.expectToken(tokenLeftParen) // (
 	for {
-		current := c.forward()
+		current := c.forwardToken()
 		if current.kind == tokenRightParen { // )
 			break
 		}
 		var elem Value
 		c._parseValue(component, prop, &elem)
 		list = append(list, elem)
-		current = c.forward()
+		current = c.forwardToken()
 		if current.kind == tokenRightParen { // )
 			break
 		} else if current.kind != tokenComma { // ,
@@ -722,19 +722,19 @@ func (c *configurator) _parseList(component Component, prop string, value *Value
 }
 func (c *configurator) _parseDict(component Component, prop string, value *Value) {
 	dict := make(map[string]Value)
-	c.expect(tokenLeftBracket) // [
+	c.expectToken(tokenLeftBracket) // [
 	for {
-		current := c.forward()
+		current := c.forwardToken()
 		if current.kind == tokenRightBracket { // ]
 			break
 		}
-		k := c.expect(tokenString)  // k
-		c.forwardExpect(tokenColon) // :
-		current = c.forward()       // v
+		k := c.expectToken(tokenString)  // k
+		c.forwardExpectToken(tokenColon) // :
+		current = c.forwardToken()       // v
 		var v Value
 		c._parseValue(component, prop, &v)
 		dict[k.text] = v
-		current = c.forward()
+		current = c.forwardToken()
 		if current.kind == tokenRightBracket { // ]
 			break
 		} else if current.kind != tokenComma { // ,
@@ -745,19 +745,19 @@ func (c *configurator) _parseDict(component Component, prop string, value *Value
 }
 
 func parseComponent0[T Component](c *configurator, sign *token, stage *Stage, create func(sign string, name string) T) { // backend, stater, cacher, server, cronjob
-	name := c.forwardExpect(tokenString)
+	name := c.forwardExpectToken(tokenString)
 	component := create(sign.text, name.text)
 	component.setParent(stage)
-	c.forward()
+	c.forwardToken()
 	c._parseLeaf(component)
 }
 func parseComponentR[R Component, C any](c *configurator, stage *Stage, create func(name string) R, infoDealet int16, parseDealet func(sign *token, router R, kase *C), parseCase func(router R)) { // router
-	routerName := c.forwardExpect(tokenString)
+	routerName := c.forwardExpectToken(tokenString)
 	router := create(routerName.text)
 	router.setParent(stage)
-	c.forwardExpect(tokenLeftBrace) // {
+	c.forwardExpectToken(tokenLeftBrace) // {
 	for {
-		current := c.forward()
+		current := c.forwardToken()
 		if current.kind == tokenRightBrace { // }
 			return
 		}
@@ -780,9 +780,9 @@ func parseComponentR[R Component, C any](c *configurator, stage *Stage, create f
 }
 func parseComponent1[R Component, T Component, C any](c *configurator, sign *token, router R, create func(sign string, name string) T, kase *C, assign func(T)) { // dealet
 	name := sign.text
-	if current := c.forward(); current.kind == tokenString {
+	if current := c.forwardToken(); current.kind == tokenString {
 		name = current.text
-		c.forward()
+		c.forwardToken()
 	} else if kase != nil { // in case
 		name = c.newName()
 	}
@@ -795,9 +795,9 @@ func parseComponent1[R Component, T Component, C any](c *configurator, sign *tok
 }
 func parseComponent2[T Component](c *configurator, sign *token, webapp *Webapp, create func(sign string, name string) T, rule *Rule, assign func(T)) { // handlet, reviser, socklet
 	name := sign.text
-	if current := c.forward(); current.kind == tokenString {
+	if current := c.forwardToken(); current.kind == tokenString {
 		name = current.text
-		c.forward()
+		c.forwardToken()
 	} else if rule != nil { // in rule
 		name = c.newName()
 	}
@@ -1021,7 +1021,7 @@ func (l *lexer) scan() []token {
 			l.nextAlnums()
 			tokens = append(tokens, token{tokenProperty, 0, line, l.file, l.text[from+1 : l.index]})
 		case '$': // $variable
-			if !l.nextIs('=') {
+			if !l.nextTokenIs('=') {
 				l.nextIdents()
 				name := l.text[from+1 : l.index]
 				code, ok := varCodes[name]
@@ -1111,7 +1111,7 @@ func (l *lexer) nextUntil(b byte) {
 		l.index += i
 	}
 }
-func (l *lexer) nextIs(b byte) bool {
+func (l *lexer) nextTokenIs(b byte) bool {
 	if next := l.index + 1; next != l.limit {
 		return l.text[next] == b
 	}

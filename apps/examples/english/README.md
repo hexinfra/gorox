@@ -2,9 +2,8 @@ The Gorox website in English.
 
 Visit online:
 
-  https://gorox.io/
+  https://gorox.org/
 
 Visit locally:
 
   http://gorox.net:3080/
-  https://gorox.net:3443/

@@ -127,7 +127,7 @@ func notRegexpMatch(value []byte, regexps []*regexp.Regexp) bool {
 // hostnameTo
 type hostnameTo[T Component] struct {
 	hostname []byte // "example.com" for exact map, ".example.com" for suffix map, "www.example." for prefix map
-	target   T
+	target   T      // service or webapp
 }
 
 // varKeeper holdes values of variables.

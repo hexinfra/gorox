@@ -963,7 +963,7 @@ func (r *httpOut_) writeBytes3(p []byte) error {
 
 // HTTP/3 webSocket
 
-func (s *webSocket_) todo3() {
+func (s *httpSocket_) todo3() {
 }
 
 //////////////////////////////////////// HTTP/3 protocol elements ////////////////////////////////////////

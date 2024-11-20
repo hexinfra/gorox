@@ -1619,7 +1619,7 @@ func (r *httpOut_) writeBytes2(p []byte) error {
 
 // HTTP/2 webSocket
 
-func (s *webSocket_) todo2() {
+func (s *httpSocket_) todo2() {
 }
 
 //////////////////////////////////////// HTTP/2 protocol elements ////////////////////////////////////////

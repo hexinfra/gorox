@@ -509,7 +509,7 @@ func (s *server1Stream) execute() {
 		}
 	}
 
-	webapp := server.findApp(req.UnsafeHostname())
+	webapp := server.findWebapp(req.UnsafeHostname())
 
 	if webapp == nil {
 		req.headResult, req.failReason = StatusNotFound, "target webapp is not found in this server"
@@ -3002,7 +3002,7 @@ func (r *httpOut_) writeBytes1(p []byte) error {
 
 // HTTP/1 webSocket
 
-func (s *webSocket_) todo1() {
+func (s *httpSocket_) todo1() {
 	// TODO
 }
 

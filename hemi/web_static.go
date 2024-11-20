@@ -30,13 +30,13 @@ type staticHandlet struct {
 	stage  *Stage // current stage
 	webapp *Webapp
 	// States
-	webRoot       string            // root dir for web files and directories
-	aliasTo       []string          // from is an alias to to
-	indexFile     string            // the file that will be used as index
-	autoIndex     bool              // list files in directories if there is no index file?
-	mimeTypes     map[string]string // defined mime types for file extensions
-	defaultType   string            // mime type for file extensions that are not defined in mimeTypes
-	useAppWebRoot bool              // true if webRoot is same with webapp.webRoot
+	webRoot          string            // root dir for web files and directories
+	aliasTo          []string          // from is an alias to to
+	indexFile        string            // the file that will be used as index
+	autoIndex        bool              // list files in directories if there is no index file?
+	mimeTypes        map[string]string // defined mime types for file extensions
+	defaultType      string            // mime type for file extensions that are not defined in mimeTypes
+	useWebappWebRoot bool              // true if webRoot is same with webapp.webRoot
 }
 
 func (h *staticHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
@@ -60,9 +60,9 @@ func (h *staticHandlet) OnConfigure() {
 		UseExitln("webRoot is required for staticHandlet")
 	}
 	h.webRoot = strings.TrimRight(h.webRoot, "/")
-	h.useAppWebRoot = h.webRoot == h.webapp.webRoot
+	h.useWebappWebRoot = h.webRoot == h.webapp.webRoot
 	if DebugLevel() >= 1 {
-		if h.useAppWebRoot {
+		if h.useWebappWebRoot {
 			Printf("static=%s use webapp web root\n", h.Name())
 		} else {
 			Printf("static=%s NOT use webapp web root\n", h.Name())
@@ -130,7 +130,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 
 	var fullPath []byte
 	var pathSize int
-	if h.useAppWebRoot {
+	if h.useWebappWebRoot {
 		fullPath = req.unsafeAbsPath()
 		pathSize = len(fullPath)
 	} else { // custom web root
@@ -144,7 +144,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 	if isFile {
 		openPath = fullPath[:pathSize]
 	} else { // is directory, add indexFile to openPath
-		if h.useAppWebRoot {
+		if h.useWebappWebRoot {
 			openPath = req.UnsafeMake(len(fullPath) + len(h.indexFile))
 			copy(openPath, fullPath)
 			copy(openPath[pathSize:], h.indexFile)

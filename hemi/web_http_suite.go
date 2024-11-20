@@ -43,7 +43,7 @@ type HTTPServer interface { // for *http[x3]Server
 	Server
 	contentSaver
 	// Methods
-	bindApps()
+	bindWebapps()
 }
 
 // httpServer_ is the parent for http[x3]Server.
@@ -53,12 +53,12 @@ type httpServer_[G Gate] struct {
 	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// Assocs
-	defaultApp *Webapp // default webapp if not found
+	defaultWebapp *Webapp // default webapp if not found
 	// States
 	webapps              []string               // for what webapps
-	exactApps            []*hostnameTo[*Webapp] // like: ("example.com")
-	suffixApps           []*hostnameTo[*Webapp] // like: ("*.example.com")
-	prefixApps           []*hostnameTo[*Webapp] // like: ("www.example.*")
+	exactWebapps         []*hostnameTo[*Webapp] // like: ("example.com")
+	suffixWebapps        []*hostnameTo[*Webapp] // like: ("*.example.com")
+	prefixWebapps        []*hostnameTo[*Webapp] // like: ("www.example.*")
 	maxMemoryContentSize int32                  // max content size that can be loaded into memory directly
 	maxStreamsPerConn    int32                  // max streams of one conn. 0 means infinite
 	forceScheme          int8                   // scheme (http/https) that must be used
@@ -120,9 +120,9 @@ func (s *httpServer_[G]) onPrepare() {
 func (s *httpServer_[G]) MaxMemoryContentSize() int32 { return s.maxMemoryContentSize }
 func (s *httpServer_[G]) MaxStreamsPerConn() int32    { return s.maxStreamsPerConn }
 
-func (s *httpServer_[G]) bindApps() {
-	for _, appName := range s.webapps {
-		webapp := s.stage.Webapp(appName)
+func (s *httpServer_[G]) bindWebapps() {
+	for _, webappName := range s.webapps {
+		webapp := s.stage.Webapp(webappName)
 		if webapp == nil {
 			continue
 		}
@@ -141,42 +141,42 @@ func (s *httpServer_[G]) bindApps() {
 		}
 		webapp.bindServer(s.shell.(HTTPServer))
 		if webapp.isDefault {
-			s.defaultApp = webapp
+			s.defaultWebapp = webapp
 		}
 		// TODO: use hash table?
 		for _, hostname := range webapp.exactHostnames {
-			s.exactApps = append(s.exactApps, &hostnameTo[*Webapp]{hostname, webapp})
+			s.exactWebapps = append(s.exactWebapps, &hostnameTo[*Webapp]{hostname, webapp})
 		}
 		// TODO: use radix trie?
 		for _, hostname := range webapp.suffixHostnames {
-			s.suffixApps = append(s.suffixApps, &hostnameTo[*Webapp]{hostname, webapp})
+			s.suffixWebapps = append(s.suffixWebapps, &hostnameTo[*Webapp]{hostname, webapp})
 		}
 		// TODO: use radix trie?
 		for _, hostname := range webapp.prefixHostnames {
-			s.prefixApps = append(s.prefixApps, &hostnameTo[*Webapp]{hostname, webapp})
+			s.prefixWebapps = append(s.prefixWebapps, &hostnameTo[*Webapp]{hostname, webapp})
 		}
 	}
 }
-func (s *httpServer_[G]) findApp(hostname []byte) *Webapp {
+func (s *httpServer_[G]) findWebapp(hostname []byte) *Webapp {
 	// TODO: use hash table?
-	for _, exactMap := range s.exactApps {
+	for _, exactMap := range s.exactWebapps {
 		if bytes.Equal(hostname, exactMap.hostname) {
 			return exactMap.target
 		}
 	}
 	// TODO: use radix trie?
-	for _, suffixMap := range s.suffixApps {
+	for _, suffixMap := range s.suffixWebapps {
 		if bytes.HasSuffix(hostname, suffixMap.hostname) {
 			return suffixMap.target
 		}
 	}
 	// TODO: use radix trie?
-	for _, prefixMap := range s.prefixApps {
+	for _, prefixMap := range s.prefixWebapps {
 		if bytes.HasPrefix(hostname, prefixMap.hostname) {
 			return prefixMap.target
 		}
 	}
-	return s.defaultApp // may be nil
+	return s.defaultWebapp // may be nil
 }
 
 // Request is the server-side http request.
@@ -3184,17 +3184,17 @@ type Socket interface { // for *server[1-3]Socket
 // serverSocket_ is the parent for server[1-3]Socket.
 type serverSocket_ struct {
 	// Parent
-	webSocket_
+	httpSocket_
 	// Assocs
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
 func (s *serverSocket_) onUse() {
-	s.webSocket_.onUse()
+	s.httpSocket_.onUse()
 }
 func (s *serverSocket_) onEnd() {
-	s.webSocket_.onEnd()
+	s.httpSocket_.onEnd()
 }
 
 // Webapp is the Web application.
@@ -5149,16 +5149,16 @@ type socket interface { // for *backend[1-3]Socket
 // backendSocket_ is the parent for backend[1-3]Socket.
 type backendSocket_ struct {
 	// Parent
-	webSocket_
+	httpSocket_
 	// Assocs
 	// Stream states (zeros)
 }
 
 func (s *backendSocket_) onUse() {
-	s.webSocket_.onUse()
+	s.httpSocket_.onUse()
 }
 func (s *backendSocket_) onEnd() {
-	s.webSocket_.onEnd()
+	s.httpSocket_.onEnd()
 }
 
 // httpHolder collects shared methods between *http[x3]Server and *http[1-3]Backend.
@@ -7039,8 +7039,8 @@ var ( // outgoing errors
 	httpOutTrailerFailed = errors.New("add trailer failed")
 )
 
-// webSocket_
-type webSocket_ struct {
+// httpSocket_
+type httpSocket_ struct {
 	// Assocs
 	stream httpStream  // *server[1-3]Stream, *backend[1-3]Stream
 	socket interface { // *server[1-3]Socket, *backend[1-3]Socket
@@ -7052,17 +7052,17 @@ type webSocket_ struct {
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
-	webSocket0 // all values must be zero by default in this struct!
+	httpSocket0 // all values must be zero by default in this struct!
 }
-type webSocket0 struct { // for fast reset, entirely
-}
-
-func (s *webSocket_) onUse() {
-}
-func (s *webSocket_) onEnd() {
+type httpSocket0 struct { // for fast reset, entirely
 }
 
-func (s *webSocket_) todo() {
+func (s *httpSocket_) onUse() {
+}
+func (s *httpSocket_) onEnd() {
+}
+
+func (s *httpSocket_) todo() {
 }
 
 var ( // webSocket errors

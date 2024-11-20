@@ -7065,13 +7065,13 @@ func (s *httpSocket_) onEnd() {
 func (s *httpSocket_) todo() {
 }
 
-var ( // webSocket errors
-	webSocketWriteBroken = errors.New("write broken")
+var ( // socket errors
+	httpSocketWriteBroken = errors.New("write broken")
 )
 
 //////////////////////////////////////// HTTP protocol elements ////////////////////////////////////////
 
-const (
+const ( // basic http constants
 	// version codes
 	Version1_0 = 0 // must be 0
 	Version1_1 = 1
@@ -7325,8 +7325,7 @@ const ( // hashes of misc http strings & byteses.
 	hashName     = 417
 )
 
-const (
-	// Strings
+const ( // misc http strings.
 	stringHTTP         = "http"
 	stringHTTPS        = "https"
 	stringHTTP1_0      = "HTTP/1.0"
@@ -7339,8 +7338,7 @@ const (
 	stringAsterisk     = "*"
 )
 
-var ( // misc http strings & byteses.
-	// Byteses
+var ( // misc http byteses.
 	bytesHTTP           = []byte(stringHTTP)
 	bytesHTTPS          = []byte(stringHTTPS)
 	bytesHTTP1_0        = []byte(stringHTTP1_0)

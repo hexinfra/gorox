@@ -41,8 +41,8 @@ Other platforms are currently not tested and probably don't work.
 Quickstart
 ==========
 
-Using Gorox as a Network Proxy
-------------------------------
+Using Gorox as a (Web, L7 or L4) Network Proxy
+----------------------------------------------
 
 If you would like to use Gorox as a Network Proxy, you can download the official
 binary distribution and read the "Start and stop Gorox" section below. But if
@@ -71,7 +71,7 @@ On succeed, a "gorox" or "gorox.exe" binary will be generated.
 Now, you can try to change some webapps under "apps/examples/", and build again.
 To follow the Gorox's convention, put your new web applications under "apps/"
 and your new RPC services under "svcs/". If you need to write components of your
-own, put them into specific sub directories under "ext/".
+own, put them into specific sub directories under "exts/".
 
 Start and stop Gorox
 --------------------
@@ -94,8 +94,10 @@ For more actions and options, run:
 
     shell> ./gorox help
 
-To install Gorox, simply move the whole Gorox directory to where you like.
-To uninstall, simply remove the whole Gorox directory.
+To install Gorox, simply move the whole Gorox directory to where you like. You
+may also add the directory to your $PATH so you can run "gorox" without "./".
+
+To uninstall, simply remove the whole Gorox directory and remove it from $PATH.
 
 More usage examples
 -------------------

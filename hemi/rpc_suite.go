@@ -12,13 +12,21 @@ import (
 	"time"
 )
 
+// RPCServer
+type RPCServer interface { // for *hrpcServer and *grpcServer
+	// Imports
+	Server
+	// Methods
+	BindServices()
+}
+
 // Service is the RPC service.
 type Service struct {
 	// Parent
 	Component_
 	// Assocs
-	stage   *Stage        // current stage
-	servers []*hrpcServer // bound hrpc servers. may be empty
+	stage   *Stage      // current stage
+	servers []RPCServer // bound rpc servers. may be empty
 	// States
 	hostnames       [][]byte           // ...
 	accessLog       *LogConfig         // ...
@@ -78,8 +86,8 @@ func (s *Service) Logf(format string, args ...any) {
 	}
 }
 
-func (s *Service) BindServer(server *hrpcServer) { s.servers = append(s.servers, server) }
-func (s *Service) Servers() []*hrpcServer        { return s.servers }
+func (s *Service) BindServer(server RPCServer) { s.servers = append(s.servers, server) }
+func (s *Service) Servers() []RPCServer        { return s.servers }
 
 func (s *Service) maintain() { // runner
 	s.LoopRun(time.Second, func(now time.Time) {

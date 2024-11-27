@@ -12,7 +12,7 @@ NAMING
 
     as parent types:
 
-      httpServer_
+      webServer_
 
     as mixin types:
 

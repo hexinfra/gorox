@@ -43,19 +43,19 @@ func init() {
 // httpxServer is the HTTP/1 and HTTP/2 server.
 type httpxServer struct {
 	// Parent
-	httpServer_[*httpxGate]
+	webServer_[*httpxGate]
 	// States
 	httpMode int8 // 0: adaptive, 1: http/1, 2: http/2
 }
 
 func (s *httpxServer) onCreate(name string, stage *Stage) {
-	s.httpServer_.onCreate(name, stage)
+	s.webServer_.onCreate(name, stage)
 
 	s.httpMode = 1 // http/1 by default. change to adaptive mode after http/2 server has been fully implemented
 }
 
 func (s *httpxServer) OnConfigure() {
-	s.httpServer_.onConfigure()
+	s.webServer_.onConfigure()
 
 	if DebugLevel() >= 2 { // remove this condition after http/2 server has been fully implemented
 		// httpMode
@@ -80,7 +80,7 @@ func (s *httpxServer) OnConfigure() {
 	}
 }
 func (s *httpxServer) OnPrepare() {
-	s.httpServer_.onPrepare()
+	s.webServer_.onPrepare()
 
 	if s.IsTLS() {
 		var nextProtos []string

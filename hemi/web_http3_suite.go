@@ -36,20 +36,20 @@ func init() {
 // http3Server is the HTTP/3 server.
 type http3Server struct {
 	// Parent
-	httpServer_[*http3Gate]
+	webServer_[*http3Gate]
 	// States
 }
 
 func (s *http3Server) onCreate(name string, stage *Stage) {
-	s.httpServer_.onCreate(name, stage)
+	s.webServer_.onCreate(name, stage)
 	s.tlsConfig = new(tls.Config) // tls mode is always enabled in http/3
 }
 
 func (s *http3Server) OnConfigure() {
-	s.httpServer_.onConfigure()
+	s.webServer_.onConfigure()
 }
 func (s *http3Server) OnPrepare() {
-	s.httpServer_.onPrepare()
+	s.webServer_.onPrepare()
 }
 
 func (s *http3Server) Serve() { // runner

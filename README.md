@@ -30,10 +30,10 @@ Gorox works on these operating systems:
 
 And these 64-bit CPU architectures:
 
-  * AMD64, also known as x86-64, x64
-  * ARM64, also known as AArch64
-  * RISCV64, also known as RV64
-  * Loong64, also known as LoongArch64
+  * AMD64, aka x86-64 or x64
+  * ARM64, aka AArch64
+  * RISCV64, aka RV64
+  * Loong64, aka LoongArch64
 
 Other platforms are currently not tested and probably don't work.
 
@@ -69,8 +69,8 @@ If build failed, set CGO_ENABLED to 0 and try again:
 On succeed, a "gorox" or "gorox.exe" binary will be generated.
 
 Now, you can try to change some webapps under "apps/examples/", and build again.
-To follow the Gorox's convention, put your new web applications under "apps/"
-and your new RPC services under "svcs/". If you need to write components of your
+To follow Gorox's convention, put your new Web applications under "apps/" and
+your new RPC services under "svcs/". If you need to write components of your
 own, put them into specific sub directories under "exts/".
 
 Start and stop Gorox

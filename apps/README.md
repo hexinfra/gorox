@@ -1,7 +1,7 @@
 This directory holds your Web applications in gorox, generally one webapp one
 directory, but many related webapps can be grouped into a container directory.
 
-Some builtin webapps are:
+Some example webapps are:
 
   examples/chinese/    - Chinese version of official website.
   examples/english/    - English version of official website.
@@ -28,4 +28,4 @@ You can also put your PHP webapps, Python webapps, and so on in this directory.
 In gorox, an http server (i.e. httpxServer, http3Server) can host many webapps,
 whereas a webapp can be bound to many http servers.
 
-For examples, see builtin webapps.
+For examples, see webapps mentioned above.

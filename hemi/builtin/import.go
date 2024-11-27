@@ -18,6 +18,7 @@ import (
 	_ "github.com/hexinfra/gorox/hemi/builtin/cronjobs/clean"
 	_ "github.com/hexinfra/gorox/hemi/builtin/cronjobs/stat"
 	_ "github.com/hexinfra/gorox/hemi/builtin/dealets/tcpx/access"
+	_ "github.com/hexinfra/gorox/hemi/builtin/dealets/tcpx/limit"
 	_ "github.com/hexinfra/gorox/hemi/builtin/dealets/tcpx/mongo"
 	_ "github.com/hexinfra/gorox/hemi/builtin/dealets/tcpx/mysql"
 	_ "github.com/hexinfra/gorox/hemi/builtin/dealets/tcpx/pgsql"

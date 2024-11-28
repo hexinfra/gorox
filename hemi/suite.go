@@ -394,7 +394,7 @@ func (l *Logger) clear() {
 }
 func (l *Logger) flush(p []byte) { l.file.Write(p) }
 
-// Server component. A Server is a group of gates.
+// Server component. A Server has a group of Gates.
 type Server interface {
 	// Imports
 	Component

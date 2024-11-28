@@ -79,35 +79,35 @@ OPTIONS
 
 `
 
-// Args is the args passed to Main() to control its behavior.
-type Args struct {
+// Opts is the options passed to Main() to control its behavior.
+type Opts struct {
 	Program    string
 	Title      string
+	Usage      string
 	DebugLevel int
 	CmdUIAddr  string
 	WebUIAddr  string
-	Usage      string
 }
 
 // Main is the main() for client process, leader process, and worker process.
-func Main(args *Args) {
+func Main(opts *Opts) {
 	if !system.Check() {
 		common.Crash("current platform (os + arch) is not supported.")
 	}
 
-	common.Program = args.Program
+	common.Program = opts.Program
 
 	flag.Usage = func() {
-		if args.Usage == "" {
-			fmt.Printf(usage, args.Title, hemi.Version, args.Program, args.DebugLevel, args.CmdUIAddr, args.CmdUIAddr, args.WebUIAddr, args.Program, args.Program, args.Program)
+		if opts.Usage == "" {
+			fmt.Printf(usage, opts.Title, hemi.Version, opts.Program, opts.DebugLevel, opts.CmdUIAddr, opts.CmdUIAddr, opts.WebUIAddr, opts.Program, opts.Program, opts.Program)
 		} else {
-			fmt.Println(args.Usage)
+			fmt.Println(opts.Usage)
 		}
 	}
-	flag.IntVar(&common.DebugLevel, "debug", args.DebugLevel, "")
-	flag.StringVar(&common.TargetAddr, "target", args.CmdUIAddr, "")
-	flag.StringVar(&common.CmdUIAddr, "cmdui", args.CmdUIAddr, "")
-	flag.StringVar(&common.WebUIAddr, "webui", args.WebUIAddr, "")
+	flag.IntVar(&common.DebugLevel, "debug", opts.DebugLevel, "")
+	flag.StringVar(&common.TargetAddr, "target", opts.CmdUIAddr, "")
+	flag.StringVar(&common.CmdUIAddr, "cmdui", opts.CmdUIAddr, "")
+	flag.StringVar(&common.WebUIAddr, "webui", opts.WebUIAddr, "")
 	flag.StringVar(&common.MyroxAddr, "myrox", "", "")
 	flag.StringVar(&common.ConfigFile, "config", "", "")
 	flag.BoolVar(&common.SingleMode, "single", false, "")

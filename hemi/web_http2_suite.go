@@ -1107,22 +1107,22 @@ func (s *server2Socket) onEnd() {
 // HTTP2Backend
 type HTTP2Backend struct {
 	// Parent
-	httpBackend_[*http2Node]
+	webBackend_[*http2Node]
 	// States
 }
 
 func (b *HTTP2Backend) onCreate(name string, stage *Stage) {
-	b.httpBackend_.OnCreate(name, stage)
+	b.webBackend_.OnCreate(name, stage)
 }
 
 func (b *HTTP2Backend) OnConfigure() {
-	b.httpBackend_.OnConfigure()
+	b.webBackend_.OnConfigure()
 
 	// sub components
 	b.ConfigureNodes()
 }
 func (b *HTTP2Backend) OnPrepare() {
-	b.httpBackend_.OnPrepare()
+	b.webBackend_.OnPrepare()
 
 	// sub components
 	b.PrepareNodes()
@@ -1147,26 +1147,26 @@ func (b *HTTP2Backend) StoreStream(stream backendStream) {
 // http2Node
 type http2Node struct {
 	// Parent
-	httpNode_
+	webNode_
 	// Assocs
 	backend *HTTP2Backend
 	// States
 }
 
 func (n *http2Node) onCreate(name string, backend *HTTP2Backend) {
-	n.httpNode_.OnCreate(name)
+	n.webNode_.OnCreate(name)
 	n.backend = backend
 }
 
 func (n *http2Node) OnConfigure() {
-	n.httpNode_.OnConfigure()
+	n.webNode_.OnConfigure()
 	if n.tlsMode {
 		n.tlsConfig.InsecureSkipVerify = true
 		n.tlsConfig.NextProtos = []string{"h2"}
 	}
 }
 func (n *http2Node) OnPrepare() {
-	n.httpNode_.OnPrepare()
+	n.webNode_.OnPrepare()
 }
 
 func (n *http2Node) Maintain() { // runner

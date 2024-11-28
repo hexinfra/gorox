@@ -22,7 +22,7 @@ func init() {
 	})
 }
 
-// grpcServer is the gRPC server.
+// grpcServer is the gRPC server. It has many grpcGates.
 type grpcServer struct {
 	// Parent
 	Server_[*grpcGate]

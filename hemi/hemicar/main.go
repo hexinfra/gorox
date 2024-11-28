@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-	procmgr.Main(&procmgr.Args{
+	procmgr.Main(&procmgr.Opts{
 		Program:    "hemicar",
 		Title:      "HemiCar",
 		DebugLevel: 2,

@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-	procmgr.Main(&procmgr.Args{
+	procmgr.Main(&procmgr.Opts{
 		Program:    "gorox",
 		Title:      "Gorox",
 		DebugLevel: 0,

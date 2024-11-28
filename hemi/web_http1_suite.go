@@ -40,7 +40,7 @@ func init() {
 	})
 }
 
-// httpxServer is the HTTP/1 and HTTP/2 server.
+// httpxServer is the HTTP/1 and HTTP/2 server. It has many httpxGates.
 type httpxServer struct {
 	// Parent
 	webServer_[*httpxGate]
@@ -1374,22 +1374,22 @@ func (s *server1Socket) onEnd() {
 // HTTP1Backend
 type HTTP1Backend struct {
 	// Parent
-	httpBackend_[*http1Node]
+	webBackend_[*http1Node]
 	// States
 }
 
 func (b *HTTP1Backend) onCreate(name string, stage *Stage) {
-	b.httpBackend_.OnCreate(name, stage)
+	b.webBackend_.OnCreate(name, stage)
 }
 
 func (b *HTTP1Backend) OnConfigure() {
-	b.httpBackend_.OnConfigure()
+	b.webBackend_.OnConfigure()
 
 	// sub components
 	b.ConfigureNodes()
 }
 func (b *HTTP1Backend) OnPrepare() {
-	b.httpBackend_.OnPrepare()
+	b.webBackend_.OnPrepare()
 
 	// sub components
 	b.PrepareNodes()
@@ -1414,7 +1414,7 @@ func (b *HTTP1Backend) StoreStream(stream backendStream) {
 // http1Node is a node in HTTP1Backend.
 type http1Node struct {
 	// Parent
-	httpNode_
+	webNode_
 	// Assocs
 	backend *HTTP1Backend
 	// States
@@ -1427,19 +1427,19 @@ type http1Node struct {
 }
 
 func (n *http1Node) onCreate(name string, backend *HTTP1Backend) {
-	n.httpNode_.OnCreate(name)
+	n.webNode_.OnCreate(name)
 	n.backend = backend
 }
 
 func (n *http1Node) OnConfigure() {
-	n.httpNode_.OnConfigure()
+	n.webNode_.OnConfigure()
 	if n.tlsMode {
 		n.tlsConfig.InsecureSkipVerify = true
 		n.tlsConfig.NextProtos = []string{"http/1.1"}
 	}
 }
 func (n *http1Node) OnPrepare() {
-	n.httpNode_.OnPrepare()
+	n.webNode_.OnPrepare()
 }
 
 func (n *http1Node) Maintain() { // runner

@@ -3544,7 +3544,7 @@ func (a *Webapp) dispatchSocket(req Request, sock Socket) {
 	sock.Close()
 }
 
-// Rule component
+// Rule component defines a rule for matching requests and handlets.
 type Rule struct {
 	// Parent
 	Component_
@@ -4039,6 +4039,7 @@ type Hobject struct {
 }
 
 func (o *Hobject) todo() {
+	// TODO
 }
 
 // staticHandlet handles requests to static files and directories.
@@ -4339,7 +4340,7 @@ type WebExchanProxyConfig struct {
 	DelResponseHeaders  [][]byte
 }
 
-func WebExchanReverseProxy(req Request, resp Response, backend HTTPBackend, cfg *WebExchanProxyConfig) {
+func WebExchanReverseProxy(req Request, resp Response, backend WebBackend, cfg *WebExchanProxyConfig) {
 	var content any
 	hasContent := req.HasContent()
 	if hasContent && cfg.BufferClientContent { // including size 0
@@ -4466,10 +4467,10 @@ type httpProxy struct {
 	// Parent
 	Handlet_
 	// Assocs
-	stage   *Stage      // current stage
-	webapp  *Webapp     // the webapp to which the proxy belongs
-	backend HTTPBackend // the backend to pass to. can be *HTTP1Backend, *HTTP2Backend, or *HTTP3Backend
-	cacher  Cacher      // the cacher which is used by this proxy
+	stage   *Stage     // current stage
+	webapp  *Webapp    // the webapp to which the proxy belongs
+	backend WebBackend // the backend to pass to. can be *HTTP1Backend, *HTTP2Backend, or *HTTP3Backend
+	cacher  Cacher     // the cacher which is used by this proxy
 	// States
 	WebExchanProxyConfig // embeded
 }
@@ -4490,7 +4491,7 @@ func (h *httpProxy) OnConfigure() {
 			if backend := h.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
 			} else {
-				h.backend = backend.(HTTPBackend)
+				h.backend = backend.(WebBackend)
 			}
 		} else {
 			UseExitln("invalid toBackend")
@@ -4570,7 +4571,7 @@ type WebSocketProxyConfig struct {
 	// TODO
 }
 
-func WebSocketReverseProxy(req Request, sock Socket, backend HTTPBackend, cfg *WebSocketProxyConfig) {
+func WebSocketReverseProxy(req Request, sock Socket, backend WebBackend, cfg *WebSocketProxyConfig) {
 	// TODO
 }
 
@@ -4579,9 +4580,9 @@ type sockProxy struct {
 	// Parent
 	Socklet_
 	// Assocs
-	stage   *Stage      // current stage
-	webapp  *Webapp     // the webapp to which the proxy belongs
-	backend HTTPBackend // the backend to pass to. can be *HTTP1Backend, *HTTP2Backend, or *HTTP3Backend
+	stage   *Stage     // current stage
+	webapp  *Webapp    // the webapp to which the proxy belongs
+	backend WebBackend // the backend to pass to. can be *HTTP1Backend, *HTTP2Backend, or *HTTP3Backend
 	// States
 }
 
@@ -4601,7 +4602,7 @@ func (s *sockProxy) OnConfigure() {
 			if backend := s.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
 			} else {
-				s.backend = backend.(HTTPBackend)
+				s.backend = backend.(WebBackend)
 			}
 		} else {
 			UseExitln("invalid toBackend")
@@ -4621,8 +4622,8 @@ func (s *sockProxy) Serve(req Request, sock Socket) {
 	sock.Close()
 }
 
-// HTTPBackend
-type HTTPBackend interface { // for *HTTP[1-3]Backend
+// WebBackend
+type WebBackend interface { // for *HTTP[1-3]Backend
 	// Imports
 	Backend
 	contentSaver
@@ -4631,8 +4632,8 @@ type HTTPBackend interface { // for *HTTP[1-3]Backend
 	StoreStream(stream backendStream)
 }
 
-// httpBackend_ is the parent for http[1-3]Backend.
-type httpBackend_[N Node] struct {
+// webBackend_ is the parent for http[1-3]Backend.
+type webBackend_[N Node] struct {
 	// Parent
 	Backend_[N]
 	// Mixins
@@ -4643,11 +4644,11 @@ type httpBackend_[N Node] struct {
 	aliveTimeout         time.Duration // conn alive timeout
 }
 
-func (b *httpBackend_[N]) onCreate(name string, stage *Stage) {
+func (b *webBackend_[N]) onCreate(name string, stage *Stage) {
 	b.Backend_.OnCreate(name, stage)
 }
 
-func (b *httpBackend_[N]) onConfigure() {
+func (b *webBackend_[N]) onConfigure() {
 	b.Backend_.OnConfigure()
 	b._contentSaver_.onConfigure(b, TmpDir()+"/web/backends/"+b.name, 60*time.Second, 60*time.Second)
 
@@ -4675,27 +4676,27 @@ func (b *httpBackend_[N]) onConfigure() {
 		return errors.New(".aliveTimeout has an invalid value")
 	}, 5*time.Second)
 }
-func (b *httpBackend_[N]) onPrepare() {
+func (b *webBackend_[N]) onPrepare() {
 	b.Backend_.OnPrepare()
 	b._contentSaver_.onPrepare(b, 0755)
 }
 
-func (b *httpBackend_[N]) MaxMemoryContentSize() int32 { return b.maxMemoryContentSize }
-func (b *httpBackend_[N]) MaxStreamsPerConn() int32    { return b.maxStreamsPerConn }
+func (b *webBackend_[N]) MaxMemoryContentSize() int32 { return b.maxMemoryContentSize }
+func (b *webBackend_[N]) MaxStreamsPerConn() int32    { return b.maxStreamsPerConn }
 
-// httpNode_ is the parent for http[1-3]Node.
-type httpNode_ struct {
+// webNode_ is the parent for http[1-3]Node.
+type webNode_ struct {
 	// Parent
 	Node_
 	// States
 	keepAliveConns int32 // max conns to keep alive
 }
 
-func (n *httpNode_) OnCreate(name string) {
+func (n *webNode_) OnCreate(name string) {
 	n.Node_.OnCreate(name)
 }
 
-func (n *httpNode_) OnConfigure() {
+func (n *webNode_) OnConfigure() {
 	n.Node_.OnConfigure()
 
 	// keepAliveConns
@@ -4706,7 +4707,7 @@ func (n *httpNode_) OnConfigure() {
 		return errors.New("bad keepAliveConns in node")
 	}, 10)
 }
-func (n *httpNode_) OnPrepare() {
+func (n *webNode_) OnPrepare() {
 	n.Node_.OnPrepare()
 }
 

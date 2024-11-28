@@ -825,7 +825,7 @@ type ruleCond struct {
 	patterns []string // ("GET", "POST"), ("https"), ("abc.com"), ("/hello", "/world")
 }
 
-const ( // list of tokens. if you change this list, change in tokenNames too.
+const ( // list of tokens. if you change this list, change tokenNames too.
 	// Components
 	tokenComponent = 1 + iota // stage, httpxServer, ...
 	// Properties
@@ -855,7 +855,7 @@ const ( // list of tokens. if you change this list, change in tokenNames too.
 	tokenVariable // $method, $path, ...
 )
 
-var tokenNames = [...]string{ // token names. if you change this list, change in token list too.
+var tokenNames = [...]string{ // token names. if you change this list, change token list too.
 	// Components
 	tokenComponent: "component",
 	// Properties
@@ -885,7 +885,7 @@ var tokenNames = [...]string{ // token names. if you change this list, change in
 	tokenVariable: "variable",
 }
 
-var ( // solos
+var ( // solo tokens
 	soloKinds = [256]int16{ // keep sync with soloTexts
 		'{': tokenLeftBrace,
 		'}': tokenRightBrace,
@@ -921,7 +921,7 @@ type token struct { // 40 bytes
 
 func (t token) name() string { return tokenNames[t.kind] }
 
-// lexer
+// lexer scans tokens in config file.
 type lexer struct {
 	index int
 	limit int

@@ -30,10 +30,10 @@ Gorox works on these operating systems:
 
 And these 64-bit CPU architectures:
 
-  * AMD64, aka x86-64 or x64
-  * ARM64, aka AArch64
-  * RISCV64, aka RV64
-  * Loong64, aka LoongArch64
+  * AMD64, a.k.a. x86-64 or x64
+  * ARM64, a.k.a. AArch64
+  * RISCV64, a.k.a. RV64
+  * Loong64, a.k.a. LoongArch64
 
 Other platforms are currently not tested and probably don't work.
 
@@ -66,7 +66,7 @@ If build failed, set CGO_ENABLED to 0 and try again:
     shell> go env -w CGO_ENABLED=0
     shell> go build
 
-On succeed, a "gorox" or "gorox.exe" binary will be generated.
+On succeed, a single "gorox" or "gorox.exe" binary will be generated.
 
 Now, you can try to change some webapps under "apps/examples/", and build again.
 To follow Gorox's convention, put your new Web applications under "apps/" and

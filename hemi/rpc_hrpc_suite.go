@@ -25,7 +25,7 @@ func init() {
 	})
 }
 
-// hrpcServer is the HRPC server.
+// hrpcServer is the HRPC server. It has many hrpcGates.
 type hrpcServer struct {
 	// Parent
 	Server_[*hrpcGate]

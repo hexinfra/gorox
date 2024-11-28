@@ -33,7 +33,7 @@ func init() {
 	})
 }
 
-// http3Server is the HTTP/3 server.
+// http3Server is the HTTP/3 server. It has many http3Gates.
 type http3Server struct {
 	// Parent
 	webServer_[*http3Gate]
@@ -489,22 +489,22 @@ func (s *server3Socket) onEnd() {
 // HTTP3Backend
 type HTTP3Backend struct {
 	// Parent
-	httpBackend_[*http3Node]
+	webBackend_[*http3Node]
 	// States
 }
 
 func (b *HTTP3Backend) onCreate(name string, stage *Stage) {
-	b.httpBackend_.OnCreate(name, stage)
+	b.webBackend_.OnCreate(name, stage)
 }
 
 func (b *HTTP3Backend) OnConfigure() {
-	b.httpBackend_.OnConfigure()
+	b.webBackend_.OnConfigure()
 
 	// sub components
 	b.ConfigureNodes()
 }
 func (b *HTTP3Backend) OnPrepare() {
-	b.httpBackend_.OnPrepare()
+	b.webBackend_.OnPrepare()
 
 	// sub components
 	b.PrepareNodes()
@@ -529,19 +529,19 @@ func (b *HTTP3Backend) StoreStream(stream backendStream) {
 // http3Node
 type http3Node struct {
 	// Parent
-	httpNode_
+	webNode_
 	// Assocs
 	backend *HTTP3Backend
 	// States
 }
 
 func (n *http3Node) onCreate(name string, backend *HTTP3Backend) {
-	n.httpNode_.OnCreate(name)
+	n.webNode_.OnCreate(name)
 	n.backend = backend
 }
 
 func (n *http3Node) OnConfigure() {
-	n.httpNode_.OnConfigure()
+	n.webNode_.OnConfigure()
 	if n.tlsMode {
 		n.tlsConfig.InsecureSkipVerify = true
 	}
@@ -555,7 +555,7 @@ func (n *http3Node) OnConfigure() {
 	}, 10)
 }
 func (n *http3Node) OnPrepare() {
-	n.httpNode_.OnPrepare()
+	n.webNode_.OnPrepare()
 }
 
 func (n *http3Node) Maintain() { // runner

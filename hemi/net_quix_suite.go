@@ -101,13 +101,6 @@ func (r *QUIXRouter) hasCase(name string) bool {
 	return false
 }
 
-func (r *QUIXRouter) Log(str string) {
-}
-func (r *QUIXRouter) Logln(str string) {
-}
-func (r *QUIXRouter) Logf(str string) {
-}
-
 func (r *QUIXRouter) Serve() { // runner
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(quixGate)
@@ -135,7 +128,23 @@ func (r *QUIXRouter) Serve() { // runner
 	r.stage.DecSub() // router
 }
 
-func (r *QUIXRouter) dispatch(conn *QUIXConn) {
+func (r *QUIXRouter) Log(str string) {
+	if r.logger != nil {
+		r.logger.Log(str)
+	}
+}
+func (r *QUIXRouter) Logln(str string) {
+	if r.logger != nil {
+		r.logger.Logln(str)
+	}
+}
+func (r *QUIXRouter) Logf(format string, args ...any) {
+	if r.logger != nil {
+		r.logger.Logf(format, args...)
+	}
+}
+
+func (r *QUIXRouter) serveConn(conn *QUIXConn) { // runner
 	for _, kase := range r.cases {
 		if !kase.isMatch(conn) {
 			continue
@@ -144,6 +153,7 @@ func (r *QUIXRouter) dispatch(conn *QUIXConn) {
 			break
 		}
 	}
+	putQUIXConn(conn)
 }
 
 // quixGate is an opening gate of QUIXRouter.
@@ -241,12 +251,6 @@ func (c *QUIXConn) IsUDS() bool { return c.gate.IsUDS() }
 
 func (c *QUIXConn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.gate.router.Stage().ID()), c.id, unixTime, c.counter.Add(1))
-}
-
-func (c *QUIXConn) serve() { // runner
-	c.gate.router.dispatch(c)
-	c.closeConn()
-	putQUIXConn(c)
 }
 
 func (c *QUIXConn) closeConn() error {

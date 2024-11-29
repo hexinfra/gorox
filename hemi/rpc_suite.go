@@ -70,6 +70,22 @@ func (s *Service) OnPrepare() {
 	}
 }
 
+func (s *Service) maintain() { // runner
+	s.LoopRun(time.Second, func(now time.Time) {
+		// TODO
+	})
+	if s.logger != nil {
+		s.logger.Close()
+	}
+	if DebugLevel() >= 2 {
+		Printf("service=%s done\n", s.Name())
+	}
+	s.stage.DecSub() // service
+}
+
+func (s *Service) BindServer(server RPCServer) { s.servers = append(s.servers, server) }
+func (s *Service) Servers() []RPCServer        { return s.servers }
+
 func (s *Service) Log(str string) {
 	if s.logger != nil {
 		s.logger.Log(str)
@@ -84,19 +100,6 @@ func (s *Service) Logf(format string, args ...any) {
 	if s.logger != nil {
 		s.logger.Logf(format, args...)
 	}
-}
-
-func (s *Service) BindServer(server RPCServer) { s.servers = append(s.servers, server) }
-func (s *Service) Servers() []RPCServer        { return s.servers }
-
-func (s *Service) maintain() { // runner
-	s.LoopRun(time.Second, func(now time.Time) {
-		// TODO
-	})
-	if DebugLevel() >= 2 {
-		Printf("service=%s done\n", s.Name())
-	}
-	s.stage.DecSub() // service
 }
 
 /*

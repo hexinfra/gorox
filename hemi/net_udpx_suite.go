@@ -102,13 +102,6 @@ func (r *UDPXRouter) hasCase(name string) bool {
 	return false
 }
 
-func (r *UDPXRouter) Log(str string) {
-}
-func (r *UDPXRouter) Logln(str string) {
-}
-func (r *UDPXRouter) Logf(str string) {
-}
-
 func (r *UDPXRouter) Serve() { // runner
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(udpxGate)
@@ -142,7 +135,23 @@ func (r *UDPXRouter) Serve() { // runner
 	r.stage.DecSub() // router
 }
 
-func (r *UDPXRouter) dispatch(conn *UDPXConn) {
+func (r *UDPXRouter) Log(str string) {
+	if r.logger != nil {
+		r.logger.Log(str)
+	}
+}
+func (r *UDPXRouter) Logln(str string) {
+	if r.logger != nil {
+		r.logger.Logln(str)
+	}
+}
+func (r *UDPXRouter) Logf(format string, args ...any) {
+	if r.logger != nil {
+		r.logger.Logf(format, args...)
+	}
+}
+
+func (r *UDPXRouter) serveConn(conn *UDPXConn) { // runner
 	for _, kase := range r.cases {
 		if !kase.isMatch(conn) {
 			continue
@@ -151,6 +160,7 @@ func (r *UDPXRouter) dispatch(conn *UDPXConn) {
 			break
 		}
 	}
+	putUDPXConn(conn)
 }
 
 // udpxGate is an opening gate of UDPXRouter.
@@ -260,12 +270,6 @@ func (c *UDPXConn) IsUDS() bool { return c.gate.IsUDS() }
 
 func (c *UDPXConn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.gate.router.Stage().ID()), c.id, unixTime, c.counter.Add(1))
-}
-
-func (c *UDPXConn) serve() { // runner
-	c.gate.router.dispatch(c)
-	c.closeConn()
-	putUDPXConn(c)
 }
 
 func (c *UDPXConn) Close() error {

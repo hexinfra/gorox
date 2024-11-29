@@ -1317,7 +1317,7 @@ func (r *serverRequest_) checkTE(pairs []pair, from uint8, edge uint8) bool { //
 }
 func (r *serverRequest_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { // Upgrade = #protocol
 	if r.httpVersion > Version1_1 {
-		r.headResult, r.failReason = StatusBadRequest, "upgrade is only supported in http/1"
+		r.headResult, r.failReason = StatusBadRequest, "http upgrade is only supported in http/1.1"
 		return false
 	}
 	if r.methodCode == MethodCONNECT {
@@ -8008,12 +8008,12 @@ type pair struct { // 24 bytes
 
 const ( // pair kinds
 	pairUnknown = iota
-	pairQuery   // normal
+	pairQuery   // plain kv
 	pairHeader  // field
-	pairCookie  // normal
-	pairForm    // normal
+	pairCookie  // plain kv
+	pairForm    // plain kv
 	pairTrailer // field
-	pairParam   // parameter of fields, normal
+	pairParam   // parameter of fields, plain kv
 )
 
 const ( // pair places

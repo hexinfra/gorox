@@ -338,14 +338,6 @@ func (d compDict[T]) goWalk(method func(T)) {
 	}
 }
 
-// newStage creates a new stage which runs alongside existing stage.
-func newStage() *Stage {
-	stage := new(Stage)
-	stage.onCreate()
-	stage.setShell(stage)
-	return stage
-}
-
 // Stage represents a running stage in worker process.
 //
 // A worker process may have many stages in its lifetime, especially
@@ -377,6 +369,14 @@ type Stage struct {
 	thrFile string
 	grtFile string
 	blkFile string
+}
+
+// newStage creates a new stage which runs alongside existing stage.
+func newStage() *Stage {
+	stage := new(Stage)
+	stage.onCreate()
+	stage.setShell(stage)
+	return stage
 }
 
 func (s *Stage) onCreate() {

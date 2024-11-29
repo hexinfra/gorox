@@ -107,16 +107,6 @@ func (r *TCPXRouter) hasCase(name string) bool {
 	return false
 }
 
-func (r *TCPXRouter) Log(s string) {
-	// TODO
-}
-func (r *TCPXRouter) Logln(s string) {
-	// TODO
-}
-func (r *TCPXRouter) Logf(f string, v ...any) {
-	// TODO
-}
-
 func (r *TCPXRouter) Serve() { // runner
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(tcpxGate)
@@ -148,6 +138,22 @@ func (r *TCPXRouter) Serve() { // runner
 		Printf("tcpxRouter=%s done\n", r.Name())
 	}
 	r.stage.DecSub() // router
+}
+
+func (r *TCPXRouter) Log(str string) {
+	if r.logger != nil {
+		r.logger.Log(str)
+	}
+}
+func (r *TCPXRouter) Logln(str string) {
+	if r.logger != nil {
+		r.logger.Logln(str)
+	}
+}
+func (r *TCPXRouter) Logf(format string, args ...any) {
+	if r.logger != nil {
+		r.logger.Logf(format, args...)
+	}
 }
 
 func (r *TCPXRouter) serveConn(conn *TCPXConn) { // runner

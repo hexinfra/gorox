@@ -317,8 +317,8 @@ func (s *server3Stream) executeSocket() { // see RFC 9220
 	// TODO
 }
 
-func (s *server3Stream) Holder() httpHolder   { return s.conn.gate.server }
-func (s *server3Stream) Conn() httpConn       { return s.conn }
+func (s *server3Stream) Holder() webHolder    { return s.conn.gate.server }
+func (s *server3Stream) Conn() webConn        { return s.conn }
 func (s *server3Stream) remoteAddr() net.Addr { return nil } // TODO
 
 func (s *server3Stream) markBroken()    {}               // TODO
@@ -470,7 +470,7 @@ func putServer3Socket(socket *server3Socket) {
 }
 
 // server3Socket is the server-side HTTP/3 webSocket.
-type server3Socket struct {
+type server3Socket struct { // incoming and outgoing
 	// Parent
 	serverSocket_
 	// Stream states (stocks)
@@ -742,8 +742,8 @@ func (s *backend3Stream) Response() response { return &s.response }
 
 func (s *backend3Stream) Socket() socket { return nil } // TODO. See RFC 9220
 
-func (s *backend3Stream) Holder() httpHolder   { return s.conn.node.backend }
-func (s *backend3Stream) Conn() httpConn       { return s.conn }
+func (s *backend3Stream) Holder() webHolder    { return s.conn.node.backend }
+func (s *backend3Stream) Conn() webConn        { return s.conn }
 func (s *backend3Stream) remoteAddr() net.Addr { return nil } // TODO
 
 func (s *backend3Stream) markBroken()    {}               // TODO
@@ -860,7 +860,7 @@ func putBackend3Socket(socket *backend3Socket) {
 }
 
 // backend3Socket is the backend-side HTTP/3 webSocket.
-type backend3Socket struct {
+type backend3Socket struct { // incoming and outgoing
 	// Parent
 	backendSocket_
 	// Stream states (stocks)
@@ -878,65 +878,65 @@ func (s *backend3Socket) onEnd() {
 
 // HTTP/3 incoming
 
-func (r *httpIn_) _growHeaders3(size int32) bool {
+func (r *webIn_) _growHeaders3(size int32) bool {
 	// TODO
 	// use r.input
 	return false
 }
 
-func (r *httpIn_) readContent3() (p []byte, err error) {
+func (r *webIn_) readContent3() (p []byte, err error) {
 	// TODO
 	return
 }
 
 // HTTP/3 outgoing
 
-func (r *httpOut_) addHeader3(name []byte, value []byte) bool {
+func (r *webOut_) addHeader3(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *httpOut_) header3(name []byte) (value []byte, ok bool) {
+func (r *webOut_) header3(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *httpOut_) hasHeader3(name []byte) bool {
+func (r *webOut_) hasHeader3(name []byte) bool {
 	// TODO
 	return false
 }
-func (r *httpOut_) delHeader3(name []byte) (deleted bool) {
+func (r *webOut_) delHeader3(name []byte) (deleted bool) {
 	// TODO
 	return false
 }
-func (r *httpOut_) delHeaderAt3(i uint8) {
+func (r *webOut_) delHeaderAt3(i uint8) {
 	// TODO
 }
 
-func (r *httpOut_) sendChain3() error {
+func (r *webOut_) sendChain3() error {
 	// TODO
 	return nil
 }
 
-func (r *httpOut_) echoChain3() error {
+func (r *webOut_) echoChain3() error {
 	// TODO
 	return nil
 }
 
-func (r *httpOut_) addTrailer3(name []byte, value []byte) bool {
+func (r *webOut_) addTrailer3(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *httpOut_) trailer3(name []byte) (value []byte, ok bool) {
+func (r *webOut_) trailer3(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *httpOut_) trailers3() []byte {
+func (r *webOut_) trailers3() []byte {
 	// TODO
 	return nil
 }
 
-func (r *httpOut_) passBytes3(p []byte) error { return r.writeBytes3(p) }
+func (r *webOut_) passBytes3(p []byte) error { return r.writeBytes3(p) }
 
-func (r *httpOut_) finalizeVague3() error {
+func (r *webOut_) finalizeVague3() error {
 	// TODO
 	if r.nTrailers == 1 { // no trailers
 	} else { // with trailers
@@ -944,26 +944,26 @@ func (r *httpOut_) finalizeVague3() error {
 	return nil
 }
 
-func (r *httpOut_) writeHeaders3() error { // used by echo and pass
+func (r *webOut_) writeHeaders3() error { // used by echo and pass
 	// TODO
 	r.fieldsEdge = 0 // now that headers are all sent, r.fields will be used by trailers (if any), so reset it.
 	return nil
 }
-func (r *httpOut_) writePiece3(piece *Piece, vague bool) error {
+func (r *webOut_) writePiece3(piece *Piece, vague bool) error {
 	// TODO
 	return nil
 }
-func (r *httpOut_) writeVector3() error {
+func (r *webOut_) writeVector3() error {
 	return nil
 }
-func (r *httpOut_) writeBytes3(p []byte) error {
+func (r *webOut_) writeBytes3(p []byte) error {
 	// TODO
 	return nil
 }
 
 // HTTP/3 webSocket
 
-func (s *httpSocket_) todo3() {
+func (s *webSocket_) todo3() {
 }
 
 //////////////////////////////////////// HTTP/3 protocol elements ////////////////////////////////////////

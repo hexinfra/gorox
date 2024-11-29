@@ -60,7 +60,7 @@ func (r *UDPXRouter) OnPrepare() {
 
 	// accessLog, TODO
 	if r.accessLog != nil {
-		//r.logger = NewLogger(r.accessLog.filePath, r.accessLog.rotate)
+		//r.logger = NewLogger(r.accessLog)
 	}
 
 	// sub components

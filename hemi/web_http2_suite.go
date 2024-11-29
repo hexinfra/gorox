@@ -922,8 +922,8 @@ func (s *server2Stream) executeSocket() { // see RFC 8441: https://datatracker.i
 	// TODO
 }
 
-func (s *server2Stream) Holder() httpHolder   { return s.conn.gate.server }
-func (s *server2Stream) Conn() httpConn       { return s.conn }
+func (s *server2Stream) Holder() webHolder    { return s.conn.gate.server }
+func (s *server2Stream) Conn() webConn        { return s.conn }
 func (s *server2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *server2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
@@ -1088,7 +1088,7 @@ func putServer2Socket(socket *server2Socket) {
 }
 
 // server2Socket is the server-side HTTP/2 webSocket.
-type server2Socket struct {
+type server2Socket struct { // incoming and outgoing
 	// Parent
 	serverSocket_
 	// Stream states (stocks)
@@ -1387,8 +1387,8 @@ func (s *backend2Stream) Response() response { return &s.response }
 
 func (s *backend2Stream) Socket() socket { return nil } // TODO. See RFC 8441: https://datatracker.ietf.org/doc/html/rfc8441
 
-func (s *backend2Stream) Holder() httpHolder   { return s.conn.node.backend }
-func (s *backend2Stream) Conn() httpConn       { return s.conn }
+func (s *backend2Stream) Holder() webHolder    { return s.conn.node.backend }
+func (s *backend2Stream) Conn() webConn        { return s.conn }
 func (s *backend2Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
 
 func (s *backend2Stream) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
@@ -1505,7 +1505,7 @@ func putBackend2Socket(socket *backend2Socket) {
 }
 
 // backend2Socket is the backend-side HTTP/2 webSocket.
-type backend2Socket struct {
+type backend2Socket struct { // incoming and outgoing
 	// Parent
 	backendSocket_
 	// Stream states (stocks)
@@ -1523,7 +1523,7 @@ func (s *backend2Socket) onEnd() {
 
 // HTTP/2 incoming
 
-func (r *httpIn_) _growHeaders2(size int32) bool {
+func (r *webIn_) _growHeaders2(size int32) bool {
 	edge := r.inputEdge + size      // size is ensured to not overflow
 	if edge < int32(cap(r.input)) { // fast path
 		return true
@@ -1540,59 +1540,59 @@ func (r *httpIn_) _growHeaders2(size int32) bool {
 	return true
 }
 
-func (r *httpIn_) readContent2() (p []byte, err error) {
+func (r *webIn_) readContent2() (p []byte, err error) {
 	// TODO
 	return
 }
 
 // HTTP/2 outgoing
 
-func (r *httpOut_) addHeader2(name []byte, value []byte) bool {
+func (r *webOut_) addHeader2(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *httpOut_) header2(name []byte) (value []byte, ok bool) {
+func (r *webOut_) header2(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *httpOut_) hasHeader2(name []byte) bool {
+func (r *webOut_) hasHeader2(name []byte) bool {
 	// TODO
 	return false
 }
-func (r *httpOut_) delHeader2(name []byte) (deleted bool) {
+func (r *webOut_) delHeader2(name []byte) (deleted bool) {
 	// TODO
 	return false
 }
-func (r *httpOut_) delHeaderAt2(i uint8) {
+func (r *webOut_) delHeaderAt2(i uint8) {
 	// TODO
 }
 
-func (r *httpOut_) sendChain2() error {
+func (r *webOut_) sendChain2() error {
 	// TODO
 	return nil
 }
 
-func (r *httpOut_) echoChain2() error {
+func (r *webOut_) echoChain2() error {
 	// TODO
 	return nil
 }
 
-func (r *httpOut_) addTrailer2(name []byte, value []byte) bool {
+func (r *webOut_) addTrailer2(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *httpOut_) trailer2(name []byte) (value []byte, ok bool) {
+func (r *webOut_) trailer2(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *httpOut_) trailers2() []byte {
+func (r *webOut_) trailers2() []byte {
 	// TODO
 	return nil
 }
 
-func (r *httpOut_) passBytes2(p []byte) error { return r.writeBytes2(p) }
+func (r *webOut_) passBytes2(p []byte) error { return r.writeBytes2(p) }
 
-func (r *httpOut_) finalizeVague2() error {
+func (r *webOut_) finalizeVague2() error {
 	// TODO
 	if r.nTrailers == 1 { // no trailers
 	} else { // with trailers
@@ -1600,26 +1600,26 @@ func (r *httpOut_) finalizeVague2() error {
 	return nil
 }
 
-func (r *httpOut_) writeHeaders2() error { // used by echo and pass
+func (r *webOut_) writeHeaders2() error { // used by echo and pass
 	// TODO
 	r.fieldsEdge = 0 // now that headers are all sent, r.fields will be used by trailers (if any), so reset it.
 	return nil
 }
-func (r *httpOut_) writePiece2(piece *Piece, vague bool) error {
+func (r *webOut_) writePiece2(piece *Piece, vague bool) error {
 	// TODO
 	return nil
 }
-func (r *httpOut_) writeVector2() error {
+func (r *webOut_) writeVector2() error {
 	return nil
 }
-func (r *httpOut_) writeBytes2(p []byte) error {
+func (r *webOut_) writeBytes2(p []byte) error {
 	// TODO
 	return nil
 }
 
 // HTTP/2 webSocket
 
-func (s *httpSocket_) todo2() {
+func (s *webSocket_) todo2() {
 }
 
 //////////////////////////////////////// HTTP/2 protocol elements ////////////////////////////////////////

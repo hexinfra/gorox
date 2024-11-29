@@ -345,7 +345,7 @@ type Request interface { // for *server[1-3]Request
 // serverRequest_ is the parent for server[1-3]Request.
 type serverRequest_ struct { // incoming. needs parsing
 	// Parent
-	httpIn_ // incoming http request
+	webIn_ // incoming http request
 	// Stream states (stocks)
 	stockUpfiles [2]Upfile // for r.upfiles. 96B
 	// Stream states (controlled)
@@ -428,7 +428,7 @@ type serverRequest0 struct { // for fast reset, entirely
 
 func (r *serverRequest_) onUse(httpVersion uint8) { // for non-zeros
 	const asResponse = false
-	r.httpIn_.onUse(httpVersion, asResponse)
+	r.webIn_.onUse(httpVersion, asResponse)
 
 	r.upfiles = r.stockUpfiles[0:0:cap(r.stockUpfiles)] // use append()
 }
@@ -456,7 +456,7 @@ func (r *serverRequest_) onEnd() { // for zeros
 	r.formWindow = nil // if r.formWindow is fetched from pool, it's put into pool on return. so just set as nil
 	r.serverRequest0 = serverRequest0{}
 
-	r.httpIn_.onEnd()
+	r.webIn_.onEnd()
 }
 
 func (r *serverRequest_) Webapp() *Webapp { return r.webapp }
@@ -2649,8 +2649,8 @@ type Response interface { // for *server[1-3]Response
 	proxyPass1xx(resp response) bool
 	proxyPass(resp response) error
 	proxyPost(content any, hasTrailers bool) error
-	proxyCopyHead(resp response, cfg *WebExchanProxyConfig) bool
-	proxyCopyTail(resp response, cfg *WebExchanProxyConfig) bool
+	proxyCopyHead(resp response, config *WebExchanProxyConfig) bool
+	proxyCopyTail(resp response, config *WebExchanProxyConfig) bool
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
 }
@@ -2658,7 +2658,7 @@ type Response interface { // for *server[1-3]Response
 // serverResponse_ is the parent for server[1-3]Response.
 type serverResponse_ struct { // outgoing. needs building
 	// Parent
-	httpOut_ // outgoing http response
+	webOut_ // outgoing http response
 	// Assocs
 	request Request // related request
 	// Stream states (stocks)
@@ -2686,7 +2686,7 @@ type serverResponse0 struct { // for fast reset, entirely
 
 func (r *serverResponse_) onUse(httpVersion uint8) { // for non-zeros
 	const asRequest = false
-	r.httpOut_.onUse(httpVersion, asRequest)
+	r.webOut_.onUse(httpVersion, asRequest)
 
 	r.status = StatusOK
 	r.unixTimes.expires = -1      // not set
@@ -2696,7 +2696,7 @@ func (r *serverResponse_) onEnd() { // for zeros
 	r.webapp = nil
 	r.serverResponse0 = serverResponse0{}
 
-	r.httpOut_.onEnd()
+	r.webOut_.onEnd()
 }
 
 func (r *serverResponse_) Request() Request { return r.request }
@@ -2714,7 +2714,7 @@ func (r *serverResponse_) SetStatus(status int16) error {
 		}
 		return nil
 	} else { // 1xx are not allowed to set through SetStatus()
-		return httpOutUnknownStatus
+		return webOutUnknownStatus
 	}
 }
 func (r *serverResponse_) Status() int16 { return r.status }
@@ -2847,7 +2847,7 @@ func (r *serverResponse_) doSend() error {
 		if contentSize, ok := r.chain.Size(); ok {
 			r.contentSize = contentSize
 		} else {
-			return httpOutTooLarge
+			return webOutTooLarge
 		}
 	}
 	return r.message.sendChain()
@@ -2865,7 +2865,7 @@ func (r *serverResponse_) beforeEcho() {
 }
 func (r *serverResponse_) doEcho() error {
 	if r.stream.isBroken() {
-		return httpOutWriteBroken
+		return webOutWriteBroken
 	}
 	r.chain.PushTail(&r.piece)
 	defer r.chain.free()
@@ -2883,7 +2883,7 @@ func (r *serverResponse_) doEcho() error {
 }
 func (r *serverResponse_) endVague() error {
 	if r.stream.isBroken() {
-		return httpOutWriteBroken
+		return webOutWriteBroken
 	}
 	if r.hasRevisers {
 		resp := r.message.(Response)
@@ -2983,12 +2983,12 @@ func (r *serverResponse_) proxyPass(resp response) error { // sync content to cl
 		if !resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 			return r.message.addTrailer(name, value)
 		}) {
-			return httpOutTrailerFailed
+			return webOutTrailerFailed
 		}
 	}
 	return nil
 }
-func (r *serverResponse_) proxyCopyHead(resp response, cfg *WebExchanProxyConfig) bool {
+func (r *serverResponse_) proxyCopyHead(resp response, config *WebExchanProxyConfig) bool {
 	resp.delHopHeaders()
 
 	// copy control (:status)
@@ -3009,7 +3009,7 @@ func (r *serverResponse_) proxyCopyHead(resp response, cfg *WebExchanProxyConfig
 
 	return true
 }
-func (r *serverResponse_) proxyCopyTail(resp response, cfg *WebExchanProxyConfig) bool {
+func (r *serverResponse_) proxyCopyTail(resp response, config *WebExchanProxyConfig) bool {
 	return resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.message.addTrailer(name, value)
 	})
@@ -3189,17 +3189,17 @@ type Socket interface { // for *server[1-3]Socket
 // serverSocket_ is the parent for server[1-3]Socket.
 type serverSocket_ struct {
 	// Parent
-	httpSocket_
+	webSocket_
 	// Assocs
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
 func (s *serverSocket_) onUse() {
-	s.httpSocket_.onUse()
+	s.webSocket_.onUse()
 }
 func (s *serverSocket_) onEnd() {
-	s.httpSocket_.onEnd()
+	s.webSocket_.onEnd()
 }
 
 // Webapp is the Web application.
@@ -3356,7 +3356,7 @@ func (a *Webapp) OnConfigure() {
 }
 func (a *Webapp) OnPrepare() {
 	if a.accessLog != nil {
-		//a.logger = NewLogger(a.accessLog.filePath, a.accessLog.rotate)
+		//a.logger = NewLogger(a.accessLog)
 	}
 	if a.file404 != "" {
 		if data, err := os.ReadFile(a.file404); err == nil {
@@ -3927,11 +3927,13 @@ type Reviser interface {
 	setID(id uint8)
 	Rank() int8 // 0-31 (with 0-15 as tunable, 16-31 as fixed)
 
+	// For incoming requests, either sized or vague
 	BeforeRecv(req Request, resp Response) // for sized content
 	BeforeDraw(req Request, resp Response) // for vague content
 	OnInput(req Request, resp Response, chain *Chain) bool
 	FinishDraw(req Request, resp Response) // for vague content
 
+	// For outgoing responses, either sized or vague
 	BeforeSend(req Request, resp Response) // for sized content
 	BeforeEcho(req Request, resp Response) // for vague content
 	OnOutput(req Request, resp Response, chain *Chain)
@@ -4340,10 +4342,10 @@ type WebExchanProxyConfig struct {
 	DelResponseHeaders  [][]byte
 }
 
-func WebExchanReverseProxy(req Request, resp Response, backend WebBackend, cfg *WebExchanProxyConfig) {
+func WebExchanReverseProxy(req Request, resp Response, backend WebBackend, config *WebExchanProxyConfig) {
 	var content any
 	hasContent := req.HasContent()
-	if hasContent && cfg.BufferClientContent { // including size 0
+	if hasContent && config.BufferClientContent { // including size 0
 		content = req.takeContent()
 		if content == nil { // take failed
 			// stream was marked as broken
@@ -4361,19 +4363,19 @@ func WebExchanReverseProxy(req Request, resp Response, backend WebBackend, cfg *
 	defer backend.StoreStream(backStream)
 
 	backReq := backStream.Request()
-	if !backReq.proxyCopyHead(req, cfg) {
+	if !backReq.proxyCopyHead(req, config) {
 		backStream.markBroken()
 		resp.SendBadGateway(nil)
 		return
 	}
 
-	if !hasContent || cfg.BufferClientContent {
+	if !hasContent || config.BufferClientContent {
 		hasTrailers := req.HasTrailers()
 		backErr = backReq.proxyPost(content, hasTrailers) // nil (no content), []byte, tempFile
 		if backErr == nil && hasTrailers {
-			if !backReq.proxyCopyTail(req, cfg) {
+			if !backReq.proxyCopyTail(req, config) {
 				backStream.markBroken()
-				backErr = httpOutTrailerFailed
+				backErr = webOutTrailerFailed
 			} else if backErr = backReq.endVague(); backErr != nil {
 				backStream.markBroken()
 			}
@@ -4432,7 +4434,7 @@ func WebExchanReverseProxy(req Request, resp Response, backend WebBackend, cfg *
 	if req.MethodCode() != MethodHEAD {
 		backHasContent = backResp.HasContent()
 	}
-	if backHasContent && cfg.BufferServerContent { // including size 0
+	if backHasContent && config.BufferServerContent { // including size 0
 		backContent = backResp.takeContent()
 		if backContent == nil { // take failed
 			// backStream was marked as broken
@@ -4441,11 +4443,11 @@ func WebExchanReverseProxy(req Request, resp Response, backend WebBackend, cfg *
 		}
 	}
 
-	if !resp.proxyCopyHead(backResp, cfg) {
+	if !resp.proxyCopyHead(backResp, config) {
 		backStream.markBroken()
 		return
 	}
-	if !backHasContent || cfg.BufferServerContent {
+	if !backHasContent || config.BufferServerContent {
 		backHasTrailers := backResp.HasTrailers()
 		if resp.proxyPost(backContent, backHasTrailers) != nil { // nil (no content), []byte, tempFile
 			if backHasTrailers {
@@ -4453,7 +4455,7 @@ func WebExchanReverseProxy(req Request, resp Response, backend WebBackend, cfg *
 			}
 			return
 		}
-		if backHasTrailers && !resp.proxyCopyTail(backResp, cfg) {
+		if backHasTrailers && !resp.proxyCopyTail(backResp, config) {
 			return
 		}
 	} else if err := resp.proxyPass(backResp); err != nil {
@@ -4571,7 +4573,7 @@ type WebSocketProxyConfig struct {
 	// TODO
 }
 
-func WebSocketReverseProxy(req Request, sock Socket, backend WebBackend, cfg *WebSocketProxyConfig) {
+func WebSocketReverseProxy(req Request, sock Socket, backend WebBackend, config *WebSocketProxyConfig) {
 	// TODO
 }
 
@@ -4728,10 +4730,10 @@ type request interface { // for *backend[1-3]Request
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool
 	proxyCopyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
-	proxyCopyHead(req Request, cfg *WebExchanProxyConfig) bool
+	proxyCopyHead(req Request, config *WebExchanProxyConfig) bool
 	proxyPass(req Request) error
 	proxyPost(content any, hasTrailers bool) error
-	proxyCopyTail(req Request, cfg *WebExchanProxyConfig) bool
+	proxyCopyTail(req Request, config *WebExchanProxyConfig) bool
 	isVague() bool
 	endVague() error
 }
@@ -4739,7 +4741,7 @@ type request interface { // for *backend[1-3]Request
 // backendRequest_ is the parent for backend[1-3]Request.
 type backendRequest_ struct { // outgoing. needs building
 	// Parent
-	httpOut_ // outgoing http request
+	webOut_ // outgoing http request
 	// Assocs
 	response response // the corresponding response
 	// Stream states (stocks)
@@ -4763,7 +4765,7 @@ type backendRequest0 struct { // for fast reset, entirely
 
 func (r *backendRequest_) onUse(httpVersion uint8) { // for non-zeros
 	const asRequest = true
-	r.httpOut_.onUse(httpVersion, asRequest)
+	r.webOut_.onUse(httpVersion, asRequest)
 
 	r.unixTimes.ifModifiedSince = -1   // not set
 	r.unixTimes.ifUnmodifiedSince = -1 // not set
@@ -4771,7 +4773,7 @@ func (r *backendRequest_) onUse(httpVersion uint8) { // for non-zeros
 func (r *backendRequest_) onEnd() { // for zeros
 	r.backendRequest0 = backendRequest0{}
 
-	r.httpOut_.onEnd()
+	r.webOut_.onEnd()
 }
 
 func (r *backendRequest_) Response() response { return r.response }
@@ -4800,7 +4802,7 @@ func (r *backendRequest_) doSend() error { // revising is not supported in backe
 func (r *backendRequest_) beforeEcho() {} // revising is not supported in backend side.
 func (r *backendRequest_) doEcho() error { // revising is not supported in backend side.
 	if r.stream.isBroken() {
-		return httpOutWriteBroken
+		return webOutWriteBroken
 	}
 	r.chain.PushTail(&r.piece)
 	defer r.chain.free()
@@ -4808,7 +4810,7 @@ func (r *backendRequest_) doEcho() error { // revising is not supported in backe
 }
 func (r *backendRequest_) endVague() error { // revising is not supported in backend side.
 	if r.stream.isBroken() {
-		return httpOutWriteBroken
+		return webOutWriteBroken
 	}
 	return r.message.finalizeVague()
 }
@@ -4912,12 +4914,12 @@ func (r *backendRequest_) proxyPass(req Request) error { // sync content to back
 		if !req.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 			return r.message.addTrailer(name, value)
 		}) {
-			return httpOutTrailerFailed
+			return webOutTrailerFailed
 		}
 	}
 	return nil
 }
-func (r *backendRequest_) proxyCopyHead(req Request, cfg *WebExchanProxyConfig) bool {
+func (r *backendRequest_) proxyCopyHead(req Request, config *WebExchanProxyConfig) bool {
 	req.delHopHeaders()
 
 	// copy control (:method, :path, :authority, :scheme)
@@ -4931,7 +4933,7 @@ func (r *backendRequest_) proxyCopyHead(req Request, cfg *WebExchanProxyConfig) 
 	if !r.message.(request).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
 		return false
 	}
-	if req.IsAbsoluteForm() || len(cfg.Hostname) != 0 || len(cfg.ColonPort) != 0 { // TODO: what about HTTP/2 and HTTP/3?
+	if req.IsAbsoluteForm() || len(config.Hostname) != 0 || len(config.ColonPort) != 0 { // TODO: what about HTTP/2 and HTTP/3?
 		req.unsetHost()
 		if req.IsAbsoluteForm() {
 			if !r.message.addHeader(bytesHost, req.UnsafeAuthority()) {
@@ -4942,15 +4944,15 @@ func (r *backendRequest_) proxyCopyHead(req Request, cfg *WebExchanProxyConfig) 
 				hostname  []byte
 				colonPort []byte
 			)
-			if len(cfg.Hostname) == 0 { // no custom hostname
+			if len(config.Hostname) == 0 { // no custom hostname
 				hostname = req.UnsafeHostname()
 			} else {
-				hostname = cfg.Hostname
+				hostname = config.Hostname
 			}
-			if len(cfg.ColonPort) == 0 { // no custom colonPort
+			if len(config.ColonPort) == 0 { // no custom colonPort
 				colonPort = req.UnsafeColonPort()
 			} else {
-				colonPort = cfg.ColonPort
+				colonPort = config.ColonPort
 			}
 			if !r.message.(request).setAuthority(hostname, colonPort) {
 				return false
@@ -4975,12 +4977,12 @@ func (r *backendRequest_) proxyCopyHead(req Request, cfg *WebExchanProxyConfig) 
 	if req.HasCookies() && !r.message.(request).proxyCopyCookies(req) {
 		return false
 	}
-	if !r.message.addHeader(bytesVia, cfg.InboundViaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
+	if !r.message.addHeader(bytesVia, config.InboundViaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
 		return false
 	}
 
 	// copy added headers
-	for name, vValue := range cfg.AddRequestHeaders {
+	for name, vValue := range config.AddRequestHeaders {
 		var value []byte
 		if vValue.IsVariable() {
 			value = vValue.BytesVar(req)
@@ -5001,13 +5003,13 @@ func (r *backendRequest_) proxyCopyHead(req Request, cfg *WebExchanProxyConfig) 
 		return false
 	}
 
-	for _, name := range cfg.DelRequestHeaders {
+	for _, name := range config.DelRequestHeaders {
 		r.message.delHeader(name)
 	}
 
 	return true
 }
-func (r *backendRequest_) proxyCopyTail(req Request, cfg *WebExchanProxyConfig) bool {
+func (r *backendRequest_) proxyCopyTail(req Request, config *WebExchanProxyConfig) bool {
 	return req.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.message.addTrailer(name, value)
 	})
@@ -5037,7 +5039,7 @@ type response interface { // for *backend[1-3]Response
 // backendResponse_ is the parent for backend[1-3]Response.
 type backendResponse_ struct { // incoming. needs parsing
 	// Parent
-	httpIn_ // incoming http response
+	webIn_ // incoming http response
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -5084,12 +5086,12 @@ type backendResponse0 struct { // for fast reset, entirely
 
 func (r *backendResponse_) onUse(httpVersion uint8) { // for non-zeros
 	const asResponse = true
-	r.httpIn_.onUse(httpVersion, asResponse)
+	r.webIn_.onUse(httpVersion, asResponse)
 }
 func (r *backendResponse_) onEnd() { // for zeros
 	r.backendResponse0 = backendResponse0{}
 
-	r.httpIn_.onEnd()
+	r.webIn_.onEnd()
 }
 
 func (r *backendResponse_) reuse() {
@@ -5364,7 +5366,7 @@ func (r *backendResponse_) checkTransferEncoding(pairs []pair, from uint8, edge 
 	if r.status == StatusNotModified {
 		// TODO
 	}
-	return r.httpIn_.checkTransferEncoding(pairs, from, edge)
+	return r.webIn_.checkTransferEncoding(pairs, from, edge)
 }
 func (r *backendResponse_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { // Upgrade = #protocol
 	if r.httpVersion >= Version2 {
@@ -5437,38 +5439,38 @@ type socket interface { // for *backend[1-3]Socket
 // backendSocket_ is the parent for backend[1-3]Socket.
 type backendSocket_ struct {
 	// Parent
-	httpSocket_
+	webSocket_
 	// Assocs
 	// Stream states (zeros)
 }
 
 func (s *backendSocket_) onUse() {
-	s.httpSocket_.onUse()
+	s.webSocket_.onUse()
 }
 func (s *backendSocket_) onEnd() {
-	s.httpSocket_.onEnd()
+	s.webSocket_.onEnd()
 }
 
-// httpHolder collects shared methods between *http[x3]Server and *http[1-3]Backend.
-type httpHolder interface {
+// webHolder collects shared methods between *http[x3]Server and *http[1-3]Backend.
+type webHolder interface {
 	// Imports
 	contentSaver
 	// Methods
 	MaxMemoryContentSize() int32 // allowed to load into memory
 }
 
-// httpConn collects shared methods between *server[1-3]Conn and *backend[1-3]Conn.
-type httpConn interface {
+// webConn collects shared methods between *server[1-3]Conn and *backend[1-3]Conn.
+type webConn interface {
 	ID() int64
 	IsTLS() bool
 	IsUDS() bool
 	MakeTempName(p []byte, unixTime int64) int
 }
 
-// httpStream collects shared methods between *server[1-3]Stream and *backend[1-3]Stream.
-type httpStream interface {
-	Holder() httpHolder
-	Conn() httpConn
+// webStream collects shared methods between *server[1-3]Stream and *backend[1-3]Stream.
+type webStream interface {
+	Holder() webHolder
+	Conn() webConn
 
 	remoteAddr() net.Addr
 	buffer256() []byte
@@ -5483,10 +5485,10 @@ type httpStream interface {
 	writev(vector *net.Buffers) (int64, error)
 }
 
-// httpIn_ is the parent for serverRequest_ and backendResponse_.
-type httpIn_ struct { // incoming. needs parsing
+// webIn_ is the parent for serverRequest_ and backendResponse_.
+type webIn_ struct { // incoming. needs parsing
 	// Assocs
-	stream  httpStream  // *server[1-3]Stream, *backend[1-3]Stream
+	stream  webStream   // *server[1-3]Stream, *backend[1-3]Stream
 	message interface { // *server[1-3]Request, *backend[1-3]Response
 		readContent() (p []byte, err error)
 		examineTail() bool
@@ -5525,9 +5527,9 @@ type httpIn_ struct { // incoming. needs parsing
 	bodyTime    time.Time // the time when first body read operation is performed on this stream
 	contentText []byte    // if loadable, the received and loaded content of current message is at r.contentText[:r.receivedSize]. [<none>/r.input/4K/16K/64K1/(make)]
 	contentFile *os.File  // used by r.holdContent(), if content is tempFile. will be closed on stream ends
-	httpIn0               // all values must be zero by default in this struct!
+	webIn0                // all values must be zero by default in this struct!
 }
-type httpIn0 struct { // for fast reset, entirely
+type webIn0 struct { // for fast reset, entirely
 	pBack            int32   // element begins from. for parsing elements in control & headers & content & trailers
 	pFore            int32   // element spanning to. for parsing elements in control & headers & content & trailers
 	head             span    // head (control + headers) of current message -> r.input. set after head is received. only for debugging
@@ -5566,7 +5568,7 @@ type httpIn0 struct { // for fast reset, entirely
 	trailers         zone    // trailers -> r.primes. set after trailer section is received and parsed
 }
 
-func (r *httpIn_) onUse(httpVersion uint8, asResponse bool) { // for non-zeros
+func (r *webIn_) onUse(httpVersion uint8, asResponse bool) { // for non-zeros
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of pair indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
 	r.array = r.stockArray[:]
@@ -5586,7 +5588,7 @@ func (r *httpIn_) onUse(httpVersion uint8, asResponse bool) { // for non-zeros
 	r.headResult = StatusOK
 	r.bodyResult = StatusOK
 }
-func (r *httpIn_) onEnd() { // for zeros
+func (r *webIn_) onEnd() { // for zeros
 	if cap(r.primes) != cap(r.stockPrimes) {
 		putPairs(r.primes)
 		r.primes = nil
@@ -5647,19 +5649,19 @@ func (r *httpIn_) onEnd() { // for zeros
 		r.contentFile = nil
 	}
 
-	r.httpIn0 = httpIn0{}
+	r.webIn0 = webIn0{}
 }
 
-func (r *httpIn_) UnsafeMake(size int) []byte { return r.stream.unsafeMake(size) }
-func (r *httpIn_) RemoteAddr() net.Addr       { return r.stream.remoteAddr() }
+func (r *webIn_) UnsafeMake(size int) []byte { return r.stream.unsafeMake(size) }
+func (r *webIn_) RemoteAddr() net.Addr       { return r.stream.remoteAddr() }
 
-func (r *httpIn_) VersionCode() uint8 { return r.httpVersion }
-func (r *httpIn_) IsHTTP1_0() bool    { return r.httpVersion == Version1_0 }
-func (r *httpIn_) IsHTTP1_1() bool    { return r.httpVersion == Version1_1 }
-func (r *httpIn_) IsHTTP1() bool      { return r.httpVersion <= Version1_1 }
-func (r *httpIn_) IsHTTP2() bool      { return r.httpVersion == Version2 }
-func (r *httpIn_) IsHTTP3() bool      { return r.httpVersion == Version3 }
-func (r *httpIn_) Version() string    { return httpVersionStrings[r.httpVersion] }
+func (r *webIn_) VersionCode() uint8 { return r.httpVersion }
+func (r *webIn_) IsHTTP1_0() bool    { return r.httpVersion == Version1_0 }
+func (r *webIn_) IsHTTP1_1() bool    { return r.httpVersion == Version1_1 }
+func (r *webIn_) IsHTTP1() bool      { return r.httpVersion <= Version1_1 }
+func (r *webIn_) IsHTTP2() bool      { return r.httpVersion == Version2 }
+func (r *webIn_) IsHTTP3() bool      { return r.httpVersion == Version3 }
+func (r *webIn_) Version() string    { return httpVersionStrings[r.httpVersion] }
 
 var httpVersionStrings = [...]string{
 	Version1_0: stringHTTP1_0,
@@ -5668,7 +5670,7 @@ var httpVersionStrings = [...]string{
 	Version3:   stringHTTP3,
 }
 
-func (r *httpIn_) UnsafeVersion() []byte { return httpVersionByteses[r.httpVersion] }
+func (r *webIn_) UnsafeVersion() []byte { return httpVersionByteses[r.httpVersion] }
 
 var httpVersionByteses = [...][]byte{
 	Version1_0: bytesHTTP1_0,
@@ -5677,11 +5679,11 @@ var httpVersionByteses = [...][]byte{
 	Version3:   bytesHTTP3,
 }
 
-func (r *httpIn_) KeepAlive() int8   { return r.keepAlive }
-func (r *httpIn_) HeadResult() int16 { return r.headResult }
-func (r *httpIn_) BodyResult() int16 { return r.bodyResult }
+func (r *webIn_) KeepAlive() int8   { return r.keepAlive }
+func (r *webIn_) HeadResult() int16 { return r.headResult }
+func (r *webIn_) BodyResult() int16 { return r.bodyResult }
 
-func (r *httpIn_) addHeader(header *pair) bool { // as prime
+func (r *webIn_) addHeader(header *pair) bool { // as prime
 	if edge, ok := r._addPrime(header); ok {
 		r.headers.edge = edge
 		return true
@@ -5689,19 +5691,19 @@ func (r *httpIn_) addHeader(header *pair) bool { // as prime
 	r.headResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
 	return false
 }
-func (r *httpIn_) HasHeaders() bool                  { return r.hasPairs(r.headers, pairHeader) }
-func (r *httpIn_) AllHeaders() (headers [][2]string) { return r.allPairs(r.headers, pairHeader) }
-func (r *httpIn_) H(name string) string {
+func (r *webIn_) HasHeaders() bool                  { return r.hasPairs(r.headers, pairHeader) }
+func (r *webIn_) AllHeaders() (headers [][2]string) { return r.allPairs(r.headers, pairHeader) }
+func (r *webIn_) H(name string) string {
 	value, _ := r.Header(name)
 	return value
 }
-func (r *httpIn_) Hstr(name string, defaultValue string) string {
+func (r *webIn_) Hstr(name string, defaultValue string) string {
 	if value, ok := r.Header(name); ok {
 		return value
 	}
 	return defaultValue
 }
-func (r *httpIn_) Hint(name string, defaultValue int) int {
+func (r *webIn_) Hint(name string, defaultValue int) int {
 	if value, ok := r.Header(name); ok {
 		if i, err := strconv.Atoi(value); err == nil {
 			return i
@@ -5709,35 +5711,35 @@ func (r *httpIn_) Hint(name string, defaultValue int) int {
 	}
 	return defaultValue
 }
-func (r *httpIn_) Header(name string) (value string, ok bool) {
+func (r *webIn_) Header(name string) (value string, ok bool) {
 	v, ok := r.getPair(name, 0, r.headers, pairHeader)
 	return string(v), ok
 }
-func (r *httpIn_) UnsafeHeader(name string) (value []byte, ok bool) {
+func (r *webIn_) UnsafeHeader(name string) (value []byte, ok bool) {
 	return r.getPair(name, 0, r.headers, pairHeader)
 }
-func (r *httpIn_) Headers(name string) (values []string, ok bool) {
+func (r *webIn_) Headers(name string) (values []string, ok bool) {
 	return r.getPairs(name, 0, r.headers, pairHeader)
 }
-func (r *httpIn_) HasHeader(name string) bool {
+func (r *webIn_) HasHeader(name string) bool {
 	_, ok := r.getPair(name, 0, r.headers, pairHeader)
 	return ok
 }
-func (r *httpIn_) DelHeader(name string) (deleted bool) {
+func (r *webIn_) DelHeader(name string) (deleted bool) {
 	// TODO: add restrictions on what headers are allowed to del?
 	return r.delPair(name, 0, r.headers, pairHeader)
 }
-func (r *httpIn_) delHeader(name []byte, hash uint16) {
+func (r *webIn_) delHeader(name []byte, hash uint16) {
 	r.delPair(WeakString(name), hash, r.headers, pairHeader)
 }
-func (r *httpIn_) AddHeader(name string, value string) bool { // as extra
+func (r *webIn_) AddHeader(name string, value string) bool { // as extra
 	// TODO: add restrictions on what headers are allowed to add? should we check the value?
 	// TODO: parse and check?
 	// setFlags?
 	return r.addExtra(name, value, 0, pairHeader)
 }
 
-func (r *httpIn_) _splitField(field *pair, fdesc *fdesc, p []byte) bool { // split: #element => [ element ] *( OWS "," OWS [ element ] )
+func (r *webIn_) _splitField(field *pair, fdesc *fdesc, p []byte) bool { // split: #element => [ element ] *( OWS "," OWS [ element ] )
 	field.setParsed()
 
 	subField := *field
@@ -5801,7 +5803,7 @@ func (r *httpIn_) _splitField(field *pair, fdesc *fdesc, p []byte) bool { // spl
 	}
 	return true
 }
-func (r *httpIn_) _parseField(field *pair, fdesc *fdesc, p []byte, fully bool) bool { // for field data and value params
+func (r *webIn_) _parseField(field *pair, fdesc *fdesc, p []byte, fully bool) bool { // for field data and value params
 	field.setParsed()
 
 	if field.value.isEmpty() {
@@ -6018,7 +6020,7 @@ func (r *httpIn_) _parseField(field *pair, fdesc *fdesc, p []byte, fully bool) b
 	}
 }
 
-func (r *httpIn_) checkContentLength(header *pair, index uint8) bool { // Content-Length = 1*DIGIT
+func (r *webIn_) checkContentLength(header *pair, index uint8) bool { // Content-Length = 1*DIGIT
 	// RFC 7230 (section 3.3.2):
 	// If a message is received that has multiple Content-Length header
 	// fields with field-values consisting of the same decimal value, or a
@@ -6048,7 +6050,7 @@ func (r *httpIn_) checkContentLength(header *pair, index uint8) bool { // Conten
 	r.headResult, r.failReason = StatusBadRequest, "bad content-length"
 	return false
 }
-func (r *httpIn_) checkContentLocation(header *pair, index uint8) bool { // Content-Location = absolute-URI / partial-URI
+func (r *webIn_) checkContentLocation(header *pair, index uint8) bool { // Content-Location = absolute-URI / partial-URI
 	if r.iContentLocation == 0 && header.value.notEmpty() {
 		// TODO: check syntax
 		r.iContentLocation = index
@@ -6057,7 +6059,7 @@ func (r *httpIn_) checkContentLocation(header *pair, index uint8) bool { // Cont
 	r.headResult, r.failReason = StatusBadRequest, "bad or too many content-location"
 	return false
 }
-func (r *httpIn_) checkContentRange(header *pair, index uint8) bool { // Content-Range = range-unit SP ( range-resp / unsatisfied-range )
+func (r *webIn_) checkContentRange(header *pair, index uint8) bool { // Content-Range = range-unit SP ( range-resp / unsatisfied-range )
 	if r.iContentRange == 0 && header.value.notEmpty() {
 		// TODO: check syntax
 		r.iContentRange = index
@@ -6066,7 +6068,7 @@ func (r *httpIn_) checkContentRange(header *pair, index uint8) bool { // Content
 	r.headResult, r.failReason = StatusBadRequest, "bad or too many content-range"
 	return false
 }
-func (r *httpIn_) checkContentType(header *pair, index uint8) bool { // Content-Type = media-type
+func (r *webIn_) checkContentType(header *pair, index uint8) bool { // Content-Type = media-type
 	// media-type = type "/" subtype *( OWS ";" OWS parameter )
 	// type = token
 	// subtype = token
@@ -6079,10 +6081,10 @@ func (r *httpIn_) checkContentType(header *pair, index uint8) bool { // Content-
 	r.headResult, r.failReason = StatusBadRequest, "bad or too many content-type"
 	return false
 }
-func (r *httpIn_) checkDate(header *pair, index uint8) bool { // Date = HTTP-date
+func (r *webIn_) checkDate(header *pair, index uint8) bool { // Date = HTTP-date
 	return r._checkHTTPDate(header, index, &r.iDate, &r.dateTime)
 }
-func (r *httpIn_) _checkHTTPDate(header *pair, index uint8, pIndex *uint8, toTime *int64) bool { // HTTP-date = day-name "," SP day SP month SP year SP hour ":" minute ":" second SP GMT
+func (r *webIn_) _checkHTTPDate(header *pair, index uint8, pIndex *uint8, toTime *int64) bool { // HTTP-date = day-name "," SP day SP month SP year SP hour ":" minute ":" second SP GMT
 	if *pIndex == 0 {
 		if httpDate, ok := clockParseHTTPDate(header.valueAt(r.input)); ok {
 			*pIndex = index
@@ -6094,7 +6096,7 @@ func (r *httpIn_) _checkHTTPDate(header *pair, index uint8, pIndex *uint8, toTim
 	return false
 }
 
-func (r *httpIn_) checkAcceptEncoding(pairs []pair, from uint8, edge uint8) bool { // Accept-Encoding = #( codings [ weight ] )
+func (r *webIn_) checkAcceptEncoding(pairs []pair, from uint8, edge uint8) bool { // Accept-Encoding = #( codings [ weight ] )
 	// codings = content-coding / "identity" / "*"
 	// content-coding = token
 	for i := from; i < edge; i++ {
@@ -6128,7 +6130,7 @@ func (r *httpIn_) checkAcceptEncoding(pairs []pair, from uint8, edge uint8) bool
 	}
 	return true
 }
-func (r *httpIn_) checkConnection(pairs []pair, from uint8, edge uint8) bool { // Connection = #connection-option
+func (r *webIn_) checkConnection(pairs []pair, from uint8, edge uint8) bool { // Connection = #connection-option
 	if r.httpVersion >= Version2 {
 		r.headResult, r.failReason = StatusBadRequest, "connection header is not allowed in HTTP/2 and HTTP/3"
 		return false
@@ -6153,7 +6155,7 @@ func (r *httpIn_) checkConnection(pairs []pair, from uint8, edge uint8) bool { /
 	}
 	return true
 }
-func (r *httpIn_) checkContentEncoding(pairs []pair, from uint8, edge uint8) bool { // Content-Encoding = #content-coding
+func (r *webIn_) checkContentEncoding(pairs []pair, from uint8, edge uint8) bool { // Content-Encoding = #content-coding
 	// content-coding = token
 	for i := from; i < edge; i++ {
 		if r.nContentCodings == int8(cap(r.contentCodings)) {
@@ -6179,7 +6181,7 @@ func (r *httpIn_) checkContentEncoding(pairs []pair, from uint8, edge uint8) boo
 	}
 	return true
 }
-func (r *httpIn_) checkContentLanguage(pairs []pair, from uint8, edge uint8) bool { // Content-Language = #language-tag
+func (r *webIn_) checkContentLanguage(pairs []pair, from uint8, edge uint8) bool { // Content-Language = #language-tag
 	if r.zContentLanguage.isEmpty() {
 		r.zContentLanguage.from = from
 	}
@@ -6189,7 +6191,7 @@ func (r *httpIn_) checkContentLanguage(pairs []pair, from uint8, edge uint8) boo
 	}
 	return true
 }
-func (r *httpIn_) checkTrailer(pairs []pair, from uint8, edge uint8) bool { // Trailer = #field-name
+func (r *webIn_) checkTrailer(pairs []pair, from uint8, edge uint8) bool { // Trailer = #field-name
 	if r.zTrailer.isEmpty() {
 		r.zTrailer.from = from
 	}
@@ -6200,7 +6202,7 @@ func (r *httpIn_) checkTrailer(pairs []pair, from uint8, edge uint8) bool { // T
 	}
 	return true
 }
-func (r *httpIn_) checkTransferEncoding(pairs []pair, from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
+func (r *webIn_) checkTransferEncoding(pairs []pair, from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
 	if r.httpVersion != Version1_1 {
 		r.headResult, r.failReason = StatusBadRequest, "transfer-encoding is only allowed in http/1.1"
 		return false
@@ -6221,7 +6223,7 @@ func (r *httpIn_) checkTransferEncoding(pairs []pair, from uint8, edge uint8) bo
 	}
 	return true
 }
-func (r *httpIn_) checkVia(pairs []pair, from uint8, edge uint8) bool { // Via = #( received-protocol RWS received-by [ RWS comment ] )
+func (r *webIn_) checkVia(pairs []pair, from uint8, edge uint8) bool { // Via = #( received-protocol RWS received-by [ RWS comment ] )
 	if r.zVia.isEmpty() {
 		r.zVia.from = from
 	}
@@ -6232,7 +6234,7 @@ func (r *httpIn_) checkVia(pairs []pair, from uint8, edge uint8) bool { // Via =
 	return true
 }
 
-func (r *httpIn_) determineContentMode() bool {
+func (r *webIn_) determineContentMode() bool {
 	if r.transferChunked { // must be HTTP/1.1 and there is a transfer-encoding: chunked
 		if r.contentSize != -1 { // there is also a content-length: nnn
 			// RFC 7230 (section 3.3.3):
@@ -6253,33 +6255,33 @@ func (r *httpIn_) determineContentMode() bool {
 	}
 	return true
 }
-func (r *httpIn_) IsVague() bool { return r.contentSize == -2 }
+func (r *webIn_) IsVague() bool { return r.contentSize == -2 }
 
-func (r *httpIn_) ContentSize() int64 { return r.contentSize }
-func (r *httpIn_) UnsafeContentLength() []byte {
+func (r *webIn_) ContentSize() int64 { return r.contentSize }
+func (r *webIn_) UnsafeContentLength() []byte {
 	if r.iContentLength == 0 {
 		return nil
 	}
 	return r.primes[r.iContentLength].valueAt(r.input)
 }
-func (r *httpIn_) ContentType() string { return string(r.UnsafeContentType()) }
-func (r *httpIn_) UnsafeContentType() []byte {
+func (r *webIn_) ContentType() string { return string(r.UnsafeContentType()) }
+func (r *webIn_) UnsafeContentType() []byte {
 	if r.iContentType == 0 {
 		return nil
 	}
 	return r.primes[r.iContentType].dataAt(r.input)
 }
 
-func (r *httpIn_) SetRecvTimeout(timeout time.Duration) { r.recvTimeout = timeout }
+func (r *webIn_) SetRecvTimeout(timeout time.Duration) { r.recvTimeout = timeout }
 
-func (r *httpIn_) unsafeContent() []byte { // load message content into memory
+func (r *webIn_) unsafeContent() []byte { // load message content into memory
 	r._loadContent()
 	if r.stream.isBroken() {
 		return nil
 	}
 	return r.contentText[0:r.receivedSize]
 }
-func (r *httpIn_) _loadContent() { // into memory. [0, r.maxContentSize]
+func (r *webIn_) _loadContent() { // into memory. [0, r.maxContentSize]
 	if r.contentReceived {
 		// Content is in r.contentText already.
 		return
@@ -6317,7 +6319,7 @@ func (r *httpIn_) _loadContent() { // into memory. [0, r.maxContentSize]
 		r.stream.markBroken()
 	}
 }
-func (r *httpIn_) takeContent() any { // used by proxies
+func (r *webIn_) takeContent() any { // used by proxies
 	if r.contentReceived {
 		if r.contentFile == nil {
 			return r.contentText // immediate
@@ -6339,7 +6341,7 @@ func (r *httpIn_) takeContent() any { // used by proxies
 	r.stream.markBroken()
 	return nil
 }
-func (r *httpIn_) _dropContent() { // if message content is not received, this will be called at last
+func (r *webIn_) _dropContent() { // if message content is not received, this will be called at last
 	switch content := r._recvContent(false).(type) { // don't retain
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		PutNK(content)
@@ -6352,7 +6354,7 @@ func (r *httpIn_) _dropContent() { // if message content is not received, this w
 		r.stream.markBroken()
 	}
 }
-func (r *httpIn_) _recvContent(retain bool) any { // to []byte (for small content <= 64K1) or tempFile (for large content > 64K1, or vague content)
+func (r *webIn_) _recvContent(retain bool) any { // to []byte (for small content <= 64K1) or tempFile (for large content > 64K1, or vague content)
 	if r.contentSize > 0 && r.contentSize <= _64K1 { // (0, 64K1]. save to []byte. must be received in a timeout
 		if err := r.stream.setReadDeadline(); err != nil {
 			return err
@@ -6404,7 +6406,7 @@ func (r *httpIn_) _recvContent(retain bool) any { // to []byte (for small conten
 	}
 }
 
-func (r *httpIn_) addTrailer(trailer *pair) bool { // as prime
+func (r *webIn_) addTrailer(trailer *pair) bool { // as prime
 	if edge, ok := r._addPrime(trailer); ok {
 		r.trailers.edge = edge
 		return true
@@ -6412,19 +6414,19 @@ func (r *httpIn_) addTrailer(trailer *pair) bool { // as prime
 	r.bodyResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many trailers"
 	return false
 }
-func (r *httpIn_) HasTrailers() bool                   { return r.hasPairs(r.trailers, pairTrailer) }
-func (r *httpIn_) AllTrailers() (trailers [][2]string) { return r.allPairs(r.trailers, pairTrailer) }
-func (r *httpIn_) T(name string) string {
+func (r *webIn_) HasTrailers() bool                   { return r.hasPairs(r.trailers, pairTrailer) }
+func (r *webIn_) AllTrailers() (trailers [][2]string) { return r.allPairs(r.trailers, pairTrailer) }
+func (r *webIn_) T(name string) string {
 	value, _ := r.Trailer(name)
 	return value
 }
-func (r *httpIn_) Tstr(name string, defaultValue string) string {
+func (r *webIn_) Tstr(name string, defaultValue string) string {
 	if value, ok := r.Trailer(name); ok {
 		return value
 	}
 	return defaultValue
 }
-func (r *httpIn_) Tint(name string, defaultValue int) int {
+func (r *webIn_) Tint(name string, defaultValue int) int {
 	if value, ok := r.Trailer(name); ok {
 		if i, err := strconv.Atoi(value); err == nil {
 			return i
@@ -6432,34 +6434,34 @@ func (r *httpIn_) Tint(name string, defaultValue int) int {
 	}
 	return defaultValue
 }
-func (r *httpIn_) Trailer(name string) (value string, ok bool) {
+func (r *webIn_) Trailer(name string) (value string, ok bool) {
 	v, ok := r.getPair(name, 0, r.trailers, pairTrailer)
 	return string(v), ok
 }
-func (r *httpIn_) UnsafeTrailer(name string) (value []byte, ok bool) {
+func (r *webIn_) UnsafeTrailer(name string) (value []byte, ok bool) {
 	return r.getPair(name, 0, r.trailers, pairTrailer)
 }
-func (r *httpIn_) Trailers(name string) (values []string, ok bool) {
+func (r *webIn_) Trailers(name string) (values []string, ok bool) {
 	return r.getPairs(name, 0, r.trailers, pairTrailer)
 }
-func (r *httpIn_) HasTrailer(name string) bool {
+func (r *webIn_) HasTrailer(name string) bool {
 	_, ok := r.getPair(name, 0, r.trailers, pairTrailer)
 	return ok
 }
-func (r *httpIn_) DelTrailer(name string) (deleted bool) {
+func (r *webIn_) DelTrailer(name string) (deleted bool) {
 	return r.delPair(name, 0, r.trailers, pairTrailer)
 }
-func (r *httpIn_) delTrailer(name []byte, hash uint16) {
+func (r *webIn_) delTrailer(name []byte, hash uint16) {
 	r.delPair(WeakString(name), hash, r.trailers, pairTrailer)
 }
-func (r *httpIn_) AddTrailer(name string, value string) bool { // as extra
+func (r *webIn_) AddTrailer(name string, value string) bool { // as extra
 	// TODO: add restrictions on what trailers are allowed to add? should we check the value?
 	// TODO: parse and check?
 	// setFlags?
 	return r.addExtra(name, value, 0, pairTrailer)
 }
 
-func (r *httpIn_) _addPrime(prime *pair) (edge uint8, ok bool) {
+func (r *webIn_) _addPrime(prime *pair) (edge uint8, ok bool) {
 	if len(r.primes) == cap(r.primes) { // full
 		if cap(r.primes) != cap(r.stockPrimes) { // too many primes
 			return 0, false
@@ -6473,9 +6475,9 @@ func (r *httpIn_) _addPrime(prime *pair) (edge uint8, ok bool) {
 	r.primes = append(r.primes, *prime)
 	return uint8(len(r.primes)), true
 }
-func (r *httpIn_) _delPrime(i uint8) { r.primes[i].zero() }
+func (r *webIn_) _delPrime(i uint8) { r.primes[i].zero() }
 
-func (r *httpIn_) addExtra(name string, value string, hash uint16, extraKind int8) bool {
+func (r *webIn_) addExtra(name string, value string, hash uint16, extraKind int8) bool {
 	nameSize := len(name)
 	if nameSize == 0 || nameSize > 255 { // name size is limited at 255
 		return false
@@ -6508,7 +6510,7 @@ func (r *httpIn_) addExtra(name string, value string, hash uint16, extraKind int
 	extra.value.edge = r.arrayEdge
 	return r._addExtra(extra)
 }
-func (r *httpIn_) _addExtra(extra *pair) bool {
+func (r *webIn_) _addExtra(extra *pair) bool {
 	if len(r.extras) == cap(r.extras) { // full
 		if cap(r.extras) != cap(r.stockExtras) { // too many extras
 			return false
@@ -6524,10 +6526,10 @@ func (r *httpIn_) _addExtra(extra *pair) bool {
 	return true
 }
 
-func (r *httpIn_) hasPairs(primes zone, extraKind int8) bool {
+func (r *webIn_) hasPairs(primes zone, extraKind int8) bool {
 	return primes.notEmpty() || r.hasExtra[extraKind]
 }
-func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
+func (r *webIn_) allPairs(primes zone, extraKind int8) [][2]string {
 	var pairs [][2]string
 	if extraKind == pairHeader || extraKind == pairTrailer { // skip sub fields, only collects values of main fields
 		for i := primes.from; i < primes.edge; i++ {
@@ -6560,7 +6562,7 @@ func (r *httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 	}
 	return pairs
 }
-func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind int8) (value []byte, ok bool) {
+func (r *webIn_) getPair(name string, hash uint16, primes zone, extraKind int8) (value []byte, ok bool) {
 	if name == "" {
 		return
 	}
@@ -6607,7 +6609,7 @@ func (r *httpIn_) getPair(name string, hash uint16, primes zone, extraKind int8)
 	}
 	return
 }
-func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8) (values []string, ok bool) {
+func (r *webIn_) getPairs(name string, hash uint16, primes zone, extraKind int8) (values []string, ok bool) {
 	if name == "" {
 		return
 	}
@@ -6657,7 +6659,7 @@ func (r *httpIn_) getPairs(name string, hash uint16, primes zone, extraKind int8
 	}
 	return
 }
-func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind int8) (deleted bool) {
+func (r *webIn_) delPair(name string, hash uint16, primes zone, extraKind int8) (deleted bool) {
 	if name == "" {
 		return
 	}
@@ -6682,7 +6684,7 @@ func (r *httpIn_) delPair(name string, hash uint16, primes zone, extraKind int8)
 	}
 	return
 }
-func (r *httpIn_) _placeOf(pair *pair) []byte {
+func (r *webIn_) _placeOf(pair *pair) []byte {
 	var place []byte
 	switch pair.place {
 	case placeInput:
@@ -6699,13 +6701,13 @@ func (r *httpIn_) _placeOf(pair *pair) []byte {
 	return place
 }
 
-func (r *httpIn_) delHopHeaders() {
+func (r *webIn_) delHopHeaders() {
 	r._delHopFields(r.headers, pairHeader, r.delHeader)
 }
-func (r *httpIn_) delHopTrailers() {
+func (r *webIn_) delHopTrailers() {
 	r._delHopFields(r.trailers, pairTrailer, r.delTrailer)
 }
-func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name []byte, hash uint16)) { // TODO: improve performance
+func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name []byte, hash uint16)) { // TODO: improve performance
 	// These fields should be removed anyway: proxy-connection, keep-alive, te, transfer-encoding, upgrade
 	delField(bytesProxyConnection, hashProxyConnection)
 	delField(bytesKeepAlive, hashKeepAlive)
@@ -6747,13 +6749,13 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name 
 	}
 }
 
-func (r *httpIn_) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by httpOut.proxyCopyHead(). excluding sub headers
+func (r *webIn_) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by webOut.proxyCopyHead(). excluding sub headers
 	return r._forMainFields(r.headers, pairHeader, callback)
 }
-func (r *httpIn_) forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // by httpOut.proxyCopyTail(). excluding sub trailers
+func (r *webIn_) forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // by webOut.proxyCopyTail(). excluding sub trailers
 	return r._forMainFields(r.trailers, pairTrailer, callback)
 }
-func (r *httpIn_) _forMainFields(fields zone, extraKind int8, callback func(field *pair, name []byte, value []byte) bool) bool {
+func (r *webIn_) _forMainFields(fields zone, extraKind int8, callback func(field *pair, name []byte, value []byte) bool) bool {
 	for i := fields.from; i < fields.edge; i++ {
 		if field := &r.primes[i]; field.hash != 0 {
 			p := r._placeOf(field)
@@ -6774,7 +6776,7 @@ func (r *httpIn_) _forMainFields(fields zone, extraKind int8, callback func(fiel
 	return true
 }
 
-func (r *httpIn_) arrayCopy(p []byte) bool { // callers don't guarantee the intended memory cost is limited
+func (r *webIn_) arrayCopy(p []byte) bool { // callers don't guarantee the intended memory cost is limited
 	if len(p) > 0 {
 		edge := r.arrayEdge + int32(len(p))
 		if edge < r.arrayEdge { // overflow
@@ -6790,13 +6792,13 @@ func (r *httpIn_) arrayCopy(p []byte) bool { // callers don't guarantee the inte
 	}
 	return true
 }
-func (r *httpIn_) arrayPush(b byte) { // callers must ensure the intended memory cost is limited
+func (r *webIn_) arrayPush(b byte) { // callers must ensure the intended memory cost is limited
 	r.array[r.arrayEdge] = b
 	if r.arrayEdge++; r.arrayEdge == int32(cap(r.array)) {
 		r._growArray(1)
 	}
 }
-func (r *httpIn_) _growArray(size int32) bool { // stock(<4K)->4K->16K->64K1->(128K->...->1G)
+func (r *webIn_) _growArray(size int32) bool { // stock(<4K)->4K->16K->64K1->(128K->...->1G)
 	edge := r.arrayEdge + size
 	if edge < 0 || edge > _1G { // cannot overflow hard limit: 1G
 		return false
@@ -6849,11 +6851,11 @@ func (r *httpIn_) _growArray(size int32) bool { // stock(<4K)->4K->16K->64K1->(1
 	return true
 }
 
-func (r *httpIn_) saveContentFilesDir() string {
+func (r *webIn_) saveContentFilesDir() string {
 	return r.stream.Holder().SaveContentFilesDir()
 }
 
-func (r *httpIn_) _newTempFile(retain bool) (tempFile, error) { // to save content to
+func (r *webIn_) _newTempFile(retain bool) (tempFile, error) { // to save content to
 	if retain {
 		filesDir := r.saveContentFilesDir()
 		pathBuffer := r.UnsafeMake(len(filesDir) + 19) // 19 bytes is enough for an int64
@@ -6865,25 +6867,25 @@ func (r *httpIn_) _newTempFile(retain bool) (tempFile, error) { // to save conte
 	}
 }
 
-func (r *httpIn_) _beforeRead(toTime *time.Time) error {
+func (r *webIn_) _beforeRead(toTime *time.Time) error {
 	if toTime.IsZero() {
 		*toTime = time.Now()
 	}
 	return r.stream.setReadDeadline()
 }
-func (r *httpIn_) _tooSlow() bool { // reports whether the speed of incoming content is too slow
+func (r *webIn_) _tooSlow() bool { // reports whether the speed of incoming content is too slow
 	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
 }
 
 var ( // incoming errors
-	httpInBadChunk = errors.New("bad incoming http chunk")
-	httpInTooSlow  = errors.New("http incoming too slow")
+	webInBadChunk = errors.New("bad incoming http chunk")
+	webInTooSlow  = errors.New("web incoming too slow")
 )
 
-// httpOut_ is the parent for serverResponse_ and backendRequest_.
-type httpOut_ struct { // outgoing. needs building
+// webOut_ is the parent for serverResponse_ and backendRequest_.
+type webOut_ struct { // outgoing. needs building
 	// Assocs
-	stream  httpStream  // *server[1-3]Stream, *backend[1-3]Stream
+	stream  webStream   // *server[1-3]Stream, *backend[1-3]Stream
 	message interface { // *server[1-3]Response, *backend[1-3]Request
 		control() []byte
 		addHeader(name []byte, value []byte) bool
@@ -6929,9 +6931,9 @@ type httpOut_ struct { // outgoing. needs building
 	rangeType     string      // if outgoing content is ranged, this will be the content type for each range
 	vector        net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream
 	fixedVector   [4][]byte   // for sending/echoing message. reset after stream
-	httpOut0                  // all values must be zero by default in this struct!
+	webOut0                   // all values must be zero by default in this struct!
 }
-type httpOut0 struct { // for fast reset, entirely
+type webOut0 struct { // for fast reset, entirely
 	controlEdge   uint16 // edge of control in r.fields. only used by request to mark the method and request-target
 	fieldsEdge    uint16 // edge of r.fields. max size of r.fields must be <= 16K. used by both headers and trailers because they are not manipulated at the same time
 	hasRevisers   bool   // are there any outgoing revisers hooked on this outgoing message?
@@ -6942,7 +6944,7 @@ type httpOut0 struct { // for fast reset, entirely
 	iDate         uint8  // position of date in r.edges
 }
 
-func (r *httpOut_) onUse(httpVersion uint8, asRequest bool) { // for non-zeros
+func (r *webOut_) onUse(httpVersion uint8, asRequest bool) { // for non-zeros
 	r.fields = r.stockFields[:]
 	holder := r.stream.Holder()
 	r.sendTimeout = holder.SendTimeout()
@@ -6951,7 +6953,7 @@ func (r *httpOut_) onUse(httpVersion uint8, asRequest bool) { // for non-zeros
 	r.asRequest = asRequest
 	r.nHeaders, r.nTrailers = 1, 1 // r.edges[0] is not used
 }
-func (r *httpOut_) onEnd() { // for zeros
+func (r *webOut_) onEnd() { // for zeros
 	if cap(r.fields) != cap(r.stockFields) {
 		PutNK(r.fields)
 		r.fields = nil
@@ -6964,29 +6966,29 @@ func (r *httpOut_) onEnd() { // for zeros
 	r.rangeType = ""
 	r.vector = nil
 	r.fixedVector = [4][]byte{}
-	r.httpOut0 = httpOut0{}
+	r.webOut0 = webOut0{}
 }
 
-func (r *httpOut_) unsafeMake(size int) []byte { return r.stream.unsafeMake(size) }
+func (r *webOut_) unsafeMake(size int) []byte { return r.stream.unsafeMake(size) }
 
-func (r *httpOut_) AddContentType(contentType string) bool {
+func (r *webOut_) AddContentType(contentType string) bool {
 	return r.AddHeaderBytes(bytesContentType, ConstBytes(contentType))
 }
-func (r *httpOut_) AddContentTypeBytes(contentType []byte) bool {
+func (r *webOut_) AddContentTypeBytes(contentType []byte) bool {
 	return r.AddHeaderBytes(bytesContentType, contentType)
 }
 
-func (r *httpOut_) Header(name string) (value string, ok bool) {
+func (r *webOut_) Header(name string) (value string, ok bool) {
 	v, ok := r.message.header(ConstBytes(name))
 	return string(v), ok
 }
-func (r *httpOut_) HasHeader(name string) bool {
+func (r *webOut_) HasHeader(name string) bool {
 	return r.message.hasHeader(ConstBytes(name))
 }
-func (r *httpOut_) AddHeader(name string, value string) bool {
+func (r *webOut_) AddHeader(name string, value string) bool {
 	return r.AddHeaderBytes(ConstBytes(name), ConstBytes(value))
 }
-func (r *httpOut_) AddHeaderBytes(name []byte, value []byte) bool {
+func (r *webOut_) AddHeaderBytes(name []byte, value []byte) bool {
 	hash, valid, lower := r._nameCheck(name)
 	if !valid {
 		return false
@@ -6998,17 +7000,17 @@ func (r *httpOut_) AddHeaderBytes(name []byte, value []byte) bool {
 	}
 	return r.message.insertHeader(hash, lower, value)
 }
-func (r *httpOut_) DelHeader(name string) bool {
+func (r *webOut_) DelHeader(name string) bool {
 	return r.DelHeaderBytes(ConstBytes(name))
 }
-func (r *httpOut_) DelHeaderBytes(name []byte) bool {
+func (r *webOut_) DelHeaderBytes(name []byte) bool {
 	hash, valid, lower := r._nameCheck(name)
 	if !valid {
 		return false
 	}
 	return r.message.removeHeader(hash, lower)
 }
-func (r *httpOut_) _nameCheck(name []byte) (hash uint16, valid bool, lower []byte) { // TODO: improve performance
+func (r *webOut_) _nameCheck(name []byte) (hash uint16, valid bool, lower []byte) { // TODO: improve performance
 	n := len(name)
 	if n == 0 || n > 255 {
 		return 0, false, nil
@@ -7040,16 +7042,16 @@ func (r *httpOut_) _nameCheck(name []byte) (hash uint16, valid bool, lower []byt
 	return hash, true, nameBuffer[:n]
 }
 
-func (r *httpOut_) isVague() bool { return r.contentSize == -2 }
-func (r *httpOut_) IsSent() bool  { return r.isSent }
+func (r *webOut_) isVague() bool { return r.contentSize == -2 }
+func (r *webOut_) IsSent() bool  { return r.isSent }
 
-func (r *httpOut_) _insertContentType(contentType []byte) (ok bool) {
+func (r *webOut_) _insertContentType(contentType []byte) (ok bool) {
 	return r._appendSingleton(&r.iContentType, bytesContentType, contentType)
 }
-func (r *httpOut_) _insertDate(date []byte) (ok bool) { // rarely used in backend request
+func (r *webOut_) _insertDate(date []byte) (ok bool) { // rarely used in backend request
 	return r._appendSingleton(&r.iDate, bytesDate, date)
 }
-func (r *httpOut_) _appendSingleton(pIndex *uint8, name []byte, value []byte) bool {
+func (r *webOut_) _appendSingleton(pIndex *uint8, name []byte, value []byte) bool {
 	if *pIndex > 0 || !r.message.addHeader(name, value) {
 		return false
 	}
@@ -7057,9 +7059,9 @@ func (r *httpOut_) _appendSingleton(pIndex *uint8, name []byte, value []byte) bo
 	return true
 }
 
-func (r *httpOut_) _removeContentType() (deleted bool) { return r._deleteSingleton(&r.iContentType) }
-func (r *httpOut_) _removeDate() (deleted bool)        { return r._deleteSingleton(&r.iDate) }
-func (r *httpOut_) _deleteSingleton(pIndex *uint8) bool {
+func (r *webOut_) _removeContentType() (deleted bool) { return r._deleteSingleton(&r.iContentType) }
+func (r *webOut_) _removeDate() (deleted bool)        { return r._deleteSingleton(&r.iDate) }
+func (r *webOut_) _deleteSingleton(pIndex *uint8) bool {
 	if *pIndex == 0 { // not exist
 		return false
 	}
@@ -7068,7 +7070,7 @@ func (r *httpOut_) _deleteSingleton(pIndex *uint8) bool {
 	return true
 }
 
-func (r *httpOut_) _setUnixTime(pUnixTime *int64, pIndex *uint8, unixTime int64) bool {
+func (r *webOut_) _setUnixTime(pUnixTime *int64, pIndex *uint8, unixTime int64) bool {
 	if unixTime < 0 {
 		return false
 	}
@@ -7079,7 +7081,7 @@ func (r *httpOut_) _setUnixTime(pUnixTime *int64, pIndex *uint8, unixTime int64)
 	*pUnixTime = unixTime
 	return true
 }
-func (r *httpOut_) _addUnixTime(pUnixTime *int64, pIndex *uint8, name []byte, httpDate []byte) bool {
+func (r *webOut_) _addUnixTime(pUnixTime *int64, pIndex *uint8, name []byte, httpDate []byte) bool {
 	if *pUnixTime == -2 { // was set through general api, must delete it
 		r.message.delHeaderAt(*pIndex)
 		*pIndex = 0
@@ -7092,7 +7094,7 @@ func (r *httpOut_) _addUnixTime(pUnixTime *int64, pIndex *uint8, name []byte, ht
 	*pIndex = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
 	return true
 }
-func (r *httpOut_) _delUnixTime(pUnixTime *int64, pIndex *uint8) bool {
+func (r *webOut_) _delUnixTime(pUnixTime *int64, pIndex *uint8) bool {
 	if *pUnixTime == -1 {
 		return false
 	}
@@ -7104,16 +7106,16 @@ func (r *httpOut_) _delUnixTime(pUnixTime *int64, pIndex *uint8) bool {
 	return true
 }
 
-func (r *httpOut_) pickRanges(contentRanges []Range, rangeType string) {
+func (r *webOut_) pickRanges(contentRanges []Range, rangeType string) {
 	r.contentRanges = contentRanges
 	r.rangeType = rangeType
 }
 
-func (r *httpOut_) SetSendTimeout(timeout time.Duration) { r.sendTimeout = timeout }
+func (r *webOut_) SetSendTimeout(timeout time.Duration) { r.sendTimeout = timeout }
 
-func (r *httpOut_) Send(content string) error      { return r.sendText(ConstBytes(content)) }
-func (r *httpOut_) SendBytes(content []byte) error { return r.sendText(content) }
-func (r *httpOut_) SendFile(contentPath string) error {
+func (r *webOut_) Send(content string) error      { return r.sendText(ConstBytes(content)) }
+func (r *webOut_) SendBytes(content []byte) error { return r.sendText(content) }
+func (r *webOut_) SendFile(contentPath string) error {
 	file, err := os.Open(contentPath)
 	if err != nil {
 		return err
@@ -7125,7 +7127,7 @@ func (r *httpOut_) SendFile(contentPath string) error {
 	}
 	return r.sendFile(file, info, true) // true to close on end
 }
-func (r *httpOut_) SendJSON(content any) error { // TODO: optimize performance
+func (r *webOut_) SendJSON(content any) error { // TODO: optimize performance
 	r.AddContentTypeBytes(bytesTypeJSON)
 	data, err := json.Marshal(content)
 	if err != nil {
@@ -7134,9 +7136,9 @@ func (r *httpOut_) SendJSON(content any) error { // TODO: optimize performance
 	return r.sendText(data)
 }
 
-func (r *httpOut_) Echo(chunk string) error      { return r.echoText(ConstBytes(chunk)) }
-func (r *httpOut_) EchoBytes(chunk []byte) error { return r.echoText(chunk) }
-func (r *httpOut_) EchoFile(chunkPath string) error {
+func (r *webOut_) Echo(chunk string) error      { return r.echoText(ConstBytes(chunk)) }
+func (r *webOut_) EchoBytes(chunk []byte) error { return r.echoText(chunk) }
+func (r *webOut_) EchoFile(chunkPath string) error {
 	file, err := os.Open(chunkPath)
 	if err != nil {
 		return err
@@ -7149,21 +7151,21 @@ func (r *httpOut_) EchoFile(chunkPath string) error {
 	return r.echoFile(file, info, true) // true to close on end
 }
 
-func (r *httpOut_) AddTrailer(name string, value string) bool {
+func (r *webOut_) AddTrailer(name string, value string) bool {
 	return r.AddTrailerBytes(ConstBytes(name), ConstBytes(value))
 }
-func (r *httpOut_) AddTrailerBytes(name []byte, value []byte) bool {
+func (r *webOut_) AddTrailerBytes(name []byte, value []byte) bool {
 	if !r.isSent { // trailers must be added after headers & content are sent, otherwise r.fields will be messed up
 		return false
 	}
 	return r.message.addTrailer(name, value)
 }
-func (r *httpOut_) Trailer(name string) (value string, ok bool) {
+func (r *webOut_) Trailer(name string) (value string, ok bool) {
 	v, ok := r.message.trailer(ConstBytes(name))
 	return string(v), ok
 }
 
-func (r *httpOut_) proxyPost(content any, hasTrailers bool) error { // post held content to the other side
+func (r *webOut_) proxyPost(content any, hasTrailers bool) error { // post held content to the other side
 	if contentText, ok := content.([]byte); ok {
 		if hasTrailers { // if (in the future) we supports taking vague content in buffer, this happens
 			return r.echoText(contentText)
@@ -7190,7 +7192,7 @@ func (r *httpOut_) proxyPost(content any, hasTrailers bool) error { // post held
 	}
 }
 
-func (r *httpOut_) sendText(content []byte) error {
+func (r *webOut_) sendText(content []byte) error {
 	if err := r._beforeSend(); err != nil {
 		return err
 	}
@@ -7199,7 +7201,7 @@ func (r *httpOut_) sendText(content []byte) error {
 	r.contentSize = int64(len(content)) // initial size, may be changed by revisers
 	return r.message.doSend()
 }
-func (r *httpOut_) sendFile(content *os.File, info os.FileInfo, shut bool) error {
+func (r *webOut_) sendFile(content *os.File, info os.FileInfo, shut bool) error {
 	if err := r._beforeSend(); err != nil {
 		return err
 	}
@@ -7208,9 +7210,9 @@ func (r *httpOut_) sendFile(content *os.File, info os.FileInfo, shut bool) error
 	r.contentSize = info.Size() // initial size, may be changed by revisers
 	return r.message.doSend()
 }
-func (r *httpOut_) _beforeSend() error {
+func (r *webOut_) _beforeSend() error {
 	if r.isSent {
-		return httpOutAlreadySent
+		return webOutAlreadySent
 	}
 	r.isSent = true
 	if r.hasRevisers {
@@ -7219,7 +7221,7 @@ func (r *httpOut_) _beforeSend() error {
 	return nil
 }
 
-func (r *httpOut_) echoText(chunk []byte) error {
+func (r *webOut_) echoText(chunk []byte) error {
 	if err := r._beforeEcho(); err != nil {
 		return err
 	}
@@ -7230,7 +7232,7 @@ func (r *httpOut_) echoText(chunk []byte) error {
 	defer r.piece.zero()
 	return r.message.doEcho()
 }
-func (r *httpOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {
+func (r *webOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {
 	if err := r._beforeEcho(); err != nil {
 		return err
 	}
@@ -7244,15 +7246,15 @@ func (r *httpOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {
 	defer r.piece.zero()
 	return r.message.doEcho()
 }
-func (r *httpOut_) _beforeEcho() error {
+func (r *webOut_) _beforeEcho() error {
 	if r.stream.isBroken() {
-		return httpOutWriteBroken
+		return webOutWriteBroken
 	}
 	if r.isSent {
 		return nil
 	}
 	if r.contentSize != -1 { // is set, either sized or vague
-		return httpOutMixedContent
+		return webOutMixedContent
 	}
 	r.isSent = true
 	r.contentSize = -2 // vague
@@ -7262,19 +7264,19 @@ func (r *httpOut_) _beforeEcho() error {
 	return r.message.echoHeaders()
 }
 
-func (r *httpOut_) growHeader(size int) (from int, edge int, ok bool) { // headers and trailers are not manipulated at the same time
+func (r *webOut_) growHeader(size int) (from int, edge int, ok bool) { // headers and trailers are not manipulated at the same time
 	if r.nHeaders == uint8(cap(r.edges)) { // too many headers
 		return
 	}
 	return r._growFields(size)
 }
-func (r *httpOut_) growTrailer(size int) (from int, edge int, ok bool) { // headers and trailers are not manipulated at the same time
+func (r *webOut_) growTrailer(size int) (from int, edge int, ok bool) { // headers and trailers are not manipulated at the same time
 	if r.nTrailers == uint8(cap(r.edges)) { // too many trailers
 		return
 	}
 	return r._growFields(size)
 }
-func (r *httpOut_) _growFields(size int) (from int, edge int, ok bool) { // used by growHeader first and growTrailer later as they are not manipulated at the same time
+func (r *webOut_) _growFields(size int) (from int, edge int, ok bool) { // used by growHeader first and growTrailer later as they are not manipulated at the same time
 	if size <= 0 || size > _16K { // size allowed: (0, 16K]
 		BugExitln("invalid size in _growFields")
 	}
@@ -7298,39 +7300,39 @@ func (r *httpOut_) _growFields(size int) (from int, edge int, ok bool) { // used
 	return
 }
 
-func (r *httpOut_) _beforeWrite() error {
+func (r *webOut_) _beforeWrite() error {
 	if r.sendTime.IsZero() {
 		r.sendTime = time.Now()
 	}
 	return r.stream.setWriteDeadline()
 }
-func (r *httpOut_) _slowCheck(err error) error {
+func (r *webOut_) _slowCheck(err error) error {
 	if err == nil && r._tooSlow() {
-		err = httpOutTooSlow
+		err = webOutTooSlow
 	}
 	if err != nil {
 		r.stream.markBroken()
 	}
 	return err
 }
-func (r *httpOut_) _tooSlow() bool { // reports whether the speed of outgoing content is too slow
+func (r *webOut_) _tooSlow() bool { // reports whether the speed of outgoing content is too slow
 	return r.sendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.sendTimeout
 }
 
 var ( // outgoing errors
-	httpOutTooSlow       = errors.New("http outgoing too slow")
-	httpOutWriteBroken   = errors.New("write broken")
-	httpOutUnknownStatus = errors.New("unknown status")
-	httpOutAlreadySent   = errors.New("already sent")
-	httpOutTooLarge      = errors.New("content too large")
-	httpOutMixedContent  = errors.New("mixed content mode")
-	httpOutTrailerFailed = errors.New("add trailer failed")
+	webOutTooSlow       = errors.New("web outgoing too slow")
+	webOutWriteBroken   = errors.New("write broken")
+	webOutUnknownStatus = errors.New("unknown status")
+	webOutAlreadySent   = errors.New("already sent")
+	webOutTooLarge      = errors.New("content too large")
+	webOutMixedContent  = errors.New("mixed content mode")
+	webOutTrailerFailed = errors.New("add trailer failed")
 )
 
-// httpSocket_
-type httpSocket_ struct {
+// webSocket_
+type webSocket_ struct { // incoming and outgoing.
 	// Assocs
-	stream httpStream  // *server[1-3]Stream, *backend[1-3]Stream
+	stream webStream   // *server[1-3]Stream, *backend[1-3]Stream
 	socket interface { // *server[1-3]Socket, *backend[1-3]Socket
 		Read(p []byte) (int, error)
 		Write(p []byte) (int, error)
@@ -7340,17 +7342,17 @@ type httpSocket_ struct {
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
-	httpSocket0 // all values must be zero by default in this struct!
+	webSocket0 // all values must be zero by default in this struct!
 }
-type httpSocket0 struct { // for fast reset, entirely
-}
-
-func (s *httpSocket_) onUse() {
-}
-func (s *httpSocket_) onEnd() {
+type webSocket0 struct { // for fast reset, entirely
 }
 
-func (s *httpSocket_) todo() {
+func (s *webSocket_) onUse() {
+}
+func (s *webSocket_) onEnd() {
+}
+
+func (s *webSocket_) todo() {
 }
 
 var ( // socket errors

@@ -296,14 +296,15 @@ func (s *_contentSaver_) MaxContentSize() int64       { return s.maxContentSize 
 
 // LogConfig
 type LogConfig struct {
-	filePath string
-	rotate   string
-	format   string
-	bufSize  int
+	target  string
+	rotate  string
+	format  string
+	bufSize int
 }
 
 // Logger is logger for routers, services, and webapps.
 type Logger struct {
+	config *LogConfig
 	file   *os.File
 	queue  chan string
 	buffer []byte
@@ -311,12 +312,13 @@ type Logger struct {
 	used   int
 }
 
-func NewLogger(filePath string) (*Logger, error) {
-	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE, 0700)
+func NewLogger(config *LogConfig) (*Logger, error) {
+	file, err := os.OpenFile(config.target, os.O_WRONLY|os.O_CREATE, 0700)
 	if err != nil {
 		return nil, err
 	}
 	l := new(Logger)
+	l.config = config
 	l.file = file
 	l.queue = make(chan string)
 	l.buffer = make([]byte, 1048576)

@@ -14,11 +14,11 @@ THE WEB PICTURE
                   ^                                           ^
   [REVISERS]      |    -------pass/post----->                 |
                   |                                           |
-  httpIn_         | httpStream               httpOut_         | httpStream
+  webIn_          | webStream                webOut_          | webStream
   ^ - stream -----+                          ^ - stream ------+
   |                                          |
   | - shell ------+                          | - shell -------+
-  |               | httpIn                   |                | httpOut
+  |               | webIn                    |                | webOut
   +-serverRequest_|                          +-backendRequest_|
     ^             |                             ^             |
     |             v                             |             v
@@ -34,11 +34,11 @@ THE WEB PICTURE
                    ^                                           ^
   [REVISERS]       |   <------pass/post------                  |
                    |                                           |
-  httpOut_         | httpStream              httpIn_           | httpStream
+  webOut_          | webStream               webIn_            | webStream
   ^ - stream ------+                         ^ - stream -------+
   |                                          |
   | - shell -------+                         | - shell --------+
-  |                | httpOut                 |                 | httpIn
+  |                | webOut                  |                 | webIn
   +-serverResponse_|                         +-backendResponse_|
     ^              |                            ^              |
     |              v                            |              v

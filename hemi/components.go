@@ -1254,7 +1254,7 @@ func clockParseHTTPDate(date []byte) (int64, bool) {
 	return int64(days)*86400 + int64(hour*3600+minute*60+second), true
 }
 
-const (
+const ( // clock related
 	clockHTTPDateSize = len("Sun, 06 Nov 1994 08:49:37 GMT")
 	clockASCTimeSize  = len("Sun Nov  6 08:49:37 1994")
 	clockDayString    = "SunMonTueWedThuFriSat"
@@ -1459,7 +1459,7 @@ type fcacheEntry struct {
 	nRef atomic.Int64 // only for large file
 }
 
-const (
+const ( // fcache entry kinds
 	fcacheKindDir = iota
 	fcacheKindSmall
 	fcacheKindLarge

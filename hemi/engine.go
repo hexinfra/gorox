@@ -21,11 +21,6 @@ import (
 
 const Version = "0.2.0-alpha"
 
-var _debugLevel atomic.Int32 // debug level
-
-func SetDebugLevel(level int32) { _debugLevel.Store(level) }
-func DebugLevel() int32         { return _debugLevel.Load() }
-
 var ( // basic variables
 	_topOnce sync.Once // protects _topDir
 	_logOnce sync.Once // protects _logDir
@@ -72,6 +67,11 @@ func TopDir() string { return _topDir.Load().(string) }
 func LogDir() string { return _logDir.Load().(string) }
 func TmpDir() string { return _tmpDir.Load().(string) }
 func VarDir() string { return _varDir.Load().(string) }
+
+var _debugLevel atomic.Int32 // debug level
+
+func SetDebugLevel(level int32) { _debugLevel.Store(level) }
+func DebugLevel() int32         { return _debugLevel.Load() }
 
 func StageFromText(text string) (*Stage, error) {
 	_checkDirs()

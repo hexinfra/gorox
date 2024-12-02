@@ -722,10 +722,10 @@ func (r *server1Request) _recvControl() bool { // method SP request-target SP HT
 
 	// method = token
 	// token = 1*tchar
-	hash := uint16(0)
+	methodHash := uint16(0)
 	for {
 		if b := r.input[r.pFore]; httpTchar[b] != 0 {
-			hash += uint16(b)
+			methodHash += uint16(b)
 			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
@@ -742,7 +742,7 @@ func (r *server1Request) _recvControl() bool { // method SP request-target SP HT
 	}
 	r.gotInput = true
 	r.method.set(r.pBack, r.pFore)
-	r.recognizeMethod(r.input[r.pBack:r.pFore], hash)
+	r.recognizeMethod(r.input[r.pBack:r.pFore], methodHash)
 	// Skip SP after method
 	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 		return false
@@ -906,7 +906,7 @@ func (r *server1Request) _recvControl() bool { // method SP request-target SP HT
 					if b == '+' {
 						b = ' ' // application/x-www-form-urlencoded encodes ' ' as '+'
 					}
-					query.hash += uint16(b)
+					query.nameHash += uint16(b)
 					r.arrayPush(b)
 				} else if b == '%' {
 					state = 0x2f // '2' means from state 2, 'f' means first HEXDIG
@@ -922,7 +922,7 @@ func (r *server1Request) _recvControl() bool { // method SP request-target SP HT
 					if query.nameSize > 0 && !r.addQuery(query) {
 						return false
 					}
-					query.hash = 0 // reset for next query
+					query.nameHash = 0 // reset for next query
 					query.nameFrom = r.arrayEdge
 					state = 2
 				} else if httpPchar[b] > 0 { // including '?'
@@ -953,7 +953,7 @@ func (r *server1Request) _recvControl() bool { // method SP request-target SP HT
 				} else { // Expecting the second HEXDIG
 					octet |= nybble
 					if state == 0x20 { // in name, calculate name hash
-						query.hash += uint16(octet)
+						query.nameHash += uint16(octet)
 					} else if octet == 0x00 && state == 0x10 { // For security reasons, we reject "\x00" in path.
 						r.headResult, r.failReason = StatusBadRequest, "malformed path"
 						return false
@@ -1272,7 +1272,7 @@ func (r *server1Response) proxyPass1xx(resp response) bool {
 	resp.delHopHeaders()
 	r.status = resp.Status()
 	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
-		return r.insertHeader(header.hash, name, value)
+		return r.insertHeader(header.nameHash, name, value)
 	}) {
 		return false
 	}
@@ -2101,6 +2101,8 @@ func (s *backend1Socket) onEnd() {
 	s.backendSocket_.onEnd()
 }
 
+//////////////////////////////////////// HTTP/1 i/o ////////////////////////////////////////
+
 // HTTP/1 incoming
 
 func (r *webIn_) growHead1() bool { // HTTP/1 is not a binary protocol, we don't know how many bytes to grow, so just grow.
@@ -2184,7 +2186,7 @@ func (r *webIn_) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS 
 				r.headResult, r.failReason = StatusBadRequest, "header name contains bad character"
 				return false
 			}
-			header.hash += uint16(b)
+			header.nameHash += uint16(b)
 			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
@@ -2257,7 +2259,7 @@ func (r *webIn_) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS 
 			return false
 		}
 		// r.pFore is now at the next header or end of headers.
-		header.hash, header.flags = 0, 0 // reset for next header
+		header.nameHash, header.flags = 0, 0 // reset for next header
 	}
 	r.receiving = httpSectionContent
 	// Skip end of headers
@@ -2509,7 +2511,7 @@ func (r *webIn_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
 			} else {
 				return false
 			}
-			trailer.hash += uint16(b)
+			trailer.nameHash += uint16(b)
 			if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
 				return false
 			}
@@ -2584,7 +2586,7 @@ func (r *webIn_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
 			return false
 		}
 		// r.pFore is now at the next trailer or end of trailers.
-		trailer.hash, trailer.flags = 0, 0 // reset for next trailer
+		trailer.nameHash, trailer.flags = 0, 0 // reset for next trailer
 	}
 	r.cFore = r.pFore // r.cFore must ends at the last '\n'
 	return true

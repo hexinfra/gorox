@@ -134,8 +134,6 @@ func Main(opts *Opts) {
 	case "advise":
 		system.Advise()
 	case "serve", "check":
-		hemi.SetDebugLevel(int32(common.DebugLevel))
-
 		if common.TopDir == "" {
 			common.TopDir = system.ExeDir
 		} else { // topDir is specified.
@@ -160,6 +158,8 @@ func Main(opts *Opts) {
 		setDir(&common.LogDir, "log", hemi.SetLogDir)
 		setDir(&common.TmpDir, "tmp", hemi.SetTmpDir)
 		setDir(&common.VarDir, "var", hemi.SetVarDir)
+
+		hemi.SetDebugLevel(int32(common.DebugLevel))
 
 		if action == "check" { // dry run
 			if _, err := hemi.StageFromFile(common.GetConfig()); err != nil {

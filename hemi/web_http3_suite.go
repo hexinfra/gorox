@@ -427,7 +427,7 @@ func (r *server3Response) proxyPass1xx(resp response) bool {
 	resp.delHopHeaders()
 	r.status = resp.Status()
 	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
-		return r.insertHeader(header.hash, name, value)
+		return r.insertHeader(header.nameHash, name, value)
 	}) {
 		return false
 	}
@@ -875,6 +875,8 @@ func (s *backend3Socket) onUse() {
 func (s *backend3Socket) onEnd() {
 	s.backendSocket_.onEnd()
 }
+
+//////////////////////////////////////// HTTP/3 i/o ////////////////////////////////////////
 
 // HTTP/3 incoming
 

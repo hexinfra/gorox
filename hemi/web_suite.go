@@ -193,9 +193,9 @@ type Request interface { // for *server[1-3]Request
 	IsAsteriskOptions() bool // OPTIONS *
 
 	VersionCode() uint8
+	IsHTTP1() bool
 	IsHTTP1_0() bool
 	IsHTTP1_1() bool
-	IsHTTP1() bool
 	IsHTTP2() bool
 	IsHTTP3() bool
 	Version() string // HTTP/1.0, HTTP/1.1, HTTP/2, HTTP/3
@@ -488,8 +488,8 @@ func (r *serverRequest_) IsPUT() bool          { return r.methodCode == MethodPU
 func (r *serverRequest_) IsDELETE() bool       { return r.methodCode == MethodDELETE }
 func (r *serverRequest_) Method() string       { return string(r.UnsafeMethod()) }
 func (r *serverRequest_) UnsafeMethod() []byte { return r.input[r.method.from:r.method.edge] }
-func (r *serverRequest_) recognizeMethod(method []byte, hash uint16) {
-	if m := serverMethodTable[serverMethodFind(hash)]; m.hash == hash && bytes.Equal(serverMethodBytes[m.from:m.edge], method) {
+func (r *serverRequest_) recognizeMethod(method []byte, methodHash uint16) {
+	if m := serverMethodTable[serverMethodFind(methodHash)]; m.hash == methodHash && bytes.Equal(serverMethodBytes[m.from:m.edge], method) {
 		r.methodCode = m.code
 	}
 }
@@ -511,7 +511,7 @@ var ( // method hash table
 		6: {435, 18, 24, MethodDELETE},
 		7: {367, 41, 46, MethodTRACE},
 	}
-	serverMethodFind = func(hash uint16) int { return (2610 / int(hash)) % 8 }
+	serverMethodFind = func(methodHash uint16) int { return (2610 / int(methodHash)) % 8 }
 )
 
 func (r *serverRequest_) Authority() string { return string(r.UnsafeAuthority()) }
@@ -711,7 +711,7 @@ func (r *serverRequest_) examineHead() bool {
 		r.cookies.from = uint8(len(r.primes))
 		for i := cookies.from; i < cookies.edge; i++ {
 			cookie := &r.primes[i]
-			if cookie.hash != hashCookie || !cookie.nameEqualBytes(r.input, bytesCookie) { // cookies may not be consecutive
+			if cookie.nameHash != hashCookie || !cookie.nameEqualBytes(r.input, bytesCookie) { // cookies may not be consecutive
 				continue
 			}
 			if !r.parseCookie(cookie.value) { // r.cookies.edge is set in r.addCookie().
@@ -857,7 +857,7 @@ func (r *serverRequest_) examineHead() bool {
 			} else if bytes.Equal(contentType, bytesMultipartForm) { // multipart/form-data; boundary=xxxxxx
 				for i := header.params.from; i < header.params.edge; i++ {
 					param := &r.extras[i]
-					if param.hash != hashBoundary || !param.nameEqualBytes(r.input, bytesBoundary) {
+					if param.nameHash != hashBoundary || !param.nameEqualBytes(r.input, bytesBoundary) {
 						continue
 					}
 					if boundary := param.value; boundary.notEmpty() && boundary.size() <= 70 && r.input[boundary.edge-1] != ' ' {
@@ -886,7 +886,7 @@ func (r *serverRequest_) examineHead() bool {
 func (r *serverRequest_) applyHeader(index uint8) bool {
 	header := &r.primes[index]
 	name := header.nameAt(r.input)
-	if sh := &serverRequestSingletonHeaderTable[serverRequestSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, name) {
+	if sh := &serverRequestSingletonHeaderTable[serverRequestSingletonHeaderFind(header.nameHash)]; sh.nameHash == header.nameHash && bytes.Equal(sh.name, name) {
 		header.setSingleton()
 		if !sh.parse { // unnecessary to parse generally
 			header.setParsed()
@@ -899,7 +899,7 @@ func (r *serverRequest_) applyHeader(index uint8) bool {
 			// r.headResult is set.
 			return false
 		}
-	} else if mh := &serverRequestImportantHeaderTable[serverRequestImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, name) {
+	} else if mh := &serverRequestImportantHeaderTable[serverRequestImportantHeaderFind(header.nameHash)]; mh.nameHash == header.nameHash && bytes.Equal(mh.name, name) {
 		extraFrom := uint8(len(r.extras))
 		if !r._splitField(header, &mh.fdesc, r.input) {
 			r.headResult = StatusBadRequest
@@ -940,7 +940,7 @@ var ( // perfect hash table for singleton request headers
 		11: {false, fdesc{hashRange, false, false, false, false, bytesRange}, (*serverRequest_).checkRange},
 		12: {false, fdesc{hashHost, false, false, false, false, bytesHost}, (*serverRequest_).checkHost},
 	}
-	serverRequestSingletonHeaderFind = func(hash uint16) int { return (811410 / int(hash)) % 13 }
+	serverRequestSingletonHeaderFind = func(nameHash uint16) int { return (811410 / int(nameHash)) % 13 }
 )
 
 func (r *serverRequest_) checkAuthorization(header *pair, index uint8) bool { // Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
@@ -1196,7 +1196,7 @@ var ( // perfect hash table for important request headers
 		14: {fdesc{hashTE, false, false, true, false, bytesTE}, (*serverRequest_).checkTE},
 		15: {fdesc{hashTrailer, false, false, false, false, bytesTrailer}, (*serverRequest_).checkTrailer},
 	}
-	serverRequestImportantHeaderFind = func(hash uint16) int { return (49454765 / int(hash)) % 16 }
+	serverRequestImportantHeaderFind = func(nameHash uint16) int { return (49454765 / int(nameHash)) % 16 }
 )
 
 func (r *serverRequest_) checkAcceptLanguage(pairs []pair, from uint8, edge uint8) bool { // Accept-Language = #( language-range [ weight ] )
@@ -1453,7 +1453,7 @@ func (r *serverRequest_) parseCookie(cookieString span) bool { // cookie-string 
 				}
 				state = 1
 			} else if httpTchar[b] != 0 {
-				cookie.hash += uint16(b)
+				cookie.nameHash += uint16(b)
 			} else {
 				r.headResult, r.failReason = StatusBadRequest, "invalid cookie name"
 				return false
@@ -1499,7 +1499,7 @@ func (r *serverRequest_) parseCookie(cookieString span) bool { // cookie-string 
 				r.headResult, r.failReason = StatusBadRequest, "invalid cookie SP"
 				return false
 			}
-			cookie.hash = 0         // reset for next cookie
+			cookie.nameHash = 0     // reset for next cookie
 			cookie.nameFrom = p + 1 // skip ' '
 			state = 0
 		}
@@ -1583,7 +1583,7 @@ func (r *serverRequest_) AddCookie(name string, value string) bool { // as extra
 }
 func (r *serverRequest_) forCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool {
 	for i := r.cookies.from; i < r.cookies.edge; i++ {
-		if cookie := &r.primes[i]; cookie.hash != 0 {
+		if cookie := &r.primes[i]; cookie.nameHash != 0 {
 			if !callback(cookie, cookie.nameAt(r.input), cookie.valueAt(r.input)) {
 				return false
 			}
@@ -1591,7 +1591,7 @@ func (r *serverRequest_) forCookies(callback func(cookie *pair, name []byte, val
 	}
 	if r.hasExtra[pairCookie] {
 		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.hash != 0 && extra.kind == pairCookie {
+			if extra := &r.extras[i]; extra.nameHash != 0 && extra.kind == pairCookie {
 				if !callback(extra, extra.nameAt(r.array), extra.valueAt(r.array)) {
 					return false
 				}
@@ -1641,7 +1641,7 @@ func (r *serverRequest_) _evalIfMatch(etag []byte) (pass bool) {
 	}
 	for i := r.zones.ifMatch.from; i < r.zones.ifMatch.edge; i++ {
 		header := &r.primes[i]
-		if header.hash != hashIfMatch || !header.nameEqualBytes(r.input, bytesIfMatch) {
+		if header.nameHash != hashIfMatch || !header.nameEqualBytes(r.input, bytesIfMatch) {
 			continue
 		}
 		data := header.dataAt(r.input)
@@ -1660,7 +1660,7 @@ func (r *serverRequest_) _evalIfNoneMatch(etag []byte) (pass bool) {
 	}
 	for i := r.zones.ifNoneMatch.from; i < r.zones.ifNoneMatch.edge; i++ {
 		header := &r.primes[i]
-		if header.hash != hashIfNoneMatch || !header.nameEqualBytes(r.input, bytesIfNoneMatch) {
+		if header.nameHash != hashIfNoneMatch || !header.nameEqualBytes(r.input, bytesIfNoneMatch) {
 			continue
 		}
 		if bytes.Equal(header.valueAt(r.input), etag) {
@@ -1797,7 +1797,7 @@ func (r *serverRequest_) _loadURLEncodedForm() { // into memory entirely
 				if b == '+' {
 					b = ' ' // application/x-www-form-urlencoded encodes ' ' as '+'
 				}
-				form.hash += uint16(b)
+				form.nameHash += uint16(b)
 				r.arrayPush(b)
 			} else if b == '%' {
 				state = 0x2f // '2' means from state 2
@@ -1811,7 +1811,7 @@ func (r *serverRequest_) _loadURLEncodedForm() { // into memory entirely
 				if form.nameSize > 0 {
 					r.addForm(form)
 				}
-				form.hash = 0 // reset for next form
+				form.nameHash = 0 // reset for next form
 				form.nameFrom = r.arrayEdge
 				state = 2
 			} else if httpPchar[b] > 0 { // including '?'
@@ -1837,7 +1837,7 @@ func (r *serverRequest_) _loadURLEncodedForm() { // into memory entirely
 			} else { // expecting the second HEXDIG
 				octet |= nybble
 				if state == 0x20 { // in name, calculate name hash
-					form.hash += uint16(octet)
+					form.nameHash += uint16(octet)
 				}
 				r.arrayPush(octet)
 				state >>= 4 // restore last state
@@ -2122,7 +2122,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 		}
 		if part.isFile {
 			// TODO: upload code
-			part.upfile.hash = part.hash
+			part.upfile.nameHash = part.hash
 			part.upfile.nameSize, part.upfile.nameFrom = uint8(part.name.size()), part.name.from
 			part.upfile.baseSize, part.upfile.baseFrom = uint8(part.base.size()), part.base.from
 			part.upfile.typeSize, part.upfile.typeFrom = uint8(part.type_.size()), part.type_.from
@@ -2139,7 +2139,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 				part.osFile = nil
 			}
 		} else { // part must be a form
-			part.form.hash = part.hash
+			part.form.nameHash = part.hash
 			part.form.nameFrom = part.name.from
 			part.form.nameSize = uint8(part.name.size())
 			part.form.value.from = r.arrayEdge
@@ -2394,9 +2394,9 @@ func (r *serverRequest_) U(name string) *Upfile {
 func (r *serverRequest_) Upfile(name string) (upfile *Upfile, ok bool) {
 	r.parseHTMLForm()
 	if n := len(r.upfiles); n > 0 && name != "" {
-		hash := stringHash(name)
+		nameHash := stringHash(name)
 		for i := 0; i < n; i++ {
-			if upfile := &r.upfiles[i]; upfile.hash == hash && upfile.nameEqualString(r.array, name) {
+			if upfile := &r.upfiles[i]; upfile.nameHash == nameHash && upfile.nameEqualString(r.array, name) {
 				upfile.setMeta(r.array)
 				return upfile, true
 			}
@@ -2407,9 +2407,9 @@ func (r *serverRequest_) Upfile(name string) (upfile *Upfile, ok bool) {
 func (r *serverRequest_) Upfiles(name string) (upfiles []*Upfile, ok bool) {
 	r.parseHTMLForm()
 	if n := len(r.upfiles); n > 0 && name != "" {
-		hash := stringHash(name)
+		nameHash := stringHash(name)
 		for i := 0; i < n; i++ {
-			if upfile := &r.upfiles[i]; upfile.hash == hash && upfile.nameEqualString(r.array, name) {
+			if upfile := &r.upfiles[i]; upfile.nameHash == nameHash && upfile.nameEqualString(r.array, name) {
 				upfile.setMeta(r.array)
 				upfiles = append(upfiles, upfile)
 			}
@@ -2484,7 +2484,7 @@ var serverRequestVariables = [...]func(*serverRequest_) []byte{ // keep sync wit
 
 // Upfile is a file uploaded by http client.
 type Upfile struct { // 48 bytes
-	hash     uint16 // hash of name, to support fast comparison
+	nameHash uint16 // hash of name, to support fast comparison
 	flags    uint8  // see upfile flags
 	errCode  int8   // error code
 	nameSize uint8  // name size
@@ -2916,12 +2916,12 @@ var ( // perfect hash table for response critical headers
 		8: {hashContentLength, bytesContentLength, nil, nil}, // restricted
 		9: {hashContentType, bytesContentType, (*serverResponse_)._insertContentType, (*serverResponse_)._removeContentType},
 	}
-	serverResponseCriticalHeaderFind = func(hash uint16) int { return (113100 / int(hash)) % 10 }
+	serverResponseCriticalHeaderFind = func(nameHash uint16) int { return (113100 / int(nameHash)) % 10 }
 )
 
-func (r *serverResponse_) insertHeader(hash uint16, name []byte, value []byte) bool {
-	h := &serverResponseCriticalHeaderTable[serverResponseCriticalHeaderFind(hash)]
-	if h.hash == hash && bytes.Equal(h.name, name) {
+func (r *serverResponse_) insertHeader(nameHash uint16, name []byte, value []byte) bool {
+	h := &serverResponseCriticalHeaderTable[serverResponseCriticalHeaderFind(nameHash)]
+	if h.hash == nameHash && bytes.Equal(h.name, name) {
 		if h.fAdd == nil { // mainly because this header is restricted to insert
 			return true // pretend to be successful
 		}
@@ -2936,9 +2936,9 @@ func (r *serverResponse_) _insertLastModified(lastModified []byte) (ok bool) {
 	return r._addUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified, bytesLastModified, lastModified)
 }
 
-func (r *serverResponse_) removeHeader(hash uint16, name []byte) bool {
-	h := &serverResponseCriticalHeaderTable[serverResponseCriticalHeaderFind(hash)]
-	if h.hash == hash && bytes.Equal(h.name, name) {
+func (r *serverResponse_) removeHeader(nameHash uint16, name []byte) bool {
+	h := &serverResponseCriticalHeaderTable[serverResponseCriticalHeaderFind(nameHash)]
+	if h.hash == nameHash && bytes.Equal(h.name, name) {
 		if h.fDel == nil { // mainly because this header is restricted to remove
 			return true // pretend to be successful
 		}
@@ -2998,10 +2998,10 @@ func (r *serverResponse_) proxyCopyHead(resp response, config *WebExchanProxyCon
 
 	// copy remaining headers from resp
 	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
-		if header.hash == hashSetCookie && bytes.Equal(name, bytesSetCookie) { // set-cookie is copied directly
+		if header.nameHash == hashSetCookie && bytes.Equal(name, bytesSetCookie) { // set-cookie is copied directly
 			return r.message.addHeader(name, value)
 		} else {
-			return r.message.insertHeader(header.hash, name, value)
+			return r.message.insertHeader(header.nameHash, name, value)
 		}
 	}) {
 		return false
@@ -4835,12 +4835,12 @@ var ( // perfect hash table for request critical headers
 		10: {hashDate, bytesDate, (*backendRequest_)._insertDate, (*backendRequest_)._removeDate},
 		11: {hashVia, bytesVia, nil, nil}, // restricted
 	}
-	backendRequestCriticalHeaderFind = func(hash uint16) int { return (645048 / int(hash)) % 12 }
+	backendRequestCriticalHeaderFind = func(nameHash uint16) int { return (645048 / int(nameHash)) % 12 }
 )
 
-func (r *backendRequest_) insertHeader(hash uint16, name []byte, value []byte) bool {
-	h := &backendRequestCriticalHeaderTable[backendRequestCriticalHeaderFind(hash)]
-	if h.hash == hash && bytes.Equal(h.name, name) {
+func (r *backendRequest_) insertHeader(nameHash uint16, name []byte, value []byte) bool {
+	h := &backendRequestCriticalHeaderTable[backendRequestCriticalHeaderFind(nameHash)]
+	if h.hash == nameHash && bytes.Equal(h.name, name) {
 		if h.fAdd == nil { // mainly because this header is restricted to insert
 			return true // pretend to be successful
 		}
@@ -4861,9 +4861,9 @@ func (r *backendRequest_) _insertIfUnmodifiedSince(since []byte) (ok bool) {
 	return r._addUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, bytesIfUnmodifiedSince, since)
 }
 
-func (r *backendRequest_) removeHeader(hash uint16, name []byte) bool {
-	h := &backendRequestCriticalHeaderTable[backendRequestCriticalHeaderFind(hash)]
-	if h.hash == hash && bytes.Equal(h.name, name) {
+func (r *backendRequest_) removeHeader(nameHash uint16, name []byte) bool {
+	h := &backendRequestCriticalHeaderTable[backendRequestCriticalHeaderFind(nameHash)]
+	if h.hash == nameHash && bytes.Equal(h.name, name) {
 		if h.fDel == nil { // mainly because this header is restricted to remove
 			return true // pretend to be successful
 		}
@@ -4998,7 +4998,7 @@ func (r *backendRequest_) proxyCopyHead(req Request, config *WebExchanProxyConfi
 
 	// copy remaining headers from req
 	if !req.forHeaders(func(header *pair, name []byte, value []byte) bool {
-		return r.message.insertHeader(header.hash, name, value)
+		return r.message.insertHeader(header.nameHash, name, value)
 	}) {
 		return false
 	}
@@ -5151,7 +5151,7 @@ func (r *backendResponse_) examineHead() bool {
 func (r *backendResponse_) applyHeader(index uint8) bool {
 	header := &r.primes[index]
 	name := header.nameAt(r.input)
-	if sh := &backendResponseSingletonHeaderTable[backendResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, name) {
+	if sh := &backendResponseSingletonHeaderTable[backendResponseSingletonHeaderFind(header.nameHash)]; sh.nameHash == header.nameHash && bytes.Equal(sh.name, name) {
 		header.setSingleton()
 		if !sh.parse { // unnecessary to parse generally
 			header.setParsed()
@@ -5164,7 +5164,7 @@ func (r *backendResponse_) applyHeader(index uint8) bool {
 			// r.headResult is set.
 			return false
 		}
-	} else if mh := &backendResponseImportantHeaderTable[backendResponseImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, name) {
+	} else if mh := &backendResponseImportantHeaderTable[backendResponseImportantHeaderFind(header.nameHash)]; mh.nameHash == header.nameHash && bytes.Equal(mh.name, name) {
 		extraFrom := uint8(len(r.extras))
 		if !r._splitField(header, &mh.fdesc, r.input) {
 			r.headResult = StatusBadRequest
@@ -5204,7 +5204,7 @@ var ( // perfect hash table for singleton response headers
 		10: {true, fdesc{hashContentType, false, false, true, false, bytesContentType}, (*backendResponse_).checkContentType},
 		11: {false, fdesc{hashRetryAfter, false, false, false, false, bytesRetryAfter}, (*backendResponse_).checkRetryAfter},
 	}
-	backendResponseSingletonHeaderFind = func(hash uint16) int { return (889344 / int(hash)) % 12 }
+	backendResponseSingletonHeaderFind = func(nameHash uint16) int { return (889344 / int(nameHash)) % 12 }
 )
 
 func (r *backendResponse_) checkAge(header *pair, index uint8) bool { // Age = delta-seconds
@@ -5281,7 +5281,7 @@ var ( // perfect hash table for important response headers
 		15: {fdesc{hashAcceptEncoding, false, true, true, false, bytesAcceptEncoding}, (*backendResponse_).checkAcceptEncoding},
 		16: {fdesc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*backendResponse_).checkContentLanguage},
 	}
-	backendResponseImportantHeaderFind = func(hash uint16) int { return (72189325 / int(hash)) % 17 }
+	backendResponseImportantHeaderFind = func(nameHash uint16) int { return (72189325 / int(nameHash)) % 17 }
 )
 
 func (r *backendResponse_) checkAcceptRanges(pairs []pair, from uint8, edge uint8) bool { // Accept-Ranges = 1#range-unit
@@ -5450,6 +5450,8 @@ func (s *backendSocket_) onUse() {
 func (s *backendSocket_) onEnd() {
 	s.webSocket_.onEnd()
 }
+
+//////////////////////////////////////// HTTP i/o ////////////////////////////////////////
 
 // webHolder collects shared methods between *http[x3]Server and *http[1-3]Backend.
 type webHolder interface {
@@ -5656,9 +5658,9 @@ func (r *webIn_) UnsafeMake(size int) []byte { return r.stream.unsafeMake(size) 
 func (r *webIn_) RemoteAddr() net.Addr       { return r.stream.remoteAddr() }
 
 func (r *webIn_) VersionCode() uint8 { return r.httpVersion }
+func (r *webIn_) IsHTTP1() bool      { return r.httpVersion <= Version1_1 }
 func (r *webIn_) IsHTTP1_0() bool    { return r.httpVersion == Version1_0 }
 func (r *webIn_) IsHTTP1_1() bool    { return r.httpVersion == Version1_1 }
-func (r *webIn_) IsHTTP1() bool      { return r.httpVersion <= Version1_1 }
 func (r *webIn_) IsHTTP2() bool      { return r.httpVersion == Version2 }
 func (r *webIn_) IsHTTP3() bool      { return r.httpVersion == Version3 }
 func (r *webIn_) Version() string    { return httpVersionStrings[r.httpVersion] }
@@ -5729,8 +5731,8 @@ func (r *webIn_) DelHeader(name string) (deleted bool) {
 	// TODO: add restrictions on what headers are allowed to del?
 	return r.delPair(name, 0, r.headers, pairHeader)
 }
-func (r *webIn_) delHeader(name []byte, hash uint16) {
-	r.delPair(WeakString(name), hash, r.headers, pairHeader)
+func (r *webIn_) delHeader(name []byte, nameHash uint16) {
+	r.delPair(WeakString(name), nameHash, r.headers, pairHeader)
 }
 func (r *webIn_) AddHeader(name string, value string) bool { // as extra
 	// TODO: add restrictions on what headers are allowed to add? should we check the value?
@@ -5973,7 +5975,7 @@ func (r *webIn_) _parseField(field *pair, fdesc *fdesc, p []byte, fully bool) bo
 			return false
 		}
 		var param pair
-		param.hash = bytesHash(p[text.from:text.edge])
+		param.nameHash = bytesHash(p[text.from:text.edge])
 		param.kind = pairParam
 		param.nameSize = uint8(nameSize)
 		param.nameFrom = text.from
@@ -6451,8 +6453,8 @@ func (r *webIn_) HasTrailer(name string) bool {
 func (r *webIn_) DelTrailer(name string) (deleted bool) {
 	return r.delPair(name, 0, r.trailers, pairTrailer)
 }
-func (r *webIn_) delTrailer(name []byte, hash uint16) {
-	r.delPair(WeakString(name), hash, r.trailers, pairTrailer)
+func (r *webIn_) delTrailer(name []byte, nameHash uint16) {
+	r.delPair(WeakString(name), nameHash, r.trailers, pairTrailer)
 }
 func (r *webIn_) AddTrailer(name string, value string) bool { // as extra
 	// TODO: add restrictions on what trailers are allowed to add? should we check the value?
@@ -6477,7 +6479,7 @@ func (r *webIn_) _addPrime(prime *pair) (edge uint8, ok bool) {
 }
 func (r *webIn_) _delPrime(i uint8) { r.primes[i].zero() }
 
-func (r *webIn_) addExtra(name string, value string, hash uint16, extraKind int8) bool {
+func (r *webIn_) addExtra(name string, value string, nameHash uint16, extraKind int8) bool {
 	nameSize := len(name)
 	if nameSize == 0 || nameSize > 255 { // name size is limited at 255
 		return false
@@ -6495,10 +6497,10 @@ func (r *webIn_) addExtra(name string, value string, hash uint16, extraKind int8
 	}
 	extra := &r.mainPair
 	extra.zero()
-	if hash == 0 {
-		extra.hash = stringHash(name)
+	if nameHash == 0 {
+		extra.nameHash = stringHash(name)
 	} else {
-		extra.hash = hash
+		extra.nameHash = nameHash
 	}
 	extra.kind = extraKind
 	extra.place = placeArray
@@ -6533,28 +6535,28 @@ func (r *webIn_) allPairs(primes zone, extraKind int8) [][2]string {
 	var pairs [][2]string
 	if extraKind == pairHeader || extraKind == pairTrailer { // skip sub fields, only collects values of main fields
 		for i := primes.from; i < primes.edge; i++ {
-			if prime := &r.primes[i]; prime.hash != 0 {
+			if prime := &r.primes[i]; prime.nameHash != 0 {
 				p := r._placeOf(prime)
 				pairs = append(pairs, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
 			}
 		}
 		if r.hasExtra[extraKind] {
 			for i := 0; i < len(r.extras); i++ {
-				if extra := &r.extras[i]; extra.hash != 0 && extra.kind == extraKind && !extra.isSubField() {
+				if extra := &r.extras[i]; extra.nameHash != 0 && extra.kind == extraKind && !extra.isSubField() {
 					pairs = append(pairs, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
 				}
 			}
 		}
 	} else { // queries, cookies, forms, and params
 		for i := primes.from; i < primes.edge; i++ {
-			if prime := &r.primes[i]; prime.hash != 0 {
+			if prime := &r.primes[i]; prime.nameHash != 0 {
 				p := r._placeOf(prime)
 				pairs = append(pairs, [2]string{string(prime.nameAt(p)), string(prime.valueAt(p))})
 			}
 		}
 		if r.hasExtra[extraKind] {
 			for i := 0; i < len(r.extras); i++ {
-				if extra := &r.extras[i]; extra.hash != 0 && extra.kind == extraKind {
+				if extra := &r.extras[i]; extra.nameHash != 0 && extra.kind == extraKind {
 					pairs = append(pairs, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
 				}
 			}
@@ -6562,16 +6564,16 @@ func (r *webIn_) allPairs(primes zone, extraKind int8) [][2]string {
 	}
 	return pairs
 }
-func (r *webIn_) getPair(name string, hash uint16, primes zone, extraKind int8) (value []byte, ok bool) {
+func (r *webIn_) getPair(name string, nameHash uint16, primes zone, extraKind int8) (value []byte, ok bool) {
 	if name == "" {
 		return
 	}
-	if hash == 0 {
-		hash = stringHash(name)
+	if nameHash == 0 {
+		nameHash = stringHash(name)
 	}
 	if extraKind == pairHeader || extraKind == pairTrailer { // skip comma fields, only collects data of fields without comma
 		for i := primes.from; i < primes.edge; i++ {
-			if prime := &r.primes[i]; prime.hash == hash {
+			if prime := &r.primes[i]; prime.nameHash == nameHash {
 				if p := r._placeOf(prime); prime.nameEqualString(p, name) {
 					if !prime.isParsed() && !r._splitField(prime, defaultFdesc, p) {
 						continue
@@ -6584,7 +6586,7 @@ func (r *webIn_) getPair(name string, hash uint16, primes zone, extraKind int8) 
 		}
 		if r.hasExtra[extraKind] {
 			for i := 0; i < len(r.extras); i++ {
-				if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && !extra.isCommaValue() {
+				if extra := &r.extras[i]; extra.nameHash == nameHash && extra.kind == extraKind && !extra.isCommaValue() {
 					if p := r._placeOf(extra); extra.nameEqualString(p, name) {
 						return extra.dataAt(p), true
 					}
@@ -6593,7 +6595,7 @@ func (r *webIn_) getPair(name string, hash uint16, primes zone, extraKind int8) 
 		}
 	} else { // queries, cookies, forms, and params
 		for i := primes.from; i < primes.edge; i++ {
-			if prime := &r.primes[i]; prime.hash == hash {
+			if prime := &r.primes[i]; prime.nameHash == nameHash {
 				if p := r._placeOf(prime); prime.nameEqualString(p, name) {
 					return prime.valueAt(p), true
 				}
@@ -6601,7 +6603,7 @@ func (r *webIn_) getPair(name string, hash uint16, primes zone, extraKind int8) 
 		}
 		if r.hasExtra[extraKind] {
 			for i := 0; i < len(r.extras); i++ {
-				if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
+				if extra := &r.extras[i]; extra.nameHash == nameHash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 					return extra.valueAt(r.array), true
 				}
 			}
@@ -6609,16 +6611,16 @@ func (r *webIn_) getPair(name string, hash uint16, primes zone, extraKind int8) 
 	}
 	return
 }
-func (r *webIn_) getPairs(name string, hash uint16, primes zone, extraKind int8) (values []string, ok bool) {
+func (r *webIn_) getPairs(name string, nameHash uint16, primes zone, extraKind int8) (values []string, ok bool) {
 	if name == "" {
 		return
 	}
-	if hash == 0 {
-		hash = stringHash(name)
+	if nameHash == 0 {
+		nameHash = stringHash(name)
 	}
 	if extraKind == pairHeader || extraKind == pairTrailer { // skip comma fields, only collects data of fields without comma
 		for i := primes.from; i < primes.edge; i++ {
-			if prime := &r.primes[i]; prime.hash == hash {
+			if prime := &r.primes[i]; prime.nameHash == nameHash {
 				if p := r._placeOf(prime); prime.nameEqualString(p, name) {
 					if !prime.isParsed() && !r._splitField(prime, defaultFdesc, p) {
 						continue
@@ -6631,7 +6633,7 @@ func (r *webIn_) getPairs(name string, hash uint16, primes zone, extraKind int8)
 		}
 		if r.hasExtra[extraKind] {
 			for i := 0; i < len(r.extras); i++ {
-				if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && !extra.isCommaValue() {
+				if extra := &r.extras[i]; extra.nameHash == nameHash && extra.kind == extraKind && !extra.isCommaValue() {
 					if p := r._placeOf(extra); extra.nameEqualString(p, name) {
 						values = append(values, string(extra.dataAt(p)))
 					}
@@ -6640,7 +6642,7 @@ func (r *webIn_) getPairs(name string, hash uint16, primes zone, extraKind int8)
 		}
 	} else { // queries, cookies, forms, and params
 		for i := primes.from; i < primes.edge; i++ {
-			if prime := &r.primes[i]; prime.hash == hash {
+			if prime := &r.primes[i]; prime.nameHash == nameHash {
 				if p := r._placeOf(prime); prime.nameEqualString(p, name) {
 					values = append(values, string(prime.valueAt(p)))
 				}
@@ -6648,7 +6650,7 @@ func (r *webIn_) getPairs(name string, hash uint16, primes zone, extraKind int8)
 		}
 		if r.hasExtra[extraKind] {
 			for i := 0; i < len(r.extras); i++ {
-				if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
+				if extra := &r.extras[i]; extra.nameHash == nameHash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 					values = append(values, string(extra.valueAt(r.array)))
 				}
 			}
@@ -6659,15 +6661,15 @@ func (r *webIn_) getPairs(name string, hash uint16, primes zone, extraKind int8)
 	}
 	return
 }
-func (r *webIn_) delPair(name string, hash uint16, primes zone, extraKind int8) (deleted bool) {
+func (r *webIn_) delPair(name string, nameHash uint16, primes zone, extraKind int8) (deleted bool) {
 	if name == "" {
 		return
 	}
-	if hash == 0 {
-		hash = stringHash(name)
+	if nameHash == 0 {
+		nameHash = stringHash(name)
 	}
 	for i := primes.from; i < primes.edge; i++ {
-		if prime := &r.primes[i]; prime.hash == hash {
+		if prime := &r.primes[i]; prime.nameHash == nameHash {
 			if p := r._placeOf(prime); prime.nameEqualString(p, name) {
 				prime.zero()
 				deleted = true
@@ -6676,7 +6678,7 @@ func (r *webIn_) delPair(name string, hash uint16, primes zone, extraKind int8) 
 	}
 	if r.hasExtra[extraKind] {
 		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.hash == hash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
+			if extra := &r.extras[i]; extra.nameHash == nameHash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 				extra.zero()
 				deleted = true
 			}
@@ -6707,7 +6709,7 @@ func (r *webIn_) delHopHeaders() {
 func (r *webIn_) delHopTrailers() {
 	r._delHopFields(r.trailers, pairTrailer, r.delTrailer)
 }
-func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name []byte, hash uint16)) { // TODO: improve performance
+func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name []byte, nameHash uint16)) { // TODO: improve performance
 	// These fields should be removed anyway: proxy-connection, keep-alive, te, transfer-encoding, upgrade
 	delField(bytesProxyConnection, hashProxyConnection)
 	delField(bytesKeepAlive, hashKeepAlive)
@@ -6721,7 +6723,7 @@ func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name [
 	for i := r.zConnection.from; i < r.zConnection.edge; i++ {
 		prime := &r.primes[i]
 		// Skip fields that are not "connection: xxx"
-		if prime.hash != hashConnection || !prime.nameEqualBytes(r.input, bytesConnection) {
+		if prime.nameHash != hashConnection || !prime.nameEqualBytes(r.input, bytesConnection) {
 			continue
 		}
 		p := r._placeOf(prime)
@@ -6732,7 +6734,7 @@ func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name [
 			continue
 		}
 		for j := fields.from; j < fields.edge; j++ {
-			if field := &r.primes[j]; field.hash == optionHash && field.nameEqualBytes(p, optionName) {
+			if field := &r.primes[j]; field.nameHash == optionHash && field.nameEqualBytes(p, optionName) {
 				field.zero()
 			}
 		}
@@ -6740,7 +6742,7 @@ func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name [
 			continue
 		}
 		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.hash == optionHash && extra.kind == extraKind {
+			if extra := &r.extras[i]; extra.nameHash == optionHash && extra.kind == extraKind {
 				if p := r._placeOf(extra); extra.nameEqualBytes(p, optionName) {
 					extra.zero()
 				}
@@ -6757,7 +6759,7 @@ func (r *webIn_) forTrailers(callback func(trailer *pair, name []byte, value []b
 }
 func (r *webIn_) _forMainFields(fields zone, extraKind int8, callback func(field *pair, name []byte, value []byte) bool) bool {
 	for i := fields.from; i < fields.edge; i++ {
-		if field := &r.primes[i]; field.hash != 0 {
+		if field := &r.primes[i]; field.nameHash != 0 {
 			p := r._placeOf(field)
 			if !callback(field, field.nameAt(p), field.valueAt(p)) {
 				return false
@@ -6766,7 +6768,7 @@ func (r *webIn_) _forMainFields(fields zone, extraKind int8, callback func(field
 	}
 	if r.hasExtra[extraKind] {
 		for i := 0; i < len(r.extras); i++ {
-			if field := &r.extras[i]; field.hash != 0 && field.kind == extraKind && !field.isSubField() {
+			if field := &r.extras[i]; field.nameHash != 0 && field.kind == extraKind && !field.isSubField() {
 				if !callback(field, field.nameAt(r.array), field.valueAt(r.array)) {
 					return false
 				}
@@ -6893,8 +6895,8 @@ type webOut_ struct { // outgoing. needs building
 		hasHeader(name []byte) bool
 		delHeader(name []byte) (deleted bool)
 		delHeaderAt(i uint8)
-		insertHeader(hash uint16, name []byte, value []byte) bool
-		removeHeader(hash uint16, name []byte) (deleted bool)
+		insertHeader(nameHash uint16, name []byte, value []byte) bool
+		removeHeader(nameHash uint16, name []byte) (deleted bool)
 		addedHeaders() []byte
 		fixedHeaders() []byte
 		finalizeHeaders()
@@ -6989,7 +6991,7 @@ func (r *webOut_) AddHeader(name string, value string) bool {
 	return r.AddHeaderBytes(ConstBytes(name), ConstBytes(value))
 }
 func (r *webOut_) AddHeaderBytes(name []byte, value []byte) bool {
-	hash, valid, lower := r._nameCheck(name)
+	nameHash, valid, lower := r._nameCheck(name)
 	if !valid {
 		return false
 	}
@@ -6998,19 +7000,19 @@ func (r *webOut_) AddHeaderBytes(name []byte, value []byte) bool {
 			return false
 		}
 	}
-	return r.message.insertHeader(hash, lower, value)
+	return r.message.insertHeader(nameHash, lower, value)
 }
 func (r *webOut_) DelHeader(name string) bool {
 	return r.DelHeaderBytes(ConstBytes(name))
 }
 func (r *webOut_) DelHeaderBytes(name []byte) bool {
-	hash, valid, lower := r._nameCheck(name)
+	nameHash, valid, lower := r._nameCheck(name)
 	if !valid {
 		return false
 	}
-	return r.message.removeHeader(hash, lower)
+	return r.message.removeHeader(nameHash, lower)
 }
-func (r *webOut_) _nameCheck(name []byte) (hash uint16, valid bool, lower []byte) { // TODO: improve performance
+func (r *webOut_) _nameCheck(name []byte) (nameHash uint16, valid bool, lower []byte) { // TODO: improve performance
 	n := len(name)
 	if n == 0 || n > 255 {
 		return 0, false, nil
@@ -7018,15 +7020,15 @@ func (r *webOut_) _nameCheck(name []byte) (hash uint16, valid bool, lower []byte
 	allLower := true
 	for i := 0; i < n; i++ {
 		if b := name[i]; b >= 'a' && b <= 'z' || b == '-' {
-			hash += uint16(b)
+			nameHash += uint16(b)
 		} else {
-			hash = 0
+			nameHash = 0
 			allLower = false
 			break
 		}
 	}
 	if allLower {
-		return hash, true, name
+		return nameHash, true, name
 	}
 	nameBuffer := r.stream.buffer256()
 	for i := 0; i < n; i++ {
@@ -7036,10 +7038,10 @@ func (r *webOut_) _nameCheck(name []byte) (hash uint16, valid bool, lower []byte
 		} else if !(b >= 'a' && b <= 'z' || b == '-') {
 			return 0, false, nil
 		}
-		hash += uint16(b)
+		nameHash += uint16(b)
 		nameBuffer[i] = b
 	}
-	return hash, true, nameBuffer[:n]
+	return nameHash, true, nameBuffer[:n]
 }
 
 func (r *webOut_) isVague() bool { return r.contentSize == -2 }
@@ -7943,7 +7945,7 @@ var defaultFdesc = &fdesc{
 
 // fdesc describes an http field.
 type fdesc struct {
-	hash       uint16 // name hash
+	nameHash   uint16 // name hash
 	allowQuote bool   // allow data quote or not
 	allowEmpty bool   // allow empty data or not
 	allowParam bool   // allow parameters or not
@@ -7973,7 +7975,7 @@ func putPairs(pairs []pair) {
 
 // pair is used to hold queries, headers, cookies, forms, trailers, and params.
 type pair struct { // 24 bytes
-	hash     uint16 // name hash, to support fast search. 0 means empty pair
+	nameHash uint16 // name hash, to support fast search. 0 means empty pair
 	kind     int8   // see pair kinds
 	nameSize uint8  // name ends at nameFrom+nameSize
 	nameFrom int32  // name begins from
@@ -8118,7 +8120,7 @@ func (p *pair) show(place []byte) { // TODO: optimize, or simply remove
 	if len(flags) == 0 {
 		flags = append(flags, "nothing")
 	}
-	Printf("{hash=%4d kind=%7s place=[%7s] flags=[%s] dataEdge=%d params=%v value=%v %s=%s}\n", p.hash, kind, plase, strings.Join(flags, ","), p.dataEdge, p.params, p.value, p.nameAt(place), p.valueAt(place))
+	Printf("{nameHash=%4d kind=%7s place=[%7s] flags=[%s] dataEdge=%d params=%v value=%v %s=%s}\n", p.nameHash, kind, plase, strings.Join(flags, ","), p.dataEdge, p.params, p.value, p.nameAt(place), p.valueAt(place))
 }
 
 // para is a name-value parameter in multipart/form-data.

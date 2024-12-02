@@ -1263,7 +1263,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 				r.headResult, r.failReason = StatusBadRequest, "header name contains bad character"
 				return false
 			}
-			header.hash += uint16(b)
+			header.nameHash += uint16(b)
 			if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
 				return false
 			}
@@ -1331,7 +1331,7 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 			return false
 		}
 		// r.pFore is now at the next header or end of headers.
-		header.hash, header.flags = 0, 0 // reset for next header
+		header.nameHash, header.flags = 0, 0 // reset for next header
 	}
 	r.receiving = httpSectionContent
 	// Skip end of headers
@@ -1372,7 +1372,7 @@ func (r *fcgiResponse) examineHead() bool {
 func (r *fcgiResponse) applyHeader(index int) bool {
 	header := &r.primes[index]
 	headerName := header.nameAt(r.input)
-	if sh := &fcgiResponseSingletonHeaderTable[fcgiResponseSingletonHeaderFind(header.hash)]; sh.hash == header.hash && bytes.Equal(sh.name, headerName) {
+	if sh := &fcgiResponseSingletonHeaderTable[fcgiResponseSingletonHeaderFind(header.nameHash)]; sh.nameHash == header.nameHash && bytes.Equal(sh.name, headerName) {
 		header.setSingleton()
 		if !sh.parse { // unnecessary to parse generally
 			header.setParsed()
@@ -1384,7 +1384,7 @@ func (r *fcgiResponse) applyHeader(index int) bool {
 			// r.headResult is set.
 			return false
 		}
-	} else if mh := &fcgiResponseImportantHeaderTable[fcgiResponseImportantHeaderFind(header.hash)]; mh.hash == header.hash && bytes.Equal(mh.name, headerName) {
+	} else if mh := &fcgiResponseImportantHeaderTable[fcgiResponseImportantHeaderFind(header.nameHash)]; mh.nameHash == header.nameHash && bytes.Equal(mh.name, headerName) {
 		extraFrom := len(r.extras)
 		if !r._splitHeader(header, &mh.fdesc) {
 			// r.headResult is set.
@@ -1440,7 +1440,7 @@ var ( // perfect hash table for singleton response headers
 		2: {true, fdesc{hashContentType, false, false, true, false, bytesContentType}, (*fcgiResponse).checkContentType},
 		3: {false, fdesc{hashLocation, false, false, false, false, bytesLocation}, (*fcgiResponse).checkLocation},
 	}
-	fcgiResponseSingletonHeaderFind = func(hash uint16) int { return (2704 / int(hash)) % 4 }
+	fcgiResponseSingletonHeaderFind = func(nameHash uint16) int { return (2704 / int(nameHash)) % 4 }
 )
 
 func (r *fcgiResponse) checkContentLength(header *pair, index int) bool {
@@ -1479,7 +1479,7 @@ var ( // perfect hash table for important response headers
 		1: {fdesc{hashConnection, false, false, false, false, bytesConnection}, (*fcgiResponse).checkConnection},
 		2: {fdesc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*fcgiResponse).checkUpgrade},
 	}
-	fcgiResponseImportantHeaderFind = func(hash uint16) int { return (1488 / int(hash)) % 3 }
+	fcgiResponseImportantHeaderFind = func(nameHash uint16) int { return (1488 / int(nameHash)) % 3 }
 )
 
 func (r *fcgiResponse) checkConnection(pairs []pair, from int, edge int) bool { // Connection = #connection-option
@@ -1584,7 +1584,7 @@ func (r *fcgiResponse) delHopTrailers() {} // fcgi doesn't support trailers
 
 func (r *fcgiResponse) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by Response.proxyCopyHead(). excluding sub headers
 	for i := 1; i < len(r.primes); i++ { // r.primes[0] is not used
-		if header := &r.primes[i]; header.hash != 0 && !header.isSubField() {
+		if header := &r.primes[i]; header.nameHash != 0 && !header.isSubField() {
 			if !callback(header, header.nameAt(r.input), header.valueAt(r.input)) {
 				return false
 			}

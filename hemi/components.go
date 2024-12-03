@@ -1283,7 +1283,7 @@ var ( // perfect hash table for months
 		10: {269, 3, 6, 2, 28, 31},     // Feb
 		11: {281, 0, 3, 1, 31, 0},      // Jan
 	}
-	clockMonthFind = func(hash uint16) int { return (5509728 / int(hash)) % 12 }
+	clockMonthFind = func(hash uint16) int { return (5509728 / int(hash)) % len(clockMonthTable) }
 )
 
 const signFcache = "fcache"

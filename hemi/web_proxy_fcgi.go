@@ -1440,7 +1440,7 @@ var ( // perfect hash table for singleton response headers
 		2: {true, fdesc{hashContentType, false, false, true, false, bytesContentType}, (*fcgiResponse).checkContentType},
 		3: {false, fdesc{hashLocation, false, false, false, false, bytesLocation}, (*fcgiResponse).checkLocation},
 	}
-	fcgiResponseSingletonHeaderFind = func(nameHash uint16) int { return (2704 / int(nameHash)) % 4 }
+	fcgiResponseSingletonHeaderFind = func(nameHash uint16) int { return (2704 / int(nameHash)) % len(fcgiResponseSingletonHeaderTable) }
 )
 
 func (r *fcgiResponse) checkContentLength(header *pair, index int) bool {
@@ -1479,7 +1479,7 @@ var ( // perfect hash table for important response headers
 		1: {fdesc{hashConnection, false, false, false, false, bytesConnection}, (*fcgiResponse).checkConnection},
 		2: {fdesc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*fcgiResponse).checkUpgrade},
 	}
-	fcgiResponseImportantHeaderFind = func(nameHash uint16) int { return (1488 / int(nameHash)) % 3 }
+	fcgiResponseImportantHeaderFind = func(nameHash uint16) int { return (1488 / int(nameHash)) % len(fcgiResponseImportantHeaderTable) }
 )
 
 func (r *fcgiResponse) checkConnection(pairs []pair, from int, edge int) bool { // Connection = #connection-option

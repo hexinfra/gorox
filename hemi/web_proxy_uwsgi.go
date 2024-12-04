@@ -5,7 +5,7 @@
 
 // uwsgi proxy and backend implementation. See: https://uwsgi-docs.readthedocs.io/en/latest/Protocol.html
 
-// uwsgi is mainly used by Python applications. Not sure if it supports HTTP trailers.
+// uwsgi is mainly used by Python applications. Not sure if it supports HTTP trailers and persistent connections.
 // uwsgi 1.9.13 seems to support vague content: https://uwsgi-docs.readthedocs.io/en/latest/Chunked.html
 
 package hemi

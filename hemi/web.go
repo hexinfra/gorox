@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// General Webapp Server implementation.
+// General Webapp Server and Web reverse proxy implementation.
 
 package hemi
 
@@ -12,10 +12,29 @@ import (
 	"os"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
+
+func init() {
+	RegisterHandlet("static", func(name string, stage *Stage, webapp *Webapp) Handlet {
+		h := new(staticHandlet)
+		h.onCreate(name, stage, webapp)
+		return h
+	})
+	RegisterHandlet("httpProxy", func(name string, stage *Stage, webapp *Webapp) Handlet {
+		h := new(httpProxy)
+		h.onCreate(name, stage, webapp)
+		return h
+	})
+	RegisterSocklet("sockProxy", func(name string, stage *Stage, webapp *Webapp) Socklet {
+		s := new(sockProxy)
+		s.onCreate(name, stage, webapp)
+		return s
+	})
+}
 
 // Webapp is the Web application.
 type Webapp struct {
@@ -857,4 +876,845 @@ type Hobject struct {
 
 func (o *Hobject) todo() {
 	// TODO
+}
+
+// Upfile is a file uploaded by http client.
+type Upfile struct { // 48 bytes
+	nameHash uint16 // hash of name, to support fast comparison
+	flags    uint8  // see upfile flags
+	errCode  int8   // error code
+	nameSize uint8  // name size
+	baseSize uint8  // base size
+	typeSize uint8  // type size
+	pathSize uint8  // path size
+	nameFrom int32  // like: "avatar"
+	baseFrom int32  // like: "michael.jpg"
+	typeFrom int32  // like: "image/jpeg"
+	pathFrom int32  // like: "/path/to/391384576"
+	size     int64  // file size
+	meta     string // cannot use []byte as it can cause memory leak if caller save file to another place
+}
+
+func (u *Upfile) nameEqualString(p []byte, x string) bool {
+	if int(u.nameSize) != len(x) {
+		return false
+	}
+	if u.metaSet() {
+		return u.meta[u.nameFrom:u.nameFrom+int32(u.nameSize)] == x
+	}
+	return string(p[u.nameFrom:u.nameFrom+int32(u.nameSize)]) == x
+}
+
+const ( // upfile flags
+	upfileFlagMetaSet = 0b10000000
+	upfileFlagIsMoved = 0b01000000
+)
+
+func (u *Upfile) setMeta(p []byte) {
+	if u.flags&upfileFlagMetaSet > 0 {
+		return
+	}
+	u.flags |= upfileFlagMetaSet
+	from := u.nameFrom
+	if u.baseFrom < from {
+		from = u.baseFrom
+	}
+	if u.pathFrom < from {
+		from = u.pathFrom
+	}
+	if u.typeFrom < from {
+		from = u.typeFrom
+	}
+	max, edge := u.typeFrom, u.typeFrom+int32(u.typeSize)
+	if u.pathFrom > max {
+		max = u.pathFrom
+		edge = u.pathFrom + int32(u.pathSize)
+	}
+	if u.baseFrom > max {
+		max = u.baseFrom
+		edge = u.baseFrom + int32(u.baseSize)
+	}
+	if u.nameFrom > max {
+		max = u.nameFrom
+		edge = u.nameFrom + int32(u.nameSize)
+	}
+	u.meta = string(p[from:edge]) // dup to avoid memory leak
+	u.nameFrom -= from
+	u.baseFrom -= from
+	u.typeFrom -= from
+	u.pathFrom -= from
+}
+func (u *Upfile) metaSet() bool { return u.flags&upfileFlagMetaSet > 0 }
+func (u *Upfile) setMoved()     { u.flags |= upfileFlagIsMoved }
+func (u *Upfile) isMoved() bool { return u.flags&upfileFlagIsMoved > 0 }
+
+const ( // upfile error codes
+	upfileOK        = 0
+	upfileError     = 1
+	upfileCantWrite = 2
+	upfileTooLarge  = 3
+	upfilePartial   = 4
+	upfileNoFile    = 5
+)
+
+var upfileErrors = [...]error{
+	nil, // no error
+	errors.New("general error"),
+	errors.New("cannot write"),
+	errors.New("too large"),
+	errors.New("partial"),
+	errors.New("no file"),
+}
+
+func (u *Upfile) IsOK() bool   { return u.errCode == 0 }
+func (u *Upfile) Error() error { return upfileErrors[u.errCode] }
+
+func (u *Upfile) Name() string { return u.meta[u.nameFrom : u.nameFrom+int32(u.nameSize)] }
+func (u *Upfile) Base() string { return u.meta[u.baseFrom : u.baseFrom+int32(u.baseSize)] }
+func (u *Upfile) Type() string { return u.meta[u.typeFrom : u.typeFrom+int32(u.typeSize)] }
+func (u *Upfile) Path() string { return u.meta[u.pathFrom : u.pathFrom+int32(u.pathSize)] }
+func (u *Upfile) Size() int64  { return u.size }
+
+func (u *Upfile) MoveTo(path string) error {
+	// TODO. Remember to mark as moved
+	return nil
+}
+
+// Cookie is a "set-cookie" header sent to client.
+type Cookie struct {
+	name     string
+	value    string
+	expires  time.Time
+	domain   string
+	path     string
+	sameSite string
+	maxAge   int32
+	secure   bool
+	httpOnly bool
+	invalid  bool
+	quote    bool // if true, quote value with ""
+	aSize    int8
+	ageBuf   [10]byte
+}
+
+func (c *Cookie) Set(name string, value string) bool {
+	// cookie-name = 1*cookie-octet
+	// cookie-octet = %x21 / %x23-2B / %x2D-3A / %x3C-5B / %x5D-7E
+	if name == "" {
+		c.invalid = true
+		return false
+	}
+	for i := 0; i < len(name); i++ {
+		if b := name[i]; httpKchar[b] == 0 {
+			c.invalid = true
+			return false
+		}
+	}
+	c.name = name
+	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
+	for i := 0; i < len(value); i++ {
+		b := value[i]
+		if httpKchar[b] == 1 {
+			continue
+		}
+		if b == ' ' || b == ',' {
+			c.quote = true
+			continue
+		}
+		c.invalid = true
+		return false
+	}
+	c.value = value
+	return true
+}
+
+func (c *Cookie) SetDomain(domain string) bool {
+	// TODO: check domain
+	c.domain = domain
+	return true
+}
+func (c *Cookie) SetPath(path string) bool {
+	// path-value = *av-octet
+	// av-octet = %x20-3A / %x3C-7E
+	for i := 0; i < len(path); i++ {
+		if b := path[i]; b < 0x20 || b > 0x7E || b == 0x3B {
+			c.invalid = true
+			return false
+		}
+	}
+	c.path = path
+	return true
+}
+func (c *Cookie) SetExpires(expires time.Time) bool {
+	expires = expires.UTC()
+	if expires.Year() < 1601 {
+		c.invalid = true
+		return false
+	}
+	c.expires = expires
+	return true
+}
+func (c *Cookie) SetMaxAge(maxAge int32)  { c.maxAge = maxAge }
+func (c *Cookie) SetSecure()              { c.secure = true }
+func (c *Cookie) SetHttpOnly()            { c.httpOnly = true }
+func (c *Cookie) SetSameSiteStrict()      { c.sameSite = "Strict" }
+func (c *Cookie) SetSameSiteLax()         { c.sameSite = "Lax" }
+func (c *Cookie) SetSameSiteNone()        { c.sameSite = "None" }
+func (c *Cookie) SetSameSite(mode string) { c.sameSite = mode }
+
+func (c *Cookie) size() int {
+	// set-cookie: name=value; Expires=Sun, 06 Nov 1994 08:49:37 GMT; Max-Age=123; Domain=example.com; Path=/; Secure; HttpOnly; SameSite=Strict
+	n := len(c.name) + 1 + len(c.value) // name=value
+	if c.quote {
+		n += 2 // ""
+	}
+	if !c.expires.IsZero() {
+		n += len("; Expires=Sun, 06 Nov 1994 08:49:37 GMT")
+	}
+	if c.maxAge > 0 {
+		m := i32ToDec(c.maxAge, c.ageBuf[:])
+		c.aSize = int8(m)
+		n += len("; Max-Age=") + m
+	} else if c.maxAge < 0 {
+		c.ageBuf[0] = '0'
+		c.aSize = 1
+		n += len("; Max-Age=0")
+	}
+	if c.domain != "" {
+		n += len("; Domain=") + len(c.domain)
+	}
+	if c.path != "" {
+		n += len("; Path=") + len(c.path)
+	}
+	if c.secure {
+		n += len("; Secure")
+	}
+	if c.httpOnly {
+		n += len("; HttpOnly")
+	}
+	if c.sameSite != "" {
+		n += len("; SameSite=") + len(c.sameSite)
+	}
+	return n
+}
+func (c *Cookie) writeTo(p []byte) int {
+	i := copy(p, c.name)
+	p[i] = '='
+	i++
+	if c.quote {
+		p[i] = '"'
+		i++
+		i += copy(p[i:], c.value)
+		p[i] = '"'
+		i++
+	} else {
+		i += copy(p[i:], c.value)
+	}
+	if !c.expires.IsZero() {
+		i += copy(p[i:], "; Expires=")
+		i += clockWriteHTTPDate(p[i:], c.expires)
+	}
+	if c.maxAge != 0 {
+		i += copy(p[i:], "; Max-Age=")
+		i += copy(p[i:], c.ageBuf[0:c.aSize])
+	}
+	if c.domain != "" {
+		i += copy(p[i:], "; Domain=")
+		i += copy(p[i:], c.domain)
+	}
+	if c.path != "" {
+		i += copy(p[i:], "; Path=")
+		i += copy(p[i:], c.path)
+	}
+	if c.secure {
+		i += copy(p[i:], "; Secure")
+	}
+	if c.httpOnly {
+		i += copy(p[i:], "; HttpOnly")
+	}
+	if c.sameSite != "" {
+		i += copy(p[i:], "; SameSite=")
+		i += copy(p[i:], c.sameSite)
+	}
+	return i
+}
+
+// staticHandlet handles requests to static files and directories.
+type staticHandlet struct {
+	// Parent
+	Handlet_
+	// Assocs
+	stage  *Stage // current stage
+	webapp *Webapp
+	// States
+	webRoot          string            // root dir for web files and directories
+	aliasTo          []string          // from is an alias to to
+	indexFile        string            // the file that will be used as index
+	autoIndex        bool              // list files in directories if there is no index file?
+	mimeTypes        map[string]string // defined mime types for file extensions
+	defaultType      string            // mime type for file extensions that are not defined in mimeTypes
+	useWebappWebRoot bool              // true if webRoot is same with webapp.webRoot
+}
+
+func (h *staticHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
+	h.MakeComp(name)
+	h.stage = stage
+	h.webapp = webapp
+}
+func (h *staticHandlet) OnShutdown() {
+	h.webapp.DecSub() // handlet
+}
+
+func (h *staticHandlet) OnConfigure() {
+	// webRoot
+	if v, ok := h.Find("webRoot"); ok {
+		if dir, ok := v.String(); ok && dir != "" {
+			h.webRoot = dir
+		} else {
+			UseExitln("invalid webRoot")
+		}
+	} else {
+		UseExitln("webRoot is required for staticHandlet")
+	}
+	h.webRoot = strings.TrimRight(h.webRoot, "/")
+	h.useWebappWebRoot = h.webRoot == h.webapp.webRoot
+	if DebugLevel() >= 1 {
+		if h.useWebappWebRoot {
+			Printf("static=%s use webapp web root\n", h.Name())
+		} else {
+			Printf("static=%s NOT use webapp web root\n", h.Name())
+		}
+	}
+
+	// aliasTo
+	if v, ok := h.Find("aliasTo"); ok {
+		if fromTo, ok := v.StringListN(2); ok {
+			h.aliasTo = fromTo
+		} else {
+			UseExitln("invalid aliasTo")
+		}
+	} else {
+		h.aliasTo = nil
+	}
+
+	// indexFile
+	h.ConfigureString("indexFile", &h.indexFile, func(value string) error {
+		if value != "" {
+			return nil
+		}
+		return errors.New(".indexFile has an invalid value")
+	}, "index.html")
+
+	// mimeTypes
+	if v, ok := h.Find("mimeTypes"); ok {
+		if mimeTypes, ok := v.StringDict(); ok {
+			h.mimeTypes = make(map[string]string)
+			for ext, mimeType := range staticDefaultMimeTypes {
+				h.mimeTypes[ext] = mimeType
+			}
+			for ext, mimeType := range mimeTypes { // overwrite default
+				h.mimeTypes[ext] = mimeType
+			}
+		} else {
+			UseExitln("invalid mimeTypes")
+		}
+	} else {
+		h.mimeTypes = staticDefaultMimeTypes
+	}
+
+	// defaultType
+	h.ConfigureString("defaultType", &h.defaultType, func(value string) error {
+		if value != "" {
+			return nil
+		}
+		return errors.New(".indexFile has an invalid value")
+	}, "application/octet-stream")
+
+	// autoIndex
+	h.ConfigureBool("autoIndex", &h.autoIndex, false)
+}
+func (h *staticHandlet) OnPrepare() {
+	if info, err := os.Stat(h.webRoot + "/" + h.indexFile); err == nil && !info.Mode().IsRegular() {
+		EnvExitln("indexFile must be a regular file")
+	}
+}
+
+func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
+	if req.MethodCode()&(MethodGET|MethodHEAD) == 0 {
+		resp.SendMethodNotAllowed("GET, HEAD", nil)
+		return true
+	}
+
+	var fullPath []byte
+	var pathSize int
+	if h.useWebappWebRoot {
+		fullPath = req.unsafeAbsPath()
+		pathSize = len(fullPath)
+	} else { // custom web root
+		userPath := req.UnsafePath()
+		fullPath = req.UnsafeMake(len(h.webRoot) + len(userPath) + len(h.indexFile))
+		pathSize = copy(fullPath, h.webRoot)
+		pathSize += copy(fullPath[pathSize:], userPath)
+	}
+	isFile := fullPath[pathSize-1] != '/'
+	var openPath []byte
+	if isFile {
+		openPath = fullPath[:pathSize]
+	} else { // is directory, add indexFile to openPath
+		if h.useWebappWebRoot {
+			openPath = req.UnsafeMake(len(fullPath) + len(h.indexFile))
+			copy(openPath, fullPath)
+			copy(openPath[pathSize:], h.indexFile)
+			fullPath = openPath
+		} else { // custom web root
+			openPath = fullPath
+		}
+	}
+
+	fcache := h.stage.Fcache()
+	entry, err := fcache.getEntry(openPath)
+	if err != nil { // entry does not exist
+		if DebugLevel() >= 1 {
+			Println("entry MISS")
+		}
+		if entry, err = fcache.newEntry(string(openPath)); err != nil {
+			if !os.IsNotExist(err) {
+				h.webapp.Logf("open file error=%s\n", err.Error())
+				resp.SendInternalServerError(nil)
+			} else if isFile { // file not found
+				resp.SendNotFound(h.webapp.text404)
+			} else if h.autoIndex { // index file not found, but auto index is turned on, try list directory
+				if dir, err := os.Open(WeakString(fullPath[:pathSize])); err == nil {
+					h.listDir(dir, resp)
+					dir.Close()
+				} else if !os.IsNotExist(err) {
+					h.webapp.Logf("open dir error=%s\n", err.Error())
+					resp.SendInternalServerError(nil)
+				} else { // directory not found
+					resp.SendNotFound(h.webapp.text404)
+				}
+			} else { // not auto index
+				resp.SendForbidden(nil)
+			}
+			return true
+		}
+	}
+	if entry.isDir() {
+		resp.SetStatus(StatusFound)
+		resp.AddDirectoryRedirection()
+		resp.SendBytes(nil)
+		return true
+	}
+
+	if entry.isLarge() {
+		defer entry.decRef()
+	}
+
+	date := entry.info.ModTime().Unix()
+	size := entry.info.Size()
+	etag, _ := resp.MakeETagFrom(date, size) // with ""
+	const asOrigin = true
+	if status, normal := req.EvalPreconditions(date, etag, asOrigin); !normal { // not modified, or precondition failed
+		resp.SetStatus(status)
+		if status == StatusNotModified {
+			resp.AddHeaderBytes(bytesETag, etag)
+		}
+		resp.SendBytes(nil)
+		return true
+	}
+	contentType := h.defaultType
+	filePath := WeakString(openPath)
+	if p := strings.LastIndex(filePath, "."); p >= 0 {
+		ext := filePath[p+1:]
+		if mimeType, ok := h.mimeTypes[ext]; ok {
+			contentType = mimeType
+		}
+	}
+	if !req.HasRanges() || (req.HasIfRange() && !req.EvalIfRange(date, etag, asOrigin)) {
+		resp.AddHeaderBytes(bytesContentType, ConstBytes(contentType))
+		resp.AddHeaderBytes(bytesAcceptRanges, bytesBytes)
+		if DebugLevel() >= 2 { // TODO
+			resp.AddHeaderBytes(bytesCacheControl, []byte("no-cache, no-store, must-revalidate"))
+		} else {
+			resp.AddHeaderBytes(bytesETag, etag)
+			resp.SetLastModified(date)
+		}
+	} else if ranges := req.EvalRanges(size); ranges != nil { // ranges are satisfiable
+		resp.pickRanges(ranges, contentType)
+	} else { // ranges are not satisfiable
+		resp.SendRangeNotSatisfiable(size, nil)
+		return true
+	}
+	if entry.isSmall() {
+		resp.sendText(entry.text)
+	} else {
+		resp.sendFile(entry.file, entry.info, false) // false means don't close on end. this file belongs to fcache
+	}
+	return true
+}
+
+func (h *staticHandlet) listDir(dir *os.File, resp Response) {
+	fis, err := dir.Readdir(-1)
+	if err != nil {
+		resp.SendInternalServerError([]byte("Internal Server Error 5"))
+		return
+	}
+	resp.Echo(`<table border="1">`)
+	resp.Echo(`<tr><th>name</th><th>size(in bytes)</th><th>time</th></tr>`)
+	for _, fi := range fis {
+		name := fi.Name()
+		size := strconv.FormatInt(fi.Size(), 10)
+		date := fi.ModTime().String()
+		line := `<tr><td><a href="` + staticEscape(name) + `">` + staticEscape(name) + `</a></td><td>` + size + `</td><td>` + date + `</td></tr>`
+		resp.Echo(line)
+	}
+	resp.Echo("</table>")
+}
+
+func staticEscape(s string) string { return staticEscaper.Replace(s) }
+
+var staticEscaper = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;")
+
+var staticDefaultMimeTypes = map[string]string{
+	"7z":   "application/x-7z-compressed",
+	"atom": "application/atom+xml",
+	"bin":  "application/octet-stream",
+	"bmp":  "image/x-ms-bmp",
+	"css":  "text/css",
+	"deb":  "application/octet-stream",
+	"dll":  "application/octet-stream",
+	"doc":  "application/msword",
+	"dmg":  "application/octet-stream",
+	"exe":  "application/octet-stream",
+	"flv":  "video/x-flv",
+	"gif":  "image/gif",
+	"htm":  "text/html",
+	"html": "text/html",
+	"ico":  "image/x-icon",
+	"img":  "application/octet-stream",
+	"iso":  "application/octet-stream",
+	"jar":  "application/java-archive",
+	"jpg":  "image/jpeg",
+	"jpeg": "image/jpeg",
+	"js":   "application/javascript",
+	"json": "application/json",
+	"m4a":  "audio/x-m4a",
+	"mov":  "video/quicktime",
+	"mp3":  "audio/mpeg",
+	"mp4":  "video/mp4",
+	"mpeg": "video/mpeg",
+	"mpg":  "video/mpeg",
+	"pdf":  "application/pdf",
+	"png":  "image/png",
+	"ppt":  "application/vnd.ms-powerpoint",
+	"ps":   "application/postscript",
+	"rar":  "application/x-rar-compressed",
+	"rss":  "application/rss+xml",
+	"rtf":  "application/rtf",
+	"svg":  "image/svg+xml",
+	"txt":  "text/plain",
+	"war":  "application/java-archive",
+	"webm": "video/webm",
+	"webp": "image/webp",
+	"xls":  "application/vnd.ms-excel",
+	"xml":  "text/xml",
+	"zip":  "application/zip",
+}
+
+// WebExchanProxyConfig
+type WebExchanProxyConfig struct {
+	BufferClientContent bool
+	Hostname            []byte
+	ColonPort           []byte
+	InboundViaName      []byte
+	AppendPathPrefix    []byte
+	AddRequestHeaders   map[string]Value
+	DelRequestHeaders   [][]byte
+
+	BufferServerContent bool
+	OutboundViaName     []byte
+	AddResponseHeaders  map[string]string
+	DelResponseHeaders  [][]byte
+}
+
+func WebExchanReverseProxy(req Request, resp Response, backend WebBackend, config *WebExchanProxyConfig) {
+	var content any
+	hasContent := req.HasContent()
+	if hasContent && config.BufferClientContent { // including size 0
+		content = req.takeContent()
+		if content == nil { // take failed
+			// stream was marked as broken
+			resp.SetStatus(StatusBadRequest)
+			resp.SendBytes(nil)
+			return
+		}
+	}
+
+	backStream, backErr := backend.FetchStream()
+	if backErr != nil {
+		resp.SendBadGateway(nil)
+		return
+	}
+	defer backend.StoreStream(backStream)
+
+	backReq := backStream.Request()
+	if !backReq.proxyCopyHead(req, config) {
+		backStream.markBroken()
+		resp.SendBadGateway(nil)
+		return
+	}
+
+	if !hasContent || config.BufferClientContent {
+		hasTrailers := req.HasTrailers()
+		backErr = backReq.proxyPost(content, hasTrailers) // nil (no content), []byte, tempFile
+		if backErr == nil && hasTrailers {
+			if !backReq.proxyCopyTail(req, config) {
+				backStream.markBroken()
+				backErr = webOutTrailerFailed
+			} else if backErr = backReq.endVague(); backErr != nil {
+				backStream.markBroken()
+			}
+		} else if hasTrailers {
+			backStream.markBroken()
+		}
+	} else if backErr = backReq.proxyPass(req); backErr != nil {
+		backStream.markBroken()
+	} else if backReq.isVague() { // must write last chunk and trailers (if exist)
+		if backErr = backReq.endVague(); backErr != nil {
+			backStream.markBroken()
+		}
+	}
+	if backErr != nil {
+		resp.SendBadGateway(nil)
+		return
+	}
+
+	backResp := backStream.Response()
+	for { // until we found a non-1xx status (>= 200)
+		backResp.recvHead()
+		if backResp.HeadResult() != StatusOK || backResp.Status() == StatusSwitchingProtocols { // webSocket is not served in handlets.
+			backStream.markBroken()
+			if backResp.HeadResult() == StatusRequestTimeout {
+				resp.SendGatewayTimeout(nil)
+			} else {
+				resp.SendBadGateway(nil)
+			}
+			return
+		}
+		if backResp.Status() >= StatusOK {
+			// Only HTTP/1 cares this.
+			if backResp.KeepAlive() == 0 {
+				backStream.(*backend1Stream).conn.persistent = false
+			}
+			break
+		}
+		// We got a 1xx
+		if req.VersionCode() == Version1_0 {
+			backStream.markBroken()
+			resp.SendBadGateway(nil)
+			return
+		}
+		// A proxy MUST forward 1xx responses unless the proxy itself requested the generation of the 1xx response.
+		// For example, if a proxy adds an "Expect: 100-continue" header field when it forwards a request, then it
+		// need not forward the corresponding 100 (Continue) response(s).
+		if !resp.proxyPass1xx(backResp) {
+			backStream.markBroken()
+			return
+		}
+		backResp.reuse()
+	}
+
+	var backContent any
+	backHasContent := false
+	if req.MethodCode() != MethodHEAD {
+		backHasContent = backResp.HasContent()
+	}
+	if backHasContent && config.BufferServerContent { // including size 0
+		backContent = backResp.takeContent()
+		if backContent == nil { // take failed
+			// backStream was marked as broken
+			resp.SendBadGateway(nil)
+			return
+		}
+	}
+
+	if !resp.proxyCopyHead(backResp, config) {
+		backStream.markBroken()
+		return
+	}
+	if !backHasContent || config.BufferServerContent {
+		backHasTrailers := backResp.HasTrailers()
+		if resp.proxyPost(backContent, backHasTrailers) != nil { // nil (no content), []byte, tempFile
+			if backHasTrailers {
+				backStream.markBroken()
+			}
+			return
+		}
+		if backHasTrailers && !resp.proxyCopyTail(backResp, config) {
+			return
+		}
+	} else if err := resp.proxyPass(backResp); err != nil {
+		backStream.markBroken()
+		return
+	}
+}
+
+// httpProxy handlet passes http requests to http backends and caches responses.
+type httpProxy struct {
+	// Parent
+	Handlet_
+	// Assocs
+	stage   *Stage     // current stage
+	webapp  *Webapp    // the webapp to which the proxy belongs
+	backend WebBackend // the backend to pass to. can be *HTTP1Backend, *HTTP2Backend, or *HTTP3Backend
+	cacher  Cacher     // the cacher which is used by this proxy
+	// States
+	WebExchanProxyConfig // embeded
+}
+
+func (h *httpProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
+	h.MakeComp(name)
+	h.stage = stage
+	h.webapp = webapp
+}
+func (h *httpProxy) OnShutdown() {
+	h.webapp.DecSub() // handlet
+}
+
+func (h *httpProxy) OnConfigure() {
+	// toBackend
+	if v, ok := h.Find("toBackend"); ok {
+		if name, ok := v.String(); ok && name != "" {
+			if backend := h.stage.Backend(name); backend == nil {
+				UseExitf("unknown backend: '%s'\n", name)
+			} else {
+				h.backend = backend.(WebBackend)
+			}
+		} else {
+			UseExitln("invalid toBackend")
+		}
+	} else {
+		UseExitln("toBackend is required for http proxy")
+	}
+
+	// withCacher
+	if v, ok := h.Find("withCacher"); ok {
+		if name, ok := v.String(); ok && name != "" {
+			if cacher := h.stage.Cacher(name); cacher == nil {
+				UseExitf("unknown cacher: '%s'\n", name)
+			} else {
+				h.cacher = cacher
+			}
+		} else {
+			UseExitln("invalid withCacher")
+		}
+	}
+
+	// addRequestHeaders
+	if v, ok := h.Find("addRequestHeaders"); ok {
+		addedHeaders := make(map[string]Value)
+		if vHeaders, ok := v.Dict(); ok {
+			for name, vValue := range vHeaders {
+				if vValue.IsVariable() {
+					name := vValue.name
+					if p := strings.IndexByte(name, '_'); p != -1 {
+						p++ // skip '_'
+						vValue.name = name[:p] + strings.ReplaceAll(name[p:], "_", "-")
+					}
+				} else if _, ok := vValue.Bytes(); !ok {
+					UseExitf("bad value in .addRequestHeaders")
+				}
+				addedHeaders[name] = vValue
+			}
+			h.AddRequestHeaders = addedHeaders
+		} else {
+			UseExitln("invalid addRequestHeaders")
+		}
+	}
+
+	// bufferClientContent
+	h.ConfigureBool("bufferClientContent", &h.BufferClientContent, true)
+	// hostname
+	h.ConfigureBytes("hostname", &h.Hostname, nil, nil)
+	// colonPort
+	h.ConfigureBytes("colonPort", &h.ColonPort, nil, nil)
+	// inboundViaName
+	h.ConfigureBytes("inboundViaName", &h.InboundViaName, nil, bytesGorox)
+	// delRequestHeaders
+	h.ConfigureBytesList("delRequestHeaders", &h.DelRequestHeaders, nil, [][]byte{})
+	// bufferServerContent
+	h.ConfigureBool("bufferServerContent", &h.BufferServerContent, true)
+	// outboundViaName
+	h.ConfigureBytes("outboundViaName", &h.OutboundViaName, nil, nil)
+	// addResponseHeaders
+	h.ConfigureStringDict("addResponseHeaders", &h.AddResponseHeaders, nil, map[string]string{})
+	// delResponseHeaders
+	h.ConfigureBytesList("delResponseHeaders", &h.DelResponseHeaders, nil, [][]byte{})
+}
+func (h *httpProxy) OnPrepare() {
+	// Currently nothing.
+}
+
+func (h *httpProxy) IsProxy() bool { return true }
+func (h *httpProxy) IsCache() bool { return h.cacher != nil }
+
+func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
+	WebExchanReverseProxy(req, resp, h.backend, &h.WebExchanProxyConfig)
+	return true
+}
+
+// WebSocketProxyConfig
+type WebSocketProxyConfig struct {
+	// TODO
+}
+
+func WebSocketReverseProxy(req Request, sock Socket, backend WebBackend, config *WebSocketProxyConfig) {
+	// TODO
+}
+
+// sockProxy socklet passes webSockets to http backends.
+type sockProxy struct {
+	// Parent
+	Socklet_
+	// Assocs
+	stage   *Stage     // current stage
+	webapp  *Webapp    // the webapp to which the proxy belongs
+	backend WebBackend // the backend to pass to. can be *HTTP1Backend, *HTTP2Backend, or *HTTP3Backend
+	// States
+}
+
+func (s *sockProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
+	s.MakeComp(name)
+	s.stage = stage
+	s.webapp = webapp
+}
+func (s *sockProxy) OnShutdown() {
+	s.webapp.DecSub() // socklet
+}
+
+func (s *sockProxy) OnConfigure() {
+	// toBackend
+	if v, ok := s.Find("toBackend"); ok {
+		if name, ok := v.String(); ok && name != "" {
+			if backend := s.stage.Backend(name); backend == nil {
+				UseExitf("unknown backend: '%s'\n", name)
+			} else {
+				s.backend = backend.(WebBackend)
+			}
+		} else {
+			UseExitln("invalid toBackend")
+		}
+	} else {
+		UseExitln("toBackend is required for webSocket proxy")
+	}
+}
+func (s *sockProxy) OnPrepare() {
+	// Currently nothing.
+}
+
+func (s *sockProxy) IsProxy() bool { return true }
+
+func (s *sockProxy) Serve(req Request, sock Socket) {
+	// TODO(diogin): Implementation
+	sock.Close()
 }

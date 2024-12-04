@@ -227,6 +227,25 @@ func (n *uwsgiNode) _dialTCP() (*uwsgiConn, error) {
 	//return getUwsgiConn(connID, n, netConn, rawConn), nil
 }
 
+// uwsgiConn
+type uwsgiConn struct {
+	// Assocs
+	request  uwsgiRequest  // the uwsgi request
+	response uwsgiResponse // the uwsgi response
+	// Conn states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id     int64 // the conn id
+	node   *uwsgiNode
+	region Region // a region-based memory pool
+	conn   *TConn // associated conn
+	// Conn states (zeros)
+	counter   atomic.Int64 // can be used to generate a random number
+	lastWrite time.Time    // deadline of last write operation
+	lastRead  time.Time    // deadline of last read operation
+}
+
 // poolUwsgiConn
 var poolUwsgiConn sync.Pool
 
@@ -247,25 +266,6 @@ func getUwsgiConn(tConn *TConn) *uwsgiConn {
 func putUwsgiConn(conn *uwsgiConn) {
 	conn.onEnd()
 	poolUwsgiConn.Put(conn)
-}
-
-// uwsgiConn
-type uwsgiConn struct {
-	// Assocs
-	request  uwsgiRequest  // the uwsgi request
-	response uwsgiResponse // the uwsgi response
-	// Conn states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id     int64 // the conn id
-	node   *uwsgiNode
-	region Region // a region-based memory pool
-	conn   *TConn // associated conn
-	// Conn states (zeros)
-	counter   atomic.Int64 // can be used to generate a random number
-	lastWrite time.Time    // deadline of last write operation
-	lastRead  time.Time    // deadline of last read operation
 }
 
 func (x *uwsgiConn) onUse(conn *TConn) {

@@ -3,12 +3,13 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// General Webapp Server and Web reverse proxy implementation.
+// General Webapp Server implementation.
 
 package hemi
 
 import (
 	"errors"
+	"net"
 	"os"
 	"reflect"
 	"regexp"
@@ -23,16 +24,6 @@ func init() {
 		h := new(staticHandlet)
 		h.onCreate(name, stage, webapp)
 		return h
-	})
-	RegisterHandlet("httpProxy", func(name string, stage *Stage, webapp *Webapp) Handlet {
-		h := new(httpProxy)
-		h.onCreate(name, stage, webapp)
-		return h
-	})
-	RegisterSocklet("sockProxy", func(name string, stage *Stage, webapp *Webapp) Socklet {
-		s := new(sockProxy)
-		s.onCreate(name, stage, webapp)
-		return s
 	})
 }
 
@@ -878,6 +869,164 @@ func (o *Hobject) todo() {
 	// TODO
 }
 
+// Request is the server-side http request.
+type Request interface { // for *server[1-3]Request
+	RemoteAddr() net.Addr
+	Webapp() *Webapp
+
+	IsAbsoluteForm() bool    // TODO: what about HTTP/2 and HTTP/3?
+	IsAsteriskOptions() bool // OPTIONS *
+
+	VersionCode() uint8
+	IsHTTP1() bool
+	IsHTTP1_0() bool
+	IsHTTP1_1() bool
+	IsHTTP2() bool
+	IsHTTP3() bool
+	Version() string // HTTP/1.0, HTTP/1.1, HTTP/2, HTTP/3
+	UnsafeVersion() []byte
+
+	SchemeCode() uint8 // SchemeHTTP, SchemeHTTPS
+	IsHTTP() bool
+	IsHTTPS() bool
+	Scheme() string // http, https
+	UnsafeScheme() []byte
+
+	MethodCode() uint32
+	IsGET() bool
+	IsPOST() bool
+	IsPUT() bool
+	IsDELETE() bool
+	Method() string // GET, POST, ...
+	UnsafeMethod() []byte
+
+	Authority() string       // hostname[:port]
+	UnsafeAuthority() []byte // hostname[:port]
+	Hostname() string        // hostname
+	UnsafeHostname() []byte  // hostname
+	ColonPort() string       // :port
+	UnsafeColonPort() []byte // :port
+
+	URI() string               // /encodedPath?queryString
+	UnsafeURI() []byte         // /encodedPath?queryString
+	Path() string              // /decodedPath
+	UnsafePath() []byte        // /decodedPath
+	EncodedPath() string       // /encodedPath
+	UnsafeEncodedPath() []byte // /encodedPath
+	QueryString() string       // including '?' if query string exists, otherwise empty
+	UnsafeQueryString() []byte // including '?' if query string exists, otherwise empty
+
+	HasQueries() bool
+	AllQueries() (queries [][2]string)
+	Q(name string) string
+	Qstr(name string, defaultValue string) string
+	Qint(name string, defaultValue int) int
+	Query(name string) (value string, ok bool)
+	UnsafeQuery(name string) (value []byte, ok bool)
+	Queries(name string) (values []string, ok bool)
+	HasQuery(name string) bool
+	DelQuery(name string) (deleted bool)
+	AddQuery(name string, value string) bool
+
+	HasHeaders() bool
+	AllHeaders() (headers [][2]string)
+	H(name string) string
+	Hstr(name string, defaultValue string) string
+	Hint(name string, defaultValue int) int
+	Header(name string) (value string, ok bool)
+	UnsafeHeader(name string) (value []byte, ok bool)
+	Headers(name string) (values []string, ok bool)
+	HasHeader(name string) bool
+	DelHeader(name string) (deleted bool)
+	AddHeader(name string, value string) bool
+
+	UserAgent() string
+	UnsafeUserAgent() []byte
+
+	ContentType() string
+	UnsafeContentType() []byte
+
+	ContentSize() int64
+	UnsafeContentLength() []byte
+
+	AcceptTrailers() bool
+
+	EvalPreconditions(date int64, etag []byte, asOrigin bool) (status int16, normal bool)
+
+	HasIfRange() bool
+	EvalIfRange(date int64, etag []byte, asOrigin bool) (canRange bool)
+
+	HasRanges() bool
+	EvalRanges(size int64) []Range
+
+	HasCookies() bool
+	AllCookies() (cookies [][2]string)
+	C(name string) string
+	Cstr(name string, defaultValue string) string
+	Cint(name string, defaultValue int) int
+	Cookie(name string) (value string, ok bool)
+	UnsafeCookie(name string) (value []byte, ok bool)
+	Cookies(name string) (values []string, ok bool)
+	HasCookie(name string) bool
+	DelCookie(name string) (deleted bool)
+	AddCookie(name string, value string) bool
+
+	SetRecvTimeout(timeout time.Duration) // to defend against slowloris attack
+
+	HasContent() bool // true if content exists
+	IsVague() bool    // true if content exists and is not sized
+	Content() string
+	UnsafeContent() []byte
+
+	HasForms() bool
+	AllForms() (forms [][2]string)
+	F(name string) string
+	Fstr(name string, defaultValue string) string
+	Fint(name string, defaultValue int) int
+	Form(name string) (value string, ok bool)
+	UnsafeForm(name string) (value []byte, ok bool)
+	Forms(name string) (values []string, ok bool)
+	HasForm(name string) bool
+	AddForm(name string, value string) bool
+
+	HasUpfiles() bool
+	AllUpfiles() (upfiles []*Upfile)
+	U(name string) *Upfile
+	Upfile(name string) (upfile *Upfile, ok bool)
+	Upfiles(name string) (upfiles []*Upfile, ok bool)
+	HasUpfile(name string) bool
+
+	HasTrailers() bool
+	AllTrailers() (trailers [][2]string)
+	T(name string) string
+	Tstr(name string, defaultValue string) string
+	Tint(name string, defaultValue int) int
+	Trailer(name string) (value string, ok bool)
+	UnsafeTrailer(name string) (value []byte, ok bool)
+	Trailers(name string) (values []string, ok bool)
+	HasTrailer(name string) bool
+	DelTrailer(name string) (deleted bool)
+	AddTrailer(name string, value string) bool
+
+	UnsafeMake(size int) []byte
+
+	// Internal only
+	getPathInfo() os.FileInfo
+	unsafeAbsPath() []byte
+	makeAbsPath()
+	delHopHeaders()
+	delHopTrailers()
+	forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
+	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
+	forCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool
+	unsetHost()
+	takeContent() any // used by proxies
+	readContent() (p []byte, err error)
+	examineTail() bool
+	hookReviser(reviser Reviser)
+	unsafeVariable(code int16, name string) (value []byte)
+}
+
 // Upfile is a file uploaded by http client.
 type Upfile struct { // 48 bytes
 	nameHash uint16 // hash of name, to support fast comparison
@@ -978,6 +1127,76 @@ func (u *Upfile) Size() int64  { return u.size }
 func (u *Upfile) MoveTo(path string) error {
 	// TODO. Remember to mark as moved
 	return nil
+}
+
+// Response is the server-side http response.
+type Response interface { // for *server[1-3]Response
+	Request() Request
+
+	SetStatus(status int16) error
+	Status() int16
+
+	MakeETagFrom(date int64, size int64) ([]byte, bool) // with `""`
+	SetExpires(expires int64) bool
+	SetLastModified(lastModified int64) bool
+	AddContentType(contentType string) bool
+	AddContentTypeBytes(contentType []byte) bool
+	AddHTTPSRedirection(authority string) bool
+	AddHostnameRedirection(hostname string) bool
+	AddDirectoryRedirection() bool
+
+	AddCookie(cookie *Cookie) bool
+
+	AddHeader(name string, value string) bool
+	AddHeaderBytes(name []byte, value []byte) bool
+	Header(name string) (value string, ok bool)
+	HasHeader(name string) bool
+	DelHeader(name string) bool
+	DelHeaderBytes(name []byte) bool
+
+	IsSent() bool
+	SetSendTimeout(timeout time.Duration) // to defend against slowloris attack
+
+	Send(content string) error
+	SendBytes(content []byte) error
+	SendFile(contentPath string) error
+	SendJSON(content any) error
+	SendBadRequest(content []byte) error                             // 400
+	SendForbidden(content []byte) error                              // 403
+	SendNotFound(content []byte) error                               // 404
+	SendMethodNotAllowed(allow string, content []byte) error         // 405
+	SendRangeNotSatisfiable(contentSize int64, content []byte) error // 416
+	SendInternalServerError(content []byte) error                    // 500
+	SendNotImplemented(content []byte) error                         // 501
+	SendBadGateway(content []byte) error                             // 502
+	SendGatewayTimeout(content []byte) error                         // 504
+
+	Echo(chunk string) error
+	EchoBytes(chunk []byte) error
+	EchoFile(chunkPath string) error
+	AddTrailer(name string, value string) bool
+	AddTrailerBytes(name []byte, value []byte) bool
+
+	// Internal only
+	addHeader(name []byte, value []byte) bool
+	header(name []byte) (value []byte, ok bool)
+	hasHeader(name []byte) bool
+	delHeader(name []byte) bool
+	pickRanges(ranges []Range, rangeType string)
+	sendText(content []byte) error
+	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
+	sendChain() error                                             // content
+	echoHeaders() error
+	echoChain() error // chunks
+	addTrailer(name []byte, value []byte) bool
+	endVague() error
+	proxyPass1xx(resp response) bool
+	proxyPass(resp response) error                 // pass content to client directly
+	proxyPost(content any, hasTrailers bool) error // post held content to client
+	proxyCopyHead(resp response, config *WebExchanProxyConfig) bool
+	proxyCopyTail(resp response, config *WebExchanProxyConfig) bool
+	hookReviser(reviser Reviser)
+	unsafeMake(size int) []byte
 }
 
 // Cookie is a "set-cookie" header sent to client.
@@ -1137,6 +1356,13 @@ func (c *Cookie) writeTo(p []byte) int {
 		i += copy(p[i:], c.sameSite)
 	}
 	return i
+}
+
+// Socket is the server-side webSocket.
+type Socket interface { // for *server[1-3]Socket
+	Read(p []byte) (int, error)
+	Write(p []byte) (int, error)
+	Close() error
 }
 
 // staticHandlet handles requests to static files and directories.
@@ -1419,302 +1645,4 @@ var staticDefaultMimeTypes = map[string]string{
 	"xls":  "application/vnd.ms-excel",
 	"xml":  "text/xml",
 	"zip":  "application/zip",
-}
-
-// WebExchanProxyConfig
-type WebExchanProxyConfig struct {
-	BufferClientContent bool
-	Hostname            []byte
-	ColonPort           []byte
-	InboundViaName      []byte
-	AppendPathPrefix    []byte
-	AddRequestHeaders   map[string]Value
-	DelRequestHeaders   [][]byte
-
-	BufferServerContent bool
-	OutboundViaName     []byte
-	AddResponseHeaders  map[string]string
-	DelResponseHeaders  [][]byte
-}
-
-func WebExchanReverseProxy(req Request, resp Response, backend WebBackend, config *WebExchanProxyConfig) {
-	var content any
-	hasContent := req.HasContent()
-	if hasContent && config.BufferClientContent { // including size 0
-		content = req.takeContent()
-		if content == nil { // take failed
-			// stream was marked as broken
-			resp.SetStatus(StatusBadRequest)
-			resp.SendBytes(nil)
-			return
-		}
-	}
-
-	backStream, backErr := backend.FetchStream()
-	if backErr != nil {
-		resp.SendBadGateway(nil)
-		return
-	}
-	defer backend.StoreStream(backStream)
-
-	backReq := backStream.Request()
-	if !backReq.proxyCopyHead(req, config) {
-		backStream.markBroken()
-		resp.SendBadGateway(nil)
-		return
-	}
-
-	if !hasContent || config.BufferClientContent {
-		hasTrailers := req.HasTrailers()
-		backErr = backReq.proxyPost(content, hasTrailers) // nil (no content), []byte, tempFile
-		if backErr == nil && hasTrailers {
-			if !backReq.proxyCopyTail(req, config) {
-				backStream.markBroken()
-				backErr = webOutTrailerFailed
-			} else if backErr = backReq.endVague(); backErr != nil {
-				backStream.markBroken()
-			}
-		} else if hasTrailers {
-			backStream.markBroken()
-		}
-	} else if backErr = backReq.proxyPass(req); backErr != nil {
-		backStream.markBroken()
-	} else if backReq.isVague() { // must write last chunk and trailers (if exist)
-		if backErr = backReq.endVague(); backErr != nil {
-			backStream.markBroken()
-		}
-	}
-	if backErr != nil {
-		resp.SendBadGateway(nil)
-		return
-	}
-
-	backResp := backStream.Response()
-	for { // until we found a non-1xx status (>= 200)
-		backResp.recvHead()
-		if backResp.HeadResult() != StatusOK || backResp.Status() == StatusSwitchingProtocols { // webSocket is not served in handlets.
-			backStream.markBroken()
-			if backResp.HeadResult() == StatusRequestTimeout {
-				resp.SendGatewayTimeout(nil)
-			} else {
-				resp.SendBadGateway(nil)
-			}
-			return
-		}
-		if backResp.Status() >= StatusOK {
-			// Only HTTP/1 cares this.
-			if backResp.KeepAlive() == 0 {
-				backStream.(*backend1Stream).conn.persistent = false
-			}
-			break
-		}
-		// We got a 1xx
-		if req.VersionCode() == Version1_0 {
-			backStream.markBroken()
-			resp.SendBadGateway(nil)
-			return
-		}
-		// A proxy MUST forward 1xx responses unless the proxy itself requested the generation of the 1xx response.
-		// For example, if a proxy adds an "Expect: 100-continue" header field when it forwards a request, then it
-		// need not forward the corresponding 100 (Continue) response(s).
-		if !resp.proxyPass1xx(backResp) {
-			backStream.markBroken()
-			return
-		}
-		backResp.reuse()
-	}
-
-	var backContent any
-	backHasContent := false
-	if req.MethodCode() != MethodHEAD {
-		backHasContent = backResp.HasContent()
-	}
-	if backHasContent && config.BufferServerContent { // including size 0
-		backContent = backResp.takeContent()
-		if backContent == nil { // take failed
-			// backStream was marked as broken
-			resp.SendBadGateway(nil)
-			return
-		}
-	}
-
-	if !resp.proxyCopyHead(backResp, config) {
-		backStream.markBroken()
-		return
-	}
-	if !backHasContent || config.BufferServerContent {
-		backHasTrailers := backResp.HasTrailers()
-		if resp.proxyPost(backContent, backHasTrailers) != nil { // nil (no content), []byte, tempFile
-			if backHasTrailers {
-				backStream.markBroken()
-			}
-			return
-		}
-		if backHasTrailers && !resp.proxyCopyTail(backResp, config) {
-			return
-		}
-	} else if err := resp.proxyPass(backResp); err != nil {
-		backStream.markBroken()
-		return
-	}
-}
-
-// httpProxy handlet passes http requests to http backends and caches responses.
-type httpProxy struct {
-	// Parent
-	Handlet_
-	// Assocs
-	stage   *Stage     // current stage
-	webapp  *Webapp    // the webapp to which the proxy belongs
-	backend WebBackend // the backend to pass to. can be *HTTP1Backend, *HTTP2Backend, or *HTTP3Backend
-	cacher  Cacher     // the cacher which is used by this proxy
-	// States
-	WebExchanProxyConfig // embeded
-}
-
-func (h *httpProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(name)
-	h.stage = stage
-	h.webapp = webapp
-}
-func (h *httpProxy) OnShutdown() {
-	h.webapp.DecSub() // handlet
-}
-
-func (h *httpProxy) OnConfigure() {
-	// toBackend
-	if v, ok := h.Find("toBackend"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if backend := h.stage.Backend(name); backend == nil {
-				UseExitf("unknown backend: '%s'\n", name)
-			} else {
-				h.backend = backend.(WebBackend)
-			}
-		} else {
-			UseExitln("invalid toBackend")
-		}
-	} else {
-		UseExitln("toBackend is required for http proxy")
-	}
-
-	// withCacher
-	if v, ok := h.Find("withCacher"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if cacher := h.stage.Cacher(name); cacher == nil {
-				UseExitf("unknown cacher: '%s'\n", name)
-			} else {
-				h.cacher = cacher
-			}
-		} else {
-			UseExitln("invalid withCacher")
-		}
-	}
-
-	// addRequestHeaders
-	if v, ok := h.Find("addRequestHeaders"); ok {
-		addedHeaders := make(map[string]Value)
-		if vHeaders, ok := v.Dict(); ok {
-			for name, vValue := range vHeaders {
-				if vValue.IsVariable() {
-					name := vValue.name
-					if p := strings.IndexByte(name, '_'); p != -1 {
-						p++ // skip '_'
-						vValue.name = name[:p] + strings.ReplaceAll(name[p:], "_", "-")
-					}
-				} else if _, ok := vValue.Bytes(); !ok {
-					UseExitf("bad value in .addRequestHeaders")
-				}
-				addedHeaders[name] = vValue
-			}
-			h.AddRequestHeaders = addedHeaders
-		} else {
-			UseExitln("invalid addRequestHeaders")
-		}
-	}
-
-	// bufferClientContent
-	h.ConfigureBool("bufferClientContent", &h.BufferClientContent, true)
-	// hostname
-	h.ConfigureBytes("hostname", &h.Hostname, nil, nil)
-	// colonPort
-	h.ConfigureBytes("colonPort", &h.ColonPort, nil, nil)
-	// inboundViaName
-	h.ConfigureBytes("inboundViaName", &h.InboundViaName, nil, bytesGorox)
-	// delRequestHeaders
-	h.ConfigureBytesList("delRequestHeaders", &h.DelRequestHeaders, nil, [][]byte{})
-	// bufferServerContent
-	h.ConfigureBool("bufferServerContent", &h.BufferServerContent, true)
-	// outboundViaName
-	h.ConfigureBytes("outboundViaName", &h.OutboundViaName, nil, nil)
-	// addResponseHeaders
-	h.ConfigureStringDict("addResponseHeaders", &h.AddResponseHeaders, nil, map[string]string{})
-	// delResponseHeaders
-	h.ConfigureBytesList("delResponseHeaders", &h.DelResponseHeaders, nil, [][]byte{})
-}
-func (h *httpProxy) OnPrepare() {
-	// Currently nothing.
-}
-
-func (h *httpProxy) IsProxy() bool { return true }
-func (h *httpProxy) IsCache() bool { return h.cacher != nil }
-
-func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
-	WebExchanReverseProxy(req, resp, h.backend, &h.WebExchanProxyConfig)
-	return true
-}
-
-// WebSocketProxyConfig
-type WebSocketProxyConfig struct {
-	// TODO
-}
-
-func WebSocketReverseProxy(req Request, sock Socket, backend WebBackend, config *WebSocketProxyConfig) {
-	// TODO
-}
-
-// sockProxy socklet passes webSockets to http backends.
-type sockProxy struct {
-	// Parent
-	Socklet_
-	// Assocs
-	stage   *Stage     // current stage
-	webapp  *Webapp    // the webapp to which the proxy belongs
-	backend WebBackend // the backend to pass to. can be *HTTP1Backend, *HTTP2Backend, or *HTTP3Backend
-	// States
-}
-
-func (s *sockProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
-	s.MakeComp(name)
-	s.stage = stage
-	s.webapp = webapp
-}
-func (s *sockProxy) OnShutdown() {
-	s.webapp.DecSub() // socklet
-}
-
-func (s *sockProxy) OnConfigure() {
-	// toBackend
-	if v, ok := s.Find("toBackend"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if backend := s.stage.Backend(name); backend == nil {
-				UseExitf("unknown backend: '%s'\n", name)
-			} else {
-				s.backend = backend.(WebBackend)
-			}
-		} else {
-			UseExitln("invalid toBackend")
-		}
-	} else {
-		UseExitln("toBackend is required for webSocket proxy")
-	}
-}
-func (s *sockProxy) OnPrepare() {
-	// Currently nothing.
-}
-
-func (s *sockProxy) IsProxy() bool { return true }
-
-func (s *sockProxy) Serve(req Request, sock Socket) {
-	// TODO(diogin): Implementation
-	sock.Close()
 }

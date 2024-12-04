@@ -301,6 +301,27 @@ func (g *httpxGate) justClose(netConn net.Conn) {
 	g.DecConn()
 }
 
+// server1Conn is the server-side HTTP/1 connection.
+type server1Conn struct {
+	// Assocs
+	stream server1Stream // an http/1 connection has exactly one stream
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id         int64           // conn id
+	gate       *httpxGate      // the gate to which the conn belongs
+	netConn    net.Conn        // the connection (UDS/TCP/TLS)
+	rawConn    syscall.RawConn // for syscall, only when netConn is UDS/TCP
+	persistent bool            // keep the connection after current stream? true by default
+	closeSafe  bool            // if false, send a FIN first to avoid TCP's RST following immediate close(). true by default
+	// Conn states (zeros)
+	usedStreams atomic.Int32 // accumulated num of streams served or fired
+	broken      atomic.Bool  // is conn broken?
+	counter     atomic.Int64 // can be used to generate a random number
+	lastRead    time.Time    // deadline of last read operation
+	lastWrite   time.Time    // deadline of last write operation
+}
+
 // poolServer1Conn is the server-side HTTP/1 connection pool.
 var poolServer1Conn sync.Pool
 
@@ -325,27 +346,6 @@ func getServer1Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall
 func putServer1Conn(serverConn *server1Conn) {
 	serverConn.onPut()
 	poolServer1Conn.Put(serverConn)
-}
-
-// server1Conn is the server-side HTTP/1 connection.
-type server1Conn struct {
-	// Assocs
-	stream server1Stream // an http/1 connection has exactly one stream
-	// Conn states (stocks)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id         int64           // conn id
-	gate       *httpxGate      // the gate to which the conn belongs
-	netConn    net.Conn        // the connection (UDS/TCP/TLS)
-	rawConn    syscall.RawConn // for syscall, only when netConn is UDS/TCP
-	persistent bool            // keep the connection after current stream? true by default
-	closeSafe  bool            // if false, send a FIN first to avoid TCP's RST following immediate close(). true by default
-	// Conn states (zeros)
-	usedStreams atomic.Int32 // accumulated num of streams served or fired
-	broken      atomic.Bool  // is conn broken?
-	counter     atomic.Int64 // can be used to generate a random number
-	lastRead    time.Time    // deadline of last read operation
-	lastWrite   time.Time    // deadline of last write operation
 }
 
 func (c *server1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
@@ -1343,6 +1343,16 @@ func (r *server1Response) finalizeVague() error {
 func (r *server1Response) addedHeaders() []byte { return r.fields[0:r.fieldsEdge] }
 func (r *server1Response) fixedHeaders() []byte { return http1BytesFixedResponseHeaders }
 
+// server1Socket is the server-side HTTP/1 webSocket.
+type server1Socket struct { // incoming and outgoing
+	// Parent
+	serverSocket_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
+}
+
 // poolServer1Socket
 var poolServer1Socket sync.Pool
 
@@ -1352,16 +1362,6 @@ func getServer1Socket(stream *server1Stream) *server1Socket {
 }
 func putServer1Socket(socket *server1Socket) {
 	// TODO
-}
-
-// server1Socket is the server-side HTTP/1 webSocket.
-type server1Socket struct { // incoming and outgoing
-	// Parent
-	serverSocket_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
 }
 
 func (s *server1Socket) onUse() {
@@ -1402,11 +1402,11 @@ func (b *HTTP1Backend) CreateNode(name string) Node {
 	return node
 }
 
-func (b *HTTP1Backend) FetchStream() (backendStream, error) {
+func (b *HTTP1Backend) FetchStream() (stream, error) {
 	node := b.nodes[b.nextIndex()]
 	return node.fetchStream()
 }
-func (b *HTTP1Backend) StoreStream(stream backendStream) {
+func (b *HTTP1Backend) StoreStream(stream stream) {
 	stream1 := stream.(*backend1Stream)
 	stream1.conn.node.storeStream(stream1)
 }
@@ -1608,6 +1608,28 @@ func (n *http1Node) closeFree() int {
 	return qnty
 }
 
+// backend1Conn is the backend-side HTTP/1 connection.
+type backend1Conn struct {
+	// Assocs
+	next   *backend1Conn  // the linked-list
+	stream backend1Stream // an http/1 connection has exactly one stream
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id         int64 // the conn id
+	node       *http1Node
+	netConn    net.Conn        // the connection (TCP/TLS/UDS)
+	rawConn    syscall.RawConn // used when netConn is TCP or UDS
+	expire     time.Time       // when the conn is considered expired
+	persistent bool            // keep the connection after current stream? true by default
+	// Conn states (zeros)
+	usedStreams atomic.Int32 // accumulated num of streams served or fired
+	broken      atomic.Bool  // is conn broken?
+	counter     atomic.Int64 // can be used to generate a random number
+	lastWrite   time.Time    // deadline of last write operation
+	lastRead    time.Time    // deadline of last read operation
+}
+
 // poolBackend1Conn is the backend-side HTTP/1 connection pool.
 var poolBackend1Conn sync.Pool
 
@@ -1632,28 +1654,6 @@ func getBackend1Conn(id int64, node *http1Node, netConn net.Conn, rawConn syscal
 func putBackend1Conn(backendConn *backend1Conn) {
 	backendConn.onPut()
 	poolBackend1Conn.Put(backendConn)
-}
-
-// backend1Conn is the backend-side HTTP/1 connection.
-type backend1Conn struct {
-	// Assocs
-	next   *backend1Conn  // the linked-list
-	stream backend1Stream // an http/1 connection has exactly one stream
-	// Conn states (stocks)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id         int64 // the conn id
-	node       *http1Node
-	netConn    net.Conn        // the connection (TCP/TLS/UDS)
-	rawConn    syscall.RawConn // used when netConn is TCP or UDS
-	expire     time.Time       // when the conn is considered expired
-	persistent bool            // keep the connection after current stream? true by default
-	// Conn states (zeros)
-	usedStreams atomic.Int32 // accumulated num of streams served or fired
-	broken      atomic.Bool  // is conn broken?
-	counter     atomic.Int64 // can be used to generate a random number
-	lastWrite   time.Time    // deadline of last write operation
-	lastRead    time.Time    // deadline of last read operation
 }
 
 func (c *backend1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
@@ -2073,6 +2073,16 @@ func (r *backend1Response) cleanInput() {
 
 func (r *backend1Response) readContent() (p []byte, err error) { return r.readContent1() }
 
+// backend1Socket is the backend-side HTTP/1 webSocket.
+type backend1Socket struct { // incoming and outgoing
+	// Parent
+	backendSocket_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
+}
+
 // poolBackend1Socket
 var poolBackend1Socket sync.Pool
 
@@ -2082,16 +2092,6 @@ func getBackend1Socket(stream *backend1Stream) *backend1Socket {
 }
 func putBackend1Socket(socket *backend1Socket) {
 	// TODO
-}
-
-// backend1Socket is the backend-side HTTP/1 webSocket.
-type backend1Socket struct { // incoming and outgoing
-	// Parent
-	backendSocket_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
 }
 
 func (s *backend1Socket) onUse() {

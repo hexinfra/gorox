@@ -140,6 +140,18 @@ func (g *echoGate) justClose(tcpConn *net.TCPConn) {
 	g.DecConn()
 }
 
+// echoConn
+type echoConn struct {
+	// Conn states (stocks)
+	buffer [8152]byte
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id      int64
+	gate    *echoGate
+	tcpConn *net.TCPConn
+	// Conn states (zeros)
+}
+
 // poolEchoConn
 var poolEchoConn sync.Pool
 
@@ -156,18 +168,6 @@ func getEchoConn(id int64, gate *echoGate, tcpConn *net.TCPConn) *echoConn {
 func putEchoConn(conn *echoConn) {
 	conn.onPut()
 	poolEchoConn.Put(conn)
-}
-
-// echoConn
-type echoConn struct {
-	// Conn states (stocks)
-	buffer [8152]byte
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id      int64
-	gate    *echoGate
-	tcpConn *net.TCPConn
-	// Conn states (zeros)
 }
 
 func (c *echoConn) onGet(id int64, gate *echoGate, tcpConn *net.TCPConn) {

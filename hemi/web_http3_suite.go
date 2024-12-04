@@ -136,24 +136,6 @@ func (g *http3Gate) justClose(quicConn *quic.Conn) {
 	g.DecConn()
 }
 
-// poolServer3Conn is the server-side HTTP/3 connection pool.
-var poolServer3Conn sync.Pool
-
-func getServer3Conn(id int64, gate *http3Gate, quicConn *quic.Conn) *server3Conn {
-	var serverConn *server3Conn
-	if x := poolServer3Conn.Get(); x == nil {
-		serverConn = new(server3Conn)
-	} else {
-		serverConn = x.(*server3Conn)
-	}
-	serverConn.onGet(id, gate, quicConn)
-	return serverConn
-}
-func putServer3Conn(serverConn *server3Conn) {
-	serverConn.onPut()
-	poolServer3Conn.Put(serverConn)
-}
-
 // server3Conn is the server-side HTTP/3 connection.
 type server3Conn struct {
 	// Conn states (stocks)
@@ -177,6 +159,24 @@ type server3Conn0 struct { // for fast reset, entirely
 	bufferEdge uint32 // incoming data ends at c.buffer.buf[c.bufferEdge]
 	pBack      uint32 // incoming frame part (header or payload) begins from c.buffer.buf[c.pBack]
 	pFore      uint32 // incoming frame part (header or payload) ends at c.buffer.buf[c.pFore]
+}
+
+// poolServer3Conn is the server-side HTTP/3 connection pool.
+var poolServer3Conn sync.Pool
+
+func getServer3Conn(id int64, gate *http3Gate, quicConn *quic.Conn) *server3Conn {
+	var serverConn *server3Conn
+	if x := poolServer3Conn.Get(); x == nil {
+		serverConn = new(server3Conn)
+	} else {
+		serverConn = x.(*server3Conn)
+	}
+	serverConn.onGet(id, gate, quicConn)
+	return serverConn
+}
+func putServer3Conn(serverConn *server3Conn) {
+	serverConn.onPut()
+	poolServer3Conn.Put(serverConn)
 }
 
 func (c *server3Conn) onGet(id int64, gate *http3Gate, quicConn *quic.Conn) {
@@ -229,6 +229,28 @@ func (c *server3Conn) closeConn() {
 	c.gate.DecConn()
 }
 
+// server3Stream is the server-side HTTP/3 stream.
+type server3Stream struct {
+	// Assocs
+	request  server3Request  // the http/3 request.
+	response server3Response // the http/3 response.
+	socket   *server3Socket  // ...
+	// Stream states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	conn       *server3Conn
+	quicStream *quic.Stream // the underlying quic stream
+	region     Region       // a region-based memory pool
+	// Stream states (zeros)
+	server3Stream0 // all values must be zero by default in this struct!
+}
+type server3Stream0 struct { // for fast reset, entirely
+	index uint8
+	state uint8
+	reset bool
+}
+
 // poolServer3Stream is the server-side HTTP/3 stream pool.
 var poolServer3Stream sync.Pool
 
@@ -251,28 +273,6 @@ func getServer3Stream(conn *server3Conn, quicStream *quic.Stream) *server3Stream
 func putServer3Stream(stream *server3Stream) {
 	stream.onEnd()
 	poolServer3Stream.Put(stream)
-}
-
-// server3Stream is the server-side HTTP/3 stream.
-type server3Stream struct {
-	// Assocs
-	request  server3Request  // the http/3 request.
-	response server3Response // the http/3 response.
-	socket   *server3Socket  // ...
-	// Stream states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	conn       *server3Conn
-	quicStream *quic.Stream // the underlying quic stream
-	region     Region       // a region-based memory pool
-	// Stream states (zeros)
-	server3Stream0 // all values must be zero by default in this struct!
-}
-type server3Stream0 struct { // for fast reset, entirely
-	index uint8
-	state uint8
-	reset bool
 }
 
 func (s *server3Stream) onUse(conn *server3Conn, quicStream *quic.Stream) { // for non-zeros
@@ -458,6 +458,16 @@ func (r *server3Response) finalizeVague() error {
 func (r *server3Response) addedHeaders() []byte { return nil }
 func (r *server3Response) fixedHeaders() []byte { return nil }
 
+// server3Socket is the server-side HTTP/3 webSocket.
+type server3Socket struct { // incoming and outgoing
+	// Parent
+	serverSocket_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
+}
+
 // poolServer3Socket
 var poolServer3Socket sync.Pool
 
@@ -467,16 +477,6 @@ func getServer3Socket(stream *server3Stream) *server3Socket {
 }
 func putServer3Socket(socket *server3Socket) {
 	// TODO
-}
-
-// server3Socket is the server-side HTTP/3 webSocket.
-type server3Socket struct { // incoming and outgoing
-	// Parent
-	serverSocket_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
 }
 
 func (s *server3Socket) onUse() {
@@ -517,11 +517,11 @@ func (b *HTTP3Backend) CreateNode(name string) Node {
 	return node
 }
 
-func (b *HTTP3Backend) FetchStream() (backendStream, error) {
+func (b *HTTP3Backend) FetchStream() (stream, error) {
 	node := b.nodes[b.nextIndex()]
 	return node.fetchStream()
 }
-func (b *HTTP3Backend) StoreStream(stream backendStream) {
+func (b *HTTP3Backend) StoreStream(stream stream) {
 	stream3 := stream.(*backend3Stream)
 	stream3.conn.node.storeStream(stream3)
 }
@@ -577,24 +577,6 @@ func (n *http3Node) storeStream(stream *backend3Stream) {
 	// TODO
 }
 
-// poolBackend3Conn is the backend-side HTTP/3 connection pool.
-var poolBackend3Conn sync.Pool
-
-func getBackend3Conn(id int64, node *http3Node, quicConn *quic.Conn) *backend3Conn {
-	var backendConn *backend3Conn
-	if x := poolBackend3Conn.Get(); x == nil {
-		backendConn = new(backend3Conn)
-	} else {
-		backendConn = x.(*backend3Conn)
-	}
-	backendConn.onGet(id, node, quicConn)
-	return backendConn
-}
-func putBackend3Conn(backendConn *backend3Conn) {
-	backendConn.onPut()
-	poolBackend3Conn.Put(backendConn)
-}
-
 // backend3Conn
 type backend3Conn struct {
 	// Conn states (stocks)
@@ -615,6 +597,24 @@ type backend3Conn struct {
 	backend3Conn0                                        // all values must be zero by default in this struct!
 }
 type backend3Conn0 struct { // for fast reset, entirely
+}
+
+// poolBackend3Conn is the backend-side HTTP/3 connection pool.
+var poolBackend3Conn sync.Pool
+
+func getBackend3Conn(id int64, node *http3Node, quicConn *quic.Conn) *backend3Conn {
+	var backendConn *backend3Conn
+	if x := poolBackend3Conn.Get(); x == nil {
+		backendConn = new(backend3Conn)
+	} else {
+		backendConn = x.(*backend3Conn)
+	}
+	backendConn.onGet(id, node, quicConn)
+	return backendConn
+}
+func putBackend3Conn(backendConn *backend3Conn) {
+	backendConn.onPut()
+	poolBackend3Conn.Put(backendConn)
 }
 
 func (c *backend3Conn) onGet(id int64, node *http3Node, quicConn *quic.Conn) {
@@ -670,6 +670,25 @@ func (c *backend3Conn) Close() error {
 	return quicConn.Close()
 }
 
+// backend3Stream
+type backend3Stream struct {
+	// Assocs
+	request  backend3Request
+	response backend3Response
+	socket   *backend3Socket
+	// Stream states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	conn       *backend3Conn
+	quicStream *quic.Stream // the underlying quic stream
+	region     Region       // a region-based memory pool
+	// Stream states (zeros)
+	backend3Stream0 // all values must be zero by default in this struct!
+}
+type backend3Stream0 struct { // for fast reset, entirely
+}
+
 // poolBackend3Stream
 var poolBackend3Stream sync.Pool
 
@@ -692,25 +711,6 @@ func getBackend3Stream(conn *backend3Conn, quicStream *quic.Stream) *backend3Str
 func putBackend3Stream(stream *backend3Stream) {
 	stream.onEnd()
 	poolBackend3Stream.Put(stream)
-}
-
-// backend3Stream
-type backend3Stream struct {
-	// Assocs
-	request  backend3Request
-	response backend3Response
-	socket   *backend3Socket
-	// Stream states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	conn       *backend3Conn
-	quicStream *quic.Stream // the underlying quic stream
-	region     Region       // a region-based memory pool
-	// Stream states (zeros)
-	backend3Stream0 // all values must be zero by default in this struct!
-}
-type backend3Stream0 struct { // for fast reset, entirely
 }
 
 func (s *backend3Stream) onUse(conn *backend3Conn, quicStream *quic.Stream) { // for non-zeros
@@ -848,6 +848,16 @@ func (r *backend3Response) recvHead() {
 
 func (r *backend3Response) readContent() (p []byte, err error) { return r.readContent3() }
 
+// backend3Socket is the backend-side HTTP/3 webSocket.
+type backend3Socket struct { // incoming and outgoing
+	// Parent
+	backendSocket_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
+}
+
 // poolBackend3Socket
 var poolBackend3Socket sync.Pool
 
@@ -857,16 +867,6 @@ func getBackend3Socket(stream *backend3Stream) *backend3Socket {
 }
 func putBackend3Socket(socket *backend3Socket) {
 	// TODO
-}
-
-// backend3Socket is the backend-side HTTP/3 webSocket.
-type backend3Socket struct { // incoming and outgoing
-	// Parent
-	backendSocket_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
 }
 
 func (s *backend3Socket) onUse() {
@@ -970,10 +970,16 @@ func (s *webSocket_) todo3() {
 
 //////////////////////////////////////// HTTP/3 protocol elements ////////////////////////////////////////
 
-const ( // HTTP/2 sizes and limits for both of our HTTP/3 server and HTTP/3 backend
+const ( // HTTP/3 sizes and limits for both of our HTTP/3 server and HTTP/3 backend
 	http3MaxActiveStreams = 127
 	http3MaxTableSize     = _4K
 )
+
+// http3Buffer
+type http3Buffer struct {
+	buf [_16K]byte // header + payload
+	ref atomic.Int32
+}
 
 // poolHTTP3Buffer
 var poolHTTP3Buffer sync.Pool
@@ -988,12 +994,6 @@ func getHTTP3Buffer() *http3Buffer {
 	return buffer
 }
 func putHTTP3Buffer(buffer *http3Buffer) { poolHTTP3Buffer.Put(buffer) }
-
-// http3Buffer
-type http3Buffer struct {
-	buf [_16K]byte // header + payload
-	ref atomic.Int32
-}
 
 func (b *http3Buffer) size() uint32  { return uint32(cap(b.buf)) }
 func (b *http3Buffer) getRef() int32 { return b.ref.Load() }

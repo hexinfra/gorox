@@ -327,24 +327,6 @@ func (g *tcpxGate) justClose(netConn net.Conn) {
 	g.DecConn()
 }
 
-// poolTCPXConn
-var poolTCPXConn sync.Pool
-
-func getTCPXConn(id int64, gate *tcpxGate, netConn net.Conn, rawConn syscall.RawConn) *TCPXConn {
-	var tcpxConn *TCPXConn
-	if x := poolTCPXConn.Get(); x == nil {
-		tcpxConn = new(TCPXConn)
-	} else {
-		tcpxConn = x.(*TCPXConn)
-	}
-	tcpxConn.onGet(id, gate, netConn, rawConn)
-	return tcpxConn
-}
-func putTCPXConn(tcpxConn *TCPXConn) {
-	tcpxConn.onPut()
-	poolTCPXConn.Put(tcpxConn)
-}
-
 // TCPXConn is a TCPX connection coming from TCPXRouter.
 type TCPXConn struct {
 	// Conn states (stocks)
@@ -363,6 +345,24 @@ type TCPXConn struct {
 	counter   atomic.Int64 // can be used to generate a random number
 	lastRead  time.Time    // deadline of last read operation
 	lastWrite time.Time    // deadline of last write operation
+}
+
+// poolTCPXConn
+var poolTCPXConn sync.Pool
+
+func getTCPXConn(id int64, gate *tcpxGate, netConn net.Conn, rawConn syscall.RawConn) *TCPXConn {
+	var tcpxConn *TCPXConn
+	if x := poolTCPXConn.Get(); x == nil {
+		tcpxConn = new(TCPXConn)
+	} else {
+		tcpxConn = x.(*TCPXConn)
+	}
+	tcpxConn.onGet(id, gate, netConn, rawConn)
+	return tcpxConn
+}
+func putTCPXConn(tcpxConn *TCPXConn) {
+	tcpxConn.onPut()
+	poolTCPXConn.Put(tcpxConn)
 }
 
 func (c *TCPXConn) onGet(id int64, gate *tcpxGate, netConn net.Conn, rawConn syscall.RawConn) {
@@ -845,24 +845,6 @@ func (n *tcpxNode) _dialTCP() (*TConn, error) {
 	return getTConn(connID, n, netConn, rawConn), nil
 }
 
-// poolTConn
-var poolTConn sync.Pool
-
-func getTConn(id int64, node *tcpxNode, netConn net.Conn, rawConn syscall.RawConn) *TConn {
-	var tConn *TConn
-	if x := poolTConn.Get(); x == nil {
-		tConn = new(TConn)
-	} else {
-		tConn = x.(*TConn)
-	}
-	tConn.onGet(id, node, netConn, rawConn)
-	return tConn
-}
-func putTConn(tConn *TConn) {
-	tConn.onPut()
-	poolTConn.Put(tConn)
-}
-
 // TConn is a backend-side connection to tcpxNode.
 type TConn struct {
 	// Conn states (stocks)
@@ -879,6 +861,24 @@ type TConn struct {
 	counter   atomic.Int64 // can be used to generate a random number
 	lastWrite time.Time    // deadline of last write operation
 	lastRead  time.Time    // deadline of last read operation
+}
+
+// poolTConn
+var poolTConn sync.Pool
+
+func getTConn(id int64, node *tcpxNode, netConn net.Conn, rawConn syscall.RawConn) *TConn {
+	var tConn *TConn
+	if x := poolTConn.Get(); x == nil {
+		tConn = new(TConn)
+	} else {
+		tConn = x.(*TConn)
+	}
+	tConn.onGet(id, node, netConn, rawConn)
+	return tConn
+}
+func putTConn(tConn *TConn) {
+	tConn.onPut()
+	poolTConn.Put(tConn)
 }
 
 func (c *TConn) onGet(id int64, node *tcpxNode, netConn net.Conn, rawConn syscall.RawConn) {

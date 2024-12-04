@@ -28,24 +28,6 @@ func init() {
 	})
 }
 
-// poolServer2Conn is the server-side HTTP/2 connection pool.
-var poolServer2Conn sync.Pool
-
-func getServer2Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) *server2Conn {
-	var serverConn *server2Conn
-	if x := poolServer2Conn.Get(); x == nil {
-		serverConn = new(server2Conn)
-	} else {
-		serverConn = x.(*server2Conn)
-	}
-	serverConn.onGet(id, gate, netConn, rawConn)
-	return serverConn
-}
-func putServer2Conn(serverConn *server2Conn) {
-	serverConn.onPut()
-	poolServer2Conn.Put(serverConn)
-}
-
 // server2Conn is the server-side HTTP/2 connection.
 type server2Conn struct {
 	// Conn states (stocks)
@@ -91,6 +73,24 @@ type server2Conn0 struct { // for fast reset, entirely
 	acknowledged bool                              // server settings acknowledged by client?
 	//unackedSettings?
 	//queuedControlFrames?
+}
+
+// poolServer2Conn is the server-side HTTP/2 connection pool.
+var poolServer2Conn sync.Pool
+
+func getServer2Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) *server2Conn {
+	var serverConn *server2Conn
+	if x := poolServer2Conn.Get(); x == nil {
+		serverConn = new(server2Conn)
+	} else {
+		serverConn = x.(*server2Conn)
+	}
+	serverConn.onGet(id, gate, netConn, rawConn)
+	return serverConn
+}
+func putServer2Conn(serverConn *server2Conn) {
+	serverConn.onPut()
+	poolServer2Conn.Put(serverConn)
 }
 
 func (c *server2Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
@@ -828,30 +828,6 @@ func (c *server2Conn) closeConn() {
 	c.gate.DecConn()
 }
 
-// poolServer2Stream is the server-side HTTP/2 stream pool.
-var poolServer2Stream sync.Pool
-
-func getServer2Stream(conn *server2Conn, id uint32, outWindow int32) *server2Stream {
-	var stream *server2Stream
-	if x := poolServer2Stream.Get(); x == nil {
-		stream = new(server2Stream)
-		req, resp := &stream.request, &stream.response
-		req.stream = stream
-		req.message = req
-		resp.stream = stream
-		resp.message = resp
-		resp.request = req
-	} else {
-		stream = x.(*server2Stream)
-	}
-	stream.onUse(conn, id, outWindow)
-	return stream
-}
-func putServer2Stream(stream *server2Stream) {
-	stream.onEnd()
-	poolServer2Stream.Put(stream)
-}
-
 // server2Stream is the server-side HTTP/2 stream.
 type server2Stream struct {
 	// Assocs
@@ -874,6 +850,30 @@ type server2Stream0 struct { // for fast reset, entirely
 	index uint8 // index in s.conn.streams
 	state uint8 // http2StateOpen, http2StateRemoteClosed, ...
 	reset bool  // received a RST_STREAM?
+}
+
+// poolServer2Stream is the server-side HTTP/2 stream pool.
+var poolServer2Stream sync.Pool
+
+func getServer2Stream(conn *server2Conn, id uint32, outWindow int32) *server2Stream {
+	var stream *server2Stream
+	if x := poolServer2Stream.Get(); x == nil {
+		stream = new(server2Stream)
+		req, resp := &stream.request, &stream.response
+		req.stream = stream
+		req.message = req
+		resp.stream = stream
+		resp.message = resp
+		resp.request = req
+	} else {
+		stream = x.(*server2Stream)
+	}
+	stream.onUse(conn, id, outWindow)
+	return stream
+}
+func putServer2Stream(stream *server2Stream) {
+	stream.onEnd()
+	poolServer2Stream.Put(stream)
 }
 
 func (s *server2Stream) onUse(conn *server2Conn, id uint32, outWindow int32) { // for non-zeros
@@ -1076,6 +1076,16 @@ func (r *server2Response) finalizeVague() error {
 func (r *server2Response) addedHeaders() []byte { return nil } // TODO
 func (r *server2Response) fixedHeaders() []byte { return nil } // TODO
 
+// server2Socket is the server-side HTTP/2 webSocket.
+type server2Socket struct { // incoming and outgoing
+	// Parent
+	serverSocket_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
+}
+
 // poolServer2Socket
 var poolServer2Socket sync.Pool
 
@@ -1085,16 +1095,6 @@ func getServer2Socket(stream *server2Stream) *server2Socket {
 }
 func putServer2Socket(socket *server2Socket) {
 	// TODO
-}
-
-// server2Socket is the server-side HTTP/2 webSocket.
-type server2Socket struct { // incoming and outgoing
-	// Parent
-	serverSocket_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
 }
 
 func (s *server2Socket) onUse() {
@@ -1135,11 +1135,11 @@ func (b *HTTP2Backend) CreateNode(name string) Node {
 	return node
 }
 
-func (b *HTTP2Backend) FetchStream() (backendStream, error) {
+func (b *HTTP2Backend) FetchStream() (stream, error) {
 	node := b.nodes[b.nextIndex()]
 	return node.fetchStream()
 }
-func (b *HTTP2Backend) StoreStream(stream backendStream) {
+func (b *HTTP2Backend) StoreStream(stream stream) {
 	stream2 := stream.(*backend2Stream)
 	stream2.conn.node.storeStream(stream2)
 }
@@ -1190,24 +1190,6 @@ func (n *http2Node) storeStream(stream *backend2Stream) {
 	// TODO
 }
 
-// poolBackend2Conn is the backend-side HTTP/2 connection pool.
-var poolBackend2Conn sync.Pool
-
-func getBackend2Conn(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) *backend2Conn {
-	var backendConn *backend2Conn
-	if x := poolBackend2Conn.Get(); x == nil {
-		backendConn = new(backend2Conn)
-	} else {
-		backendConn = x.(*backend2Conn)
-	}
-	backendConn.onGet(id, node, netConn, rawConn)
-	return backendConn
-}
-func putBackend2Conn(backendConn *backend2Conn) {
-	backendConn.onPut()
-	poolBackend2Conn.Put(backendConn)
-}
-
 // backend2Conn
 type backend2Conn struct {
 	// Conn states (stocks)
@@ -1229,6 +1211,24 @@ type backend2Conn struct {
 	backend2Conn0                                        // all values must be zero by default in this struct!
 }
 type backend2Conn0 struct { // for fast reset, entirely
+}
+
+// poolBackend2Conn is the backend-side HTTP/2 connection pool.
+var poolBackend2Conn sync.Pool
+
+func getBackend2Conn(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) *backend2Conn {
+	var backendConn *backend2Conn
+	if x := poolBackend2Conn.Get(); x == nil {
+		backendConn = new(backend2Conn)
+	} else {
+		backendConn = x.(*backend2Conn)
+	}
+	backendConn.onGet(id, node, netConn, rawConn)
+	return backendConn
+}
+func putBackend2Conn(backendConn *backend2Conn) {
+	backendConn.onPut()
+	poolBackend2Conn.Put(backendConn)
 }
 
 func (c *backend2Conn) onGet(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
@@ -1316,6 +1316,25 @@ func (c *backend2Conn) Close() error {
 	return netConn.Close()
 }
 
+// backend2Stream
+type backend2Stream struct {
+	// Assocs
+	request  backend2Request
+	response backend2Response
+	socket   *backend2Socket
+	// Stream states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	conn   *backend2Conn
+	id     uint32
+	region Region // a region-based memory pool
+	// Stream states (zeros)
+	backend2Stream0 // all values must be zero by default in this struct!
+}
+type backend2Stream0 struct { // for fast reset, entirely
+}
+
 // poolBackend2Stream
 var poolBackend2Stream sync.Pool
 
@@ -1338,25 +1357,6 @@ func getBackend2Stream(conn *backend2Conn, id uint32) *backend2Stream {
 func putBackend2Stream(stream *backend2Stream) {
 	stream.onEnd()
 	poolBackend2Stream.Put(stream)
-}
-
-// backend2Stream
-type backend2Stream struct {
-	// Assocs
-	request  backend2Request
-	response backend2Response
-	socket   *backend2Socket
-	// Stream states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	conn   *backend2Conn
-	id     uint32
-	region Region // a region-based memory pool
-	// Stream states (zeros)
-	backend2Stream0 // all values must be zero by default in this struct!
-}
-type backend2Stream0 struct { // for fast reset, entirely
 }
 
 func (s *backend2Stream) onUse(conn *backend2Conn, id uint32) { // for non-zeros
@@ -1493,6 +1493,16 @@ func (r *backend2Response) recvHead() {
 
 func (r *backend2Response) readContent() (p []byte, err error) { return r.readContent2() }
 
+// backend2Socket is the backend-side HTTP/2 webSocket.
+type backend2Socket struct { // incoming and outgoing
+	// Parent
+	backendSocket_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
+}
+
 // poolBackend2Socket
 var poolBackend2Socket sync.Pool
 
@@ -1502,16 +1512,6 @@ func getBackend2Socket(stream *backend2Stream) *backend2Socket {
 }
 func putBackend2Socket(socket *backend2Socket) {
 	// TODO
-}
-
-// backend2Socket is the backend-side HTTP/2 webSocket.
-type backend2Socket struct { // incoming and outgoing
-	// Parent
-	backendSocket_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
 }
 
 func (s *backend2Socket) onUse() {
@@ -1632,6 +1632,12 @@ const ( // HTTP/2 sizes and limits for both of our HTTP/2 server and HTTP/2 back
 	http2MaxActiveStreams = 127
 )
 
+// http2Buffer
+type http2Buffer struct {
+	buf [9 + http2MaxFrameSize]byte // header + payload
+	ref atomic.Int32
+}
+
 // poolHTTP2Buffer
 var poolHTTP2Buffer sync.Pool
 
@@ -1645,12 +1651,6 @@ func getHTTP2Buffer() *http2Buffer {
 	return buffer
 }
 func putHTTP2Buffer(buffer *http2Buffer) { poolHTTP2Buffer.Put(buffer) }
-
-// http2Buffer
-type http2Buffer struct {
-	buf [9 + http2MaxFrameSize]byte // header + payload
-	ref atomic.Int32
-}
 
 func (b *http2Buffer) size() uint32  { return uint32(cap(b.buf)) }
 func (b *http2Buffer) getRef() int32 { return b.ref.Load() }

@@ -32,8 +32,6 @@ var calls = map[string]func(){ // indexed by action
 			for name, value := range resp.Args {
 				fmt.Printf("%s: %s\n", name, value)
 			}
-		} else {
-			fmt.Fprintf(os.Stderr, "call leader at %s: %s\n", common.TargetAddr, err.Error())
 		}
 	},
 	"leader": func() {
@@ -41,8 +39,6 @@ var calls = map[string]func(){ // indexed by action
 			for name, value := range resp.Args {
 				fmt.Printf("%s: %s\n", name, value)
 			}
-		} else {
-			fmt.Fprintf(os.Stderr, "call leader at %s: %s\n", common.TargetAddr, err.Error())
 		}
 	},
 	"worker": func() {
@@ -50,15 +46,11 @@ var calls = map[string]func(){ // indexed by action
 			for name, value := range resp.Args {
 				fmt.Printf("%s: %s\n", name, value)
 			}
-		} else {
-			fmt.Fprintf(os.Stderr, "call leader at %s: %s\n", common.TargetAddr, err.Error())
 		}
 	},
 	"reload": func() {
 		if resp, err := _call(common.ComdReload, 0, nil); err == nil && resp.Flag == 0 {
 			fmt.Println("reload ok!")
-		} else {
-			fmt.Fprintf(os.Stderr, "call leader at %s: %s\n", common.TargetAddr, err.Error())
 		}
 	},
 }
@@ -66,6 +58,7 @@ var calls = map[string]func(){ // indexed by action
 func _call(comd uint8, flag uint16, args map[string]string) (*msgx.Message, error) {
 	cmdConn, err := net.Dial("tcp", common.TargetAddr)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to call gorox leader at %s: %s\n", common.TargetAddr, err.Error())
 		return nil, err
 	}
 	defer cmdConn.Close()
@@ -90,7 +83,7 @@ var tells = map[string]func(){ // indexed by action
 func _tell(comd uint8, flag uint16, args map[string]string) {
 	cmdConn, err := net.Dial("tcp", common.TargetAddr)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "tell leader at %s failed: %s\n", common.TargetAddr, err.Error())
+		fmt.Fprintf(os.Stderr, "failed to tell gorox leader at %s: %s\n", common.TargetAddr, err.Error())
 		return
 	}
 	defer cmdConn.Close()

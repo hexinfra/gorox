@@ -200,6 +200,21 @@ func (g *quixGate) justClose(quicConn *quic.Conn) {
 	g.DecConn()
 }
 
+// QUIXConn is a QUIX connection coming from QUIXRouter.
+type QUIXConn struct {
+	// Conn states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id       int64
+	gate     *quixGate
+	quicConn *quic.Conn
+	// Conn states (zeros)
+	counter   atomic.Int64 // can be used to generate a random number
+	lastRead  time.Time    // deadline of last read operation
+	lastWrite time.Time    // deadline of last write operation
+}
+
 // poolQUIXConn
 var poolQUIXConn sync.Pool
 
@@ -216,21 +231,6 @@ func getQUIXConn(id int64, gate *quixGate, quicConn *quic.Conn) *QUIXConn {
 func putQUIXConn(quixConn *QUIXConn) {
 	quixConn.onPut()
 	poolQUIXConn.Put(quixConn)
-}
-
-// QUIXConn is a QUIX connection coming from QUIXRouter.
-type QUIXConn struct {
-	// Conn states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id       int64
-	gate     *quixGate
-	quicConn *quic.Conn
-	// Conn states (zeros)
-	counter   atomic.Int64 // can be used to generate a random number
-	lastRead  time.Time    // deadline of last read operation
-	lastWrite time.Time    // deadline of last write operation
 }
 
 func (c *QUIXConn) onGet(id int64, gate *quixGate, quicConn *quic.Conn) {
@@ -564,6 +564,21 @@ func (n *quixNode) storeStream(qStream *QStream) {
 	// TODO
 }
 
+// QConn is a backend-side quix connection to quixNode.
+type QConn struct {
+	// Conn states (non-zeros)
+	id         int64 // the conn id
+	node       *quixNode
+	quicConn   *quic.Conn
+	maxStreams int32 // how many streams are allowed on this connection?
+	// Conn states (zeros)
+	counter     atomic.Int64 // can be used to generate a random number
+	lastWrite   time.Time    // deadline of last write operation
+	lastRead    time.Time    // deadline of last read operation
+	usedStreams atomic.Int32 // how many streams have been used?
+	broken      atomic.Bool  // is connection broken?
+}
+
 // poolQConn
 var poolQConn sync.Pool
 
@@ -580,21 +595,6 @@ func getQConn(id int64, node *quixNode, quicConn *quic.Conn) *QConn {
 func putQConn(qConn *QConn) {
 	qConn.onPut()
 	poolQConn.Put(qConn)
-}
-
-// QConn is a backend-side quix connection to quixNode.
-type QConn struct {
-	// Conn states (non-zeros)
-	id         int64 // the conn id
-	node       *quixNode
-	quicConn   *quic.Conn
-	maxStreams int32 // how many streams are allowed on this connection?
-	// Conn states (zeros)
-	counter     atomic.Int64 // can be used to generate a random number
-	lastWrite   time.Time    // deadline of last write operation
-	lastRead    time.Time    // deadline of last read operation
-	usedStreams atomic.Int32 // how many streams have been used?
-	broken      atomic.Bool  // is connection broken?
 }
 
 func (c *QConn) onGet(id int64, node *quixNode, quicConn *quic.Conn) {
@@ -639,6 +639,13 @@ func (c *QConn) Close() error {
 	return quicConn.Close()
 }
 
+// QStream is a bidirectional stream of QConn.
+type QStream struct {
+	// TODO
+	conn       *QConn
+	quicStream *quic.Stream
+}
+
 // poolQStream
 var poolQStream sync.Pool
 
@@ -655,13 +662,6 @@ func getQStream(conn *QConn, quicStream *quic.Stream) *QStream {
 func putQStream(stream *QStream) {
 	stream.onEnd()
 	poolQStream.Put(stream)
-}
-
-// QStream is a bidirectional stream of QConn.
-type QStream struct {
-	// TODO
-	conn       *QConn
-	quicStream *quic.Stream
 }
 
 func (s *QStream) onUse(conn *QConn, quicStream *quic.Stream) {

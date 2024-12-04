@@ -216,6 +216,22 @@ func (g *udpxGate) justClose(pktConn net.PacketConn) {
 	g.DecConn()
 }
 
+// UDPXConn
+type UDPXConn struct {
+	// Conn states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id      int64
+	gate    *udpxGate
+	pktConn net.PacketConn
+	rawConn syscall.RawConn
+	// Conn states (zeros)
+	counter   atomic.Int64 // can be used to generate a random number
+	lastRead  time.Time    // deadline of last read operation
+	lastWrite time.Time    // deadline of last write operation
+}
+
 // poolUDPXConn
 var poolUDPXConn sync.Pool
 
@@ -232,22 +248,6 @@ func getUDPXConn(id int64, gate *udpxGate, pktConn net.PacketConn, rawConn sysca
 func putUDPXConn(udpxConn *UDPXConn) {
 	udpxConn.onPut()
 	poolUDPXConn.Put(udpxConn)
-}
-
-// UDPXConn
-type UDPXConn struct {
-	// Conn states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id      int64
-	gate    *udpxGate
-	pktConn net.PacketConn
-	rawConn syscall.RawConn
-	// Conn states (zeros)
-	counter   atomic.Int64 // can be used to generate a random number
-	lastRead  time.Time    // deadline of last read operation
-	lastWrite time.Time    // deadline of last write operation
 }
 
 func (c *UDPXConn) onGet(id int64, gate *udpxGate, pktConn net.PacketConn, rawConn syscall.RawConn) {
@@ -552,6 +552,20 @@ func (n *udpxNode) dial() (*UConn, error) {
 	return nil, nil
 }
 
+// UConn
+type UConn struct {
+	// Conn states (non-zeros)
+	id      int64 // the conn id
+	node    *udpxNode
+	netConn net.PacketConn
+	rawConn syscall.RawConn // for syscall
+	// Conn states (zeros)
+	counter   atomic.Int64 // can be used to generate a random number
+	lastWrite time.Time    // deadline of last write operation
+	lastRead  time.Time    // deadline of last read operation
+	broken    atomic.Bool  // is conn broken?
+}
+
 // poolUConn
 var poolUConn sync.Pool
 
@@ -568,20 +582,6 @@ func getUConn(id int64, node *udpxNode, netConn net.PacketConn, rawConn syscall.
 func putUConn(uConn *UConn) {
 	uConn.onPut()
 	poolUConn.Put(uConn)
-}
-
-// UConn
-type UConn struct {
-	// Conn states (non-zeros)
-	id      int64 // the conn id
-	node    *udpxNode
-	netConn net.PacketConn
-	rawConn syscall.RawConn // for syscall
-	// Conn states (zeros)
-	counter   atomic.Int64 // can be used to generate a random number
-	lastWrite time.Time    // deadline of last write operation
-	lastRead  time.Time    // deadline of last read operation
-	broken    atomic.Bool  // is conn broken?
 }
 
 func (c *UConn) onGet(id int64, node *udpxNode, netConn net.PacketConn, rawConn syscall.RawConn) {

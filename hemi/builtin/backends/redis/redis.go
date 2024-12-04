@@ -122,6 +122,21 @@ func (n *redisNode) closeConn(redisConn *RedisConn) {
 	// TODO
 }
 
+// RedisConn is a connection to redisNode.
+type RedisConn struct {
+	// Conn states (non-zeros)
+	id      int64 // the conn id
+	node    *redisNode
+	netConn net.Conn
+	rawConn syscall.RawConn
+	expire  time.Time // when the conn is considered expired
+	// Conn states (zeros)
+	counter   atomic.Int64 // can be used to generate a random number
+	lastWrite time.Time    // deadline of last write operation
+	lastRead  time.Time    // deadline of last read operation
+}
+
+// poolRedisConn
 var poolRedisConn sync.Pool
 
 func getRedisConn(id int64, node *redisNode, netConn net.Conn, rawConn syscall.RawConn) *RedisConn {
@@ -137,20 +152,6 @@ func getRedisConn(id int64, node *redisNode, netConn net.Conn, rawConn syscall.R
 func putRedisConn(redisConn *RedisConn) {
 	redisConn.onPut()
 	poolRedisConn.Put(redisConn)
-}
-
-// RedisConn is a connection to redisNode.
-type RedisConn struct {
-	// Conn states (non-zeros)
-	id      int64 // the conn id
-	node    *redisNode
-	netConn net.Conn
-	rawConn syscall.RawConn
-	expire  time.Time // when the conn is considered expired
-	// Conn states (zeros)
-	counter   atomic.Int64 // can be used to generate a random number
-	lastWrite time.Time    // deadline of last write operation
-	lastRead  time.Time    // deadline of last read operation
 }
 
 func (c *RedisConn) onGet(id int64, node *redisNode, netConn net.Conn, rawConn syscall.RawConn) {

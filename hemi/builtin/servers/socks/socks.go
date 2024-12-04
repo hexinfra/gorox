@@ -145,6 +145,19 @@ func (g *socksGate) justClose(tcpConn *net.TCPConn) {
 	g.DecConn()
 }
 
+// socksConn
+type socksConn struct {
+	// Conn states (stocks)
+	stockInput [8192]byte
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id      int64
+	gate    *socksGate
+	tcpConn *net.TCPConn
+	input   []byte
+	// Conn states (zeros)
+}
+
 // poolSocksConn
 var poolSocksConn sync.Pool
 
@@ -161,19 +174,6 @@ func getSocksConn(id int64, gate *socksGate, tcpConn *net.TCPConn) *socksConn {
 func putSocksConn(conn *socksConn) {
 	conn.onPut()
 	poolSocksConn.Put(conn)
-}
-
-// socksConn
-type socksConn struct {
-	// Conn states (stocks)
-	stockInput [8192]byte
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id      int64
-	gate    *socksGate
-	tcpConn *net.TCPConn
-	input   []byte
-	// Conn states (zeros)
 }
 
 func (c *socksConn) onGet(id int64, gate *socksGate, tcpConn *net.TCPConn) {

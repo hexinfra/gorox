@@ -463,6 +463,28 @@ func (n *fcgiNode) closeFree() int {
 	return qnty
 }
 
+// fcgiConn
+type fcgiConn struct {
+	// Assocs
+	next   *fcgiConn  // the linked-list
+	exchan fcgiExchan // an fcgi connection has exactly one stream
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id         int64 // the conn id
+	node       *fcgiNode
+	netConn    net.Conn        // *net.TCPConn or *net.UnixConn
+	rawConn    syscall.RawConn // for syscall
+	expire     time.Time       // when the conn is considered expired
+	persistent bool            // keep the connection after current exchan?
+	// Conn states (zeros)
+	counter     atomic.Int64 // can be used to generate a random number
+	lastWrite   time.Time    // deadline of last write operation
+	lastRead    time.Time    // deadline of last read operation
+	usedExchans atomic.Int32 // how many exchans have been used?
+	broken      atomic.Bool  // is conn broken?
+}
+
 // poolFCGIConn
 var poolFCGIConn sync.Pool
 
@@ -485,28 +507,6 @@ func getFCGIConn(id int64, node *fcgiNode, netConn net.Conn, rawConn syscall.Raw
 func putFCGIConn(conn *fcgiConn) {
 	conn.onPut()
 	poolFCGIConn.Put(conn)
-}
-
-// fcgiConn
-type fcgiConn struct {
-	// Assocs
-	next   *fcgiConn  // the linked-list
-	exchan fcgiExchan // an fcgi connection has exactly one stream
-	// Conn states (stocks)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id         int64 // the conn id
-	node       *fcgiNode
-	netConn    net.Conn        // *net.TCPConn or *net.UnixConn
-	rawConn    syscall.RawConn // for syscall
-	expire     time.Time       // when the conn is considered expired
-	persistent bool            // keep the connection after current exchan?
-	// Conn states (zeros)
-	counter     atomic.Int64 // can be used to generate a random number
-	lastWrite   time.Time    // deadline of last write operation
-	lastRead    time.Time    // deadline of last read operation
-	usedExchans atomic.Int32 // how many exchans have been used?
-	broken      atomic.Bool  // is conn broken?
 }
 
 func (c *fcgiConn) onGet(id int64, node *fcgiNode, netConn net.Conn, rawConn syscall.RawConn) {

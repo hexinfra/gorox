@@ -231,17 +231,17 @@ func (c *server3Conn) closeConn() {
 
 // server3Stream is the server-side HTTP/3 stream.
 type server3Stream struct {
+	// Parent
+	webStream_
 	// Assocs
 	request  server3Request  // the http/3 request.
 	response server3Response // the http/3 response.
 	socket   *server3Socket  // ...
 	// Stream states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	conn       *server3Conn
 	quicStream *quic.Stream // the underlying quic stream
-	region     Region       // a region-based memory pool
 	// Stream states (zeros)
 	server3Stream0 // all values must be zero by default in this struct!
 }
@@ -276,7 +276,7 @@ func putServer3Stream(stream *server3Stream) {
 }
 
 func (s *server3Stream) onUse(conn *server3Conn, quicStream *quic.Stream) { // for non-zeros
-	s.region.Init()
+	s.webStream_.onUse()
 	s.conn = conn
 	s.quicStream = quicStream
 	s.request.onUse(Version3)
@@ -292,7 +292,7 @@ func (s *server3Stream) onEnd() { // for zeros
 	s.conn = nil
 	s.quicStream = nil
 	s.server3Stream0 = server3Stream0{}
-	s.region.Free()
+	s.webStream_.onEnd()
 }
 
 func (s *server3Stream) execute() { // runner
@@ -672,17 +672,17 @@ func (c *backend3Conn) Close() error {
 
 // backend3Stream
 type backend3Stream struct {
+	// Parent
+	webStream_
 	// Assocs
 	request  backend3Request
 	response backend3Response
 	socket   *backend3Socket
 	// Stream states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	conn       *backend3Conn
 	quicStream *quic.Stream // the underlying quic stream
-	region     Region       // a region-based memory pool
 	// Stream states (zeros)
 	backend3Stream0 // all values must be zero by default in this struct!
 }
@@ -714,7 +714,7 @@ func putBackend3Stream(stream *backend3Stream) {
 }
 
 func (s *backend3Stream) onUse(conn *backend3Conn, quicStream *quic.Stream) { // for non-zeros
-	s.region.Init()
+	s.webStream_.onUse()
 	s.conn = conn
 	s.quicStream = quicStream
 	s.request.onUse(Version3)
@@ -730,7 +730,7 @@ func (s *backend3Stream) onEnd() { // for zeros
 	s.conn = nil
 	s.quicStream = nil
 	s.backend3Stream0 = backend3Stream0{}
-	s.region.Free()
+	s.webStream_.onEnd()
 }
 
 func (s *backend3Stream) Request() request { return &s.request }

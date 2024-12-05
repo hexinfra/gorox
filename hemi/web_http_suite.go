@@ -3564,6 +3564,23 @@ type webStream interface {
 	writev(vector *net.Buffers) (int64, error)
 }
 
+// webStream_ is the parent for *server[1-3]Stream and *backend[1-3]Stream.
+type webStream_ struct {
+	// Stream states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	region Region // a region-based memory pool
+	// Stream states (zeros)
+}
+
+func (s *webStream_) onUse() {
+	s.region.Init()
+}
+func (s *webStream_) onEnd() {
+	s.region.Free()
+}
+
 // webIn_ is the parent for serverRequest_ and backendResponse_.
 type webIn_ struct { // incoming. needs parsing
 	// Assocs

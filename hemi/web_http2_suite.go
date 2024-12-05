@@ -830,19 +830,19 @@ func (c *server2Conn) closeConn() {
 
 // server2Stream is the server-side HTTP/2 stream.
 type server2Stream struct {
+	// Parent
+	webStream_
 	// Assocs
 	request  server2Request  // the http/2 request.
 	response server2Response // the http/2 response.
 	socket   *server2Socket  // ...
 	// Stream states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	conn      *server2Conn
 	id        uint32 // stream id
 	inWindow  int32  // stream-level window size for incoming DATA frames
 	outWindow int32  // stream-level window size for outgoing DATA frames
-	region    Region // a region-based memory pool
 	// Stream states (zeros)
 	server2Stream0 // all values must be zero by default in this struct!
 }
@@ -877,7 +877,7 @@ func putServer2Stream(stream *server2Stream) {
 }
 
 func (s *server2Stream) onUse(conn *server2Conn, id uint32, outWindow int32) { // for non-zeros
-	s.region.Init()
+	s.webStream_.onUse()
 	s.conn = conn
 	s.id = id
 	s.inWindow = _64K1 // max size of r.bodyWindow
@@ -894,7 +894,7 @@ func (s *server2Stream) onEnd() { // for zeros
 	}
 	s.conn = nil
 	s.server2Stream0 = server2Stream0{}
-	s.region.Free()
+	s.webStream_.onEnd()
 }
 
 func (s *server2Stream) execute() { // runner
@@ -1318,17 +1318,17 @@ func (c *backend2Conn) Close() error {
 
 // backend2Stream
 type backend2Stream struct {
+	// Parent
+	webStream_
 	// Assocs
 	request  backend2Request
 	response backend2Response
 	socket   *backend2Socket
 	// Stream states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	conn   *backend2Conn
-	id     uint32
-	region Region // a region-based memory pool
+	conn *backend2Conn
+	id   uint32
 	// Stream states (zeros)
 	backend2Stream0 // all values must be zero by default in this struct!
 }
@@ -1360,7 +1360,7 @@ func putBackend2Stream(stream *backend2Stream) {
 }
 
 func (s *backend2Stream) onUse(conn *backend2Conn, id uint32) { // for non-zeros
-	s.region.Init()
+	s.webStream_.onUse()
 	s.conn = conn
 	s.id = id
 	s.request.onUse(Version2)
@@ -1375,7 +1375,7 @@ func (s *backend2Stream) onEnd() { // for zeros
 	}
 	s.conn = nil
 	s.backend2Stream0 = backend2Stream0{}
-	s.region.Free()
+	s.webStream_.onEnd()
 }
 
 func (s *backend2Stream) Request() request { return &s.request }

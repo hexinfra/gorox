@@ -440,21 +440,21 @@ func (c *server1Conn) serve() { // runner
 
 // server1Stream is the server-side HTTP/1 stream.
 type server1Stream struct {
+	// Parent
+	webStream_
 	// Assocs
 	conn     *server1Conn
 	request  server1Request  // the server-side http/1 request.
 	response server1Response // the server-side http/1 response.
 	socket   *server1Socket  // the server-side http/1 webSocket.
 	// Stream states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	region Region // a region-based memory pool
 	// Stream states (zeros)
 }
 
 func (s *server1Stream) onUse() { // for non-zeros
-	s.region.Init()
+	s.webStream_.onUse()
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
 }
@@ -465,7 +465,7 @@ func (s *server1Stream) onEnd() { // for zeros
 		s.socket.onEnd()
 		s.socket = nil
 	}
-	s.region.Free()
+	s.webStream_.onEnd()
 }
 
 func (s *server1Stream) execute() {
@@ -1711,21 +1711,21 @@ func (c *backend1Conn) Close() error {
 
 // backend1Stream is the backend-side HTTP/1 stream.
 type backend1Stream struct {
+	// Parent
+	webStream_
 	// Assocs
 	conn     *backend1Conn    // the backend-side http/1 conn
 	request  backend1Request  // the backend-side http/1 request
 	response backend1Response // the backend-side http/1 response
 	socket   *backend1Socket  // the backend-side http/1 webSocket
 	// Stream states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Stream states (controlled)
 	// Stream states (non zeros)
-	region Region // a region-based memory pool
 	// Stream states (zeros)
 }
 
 func (s *backend1Stream) onUse() { // for non-zeros
-	s.region.Init()
+	s.webStream_.onUse()
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
 }
@@ -1736,7 +1736,7 @@ func (s *backend1Stream) onEnd() { // for zeros
 		s.socket.onEnd()
 		s.socket = nil
 	}
-	s.region.Free()
+	s.webStream_.onEnd()
 }
 
 func (s *backend1Stream) Request() request { return &s.request }

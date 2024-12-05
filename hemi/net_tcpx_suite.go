@@ -597,6 +597,64 @@ type TCPXDealet_ struct {
 	// States
 }
 
+// TCPXProxyConfig
+type TCPXProxyConfig struct {
+	// Inbound
+	// Outbound
+}
+
+func TCPXReverseProxy(conn *TCPXConn, backend *TCPXBackend, config *TCPXProxyConfig) {
+	backConn, backErr := backend.Dial()
+	if backErr != nil {
+		conn.Close()
+		return
+	}
+	inboundOver := make(chan struct{}, 1)
+	// Inbound
+	go func() {
+		var (
+			payload []byte
+			err     error
+			backErr error
+		)
+		for {
+			if err = conn.SetReadDeadline(); err == nil {
+				if payload, err = conn.Recv(); len(payload) > 0 {
+					if backErr = backConn.setWriteDeadline(); backErr == nil {
+						backErr = backConn.send(payload)
+					}
+				}
+			}
+			if err != nil || backErr != nil {
+				conn.CloseRead()
+				backConn.closeWrite()
+				break
+			}
+		}
+		inboundOver <- struct{}{}
+	}()
+	// Outbound
+	var (
+		payload []byte
+		err     error
+	)
+	for {
+		if backErr = backConn.setReadDeadline(); backErr == nil {
+			if payload, backErr = backConn.recv(); len(payload) > 0 {
+				if err = conn.SetWriteDeadline(); err == nil {
+					err = conn.Send(payload)
+				}
+			}
+		}
+		if backErr != nil || err != nil {
+			backConn.closeRead()
+			conn.CloseWrite()
+			break
+		}
+	}
+	<-inboundOver
+}
+
 // tcpxProxy dealet passes TCPX connections to TCPX backends.
 type tcpxProxy struct {
 	// Parent
@@ -606,6 +664,7 @@ type tcpxProxy struct {
 	router  *TCPXRouter  // the router to which the dealet belongs
 	backend *TCPXBackend // the backend to pass to
 	// States
+	TCPXProxyConfig // embeded
 }
 
 func (d *tcpxProxy) onCreate(name string, stage *Stage, router *TCPXRouter) {
@@ -640,60 +699,8 @@ func (d *tcpxProxy) OnPrepare() {
 }
 
 func (d *tcpxProxy) Deal(conn *TCPXConn) (dealt bool) {
-	dealt = true
-	tConn, err := d.backend.Dial()
-	if err != nil {
-		conn.Close()
-		return
-	}
-	inboundOver := make(chan struct{}, 1)
-	go d.relayInbound(conn, tConn, inboundOver)
-	d.relayOutbound(tConn, conn)
-	<-inboundOver
-	return
-}
-func (d *tcpxProxy) relayInbound(tcpxConn *TCPXConn, backConn *TConn, overChan chan struct{}) {
-	var (
-		payload []byte
-		tcpxErr error
-		backErr error
-	)
-	for {
-		if tcpxErr = tcpxConn.SetReadDeadline(); tcpxErr == nil {
-			if payload, tcpxErr = tcpxConn.Recv(); len(payload) > 0 {
-				if backErr = backConn.setWriteDeadline(); backErr == nil {
-					backErr = backConn.send(payload)
-				}
-			}
-		}
-		if tcpxErr != nil || backErr != nil {
-			tcpxConn.CloseRead()
-			backConn.closeWrite()
-			break
-		}
-	}
-	overChan <- struct{}{}
-}
-func (d *tcpxProxy) relayOutbound(backConn *TConn, tcpxConn *TCPXConn) {
-	var (
-		payload []byte
-		backErr error
-		tcpxErr error
-	)
-	for {
-		if backErr = backConn.setReadDeadline(); backErr == nil {
-			if payload, backErr = backConn.recv(); len(payload) > 0 {
-				if tcpxErr = tcpxConn.SetWriteDeadline(); tcpxErr == nil {
-					tcpxErr = tcpxConn.Send(payload)
-				}
-			}
-		}
-		if backErr != nil || tcpxErr != nil {
-			backConn.closeRead()
-			tcpxConn.CloseWrite()
-			break
-		}
-	}
+	TCPXReverseProxy(conn, d.backend, &d.TCPXProxyConfig)
+	return true
 }
 
 // TCPXBackend component.

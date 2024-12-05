@@ -9,7 +9,7 @@ Layout
 
 Hemi contains these directories:
 
-  * builtin/  - Place builtin components,
+  * classic/  - Place classic components,
   * hemicar/  - A prototype application used to develop Hemi,
   * library/  - Place general purpose libraries,
   * procmgr/  - A process manager for programs using Hemi,
@@ -71,7 +71,7 @@ A program (like Gorox) using Hemi engine typically has these dependencies:
                 |                     |         |          |
                 v                     v         v          v
   +-----------------------+   +---------------------------------+
-  |       <builtin>       |-->+              <hemi>             |
+  |       <classic>       |-->+              <hemi>             |
   +-----------------------+   +---------------------------------+
 ```
 

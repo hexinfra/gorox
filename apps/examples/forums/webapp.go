@@ -8,7 +8,7 @@
 package forums
 
 import (
-	"github.com/hexinfra/gorox/hemi/builtin/mappers/simple"
+	"github.com/hexinfra/gorox/hemi/classic/mappers/simple"
 
 	. "github.com/hexinfra/gorox/hemi"
 )

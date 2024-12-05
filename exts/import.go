@@ -2,7 +2,7 @@
 
 package exts
 
-import _ "github.com/hexinfra/gorox/hemi/builtin"
+import _ "github.com/hexinfra/gorox/hemi/classic"
 
 import ( // import vendor exts here
 )

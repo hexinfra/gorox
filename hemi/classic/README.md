@@ -1,0 +1,1 @@
+Place classic components.

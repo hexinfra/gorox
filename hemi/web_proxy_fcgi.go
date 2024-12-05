@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// FCGI proxy and backend implementation. See: https://fastcgi-archives.github.io/FastCGI_Specification.html
+// FCGI (gateway) proxy and backend implementation. See: https://fastcgi-archives.github.io/FastCGI_Specification.html
 
 // FCGI is mainly used by PHP applications. It doesn't support HTTP trailers.
 // And we don't use backend-side chunking due to the limitation of CGI/1.1 even

@@ -2689,6 +2689,9 @@ func (s *serverSocket_) onEnd() {
 	s.webSocket_.onEnd()
 }
 
+func (s *serverSocket_) serverTodo() {
+}
+
 // WebBackend
 type WebBackend interface { // for *HTTP[1-3]Backend
 	// Imports
@@ -3469,13 +3472,11 @@ func (r *backendResponse_) unsafeLastModified() []byte {
 }
 
 func (r *backendResponse_) HasContent() bool {
-	// All 1xx (Informational), 204 (No Content), and 304 (Not Modified)
-	// responses do not include content.
+	// All 1xx (Informational), 204 (No Content), and 304 (Not Modified) responses do not include content.
 	if r.status < StatusOK || r.status == StatusNoContent || r.status == StatusNotModified {
 		return false
 	}
-	// All other responses do include content, although that content might
-	// be of zero length.
+	// All other responses do include content, although that content might be of zero length.
 	return r.contentSize >= 0 || r.IsVague()
 }
 func (r *backendResponse_) Content() string       { return string(r.unsafeContent()) }
@@ -3521,6 +3522,9 @@ func (s *backendSocket_) onEnd() {
 	s.backendSocket0 = backendSocket0{}
 
 	s.webSocket_.onEnd()
+}
+
+func (s *backendSocket_) backendTodo() {
 }
 
 //////////////////////////////////////// HTTP i/o ////////////////////////////////////////

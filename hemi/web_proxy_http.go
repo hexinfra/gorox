@@ -40,7 +40,7 @@ type WebExchanProxyConfig struct {
 	DelResponseHeaders  [][]byte
 }
 
-func WebExchanReverseProxy(req Request, resp Response, backend WebBackend, config *WebExchanProxyConfig) {
+func WebExchanReverseProxy(req Request, resp Response, cacher Cacher, backend WebBackend, config *WebExchanProxyConfig) {
 	var content any
 	hasContent := req.HasContent()
 	if hasContent && config.BufferClientContent { // including size 0
@@ -261,7 +261,7 @@ func (h *httpProxy) IsProxy() bool { return true }
 func (h *httpProxy) IsCache() bool { return h.cacher != nil }
 
 func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
-	WebExchanReverseProxy(req, resp, h.backend, &h.WebExchanProxyConfig)
+	WebExchanReverseProxy(req, resp, h.cacher, h.backend, &h.WebExchanProxyConfig)
 	return true
 }
 

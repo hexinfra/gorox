@@ -1971,7 +1971,7 @@ func (r *backend1Response) _recvControl() bool { // HTTP-version SP status-code 
 			}
 		}
 	}
-	if !bytes.Equal(r.input[r.pBack:r.pFore], bytesHTTP1_1) { // HTTP/1.0 is not supported in backend side
+	if !bytes.Equal(r.input[r.pBack:r.pFore], bytesHTTP1_1) { // for HTTP/1, only HTTP/1.1 is supported in backend side
 		r.headResult = StatusHTTPVersionNotSupported
 		return false
 	}

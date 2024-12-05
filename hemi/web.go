@@ -18,14 +18,6 @@ import (
 	"time"
 )
 
-func init() {
-	RegisterHandlet("static", func(name string, stage *Stage, webapp *Webapp) Handlet {
-		h := new(staticHandlet)
-		h.onCreate(name, stage, webapp)
-		return h
-	})
-}
-
 // Webapp is the Web application.
 type Webapp struct {
 	// Parent

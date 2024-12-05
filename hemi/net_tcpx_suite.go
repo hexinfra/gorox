@@ -603,6 +603,7 @@ type TCPXProxyConfig struct {
 	// Outbound
 }
 
+// TCPXReverseProxy
 func TCPXReverseProxy(conn *TCPXConn, backend *TCPXBackend, config *TCPXProxyConfig) {
 	backConn, backErr := backend.Dial()
 	if backErr != nil {

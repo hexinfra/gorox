@@ -432,15 +432,26 @@ type UDPXDealet_ struct {
 	// States
 }
 
+// UDPXProxyConfig
+type UDPXProxyConfig struct {
+	// TODO
+}
+
+// UDPXReverseProxy
+func UDPXReverseProxy(conn *UDPXConn, backend *UDPXBackend, config *UDPXProxyConfig) {
+	// TODO
+}
+
 // udpxProxy dealet passes UDPX connections to UDPX backends.
 type udpxProxy struct {
 	// Parent
 	UDPXDealet_
 	// Assocs
-	stage   *Stage // current stage
-	router  *UDPXRouter
+	stage   *Stage       // current stage
+	router  *UDPXRouter  // the router to which the dealet belongs
 	backend *UDPXBackend // the backend to pass to
 	// States
+	UDPXProxyConfig // embeded
 }
 
 func (d *udpxProxy) onCreate(name string, stage *Stage, router *UDPXRouter) {
@@ -474,7 +485,7 @@ func (d *udpxProxy) OnPrepare() {
 }
 
 func (d *udpxProxy) Deal(conn *UDPXConn) (dealt bool) {
-	// TODO
+	UDPXReverseProxy(conn, d.backend, &d.UDPXProxyConfig)
 	return true
 }
 

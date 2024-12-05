@@ -41,6 +41,7 @@ type WebExchanProxyConfig struct {
 	DelResponseHeaders  [][]byte
 }
 
+// WebExchanReverseProxy
 func WebExchanReverseProxy(req Request, resp Response, cacher Cacher, backend WebBackend, config *WebExchanProxyConfig) {
 	var content any
 	hasContent := req.HasContent()
@@ -271,8 +272,10 @@ type WebSocketProxyConfig struct {
 	// TODO
 }
 
+// WebSocketReverseProxy
 func WebSocketReverseProxy(req Request, sock Socket, backend WebBackend, config *WebSocketProxyConfig) {
 	// TODO
+	sock.Close()
 }
 
 // sockProxy socklet passes webSockets to http backends.
@@ -284,6 +287,7 @@ type sockProxy struct {
 	webapp  *Webapp    // the webapp to which the proxy belongs
 	backend WebBackend // the *HTTP[1-3]Backend to pass to
 	// States
+	WebSocketProxyConfig // embeded
 }
 
 func (s *sockProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
@@ -318,6 +322,5 @@ func (s *sockProxy) OnPrepare() {
 func (s *sockProxy) IsProxy() bool { return true }
 
 func (s *sockProxy) Serve(req Request, sock Socket) {
-	// TODO(diogin): Implementation
-	sock.Close()
+	WebSocketReverseProxy(req, sock, s.backend, &s.WebSocketProxyConfig)
 }

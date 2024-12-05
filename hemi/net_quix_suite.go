@@ -416,15 +416,26 @@ type QUIXDealet_ struct {
 	// States
 }
 
+// QUIXProxyConfig
+type QUIXProxyConfig struct {
+	// TODO
+}
+
+// QUIXReverseProxy
+func QUIXReverseProxy(conn *QUIXConn, stream *QUIXStream, backend *QUIXBackend, config *QUIXProxyConfig) {
+	// TODO
+}
+
 // quixProxy dealet passes QUIX connections to QUIX backends.
 type quixProxy struct {
 	// Parent
 	QUIXDealet_
 	// Assocs
-	stage   *Stage // current stage
-	router  *QUIXRouter
+	stage   *Stage       // current stage
+	router  *QUIXRouter  // the router to which the dealet belongs
 	backend *QUIXBackend // the backend to pass to
 	// States
+	QUIXProxyConfig // embeded
 }
 
 func (d *quixProxy) onCreate(name string, stage *Stage, router *QUIXRouter) {
@@ -458,7 +469,7 @@ func (d *quixProxy) OnPrepare() {
 }
 
 func (d *quixProxy) Deal(conn *QUIXConn, stream *QUIXStream) (dealt bool) {
-	// TODO
+	QUIXReverseProxy(conn, stream, d.backend, &d.QUIXProxyConfig)
 	return true
 }
 

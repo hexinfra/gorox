@@ -26,6 +26,7 @@ func init() {
 
 // WebExchanProxyConfig
 type WebExchanProxyConfig struct {
+	// Inbound
 	BufferClientContent bool
 	Hostname            []byte
 	ColonPort           []byte
@@ -33,7 +34,7 @@ type WebExchanProxyConfig struct {
 	AppendPathPrefix    []byte
 	AddRequestHeaders   map[string]Value
 	DelRequestHeaders   [][]byte
-
+	// Outbound
 	BufferServerContent bool
 	OutboundViaName     []byte
 	AddResponseHeaders  map[string]string

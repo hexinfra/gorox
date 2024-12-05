@@ -202,10 +202,11 @@ type serverRequest0 struct { // for fast reset, entirely
 	ifMatch         int8     // -1: if-match *, 0: no if-match field, >0: number of if-match: 1#entity-tag
 	ifNoneMatch     int8     // -1: if-none-match *, 0: no if-none-match field, >0: number of if-none-match: 1#entity-tag
 	nRanges         int8     // num of ranges. controls r.ranges
+	maxForwards     int8     // parsed value of "Max-Forwards" header, must <= 127
 	expectContinue  bool     // expect: 100-continue?
 	acceptTrailers  bool     // does client accept trailers? i.e. te: trailers, gzip
 	pathInfoGot     bool     // is r.pathInfo got?
-	_               [4]byte  // padding
+	_               [3]byte  // padding
 	indexes         struct { // indexes of some selected singleton headers, for fast accessing
 		authorization      uint8 // authorization header ->r.input
 		host               uint8 // host header ->r.input
@@ -838,7 +839,7 @@ func (r *serverRequest_) checkMaxForwards(header *pair, index uint8) bool { // M
 		r.headResult, r.failReason = StatusBadRequest, "duplicated max-forwards header"
 		return false
 	}
-	// TODO
+	// TODO: parse header.valueAt(r.input) as 1*DIGIT into r.maxForwards
 	r.indexes.maxForwards = index
 	return true
 }
@@ -846,11 +847,11 @@ func (r *serverRequest_) checkProxyAuthorization(header *pair, index uint8) bool
 	// auth-scheme = token
 	// token68     = 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" ) *"="
 	// auth-param  = token BWS "=" BWS ( token / quoted-string )
-	// TODO
 	if r.indexes.proxyAuthorization != 0 {
 		r.headResult, r.failReason = StatusBadRequest, "duplicated proxyAuthorization header"
 		return false
 	}
+	// TODO: check
 	r.indexes.proxyAuthorization = index
 	return true
 }

@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// HTTP/1 server and backend. See RFC 9112.
+// HTTP/1.x server and backend. See RFC 9112.
 
 // For server, both HTTP/1.0 and HTTP/1.1 are supported. Pipelining is supported but not optimized because it's rarely used.
 // For backend, only HTTP/1.1 is used, so backends MUST support HTTP/1.1. Pipelining is not used.
@@ -40,18 +40,18 @@ func init() {
 	})
 }
 
-// httpxServer is the HTTP/1 and HTTP/2 server. It has many httpxGates.
+// httpxServer is the HTTP/1.x and HTTP/2 server. It has many httpxGates.
 type httpxServer struct {
 	// Parent
 	webServer_[*httpxGate]
 	// States
-	httpMode int8 // 0: adaptive, 1: http/1, 2: http/2
+	httpMode int8 // 0: adaptive, 1: http/1.x, 2: http/2
 }
 
 func (s *httpxServer) onCreate(name string, stage *Stage) {
 	s.webServer_.onCreate(name, stage)
 
-	s.httpMode = 1 // http/1 by default. change to adaptive mode after http/2 server has been fully implemented
+	s.httpMode = 1 // http/1.x by default. change to adaptive mode after http/2 server has been fully implemented
 }
 
 func (s *httpxServer) OnConfigure() {
@@ -63,14 +63,14 @@ func (s *httpxServer) OnConfigure() {
 		s.ConfigureString("httpMode", &mode, func(value string) error {
 			value = strings.ToLower(value)
 			switch value {
-			case "http1", "http/1", "http2", "http/2", "adaptive":
+			case "http1", "http/1", "http/1.x", "http2", "http/2", "adaptive":
 				return nil
 			default:
 				return errors.New(".httpMode has an invalid value")
 			}
 		}, "adaptive")
 		switch mode {
-		case "http1", "http/1":
+		case "http1", "http/1", "http/1.x":
 			s.httpMode = 1
 		case "http2", "http/2":
 			s.httpMode = 2
@@ -301,10 +301,10 @@ func (g *httpxGate) justClose(netConn net.Conn) {
 	g.DecConn()
 }
 
-// server1Conn is the server-side HTTP/1 connection.
+// server1Conn is the server-side HTTP/1.x connection.
 type server1Conn struct {
 	// Assocs
-	stream server1Stream // an http/1 connection has exactly one stream
+	stream server1Stream // an http/1.x connection has exactly one stream
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -322,7 +322,7 @@ type server1Conn struct {
 	lastWrite   time.Time    // deadline of last write operation
 }
 
-// poolServer1Conn is the server-side HTTP/1 connection pool.
+// poolServer1Conn is the server-side HTTP/1.x connection pool.
 var poolServer1Conn sync.Pool
 
 func getServer1Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) *server1Conn {
@@ -438,15 +438,15 @@ func (c *server1Conn) serve() { // runner
 	putServer1Conn(c)
 }
 
-// server1Stream is the server-side HTTP/1 stream.
+// server1Stream is the server-side HTTP/1.x stream.
 type server1Stream struct {
 	// Parent
 	webStream_
 	// Assocs
 	conn     *server1Conn
-	request  server1Request  // the server-side http/1 request.
-	response server1Response // the server-side http/1 response.
-	socket   *server1Socket  // the server-side http/1 webSocket.
+	request  server1Request  // the server-side http/1.x request.
+	response server1Response // the server-side http/1.x response.
+	socket   *server1Socket  // the server-side http/1.x webSocket.
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -688,7 +688,7 @@ func (s *server1Stream) writev(vector *net.Buffers) (int64, error) {
 func (s *server1Stream) buffer256() []byte          { return s.stockBuffer[:] }
 func (s *server1Stream) unsafeMake(size int) []byte { return s.region.Make(size) }
 
-// server1Request is the server-side HTTP/1 request.
+// server1Request is the server-side HTTP/1.x request.
 type server1Request struct { // incoming. needs parsing
 	// Parent
 	serverRequest_
@@ -1136,7 +1136,7 @@ func (r *server1Request) cleanInput() {
 
 func (r *server1Request) readContent() (p []byte, err error) { return r.readContent1() }
 
-// server1Response is the server-side HTTP/1 response.
+// server1Response is the server-side HTTP/1.x response.
 type server1Response struct { // outgoing. needs building
 	// Parent
 	serverResponse_
@@ -1343,7 +1343,7 @@ func (r *server1Response) finalizeVague() error {
 func (r *server1Response) addedHeaders() []byte { return r.fields[0:r.fieldsEdge] }
 func (r *server1Response) fixedHeaders() []byte { return http1BytesFixedResponseHeaders }
 
-// server1Socket is the server-side HTTP/1 webSocket.
+// server1Socket is the server-side HTTP/1.x webSocket.
 type server1Socket struct { // incoming and outgoing
 	// Parent
 	serverSocket_
@@ -1608,11 +1608,11 @@ func (n *http1Node) closeFree() int {
 	return qnty
 }
 
-// backend1Conn is the backend-side HTTP/1 connection.
+// backend1Conn is the backend-side HTTP/1.x connection.
 type backend1Conn struct {
 	// Assocs
 	next   *backend1Conn  // the linked-list
-	stream backend1Stream // an http/1 connection has exactly one stream
+	stream backend1Stream // an http/1.x connection has exactly one stream
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -1630,7 +1630,7 @@ type backend1Conn struct {
 	lastRead    time.Time    // deadline of last read operation
 }
 
-// poolBackend1Conn is the backend-side HTTP/1 connection pool.
+// poolBackend1Conn is the backend-side HTTP/1.x connection pool.
 var poolBackend1Conn sync.Pool
 
 func getBackend1Conn(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) *backend1Conn {
@@ -1709,15 +1709,15 @@ func (c *backend1Conn) Close() error {
 	return netConn.Close()
 }
 
-// backend1Stream is the backend-side HTTP/1 stream.
+// backend1Stream is the backend-side HTTP/1.x stream.
 type backend1Stream struct {
 	// Parent
 	webStream_
 	// Assocs
-	conn     *backend1Conn    // the backend-side http/1 conn
-	request  backend1Request  // the backend-side http/1 request
-	response backend1Response // the backend-side http/1 response
-	socket   *backend1Socket  // the backend-side http/1 webSocket
+	conn     *backend1Conn    // the backend-side http/1.x conn
+	request  backend1Request  // the backend-side http/1.x request
+	response backend1Response // the backend-side http/1.x response
+	socket   *backend1Socket  // the backend-side http/1.x webSocket
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non zeros)
@@ -1786,7 +1786,7 @@ func (s *backend1Stream) readFull(p []byte) (int, error) { return io.ReadFull(s.
 func (s *backend1Stream) buffer256() []byte          { return s.stockBuffer[:] }
 func (s *backend1Stream) unsafeMake(size int) []byte { return s.region.Make(size) }
 
-// backend1Request is the backend-side HTTP/1 request.
+// backend1Request is the backend-side HTTP/1.x request.
 type backend1Request struct { // outgoing. needs building
 	// Parent
 	backendRequest_
@@ -1925,7 +1925,7 @@ func (r *backend1Request) finalizeVague() error { return r.finalizeVague1() }
 func (r *backend1Request) addedHeaders() []byte { return r.fields[r.controlEdge:r.fieldsEdge] }
 func (r *backend1Request) fixedHeaders() []byte { return http1BytesFixedRequestHeaders }
 
-// backend1Response is the backend-side HTTP/1 response.
+// backend1Response is the backend-side HTTP/1.x response.
 type backend1Response struct { // incoming. needs parsing
 	// Parent
 	backendResponse_
@@ -1971,7 +1971,7 @@ func (r *backend1Response) _recvControl() bool { // HTTP-version SP status-code 
 			}
 		}
 	}
-	if !bytes.Equal(r.input[r.pBack:r.pFore], bytesHTTP1_1) { // for HTTP/1, only HTTP/1.1 is supported in backend side
+	if !bytes.Equal(r.input[r.pBack:r.pFore], bytesHTTP1_1) { // for HTTP/1.x, only HTTP/1.1 is supported in backend side
 		r.headResult = StatusHTTPVersionNotSupported
 		return false
 	}
@@ -2073,7 +2073,7 @@ func (r *backend1Response) cleanInput() {
 
 func (r *backend1Response) readContent() (p []byte, err error) { return r.readContent1() }
 
-// backend1Socket is the backend-side HTTP/1 webSocket.
+// backend1Socket is the backend-side HTTP/1.x webSocket.
 type backend1Socket struct { // incoming and outgoing
 	// Parent
 	backendSocket_
@@ -2101,11 +2101,11 @@ func (s *backend1Socket) onEnd() {
 	s.backendSocket_.onEnd()
 }
 
-//////////////////////////////////////// HTTP/1 i/o ////////////////////////////////////////
+//////////////////////////////////////// HTTP/1.x i/o ////////////////////////////////////////
 
-// HTTP/1 incoming
+// HTTP/1.x incoming
 
-func (r *webIn_) growHead1() bool { // HTTP/1 is not a binary protocol, we don't know how many bytes to grow, so just grow.
+func (r *webIn_) growHead1() bool { // HTTP/1.x is not a binary protocol, we don't know how many bytes to grow, so just grow.
 	// Is r.input full?
 	if inputSize := int32(cap(r.input)); r.inputEdge == inputSize { // r.inputEdge reached end, so r.input is full
 		if inputSize == _16K { // max r.input size is 16K, we cannot use a larger input anymore
@@ -2591,7 +2591,7 @@ func (r *webIn_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
 	r.cFore = r.pFore // r.cFore must ends at the last '\n'
 	return true
 }
-func (r *webIn_) growChunked1() bool { // HTTP/1 is not a binary protocol, we don't know how many bytes to grow, so just grow.
+func (r *webIn_) growChunked1() bool { // HTTP/1.x is not a binary protocol, we don't know how many bytes to grow, so just grow.
 	if r.chunkEdge == int32(cap(r.bodyWindow)) && r.cBack == 0 { // r.bodyWindow is full and we can't slide
 		return false // element is too large
 	}
@@ -2617,7 +2617,7 @@ func (r *webIn_) growChunked1() bool { // HTTP/1 is not a binary protocol, we do
 	return false
 }
 
-// HTTP/1 outgoing
+// HTTP/1.x outgoing
 
 func (r *webOut_) addHeader1(name []byte, value []byte) bool {
 	if len(name) == 0 {
@@ -3002,13 +3002,13 @@ func (r *webOut_) writeBytes1(p []byte) error {
 	return r._slowCheck(err)
 }
 
-// HTTP/1 webSocket
+// HTTP/1.x webSocket
 
 func (s *webSocket_) todo1() {
 	// TODO
 }
 
-//////////////////////////////////////// HTTP/1 protocol elements ////////////////////////////////////////
+//////////////////////////////////////// HTTP/1.x protocol elements ////////////////////////////////////////
 
 var http1Template = [16]byte{'H', 'T', 'T', 'P', '/', '1', '.', '1', ' ', 'x', 'x', 'x', ' ', '?', '\r', '\n'}
 var http1Controls = [...][]byte{ // size: 512*24B=12K. keep sync with http2Control and http3Control!
@@ -3080,7 +3080,7 @@ var http1Controls = [...][]byte{ // size: 512*24B=12K. keep sync with http2Contr
 	StatusNetworkAuthenticationRequired: []byte("HTTP/1.1 511 Network Authentication Required\r\n"),
 }
 
-var ( // HTTP/1 byteses
+var ( // HTTP/1.x byteses
 	http1BytesContinue             = []byte("HTTP/1.1 100 Continue\r\n\r\n")
 	http1BytesConnectionClose      = []byte("connection: close\r\n")
 	http1BytesConnectionKeepAlive  = []byte("connection: keep-alive\r\n")

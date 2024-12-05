@@ -2850,7 +2850,7 @@ func (r *backendRequest_) Response() response { return r.response }
 func (r *backendRequest_) SetMethodURI(method string, uri string, hasContent bool) bool {
 	return r.message.(request).setMethodURI(ConstBytes(method), ConstBytes(uri), hasContent)
 }
-func (r *backendRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only. HTTP/1 doesn't use this!
+func (r *backendRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only. HTTP/1.x doesn't use this!
 	// TODO: copy `:scheme $scheme` to r.fields
 	return false
 }
@@ -3039,7 +3039,7 @@ func (r *backendRequest_) proxyCopyHead(req Request, config *WebExchanProxyConfi
 			return false
 		}
 	} else {
-		// we have no way to set scheme in HTTP/1 unless we use absolute-form, which is a risk as many servers may not support it.
+		// we have no way to set scheme in HTTP/1.x unless we use absolute-form, which is a risk as many servers may not support it.
 	}
 
 	// copy selective forbidden headers (including cookie) from req
@@ -3595,8 +3595,8 @@ type webIn_ struct { // incoming. needs parsing
 	stockArray  [768]byte  // for r.array
 	stockInput  [1536]byte // for r.input
 	// Stream states (controlled)
-	inputNext      int32    // HTTP/1 request only. next request begins from r.input[r.inputNext]. exists because HTTP/1 supports pipelining
-	inputEdge      int32    // edge position of current message head is at r.input[r.inputEdge]. placed here to make it compatible with HTTP/1 pipelining
+	inputNext      int32    // HTTP/1.x request only. next request begins from r.input[r.inputNext]. exists because HTTP/1.1 supports pipelining
+	inputEdge      int32    // edge position of current message head is at r.input[r.inputEdge]. placed here to make it compatible with HTTP/1.1 pipelining
 	mainPair       pair     // to overcome the limitation of Go's escape analysis when receiving pairs
 	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see httpCodingXXX for values
 	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.nAcceptCodings. see httpCodingXXX for values
@@ -3612,13 +3612,13 @@ type webIn_ struct { // incoming. needs parsing
 	contentSize          int64         // size info about incoming content. >=0: content size, -1: no content, -2: vague content
 	httpVersion          uint8         // Version1_0, Version1_1, Version2, Version3
 	asResponse           bool          // treat this incoming message as a response?
-	keepAlive            int8          // used by HTTP/1 only. -1: no connection header, 0: connection close, 1: connection keep-alive
+	keepAlive            int8          // used by HTTP/1.x only. -1: no connection header, 0: connection close, 1: connection keep-alive
 	_                    byte          // padding
 	headResult           int16         // result of receiving message head. values are as same as http status for convenience
 	bodyResult           int16         // result of receiving message body. values are as same as http status for convenience
 	// Stream states (zeros)
 	failReason  string    // the fail reason of headResult or bodyResult
-	bodyWindow  []byte    // a window used for receiving body. for HTTP/1, sizes must be same with r.input. [HTTP/1=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
+	bodyWindow  []byte    // a window used for receiving body. for HTTP/1.x, sizes must be same with r.input. [HTTP/1.x=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
 	recvTime    time.Time // the time when we begin receiving message
 	bodyTime    time.Time // the time when first body read operation is performed on this stream
 	contentText []byte    // if loadable, the received and loaded content of current message is at r.contentText[:r.receivedSize]. [<none>/r.input/4K/16K/64K1/(make)]
@@ -3629,7 +3629,7 @@ type webIn0 struct { // for fast reset, entirely
 	pBack            int32   // element begins from. for parsing elements in control & headers & content & trailers
 	pFore            int32   // element spanning to. for parsing elements in control & headers & content & trailers
 	head             span    // head (control + headers) of current message -> r.input. set after head is received. only for debugging
-	imme             span    // HTTP/1 only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
+	imme             span    // HTTP/1.x only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
 	hasExtra         [8]bool // has extra pairs? see pairXXX for indexes
 	dateTime         int64   // parsed unix time of the date header
 	arrayEdge        int32   // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
@@ -3671,7 +3671,7 @@ func (r *webIn_) onUse(httpVersion uint8, asResponse bool) { // for non-zeros
 	if httpVersion >= Version2 || asResponse {
 		r.input = r.stockInput[:]
 	} else {
-		// HTTP/1 supports request pipelining, so input related are not set here.
+		// HTTP/1.1 supports request pipelining, so input related are not set here.
 	}
 	holder := r.stream.Holder()
 	r.recvTimeout = holder.RecvTimeout()
@@ -3704,7 +3704,7 @@ func (r *webIn_) onEnd() { // for zeros
 		r.input = nil
 		r.inputNext, r.inputEdge = 0, 0
 	} else {
-		// HTTP/1 supports request pipelining, so input related are not reset here.
+		// HTTP/1.1 supports request pipelining, so input related are not reset here.
 	}
 
 	r.failReason = ""

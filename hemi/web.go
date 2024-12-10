@@ -18,6 +18,46 @@ import (
 	"time"
 )
 
+// Stater component is the interface to storages of HTTP states.
+type Stater interface {
+	// Imports
+	Component
+	// Methods
+	Maintain() // runner
+	Set(sid []byte, session *Session) error
+	Get(sid []byte) (session *Session, err error)
+	Del(sid []byte) error
+}
+
+// Stater_ is the parent for all staters.
+type Stater_ struct {
+	// Parent
+	Component_
+}
+
+// Session is an HTTP session in stater.
+type Session struct {
+	// TODO
+	ID      [40]byte // session id
+	Secret  [40]byte // secret key
+	Created int64    // unix time
+	Expires int64    // unix time
+	Role    int8     // 0: default, >0: user defined values
+	Device  int8     // terminal device type
+	state1  int8     // user defined state1
+	state2  int8     // user defined state2
+	state3  int32    // user defined state3
+	states  map[string]string
+}
+
+func (s *Session) init() {
+	s.states = make(map[string]string)
+}
+
+func (s *Session) Get(name string) string        { return s.states[name] }
+func (s *Session) Set(name string, value string) { s.states[name] = value }
+func (s *Session) Del(name string)               { delete(s.states, name) }
+
 // Webapp is the Web application.
 type Webapp struct {
 	// Parent
@@ -767,99 +807,6 @@ type Reviser_ struct {
 func (r *Reviser_) ID() uint8      { return r.id }
 func (r *Reviser_) setID(id uint8) { r.id = id }
 
-// Socklet component handles the webSocket.
-type Socklet interface {
-	// Imports
-	Component
-	// Methods
-	IsProxy() bool // proxys and origins are different, we must differentiate them
-	Serve(req Request, sock Socket)
-}
-
-// Socklet_ is the parent for all socklets.
-type Socklet_ struct {
-	// Parent
-	Component_
-	// States
-}
-
-func (s *Socklet_) IsProxy() bool { return false } // override this for proxy socklets
-
-// Stater component is the interface to storages of HTTP states.
-type Stater interface {
-	// Imports
-	Component
-	// Methods
-	Maintain() // runner
-	Set(sid []byte, session *Session)
-	Get(sid []byte) (session *Session)
-	Del(sid []byte) bool
-}
-
-// Stater_ is the parent for all staters.
-type Stater_ struct {
-	// Parent
-	Component_
-}
-
-// Session is an HTTP session in stater.
-type Session struct {
-	// TODO
-	ID      [40]byte // session id
-	Secret  [40]byte // secret key
-	Created int64    // unix time
-	Expires int64    // unix time
-	Role    int8     // 0: default, >0: user defined values
-	Device  int8     // terminal device type
-	state1  int8     // user defined state1
-	state2  int8     // user defined state2
-	state3  int32    // user defined state3
-	states  map[string]string
-}
-
-func (s *Session) init() {
-	s.states = make(map[string]string)
-}
-
-func (s *Session) Get(name string) string        { return s.states[name] }
-func (s *Session) Set(name string, value string) { s.states[name] = value }
-func (s *Session) Del(name string)               { delete(s.states, name) }
-
-// Cacher component is the interface to storages of HTTP caching.
-type Cacher interface {
-	// Imports
-	Component
-	// Methods
-	Maintain() // runner
-	Set(key []byte, hobject *Hobject)
-	Get(key []byte) (hobject *Hobject)
-	Del(key []byte) bool
-}
-
-// Cacher_ is the parent for all cachers.
-type Cacher_ struct {
-	// Parent
-	Component_
-	// Assocs
-	// States
-}
-
-func (c *Cacher_) todo() {
-}
-
-// Hobject is an HTTP object in Cacher.
-type Hobject struct {
-	// TODO
-	uri      []byte
-	headers  any
-	content  any
-	trailers any
-}
-
-func (o *Hobject) todo() {
-	// TODO
-}
-
 // Request is the server-side http request.
 type Request interface { // for *server[1-3]Request
 	RemoteAddr() net.Addr
@@ -963,9 +910,8 @@ type Request interface { // for *server[1-3]Request
 	AddCookie(name string, value string) bool
 
 	SetRecvTimeout(timeout time.Duration) // to defend against slowloris attack
-
-	HasContent() bool // true if content exists
-	IsVague() bool    // true if content exists and is not sized
+	HasContent() bool                     // true if content exists
+	IsVague() bool                        // true if content exists and is not sized
 	Content() string
 	UnsafeContent() []byte
 
@@ -1181,8 +1127,8 @@ type Response interface { // for *server[1-3]Response
 	echoChain() error // chunks
 	addTrailer(name []byte, value []byte) bool
 	endVague() error
-	proxyPass1xx(resp response) bool
-	proxyPass(resp response) error                 // pass content to client directly
+	proxyPass1xx(backResp response) bool
+	proxyPass(backResp response) error             // pass content to client directly
 	proxyPost(content any, hasTrailers bool) error // post held content to client
 	proxyCopyHead(resp response, config *WebExchanProxyConfig) bool
 	proxyCopyTail(resp response, config *WebExchanProxyConfig) bool
@@ -1348,6 +1294,24 @@ func (c *Cookie) writeTo(p []byte) int {
 	}
 	return i
 }
+
+// Socklet component handles the webSocket.
+type Socklet interface {
+	// Imports
+	Component
+	// Methods
+	IsProxy() bool // proxys and origins are different, we must differentiate them
+	Serve(req Request, sock Socket)
+}
+
+// Socklet_ is the parent for all socklets.
+type Socklet_ struct {
+	// Parent
+	Component_
+	// States
+}
+
+func (s *Socklet_) IsProxy() bool { return false } // override this for proxy socklets
 
 // Socket is the server-side webSocket.
 type Socket interface { // for *server[1-3]Socket

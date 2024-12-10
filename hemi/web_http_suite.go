@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// General Web server and backend. See RFC 9110 and 9111.
+// General HTTP server and backend. See RFC 9110 and 9111.
 
 package hemi
 
@@ -19,6 +19,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -290,19 +291,9 @@ func (r *serverRequest_) IsAsteriskOptions() bool { return r.asteriskOptions }
 func (r *serverRequest_) SchemeCode() uint8 { return r.schemeCode }
 func (r *serverRequest_) IsHTTP() bool      { return r.schemeCode == SchemeHTTP }
 func (r *serverRequest_) IsHTTPS() bool     { return r.schemeCode == SchemeHTTPS }
-func (r *serverRequest_) Scheme() string    { return serverSchemeStrings[r.schemeCode] }
+func (r *serverRequest_) Scheme() string    { return httpSchemeStrings[r.schemeCode] }
 
-var serverSchemeStrings = [...]string{
-	SchemeHTTP:  stringHTTP,
-	SchemeHTTPS: stringHTTPS,
-}
-
-func (r *serverRequest_) UnsafeScheme() []byte { return serverSchemeByteses[r.schemeCode] }
-
-var serverSchemeByteses = [...][]byte{
-	SchemeHTTP:  bytesHTTP,
-	SchemeHTTPS: bytesHTTPS,
-}
+func (r *serverRequest_) UnsafeScheme() []byte { return httpSchemeByteses[r.schemeCode] }
 
 func (r *serverRequest_) MethodCode() uint32   { return r.methodCode }
 func (r *serverRequest_) IsGET() bool          { return r.methodCode == MethodGET }
@@ -1576,7 +1567,7 @@ func (r *serverRequest_) UnsafeContent() []byte {
 	return r.unsafeContent()
 }
 
-func (r *serverRequest_) parseHTMLForm() { // to populate r.forms and r.upfiles
+func (r *serverRequest_) parseHTMLForm() { // called on need to populate r.forms and r.upfiles
 	if r.formKind == httpFormNotForm || r.formReceived {
 		return
 	}
@@ -1667,7 +1658,7 @@ func (r *serverRequest_) _loadURLEncodedForm() { // into memory entirely
 			}
 		}
 	}
-	// Reaches end of content.
+	// Reaches the end of content.
 	if state == 3 { // '&' not found
 		form.value.edge = r.arrayEdge
 		if form.nameSize > 0 {
@@ -2602,20 +2593,20 @@ func (r *serverResponse_) _removeLastModified() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified)
 }
 
-func (r *serverResponse_) proxyPass(resp response) error {
+func (r *serverResponse_) proxyPass(backResp response) error {
 	pass := r.message.passBytes
-	if resp.IsVague() || r.hasRevisers { // if we need to revise, we always use vague no matter the original content is sized or vague
+	if backResp.IsVague() || r.hasRevisers { // if we need to revise, we always use vague no matter the original content is sized or vague
 		pass = r.EchoBytes
-	} else { // resp is sized and there are no revisers, use passBytes
+	} else { // backResp is sized and there are no revisers, use passBytes
 		r.isSent = true
-		r.contentSize = resp.ContentSize()
+		r.contentSize = backResp.ContentSize()
 		// TODO: find a way to reduce i/o syscalls if content is small?
 		if err := r.message.passHeaders(); err != nil {
 			return err
 		}
 	}
 	for {
-		p, err := resp.readContent()
+		p, err := backResp.readContent()
 		if len(p) >= 0 {
 			if e := pass(p); e != nil {
 				return e
@@ -2628,8 +2619,8 @@ func (r *serverResponse_) proxyPass(resp response) error {
 			return err
 		}
 	}
-	if resp.HasTrailers() { // added trailers will be written by upper code eventually.
-		if !resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
+	if backResp.HasTrailers() { // added trailers will be written by upper code eventually.
+		if !backResp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 			return r.message.addTrailer(name, value)
 		}) {
 			return webOutTrailerFailed
@@ -2682,7 +2673,8 @@ type serverSocket0 struct { // for fast reset, entirely
 }
 
 func (s *serverSocket_) onUse() {
-	s.webSocket_.onUse()
+	const asServer = true
+	s.webSocket_.onUse(asServer)
 }
 func (s *serverSocket_) onEnd() {
 	s.serverSocket0 = serverSocket0{}
@@ -3163,7 +3155,7 @@ func (r *backendResponse_) onEnd() { // for zeros
 	r.webIn_.onEnd()
 }
 
-func (r *backendResponse_) reuse() {
+func (r *backendResponse_) reuse() { // between 1xx and non-1xx responses
 	httpVersion := r.httpVersion
 	r.onEnd()
 	r.onUse(httpVersion)
@@ -3517,7 +3509,8 @@ type backendSocket0 struct { // for fast reset, entirely
 }
 
 func (s *backendSocket_) onUse() {
-	s.webSocket_.onUse()
+	const asServer = false
+	s.webSocket_.onUse(asServer)
 }
 func (s *backendSocket_) onEnd() {
 	s.backendSocket0 = backendSocket0{}
@@ -3545,6 +3538,34 @@ type webConn interface {
 	IsUDS() bool
 	MakeTempName(p []byte, unixTime int64) int
 }
+
+// webConn_ is the parent for *server[1-3]Conn and *backend[1-3]Conn.
+type webConn_ struct {
+	// Conn states (non-zeros)
+	id int64 // the conn id
+	// Conn states (zeros)
+	usedStreams atomic.Int32 // accumulated num of streams served or fired
+	broken      atomic.Bool  // is conn broken?
+	counter     atomic.Int64 // can be used to generate a random number
+	lastWrite   time.Time    // deadline of last write operation
+	lastRead    time.Time    // deadline of last read operation
+}
+
+func (c *webConn_) onGet(id int64) {
+	c.id = id
+}
+func (c *webConn_) onPut() {
+	c.usedStreams.Store(0)
+	c.broken.Store(false)
+	c.counter.Store(0)
+	c.lastWrite = time.Time{}
+	c.lastRead = time.Time{}
+}
+
+func (c *webConn_) ID() int64 { return c.id }
+
+func (c *webConn_) markBroken()    { c.broken.Store(true) }
+func (c *webConn_) isBroken() bool { return c.broken.Load() }
 
 // webStream collects shared methods between *server[1-3]Stream and *backend[1-3]Stream.
 type webStream interface {
@@ -3759,21 +3780,7 @@ func (r *webIn_) IsHTTP2() bool      { return r.httpVersion == Version2 }
 func (r *webIn_) IsHTTP3() bool      { return r.httpVersion == Version3 }
 func (r *webIn_) Version() string    { return httpVersionStrings[r.httpVersion] }
 
-var httpVersionStrings = [...]string{
-	Version1_0: stringHTTP1_0,
-	Version1_1: stringHTTP1_1,
-	Version2:   stringHTTP2,
-	Version3:   stringHTTP3,
-}
-
 func (r *webIn_) UnsafeVersion() []byte { return httpVersionByteses[r.httpVersion] }
-
-var httpVersionByteses = [...][]byte{
-	Version1_0: bytesHTTP1_0,
-	Version1_1: bytesHTTP1_1,
-	Version2:   bytesHTTP2,
-	Version3:   bytesHTTP3,
-}
 
 func (r *webIn_) KeepAlive() int8   { return r.keepAlive }
 func (r *webIn_) HeadResult() int16 { return r.headResult }
@@ -4369,7 +4376,6 @@ func (r *webIn_) UnsafeContentType() []byte {
 }
 
 func (r *webIn_) SetRecvTimeout(timeout time.Duration) { r.recvTimeout = timeout }
-
 func (r *webIn_) unsafeContent() []byte { // load message content into memory
 	r._loadContent()
 	if r.stream.isBroken() {
@@ -4450,7 +4456,7 @@ func (r *webIn_) _dropContent() { // if message content is not received, this wi
 		r.stream.markBroken()
 	}
 }
-func (r *webIn_) _recvContent(retain bool) any { // to []byte (for small content <= 64K1) or tempFile (for large content > 64K1, or vague content)
+func (r *webIn_) _recvContent(retain bool) any { // to []byte (for small content <= 64K1) or tempFile (for large content > 64K1, or content is vague)
 	if r.contentSize > 0 && r.contentSize <= _64K1 { // (0, 64K1]. save to []byte. must be received in a timeout
 		if err := r.stream.setReadDeadline(); err != nil {
 			return err
@@ -4973,7 +4979,7 @@ func (r *webIn_) _tooSlow() bool { // reports whether the speed of incoming cont
 	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
 }
 
-var ( // incoming errors
+var ( // webIn_ errors
 	webInBadChunk = errors.New("bad incoming http chunk")
 	webInTooSlow  = errors.New("web incoming too slow")
 )
@@ -5414,7 +5420,7 @@ func (r *webOut_) _tooSlow() bool { // reports whether the speed of outgoing con
 	return r.sendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.sendTimeout
 }
 
-var ( // outgoing errors
+var ( // webOut_ errors
 	webOutTooSlow       = errors.New("web outgoing too slow")
 	webOutWriteBroken   = errors.New("write broken")
 	webOutUnknownStatus = errors.New("unknown status")
@@ -5436,13 +5442,15 @@ type webSocket_ struct { // incoming and outgoing.
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
+	asServer bool // treat this socket as a server socket?
 	// Stream states (zeros)
 	webSocket0 // all values must be zero by default in this struct!
 }
 type webSocket0 struct { // for fast reset, entirely
 }
 
-func (s *webSocket_) onUse() {
+func (s *webSocket_) onUse(asServer bool) {
+	s.asServer = asServer
 }
 func (s *webSocket_) onEnd() {
 	s.webSocket0 = webSocket0{}
@@ -5451,7 +5459,7 @@ func (s *webSocket_) onEnd() {
 func (s *webSocket_) todo() {
 }
 
-var ( // socket errors
+var ( // webSocket_ errors
 	httpSocketWriteBroken = errors.New("write broken")
 )
 
@@ -5546,6 +5554,30 @@ const ( // basic http constants
 	StatusNotExtended                   = 510
 	StatusNetworkAuthenticationRequired = 511
 )
+
+var httpVersionStrings = [...]string{
+	Version1_0: stringHTTP1_0,
+	Version1_1: stringHTTP1_1,
+	Version2:   stringHTTP2,
+	Version3:   stringHTTP3,
+}
+
+var httpVersionByteses = [...][]byte{
+	Version1_0: bytesHTTP1_0,
+	Version1_1: bytesHTTP1_1,
+	Version2:   bytesHTTP2,
+	Version3:   bytesHTTP3,
+}
+
+var httpSchemeStrings = [...]string{
+	SchemeHTTP:  stringHTTP,
+	SchemeHTTPS: stringHTTPS,
+}
+
+var httpSchemeByteses = [...][]byte{
+	SchemeHTTP:  bytesHTTP,
+	SchemeHTTPS: bytesHTTPS,
+}
 
 const ( // misc http types
 	httpTargetOrigin    = 0 // must be 0

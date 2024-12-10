@@ -4,6 +4,7 @@
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
 // HTTP/1.x server and backend. See RFC 9112.
+// NOTE: HTTP/1.x uses httpxServer and httpxGate together with HTTP/2.
 
 // For server, both HTTP/1.0 and HTTP/1.1 are supported. Pipelining is supported but not optimized because it's rarely used.
 // For backend, only HTTP/1.1 is used, so backends MUST support HTTP/1.1. Pipelining is not used.
@@ -12,27 +13,15 @@ package hemi
 
 import (
 	"bytes"
-	"context"
 	"crypto/tls"
-	"errors"
 	"io"
 	"net"
-	"os"
-	"strings"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
-
-	"github.com/hexinfra/gorox/hemi/library/system"
 )
 
 func init() {
-	RegisterServer("httpxServer", func(name string, stage *Stage) Server {
-		s := new(httpxServer)
-		s.onCreate(name, stage)
-		return s
-	})
 	RegisterBackend("http1Backend", func(name string, stage *Stage) Backend {
 		b := new(HTTP1Backend)
 		b.onCreate(name, stage)
@@ -40,286 +29,21 @@ func init() {
 	})
 }
 
-// httpxServer is the HTTP/1.x and HTTP/2 server. It has many httpxGates.
-type httpxServer struct {
-	// Parent
-	webServer_[*httpxGate]
-	// States
-	httpMode int8 // 0: adaptive, 1: http/1.x, 2: http/2
-}
-
-func (s *httpxServer) onCreate(name string, stage *Stage) {
-	s.webServer_.onCreate(name, stage)
-
-	s.httpMode = 1 // http/1.x by default. change to adaptive mode after http/2 server has been fully implemented
-}
-
-func (s *httpxServer) OnConfigure() {
-	s.webServer_.onConfigure()
-
-	if DebugLevel() >= 2 { // remove this condition after http/2 server has been fully implemented
-		// httpMode
-		var mode string
-		s.ConfigureString("httpMode", &mode, func(value string) error {
-			value = strings.ToLower(value)
-			switch value {
-			case "http1", "http/1", "http/1.x", "http2", "http/2", "adaptive":
-				return nil
-			default:
-				return errors.New(".httpMode has an invalid value")
-			}
-		}, "adaptive")
-		switch mode {
-		case "http1", "http/1", "http/1.x":
-			s.httpMode = 1
-		case "http2", "http/2":
-			s.httpMode = 2
-		default:
-			s.httpMode = 0
-		}
-	}
-}
-func (s *httpxServer) OnPrepare() {
-	s.webServer_.onPrepare()
-
-	if s.IsTLS() {
-		var nextProtos []string
-		switch s.httpMode {
-		case 2:
-			nextProtos = []string{"h2"}
-		case 1:
-			nextProtos = []string{"http/1.1"}
-		default: // adaptive mode
-			nextProtos = []string{"h2", "http/1.1"}
-		}
-		s.tlsConfig.NextProtos = nextProtos
-	}
-}
-
-func (s *httpxServer) Serve() { // runner
-	for id := int32(0); id < s.numGates; id++ {
-		gate := new(httpxGate)
-		gate.init(id, s)
-		if err := gate.Open(); err != nil {
-			EnvExitln(err.Error())
-		}
-		s.AddGate(gate)
-		s.IncSub() // gate
-		if s.IsTLS() {
-			go gate.serveTLS()
-		} else if s.IsUDS() {
-			go gate.serveUDS()
-		} else {
-			go gate.serveTCP()
-		}
-	}
-	s.WaitSubs() // gates
-	if DebugLevel() >= 2 {
-		Printf("httpxServer=%s done\n", s.Name())
-	}
-	s.stage.DecSub() // server
-}
-
-// httpxGate is a gate of httpxServer.
-type httpxGate struct {
-	// Parent
-	Gate_
-	// Assocs
-	server *httpxServer
-	// States
-	listener net.Listener // the real gate. set after open
-}
-
-func (g *httpxGate) init(id int32, server *httpxServer) {
-	g.Gate_.Init(id, server.MaxConnsPerGate())
-	g.server = server
-}
-
-func (g *httpxGate) Server() Server  { return g.server }
-func (g *httpxGate) Address() string { return g.server.Address() }
-func (g *httpxGate) IsTLS() bool     { return g.server.IsTLS() }
-func (g *httpxGate) IsUDS() bool     { return g.server.IsUDS() }
-
-func (g *httpxGate) Open() error {
-	var (
-		listener net.Listener
-		err      error
-	)
-	if g.IsUDS() {
-		address := g.Address()
-		// UDS doesn't support SO_REUSEADDR or SO_REUSEPORT, so we have to remove it first.
-		// This affects graceful upgrading, maybe we can implement fd transfer in the future.
-		os.Remove(address)
-		if listener, err = net.Listen("unix", address); err == nil {
-			g.listener = listener.(*net.UnixListener)
-			if DebugLevel() >= 1 {
-				Printf("httpxGate id=%d address=%s opened!\n", g.id, g.Address())
-			}
-		}
-	} else {
-		listenConfig := new(net.ListenConfig)
-		listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
-			if err := system.SetReusePort(rawConn); err != nil {
-				return err
-			}
-			return system.SetDeferAccept(rawConn)
-		}
-		if listener, err = listenConfig.Listen(context.Background(), "tcp", g.Address()); err == nil {
-			g.listener = listener.(*net.TCPListener)
-			if DebugLevel() >= 1 {
-				Printf("httpxGate id=%d address=%s opened!\n", g.id, g.Address())
-			}
-		}
-	}
-	return err
-}
-func (g *httpxGate) Shut() error {
-	g.MarkShut()
-	return g.listener.Close() // breaks serve()
-}
-
-func (g *httpxGate) serveTLS() { // runner
-	listener := g.listener.(*net.TCPListener)
-	connID := int64(0)
-	for {
-		tcpConn, err := listener.AcceptTCP()
-		if err != nil {
-			if g.IsShut() {
-				break
-			} else {
-				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)
-				continue
-			}
-		}
-		g.IncConn()
-		if actives := g.IncActives(); g.ReachLimit(actives) {
-			g.justClose(tcpConn)
-			continue
-		}
-		tlsConn := tls.Server(tcpConn, g.server.TLSConfig())
-		if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
-			g.justClose(tlsConn)
-			continue
-		}
-		if connState := tlsConn.ConnectionState(); connState.NegotiatedProtocol == "h2" {
-			serverConn := getServer2Conn(connID, g, tlsConn, nil)
-			go serverConn.serve() // serverConn is put to pool in serve()
-		} else {
-			serverConn := getServer1Conn(connID, g, tlsConn, nil)
-			go serverConn.serve() // serverConn is put to pool in serve()
-		}
-		connID++
-	}
-	g.WaitConns() // TODO: max timeout?
-	if DebugLevel() >= 2 {
-		Printf("httpxGate=%d TLS done\n", g.id)
-	}
-	g.server.DecSub() // gate
-}
-func (g *httpxGate) serveUDS() { // runner
-	listener := g.listener.(*net.UnixListener)
-	connID := int64(0)
-	for {
-		unixConn, err := listener.AcceptUnix()
-		if err != nil {
-			if g.IsShut() {
-				break
-			} else {
-				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)
-				continue
-			}
-		}
-		g.IncConn()
-		if actives := g.IncActives(); g.ReachLimit(actives) {
-			g.justClose(unixConn)
-			continue
-		}
-		rawConn, err := unixConn.SyscallConn()
-		if err != nil {
-			g.justClose(unixConn)
-			//g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
-			continue
-		}
-		if g.server.httpMode == 2 {
-			serverConn := getServer2Conn(connID, g, unixConn, rawConn)
-			go serverConn.serve() // serverConn is put to pool in serve()
-		} else {
-			serverConn := getServer1Conn(connID, g, unixConn, rawConn)
-			go serverConn.serve() // serverConn is put to pool in serve()
-		}
-		connID++
-	}
-	g.WaitConns() // TODO: max timeout?
-	if DebugLevel() >= 2 {
-		Printf("httpxGate=%d TCP done\n", g.id)
-	}
-	g.server.DecSub() // gate
-}
-func (g *httpxGate) serveTCP() { // runner
-	listener := g.listener.(*net.TCPListener)
-	connID := int64(0)
-	for {
-		tcpConn, err := listener.AcceptTCP()
-		if err != nil {
-			if g.IsShut() {
-				break
-			} else {
-				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)
-				continue
-			}
-		}
-		g.IncConn()
-		if actives := g.IncActives(); g.ReachLimit(actives) {
-			g.justClose(tcpConn)
-			continue
-		}
-		rawConn, err := tcpConn.SyscallConn()
-		if err != nil {
-			g.justClose(tcpConn)
-			//g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
-			continue
-		}
-		if g.server.httpMode == 2 {
-			serverConn := getServer2Conn(connID, g, tcpConn, rawConn)
-			go serverConn.serve() // serverConn is put to pool in serve()
-		} else {
-			serverConn := getServer1Conn(connID, g, tcpConn, rawConn)
-			go serverConn.serve() // serverConn is put to pool in serve()
-		}
-		connID++
-	}
-	g.WaitConns() // TODO: max timeout?
-	if DebugLevel() >= 2 {
-		Printf("httpxGate=%d TCP done\n", g.id)
-	}
-	g.server.DecSub() // gate
-}
-
-func (g *httpxGate) justClose(netConn net.Conn) {
-	netConn.Close()
-	g.DecActives()
-	g.DecConn()
-}
-
 // server1Conn is the server-side HTTP/1.x connection.
 type server1Conn struct {
+	// Parent
+	webConn_
 	// Assocs
 	stream server1Stream // an http/1.x connection has exactly one stream
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id         int64           // conn id
 	gate       *httpxGate      // the gate to which the conn belongs
 	netConn    net.Conn        // the connection (UDS/TCP/TLS)
 	rawConn    syscall.RawConn // for syscall, only when netConn is UDS/TCP
 	persistent bool            // keep the connection after current stream? true by default
 	closeSafe  bool            // if false, send a FIN first to avoid TCP's RST following immediate close(). true by default
 	// Conn states (zeros)
-	usedStreams atomic.Int32 // accumulated num of streams served or fired
-	broken      atomic.Bool  // is conn broken?
-	counter     atomic.Int64 // can be used to generate a random number
-	lastRead    time.Time    // deadline of last read operation
-	lastWrite   time.Time    // deadline of last write operation
 }
 
 // poolServer1Conn is the server-side HTTP/1.x connection pool.
@@ -349,7 +73,8 @@ func putServer1Conn(serverConn *server1Conn) {
 }
 
 func (c *server1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.id = id
+	c.webConn_.onGet(id)
+
 	c.gate = gate
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -373,14 +98,8 @@ func (c *server1Conn) onPut() {
 	c.rawConn = nil
 	c.gate = nil
 
-	c.usedStreams.Store(0)
-	c.broken.Store(false)
-	c.counter.Store(0)
-	c.lastRead = time.Time{}
-	c.lastWrite = time.Time{}
+	c.webConn_.onPut()
 }
-
-func (c *server1Conn) ID() int64 { return c.id }
 
 func (c *server1Conn) IsTLS() bool { return c.gate.IsTLS() }
 func (c *server1Conn) IsUDS() bool { return c.gate.IsUDS() }
@@ -388,9 +107,6 @@ func (c *server1Conn) IsUDS() bool { return c.gate.IsUDS() }
 func (c *server1Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.gate.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
-
-func (c *server1Conn) markBroken()    { c.broken.Store(true) }
-func (c *server1Conn) isBroken() bool { return c.broken.Load() }
 
 func (c *server1Conn) serve() { // runner
 	stream := &c.stream
@@ -991,9 +707,8 @@ func (r *server1Request) _recvControl() bool { // method SP request-target SP HT
 		r.cleanPath()
 	} else if b == '*' { // OPTIONS *, asterisk-form
 		r.targetForm = httpTargetAsterisk
-		// RFC 7230 (section 5.3.4):
-		// The asterisk-form of request-target is only used for a server-wide
-		// OPTIONS request (Section 4.3.7 of [RFC7231]).
+		// RFC 9112 (section 3.2.4):
+		// The "asterisk-form" of request-target is only used for a server-wide OPTIONS request (Section 9.3.7 of [HTTP]).
 		if r.methodCode != MethodOPTIONS {
 			r.headResult, r.failReason = StatusBadRequest, "asterisk-form is only used by OPTIONS method"
 			return false
@@ -1013,17 +728,13 @@ func (r *server1Request) _recvControl() bool { // method SP request-target SP HT
 		// effective request URI's combined path and query component is empty.
 	} else { // r.methodCode == MethodCONNECT, authority-form
 		r.targetForm = httpTargetAuthority
-		// RFC 7230 (section 5.3.3. authority-form:
-		// The authority-form of request-target is only used for CONNECT
-		// requests (Section 4.3.6 of [RFC7231]).
+		// RFC 9112 (section 3.2.3):
+		// The "authority-form" of request-target is only used for CONNECT requests (Section 9.3.6 of [HTTP]).
 		//
-		//   authority-form = authority
-		//   authority      = host [ ":" port ]
+		//   authority-form = uri-host ":" port
 		//
-		// When making a CONNECT request to establish a tunnel through one or
-		// more proxies, a client MUST send only the target URI's authority
-		// component (excluding any userinfo and its "@" delimiter) as the
-		// request-target.
+		// When making a CONNECT request to establish a tunnel through one or more proxies,
+		// a client MUST send only the host and port of the tunnel destination as the request-target.
 		for {
 			if b := r.input[r.pFore]; b >= 'A' && b <= 'Z' {
 				r.input[r.pFore] = b + 0x20 // to lower
@@ -1268,10 +979,10 @@ func (r *server1Response) addTrailer(name []byte, value []byte) bool {
 }
 func (r *server1Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }
 
-func (r *server1Response) proxyPass1xx(resp response) bool {
-	resp.delHopHeaders()
-	r.status = resp.Status()
-	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
+func (r *server1Response) proxyPass1xx(backResp response) bool {
+	backResp.delHopHeaders()
+	r.status = backResp.Status()
+	if !backResp.forHeaders(func(header *pair, name []byte, value []byte) bool {
 		return r.insertHeader(header.nameHash, name, value)
 	}) {
 		return false
@@ -1610,24 +1321,20 @@ func (n *http1Node) closeFree() int {
 
 // backend1Conn is the backend-side HTTP/1.x connection.
 type backend1Conn struct {
+	// Parent
+	webConn_
 	// Assocs
 	next   *backend1Conn  // the linked-list
 	stream backend1Stream // an http/1.x connection has exactly one stream
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id         int64 // the conn id
 	node       *http1Node
 	netConn    net.Conn        // the connection (TCP/TLS/UDS)
 	rawConn    syscall.RawConn // used when netConn is TCP or UDS
 	expire     time.Time       // when the conn is considered expired
 	persistent bool            // keep the connection after current stream? true by default
 	// Conn states (zeros)
-	usedStreams atomic.Int32 // accumulated num of streams served or fired
-	broken      atomic.Bool  // is conn broken?
-	counter     atomic.Int64 // can be used to generate a random number
-	lastWrite   time.Time    // deadline of last write operation
-	lastRead    time.Time    // deadline of last read operation
 }
 
 // poolBackend1Conn is the backend-side HTTP/1.x connection pool.
@@ -1657,7 +1364,8 @@ func putBackend1Conn(backendConn *backend1Conn) {
 }
 
 func (c *backend1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.id = id
+	c.webConn_.onGet(id)
+
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -1669,17 +1377,12 @@ func (c *backend1Conn) onPut() {
 	c.rawConn = nil
 	c.node = nil
 	c.expire = time.Time{}
-	c.counter.Store(0)
-	c.lastWrite = time.Time{}
-	c.lastRead = time.Time{}
-	c.usedStreams.Store(0)
-	c.broken.Store(false)
+
+	c.webConn_.onPut()
 }
 
 func (c *backend1Conn) IsTLS() bool { return c.node.IsTLS() }
 func (c *backend1Conn) IsUDS() bool { return c.node.IsUDS() }
-
-func (c *backend1Conn) ID() int64 { return c.id }
 
 func (c *backend1Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
@@ -1690,9 +1393,6 @@ func (c *backend1Conn) isAlive() bool { return time.Now().Before(c.expire) }
 func (c *backend1Conn) runOut() bool {
 	return c.usedStreams.Add(1) > c.node.backend.MaxStreamsPerConn()
 }
-
-func (c *backend1Conn) markBroken()    { c.broken.Store(true) }
-func (c *backend1Conn) isBroken() bool { return c.broken.Load() }
 
 func (c *backend1Conn) fetchStream() (*backend1Stream, error) {
 	stream := &c.stream

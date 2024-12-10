@@ -27,8 +27,8 @@ type staticHandlet struct {
 	// Parent
 	Handlet_
 	// Assocs
-	stage  *Stage // current stage
-	webapp *Webapp
+	stage  *Stage  // current stage
+	webapp *Webapp // the webapp to which the handlet belongs
 	// States
 	webRoot          string            // root dir for web files and directories
 	aliasTo          []string          // from is an alias to to

@@ -5,7 +5,7 @@
 
 // HTTP/3 server and backend. See RFC 9114 and 9204.
 
-// Server Push is not supported because it's rarely used.
+// Server Push is not supported because it's rarely used. Chrome and Firefox even removed it.
 
 package hemi
 
@@ -138,20 +138,16 @@ func (g *http3Gate) justClose(quicConn *quic.Conn) {
 
 // server3Conn is the server-side HTTP/3 connection.
 type server3Conn struct {
+	// Parent
+	webConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id       int64
 	gate     *http3Gate
 	quicConn *quic.Conn        // the quic connection
 	buffer   *http3Buffer      // ...
 	table    http3DynamicTable // ...
 	// Conn states (zeros)
-	usedStreams  atomic.Int32                          // accumulated num of streams served or fired
-	broken       atomic.Bool                           // is conn broken?
-	counter      atomic.Int64                          // can be used to generate a random number
-	lastRead     time.Time                             // deadline of last read operation
-	lastWrite    time.Time                             // deadline of last write operation
 	streams      [http3MaxActiveStreams]*server3Stream // active (open, remoteClosed, localClosed) streams
 	server3Conn0                                       // all values must be zero by default in this struct!
 }
@@ -180,7 +176,8 @@ func putServer3Conn(serverConn *server3Conn) {
 }
 
 func (c *server3Conn) onGet(id int64, gate *http3Gate, quicConn *quic.Conn) {
-	c.id = id
+	c.webConn_.onGet(id)
+
 	c.gate = gate
 	c.quicConn = quicConn
 	if c.buffer == nil {
@@ -195,14 +192,9 @@ func (c *server3Conn) onPut() {
 	c.streams = [http3MaxActiveStreams]*server3Stream{}
 	c.server3Conn0 = server3Conn0{}
 	c.gate = nil
-	c.counter.Store(0)
-	c.lastRead = time.Time{}
-	c.lastWrite = time.Time{}
-	c.usedStreams.Store(0)
-	c.broken.Store(false)
-}
 
-func (c *server3Conn) ID() int64 { return c.id }
+	c.webConn_.onPut()
+}
 
 func (c *server3Conn) IsTLS() bool { return c.gate.IsTLS() }
 func (c *server3Conn) IsUDS() bool { return c.gate.IsUDS() }
@@ -210,9 +202,6 @@ func (c *server3Conn) IsUDS() bool { return c.gate.IsUDS() }
 func (c *server3Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.gate.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
-
-func (c *server3Conn) markBroken()    { c.broken.Store(true) }
-func (c *server3Conn) isBroken() bool { return c.broken.Load() }
 
 func (c *server3Conn) serve() { // runner
 	// TODO
@@ -423,10 +412,10 @@ func (r *server3Response) addTrailer(name []byte, value []byte) bool {
 }
 func (r *server3Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer3(name) }
 
-func (r *server3Response) proxyPass1xx(resp response) bool {
-	resp.delHopHeaders()
-	r.status = resp.Status()
-	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
+func (r *server3Response) proxyPass1xx(backResp response) bool {
+	backResp.delHopHeaders()
+	r.status = backResp.Status()
+	if !backResp.forHeaders(func(header *pair, name []byte, value []byte) bool {
 		return r.insertHeader(header.nameHash, name, value)
 	}) {
 		return false
@@ -579,19 +568,15 @@ func (n *http3Node) storeStream(stream *backend3Stream) {
 
 // backend3Conn
 type backend3Conn struct {
+	// Parent
+	webConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id       int64 // the conn id
 	node     *http3Node
 	quicConn *quic.Conn // the underlying quic connection
 	expire   time.Time  // when the conn is considered expired
 	// Conn states (zeros)
-	usedStreams   atomic.Int32                           // accumulated num of streams served or fired
-	broken        atomic.Bool                            // is conn broken?
-	counter       atomic.Int64                           // can be used to generate a random number
-	lastWrite     time.Time                              // deadline of last write operation
-	lastRead      time.Time                              // deadline of last read operation
 	nStreams      atomic.Int32                           // concurrent streams
 	streams       [http3MaxActiveStreams]*backend3Stream // active (open, remoteClosed, localClosed) streams
 	backend3Conn0                                        // all values must be zero by default in this struct!
@@ -618,7 +603,8 @@ func putBackend3Conn(backendConn *backend3Conn) {
 }
 
 func (c *backend3Conn) onGet(id int64, node *http3Node, quicConn *quic.Conn) {
-	c.id = id
+	c.webConn_.onGet(id)
+
 	c.node = node
 	c.quicConn = quicConn
 	c.expire = time.Now().Add(node.backend.aliveTimeout)
@@ -630,17 +616,12 @@ func (c *backend3Conn) onPut() {
 	c.backend3Conn0 = backend3Conn0{}
 	c.node = nil
 	c.expire = time.Time{}
-	c.counter.Store(0)
-	c.lastWrite = time.Time{}
-	c.lastRead = time.Time{}
-	c.usedStreams.Store(0)
-	c.broken.Store(false)
+
+	c.webConn_.onPut()
 }
 
 func (c *backend3Conn) IsTLS() bool { return c.node.IsTLS() }
 func (c *backend3Conn) IsUDS() bool { return c.node.IsUDS() }
-
-func (c *backend3Conn) ID() int64 { return c.id }
 
 func (c *backend3Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
@@ -649,9 +630,6 @@ func (c *backend3Conn) MakeTempName(p []byte, unixTime int64) int {
 func (c *backend3Conn) runOut() bool {
 	return c.usedStreams.Add(1) > c.node.backend.MaxStreamsPerConn()
 }
-
-func (c *backend3Conn) markBroken()    { c.broken.Store(true) }
-func (c *backend3Conn) isBroken() bool { return c.broken.Load() }
 
 func (c *backend3Conn) fetchStream() (*backend3Stream, error) {
 	// Note: A backend3Conn can be used concurrently, limited by maxStreams.

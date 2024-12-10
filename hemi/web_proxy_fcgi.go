@@ -5,10 +5,9 @@
 
 // FCGI (gateway) proxy and backend implementation. See: https://fastcgi-archives.github.io/FastCGI_Specification.html
 
-// FCGI is mainly used by PHP applications. It doesn't support HTTP trailers.
-// And we don't use backend-side chunking due to the limitation of CGI/1.1 even
-// though FCGI can do that through its framing protocol. Perhaps most FCGI
-// applications don't implement this feature either?
+// FCGI is mainly used by PHP applications. It supports persistent connections and HTTP chunking, but not HTTP trailers.
+// We don't use backend-side chunking due to the limitation of CGI/1.1 even though FCGI can do that through its framing protocol.
+// Perhaps most FCGI applications don't implement this feature either?
 
 // In response side, FCGI applications mostly use "vague" output.
 

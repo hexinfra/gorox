@@ -66,11 +66,12 @@ func (s *localStater) Maintain() { // runner
 	s.stage.DecSub() // stater
 }
 
-func (s *localStater) Set(sid []byte, session *Session) {
+func (s *localStater) Set(sid []byte, session *Session) error {
+	return nil
 }
-func (s *localStater) Get(sid []byte) (session *Session) {
+func (s *localStater) Get(sid []byte) (session *Session, err error) {
 	return
 }
-func (s *localStater) Del(sid []byte) bool {
-	return false
+func (s *localStater) Del(sid []byte) error {
+	return nil
 }

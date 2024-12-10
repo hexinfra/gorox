@@ -58,11 +58,12 @@ func (s *redisStater) Maintain() { // runner
 	s.stage.DecSub() // stater
 }
 
-func (s *redisStater) Set(sid []byte, session *Session) {
+func (s *redisStater) Set(sid []byte, session *Session) error {
+	return nil
 }
-func (s *redisStater) Get(sid []byte) (session *Session) {
+func (s *redisStater) Get(sid []byte) (session *Session, err error) {
 	return
 }
-func (s *redisStater) Del(sid []byte) bool {
-	return false
+func (s *redisStater) Del(sid []byte) error {
+	return nil
 }

@@ -39,8 +39,8 @@ type server1Conn struct {
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	gate       *httpxGate      // the gate to which the conn belongs
-	netConn    net.Conn        // the connection (UDS/TCP/TLS)
-	rawConn    syscall.RawConn // for syscall, only when netConn is UDS/TCP
+	netConn    net.Conn        // the connection (TCP/TLS/UDS)
+	rawConn    syscall.RawConn // for syscall, only when netConn is TCP/UDS
 	persistent bool            // keep the connection after current stream? true by default
 	closeSafe  bool            // if false, send a FIN first to avoid TCP's RST following immediate close(). true by default
 	// Conn states (zeros)
@@ -101,8 +101,8 @@ func (c *server1Conn) onPut() {
 	c.webConn_.onPut()
 }
 
-func (c *server1Conn) IsTLS() bool { return c.gate.IsTLS() }
 func (c *server1Conn) IsUDS() bool { return c.gate.IsUDS() }
+func (c *server1Conn) IsTLS() bool { return c.gate.IsTLS() }
 
 func (c *server1Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.gate.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
@@ -138,10 +138,10 @@ func (c *server1Conn) serve() { // runner
 	// response.  Finally, the server fully closes the connection.
 	netConn := c.netConn
 	if !c.closeSafe {
-		if c.IsTLS() {
-			netConn.(*tls.Conn).CloseWrite()
-		} else if c.IsUDS() {
+		if c.IsUDS() {
 			netConn.(*net.UnixConn).CloseWrite()
+		} else if c.IsTLS() {
+			netConn.(*tls.Conn).CloseWrite()
 		} else {
 			netConn.(*net.TCPConn).CloseWrite()
 		}
@@ -1182,10 +1182,10 @@ func (n *http1Node) fetchStream() (*backend1Stream, error) {
 		return nil, errNodeDown
 	}
 	var err error
-	if n.IsTLS() {
-		conn, err = n._dialTLS()
-	} else if n.IsUDS() {
+	if n.IsUDS() {
 		conn, err = n._dialUDS()
+	} else if n.IsTLS() {
+		conn, err = n._dialTLS()
 	} else {
 		conn, err = n._dialTCP()
 	}
@@ -1213,6 +1213,24 @@ func (n *http1Node) storeStream(stream *backend1Stream) {
 	}
 }
 
+func (n *http1Node) _dialUDS() (*backend1Conn, error) {
+	// TODO: dynamic address names?
+	netConn, err := net.DialTimeout("unix", n.address, n.backend.DialTimeout())
+	if err != nil {
+		n.markDown()
+		return nil, err
+	}
+	if DebugLevel() >= 2 {
+		Printf("http1Node=%s dial %s OK!\n", n.name, n.address)
+	}
+	connID := n.backend.nextConnID()
+	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
+	if err != nil {
+		netConn.Close()
+		return nil, err
+	}
+	return getBackend1Conn(connID, n, netConn, rawConn), nil
+}
 func (n *http1Node) _dialTLS() (*backend1Conn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
@@ -1234,24 +1252,6 @@ func (n *http1Node) _dialTLS() (*backend1Conn, error) {
 		return nil, err
 	}
 	return getBackend1Conn(connID, n, tlsConn, nil), nil
-}
-func (n *http1Node) _dialUDS() (*backend1Conn, error) {
-	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("unix", n.address, n.backend.DialTimeout())
-	if err != nil {
-		n.markDown()
-		return nil, err
-	}
-	if DebugLevel() >= 2 {
-		Printf("http1Node=%s dial %s OK!\n", n.name, n.address)
-	}
-	connID := n.backend.nextConnID()
-	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
-	if err != nil {
-		netConn.Close()
-		return nil, err
-	}
-	return getBackend1Conn(connID, n, netConn, rawConn), nil
 }
 func (n *http1Node) _dialTCP() (*backend1Conn, error) {
 	// TODO: dynamic address names?
@@ -1331,7 +1331,7 @@ type backend1Conn struct {
 	// Conn states (non-zeros)
 	node       *http1Node
 	netConn    net.Conn        // the connection (TCP/TLS/UDS)
-	rawConn    syscall.RawConn // used when netConn is TCP or UDS
+	rawConn    syscall.RawConn // used when netConn is TCP/UDS
 	expire     time.Time       // when the conn is considered expired
 	persistent bool            // keep the connection after current stream? true by default
 	// Conn states (zeros)
@@ -1381,8 +1381,8 @@ func (c *backend1Conn) onPut() {
 	c.webConn_.onPut()
 }
 
-func (c *backend1Conn) IsTLS() bool { return c.node.IsTLS() }
 func (c *backend1Conn) IsUDS() bool { return c.node.IsUDS() }
+func (c *backend1Conn) IsTLS() bool { return c.node.IsTLS() }
 
 func (c *backend1Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))

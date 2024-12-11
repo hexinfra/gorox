@@ -61,7 +61,11 @@ func (s *http3Server) Serve() { // runner
 		}
 		s.AddGate(gate)
 		s.IncSub() // gate
-		go gate.serve()
+		if s.IsUDS() {
+			go gate.serveUDS()
+		} else {
+			go gate.serveTLS()
+		}
 	}
 	s.WaitSubs() // gates
 	if DebugLevel() >= 2 {
@@ -87,8 +91,8 @@ func (g *http3Gate) init(id int32, server *http3Server) {
 
 func (g *http3Gate) Server() Server  { return g.server }
 func (g *http3Gate) Address() string { return g.server.Address() }
-func (g *http3Gate) IsTLS() bool     { return g.server.IsTLS() }
 func (g *http3Gate) IsUDS() bool     { return g.server.IsUDS() }
+func (g *http3Gate) IsTLS() bool     { return g.server.IsTLS() }
 
 func (g *http3Gate) Open() error {
 	listener := quic.NewListener(g.Address())
@@ -103,7 +107,10 @@ func (g *http3Gate) Shut() error {
 	return g.listener.Close() // breaks serve()
 }
 
-func (g *http3Gate) serve() { // runner
+func (g *http3Gate) serveUDS() { // runner
+	// TODO
+}
+func (g *http3Gate) serveTLS() { // runner
 	connID := int64(0)
 	for {
 		quicConn, err := g.listener.Accept()
@@ -196,8 +203,8 @@ func (c *server3Conn) onPut() {
 	c.webConn_.onPut()
 }
 
-func (c *server3Conn) IsTLS() bool { return c.gate.IsTLS() }
 func (c *server3Conn) IsUDS() bool { return c.gate.IsUDS() }
+func (c *server3Conn) IsTLS() bool { return c.gate.IsTLS() }
 
 func (c *server3Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.gate.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
@@ -620,8 +627,8 @@ func (c *backend3Conn) onPut() {
 	c.webConn_.onPut()
 }
 
-func (c *backend3Conn) IsTLS() bool { return c.node.IsTLS() }
 func (c *backend3Conn) IsUDS() bool { return c.node.IsUDS() }
+func (c *backend3Conn) IsTLS() bool { return c.node.IsTLS() }
 
 func (c *backend3Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))

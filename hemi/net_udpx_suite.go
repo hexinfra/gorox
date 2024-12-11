@@ -111,9 +111,7 @@ func (r *UDPXRouter) Serve() { // runner
 		}
 		r.AddGate(gate)
 		r.IncSub() // gate
-		if r.IsTLS() {
-			go gate.serveTLS()
-		} else if r.IsUDS() {
+		if r.IsUDS() {
 			go gate.serveUDS()
 		} else {
 			go gate.serveUDP()
@@ -179,8 +177,8 @@ func (g *udpxGate) init(id int32, router *UDPXRouter) {
 
 func (g *udpxGate) Server() Server  { return g.router }
 func (g *udpxGate) Address() string { return g.router.Address() }
-func (g *udpxGate) IsTLS() bool     { return g.router.IsTLS() }
 func (g *udpxGate) IsUDS() bool     { return g.router.IsUDS() }
+func (g *udpxGate) IsTLS() bool     { return false } // is DTLS useful?
 
 func (g *udpxGate) Open() error {
 	// TODO
@@ -192,13 +190,6 @@ func (g *udpxGate) Shut() error {
 	return nil
 }
 
-func (g *udpxGate) serveTLS() { // runner
-	// TODO
-	for !g.shut.Load() {
-		time.Sleep(time.Second)
-	}
-	g.router.DecSub() // gate
-}
 func (g *udpxGate) serveUDS() { // runner
 	// TODO
 }
@@ -265,7 +256,6 @@ func (c *UDPXConn) onPut() {
 	c.lastWrite = time.Time{}
 }
 
-func (c *UDPXConn) IsTLS() bool { return c.gate.IsTLS() }
 func (c *UDPXConn) IsUDS() bool { return c.gate.IsUDS() }
 
 func (c *UDPXConn) MakeTempName(p []byte, unixTime int64) int {
@@ -279,9 +269,8 @@ func (c *UDPXConn) Close() error {
 }
 
 func (c *UDPXConn) closeConn() {
-	// TODO: tls, uds?
-	if c.gate.router.IsTLS() {
-	} else if c.gate.router.IsUDS() {
+	// TODO: uds?
+	if c.gate.router.IsUDS() {
 	} else {
 	}
 	c.pktConn.Close()
@@ -296,8 +285,7 @@ var udpxConnVariables = [...]func(*UDPXConn) []byte{ // keep sync with varCodes
 	// TODO
 	0: nil, // srcHost
 	1: nil, // srcPort
-	2: nil, // isTLS
-	3: nil, // isUDS
+	2: nil, // isUDS
 }
 
 // udpxCase
@@ -611,7 +599,6 @@ func (c *UConn) onPut() {
 	c.lastRead = time.Time{}
 }
 
-func (c *UConn) IsTLS() bool { return c.node.IsTLS() }
 func (c *UConn) IsUDS() bool { return c.node.IsUDS() }
 
 func (c *UConn) MakeTempName(p []byte, unixTime int64) int {

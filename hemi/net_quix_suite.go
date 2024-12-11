@@ -110,7 +110,7 @@ func (r *QUIXRouter) Serve() { // runner
 		}
 		r.AddGate(gate)
 		r.IncSub() // gate
-		go gate.serve()
+		go gate.serveTLS()
 	}
 	r.WaitSubs() // gates
 
@@ -173,8 +173,8 @@ func (g *quixGate) init(id int32, router *QUIXRouter) {
 
 func (g *quixGate) Server() Server  { return g.router }
 func (g *quixGate) Address() string { return g.router.Address() }
-func (g *quixGate) IsTLS() bool     { return g.router.IsTLS() }
 func (g *quixGate) IsUDS() bool     { return g.router.IsUDS() }
+func (g *quixGate) IsTLS() bool     { return g.router.IsTLS() }
 
 func (g *quixGate) Open() error {
 	// TODO
@@ -186,7 +186,10 @@ func (g *quixGate) Shut() error {
 	return g.listener.Close() // breaks serve()
 }
 
-func (g *quixGate) serve() { // runner
+func (g *quixGate) serveUDS() { // runner
+	// TODO
+}
+func (g *quixGate) serveTLS() { // runner
 	// TODO
 	for !g.IsShut() {
 		time.Sleep(time.Second)
@@ -246,8 +249,8 @@ func (c *QUIXConn) onPut() {
 	c.lastWrite = time.Time{}
 }
 
-func (c *QUIXConn) IsTLS() bool { return c.gate.IsTLS() }
 func (c *QUIXConn) IsUDS() bool { return c.gate.IsUDS() }
+func (c *QUIXConn) IsTLS() bool { return c.gate.IsTLS() }
 
 func (c *QUIXConn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.gate.router.Stage().ID()), c.id, unixTime, c.counter.Add(1))
@@ -267,8 +270,8 @@ var quixConnVariables = [...]func(*QUIXConn) []byte{ // keep sync with varCodes
 	// TODO
 	0: nil, // srcHost
 	1: nil, // srcPort
-	2: nil, // isTLS
-	3: nil, // isUDS
+	2: nil, // isUDS
+	3: nil, // isTLS
 }
 
 // QUIXStream
@@ -624,8 +627,8 @@ func (c *QConn) onPut() {
 	c.lastRead = time.Time{}
 }
 
-func (c *QConn) IsTLS() bool { return c.node.IsTLS() }
 func (c *QConn) IsUDS() bool { return c.node.IsUDS() }
+func (c *QConn) IsTLS() bool { return c.node.IsTLS() }
 
 func (c *QConn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))

@@ -88,8 +88,8 @@ func (g *echoGate) init(id int32, server *echoServer) {
 
 func (g *echoGate) Server() Server  { return g.server }
 func (g *echoGate) Address() string { return g.server.Address() }
-func (g *echoGate) IsTLS() bool     { return g.server.IsTLS() }
 func (g *echoGate) IsUDS() bool     { return g.server.IsUDS() }
+func (g *echoGate) IsTLS() bool     { return g.server.IsTLS() }
 
 func (g *echoGate) Open() error {
 	listenConfig := new(net.ListenConfig)
@@ -180,8 +180,8 @@ func (c *echoConn) onPut() {
 	c.gate = nil
 }
 
-func (c *echoConn) IsTLS() bool { return c.gate.IsTLS() }
 func (c *echoConn) IsUDS() bool { return c.gate.IsUDS() }
+func (c *echoConn) IsTLS() bool { return c.gate.IsTLS() }
 
 func (c *echoConn) closeConn() {
 	c.tcpConn.Close()

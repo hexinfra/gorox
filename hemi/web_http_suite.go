@@ -546,11 +546,10 @@ func (r *serverRequest_) examineHead() bool {
 		}
 	}
 
-	// RFC 7230 (section 3.2.2. Field Order): A server MUST NOT
-	// apply a request to the target resource until the entire request
-	// header section is received, since later header fields might include
-	// conditionals, authentication credentials, or deliberately misleading
-	// duplicate header fields that would impact request processing.
+	// RFC 9110 (section 5.3):
+	// A server MUST NOT apply a request to the target resource until it receives the entire request header section,
+	// since later header field lines might include conditionals, authentication credentials,
+	// or deliberately misleading duplicate header fields that could impact request processing.
 
 	// Basic checks against versions
 	switch r.httpVersion {
@@ -563,8 +562,8 @@ func (r *serverRequest_) examineHead() bool {
 			r.keepAlive = 1 // default is keep-alive for HTTP/1.1
 		}
 		if r.indexes.host == 0 {
-			// RFC 7230 (section 5.4):
-			// A client MUST send a Host header field in all HTTP/1.1 request messages.
+			// RFC 9112 (section 3.2):
+			// A server MUST respond with a 400 (Bad Request) status code to any HTTP/1.1 request message that lacks a Host header field.
 			r.headResult, r.failReason = StatusBadRequest, "MUST send a Host header field in all HTTP/1.1 request messages"
 			return false
 		}
@@ -787,9 +786,9 @@ func (r *serverRequest_) checkCookie(header *pair, index uint8) bool { // Cookie
 	return true
 }
 func (r *serverRequest_) checkHost(header *pair, index uint8) bool { // Host = host [ ":" port ]
-	// RFC 7230 (section 5.4): A server MUST respond with a 400 (Bad Request) status code to any
-	// HTTP/1.1 request message that lacks a Host header field and to any request message that
-	// contains more than one Host header field or a Host header field with an invalid field-value.
+	// RFC 9112 (section 3.2):
+	// A server MUST respond with a 400 (Bad Request) status code to any HTTP/1.1 request message that lacks a Host header field and
+	// to any request message that contains more than one Host header field line or a Host header field with an invalid field value.
 	if r.indexes.host != 0 {
 		r.headResult, r.failReason = StatusBadRequest, "duplicate host header"
 		return false
@@ -1152,8 +1151,8 @@ func (r *serverRequest_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool
 			}
 		}
 	} else { // HTTP/1.0
-		// RFC 7230 (section 6.7):
-		// A server MUST ignore an Upgrade header field that is received in an HTTP/1.0 request.
+		// RFC 9110 (section 7.8):
+		// A server that receives an Upgrade header field in an HTTP/1.0 request MUST ignore that Upgrade field.
 		for i := from; i < edge; i++ {
 			pairs[i].zero() // we delete it.
 		}
@@ -3534,8 +3533,8 @@ type webHolder interface {
 // webConn collects shared methods between *server[1-3]Conn and *backend[1-3]Conn.
 type webConn interface {
 	ID() int64
-	IsTLS() bool
 	IsUDS() bool
+	IsTLS() bool
 	MakeTempName(p []byte, unixTime int64) int
 }
 
@@ -4317,9 +4316,8 @@ func (r *webIn_) checkTransferEncoding(pairs []pair, from uint8, edge uint8) boo
 		if bytes.Equal(data, bytesChunked) {
 			r.transferChunked = true
 		} else {
-			// RFC 7230 (section 3.3.1):
-			// A server that receives a request message with a transfer coding it
-			// does not understand SHOULD respond with 501 (Not Implemented).
+			// RFC 9112 (section 6.1):
+			// A server that receives a request message with a transfer coding it does not understand SHOULD respond with 501 (Not Implemented).
 			r.headResult, r.failReason = StatusNotImplemented, "unknown transfer coding"
 			return false
 		}
@@ -4340,14 +4338,10 @@ func (r *webIn_) checkVia(pairs []pair, from uint8, edge uint8) bool { // Via = 
 func (r *webIn_) determineContentMode() bool {
 	if r.transferChunked { // must be HTTP/1.1 and there is a transfer-encoding: chunked
 		if r.contentSize != -1 { // there is also a content-length: nnn
-			// RFC 7230 (section 3.3.3):
-			// If a message is received with both a Transfer-Encoding and a
-			// Content-Length header field, the Transfer-Encoding overrides the
-			// Content-Length.  Such a message might indicate an attempt to
-			// perform request smuggling (Section 9.5) or response splitting
-			// (Section 9.4) and ought to be handled as an error.  A sender MUST
-			// remove the received Content-Length field prior to forwarding such
-			// a message downstream.
+			// RFC 9112 (section 6.3):
+			// If a message is received with both a Transfer-Encoding and a Content-Length header field,
+			// the Transfer-Encoding overrides the Content-Length. Such a message might indicate an attempt to perform
+			// request smuggling (Section 11.2) or response splitting (Section 11.1) and ought to be handled as an error.
 			r.headResult, r.failReason = StatusBadRequest, "transfer-encoding conflits with content-length"
 			return false
 		}

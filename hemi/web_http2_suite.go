@@ -106,10 +106,10 @@ func (s *httpxServer) Serve() { // runner
 		}
 		s.AddGate(gate)
 		s.IncSub() // gate
-		if s.IsTLS() {
-			go gate.serveTLS()
-		} else if s.IsUDS() {
+		if s.IsUDS() {
 			go gate.serveUDS()
+		} else if s.IsTLS() {
+			go gate.serveTLS()
 		} else {
 			go gate.serveTCP()
 		}
@@ -138,8 +138,8 @@ func (g *httpxGate) init(id int32, server *httpxServer) {
 
 func (g *httpxGate) Server() Server  { return g.server }
 func (g *httpxGate) Address() string { return g.server.Address() }
-func (g *httpxGate) IsTLS() bool     { return g.server.IsTLS() }
 func (g *httpxGate) IsUDS() bool     { return g.server.IsUDS() }
+func (g *httpxGate) IsTLS() bool     { return g.server.IsTLS() }
 
 func (g *httpxGate) Open() error {
 	var (
@@ -179,44 +179,6 @@ func (g *httpxGate) Shut() error {
 	return g.listener.Close() // breaks serve()
 }
 
-func (g *httpxGate) serveTLS() { // runner
-	listener := g.listener.(*net.TCPListener)
-	connID := int64(0)
-	for {
-		tcpConn, err := listener.AcceptTCP()
-		if err != nil {
-			if g.IsShut() {
-				break
-			} else {
-				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)
-				continue
-			}
-		}
-		g.IncConn()
-		if actives := g.IncActives(); g.ReachLimit(actives) {
-			g.justClose(tcpConn)
-			continue
-		}
-		tlsConn := tls.Server(tcpConn, g.server.TLSConfig())
-		if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
-			g.justClose(tlsConn)
-			continue
-		}
-		if connState := tlsConn.ConnectionState(); connState.NegotiatedProtocol == "h2" {
-			serverConn := getServer2Conn(connID, g, tlsConn, nil)
-			go serverConn.serve() // serverConn is put to pool in serve()
-		} else {
-			serverConn := getServer1Conn(connID, g, tlsConn, nil)
-			go serverConn.serve() // serverConn is put to pool in serve()
-		}
-		connID++
-	}
-	g.WaitConns() // TODO: max timeout?
-	if DebugLevel() >= 2 {
-		Printf("httpxGate=%d TLS done\n", g.id)
-	}
-	g.server.DecSub() // gate
-}
 func (g *httpxGate) serveUDS() { // runner
 	listener := g.listener.(*net.UnixListener)
 	connID := int64(0)
@@ -253,6 +215,44 @@ func (g *httpxGate) serveUDS() { // runner
 	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("httpxGate=%d TCP done\n", g.id)
+	}
+	g.server.DecSub() // gate
+}
+func (g *httpxGate) serveTLS() { // runner
+	listener := g.listener.(*net.TCPListener)
+	connID := int64(0)
+	for {
+		tcpConn, err := listener.AcceptTCP()
+		if err != nil {
+			if g.IsShut() {
+				break
+			} else {
+				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)
+				continue
+			}
+		}
+		g.IncConn()
+		if actives := g.IncActives(); g.ReachLimit(actives) {
+			g.justClose(tcpConn)
+			continue
+		}
+		tlsConn := tls.Server(tcpConn, g.server.TLSConfig())
+		if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
+			g.justClose(tlsConn)
+			continue
+		}
+		if connState := tlsConn.ConnectionState(); connState.NegotiatedProtocol == "h2" {
+			serverConn := getServer2Conn(connID, g, tlsConn, nil)
+			go serverConn.serve() // serverConn is put to pool in serve()
+		} else {
+			serverConn := getServer1Conn(connID, g, tlsConn, nil)
+			go serverConn.serve() // serverConn is put to pool in serve()
+		}
+		connID++
+	}
+	g.WaitConns() // TODO: max timeout?
+	if DebugLevel() >= 2 {
+		Printf("httpxGate=%d TLS done\n", g.id)
 	}
 	g.server.DecSub() // gate
 }
@@ -403,8 +403,8 @@ func (c *server2Conn) onPut() {
 	c.webConn_.onPut()
 }
 
-func (c *server2Conn) IsTLS() bool { return c.gate.IsTLS() }
 func (c *server2Conn) IsUDS() bool { return c.gate.IsUDS() }
+func (c *server2Conn) IsTLS() bool { return c.gate.IsTLS() }
 
 func (c *server2Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.gate.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
@@ -1510,8 +1510,8 @@ func (c *backend2Conn) onPut() {
 	c.webConn_.onPut()
 }
 
-func (c *backend2Conn) IsTLS() bool { return c.node.IsTLS() }
 func (c *backend2Conn) IsUDS() bool { return c.node.IsUDS() }
+func (c *backend2Conn) IsTLS() bool { return c.node.IsTLS() }
 
 func (c *backend2Conn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))

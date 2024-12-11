@@ -93,8 +93,8 @@ func (g *socksGate) init(id int32, server *socksServer) {
 
 func (g *socksGate) Server() Server  { return g.server }
 func (g *socksGate) Address() string { return g.server.Address() }
-func (g *socksGate) IsTLS() bool     { return g.server.IsTLS() }
 func (g *socksGate) IsUDS() bool     { return g.server.IsUDS() }
+func (g *socksGate) IsTLS() bool     { return g.server.IsTLS() }
 
 func (g *socksGate) Open() error {
 	listenConfig := new(net.ListenConfig)
@@ -187,6 +187,9 @@ func (c *socksConn) onPut() {
 	c.tcpConn = nil
 	c.gate = nil
 }
+
+func (c *socksConn) IsUDS() bool { return c.gate.IsUDS() }
+func (c *socksConn) IsTLS() bool { return c.gate.IsTLS() }
 
 func (c *socksConn) Close() {
 	c.tcpConn.Close()

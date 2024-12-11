@@ -18,7 +18,7 @@ import (
 	"time"
 )
 
-// Stater component is the interface to storages of HTTP states.
+// Stater is the component interface to storages of HTTP states.
 type Stater interface {
 	// Imports
 	Component
@@ -548,82 +548,6 @@ func (r *Rule) isMatch(req Request) bool {
 	return r.matcher(r, req, value)
 }
 
-func (r *Rule) executeExchan(req Request, resp Response) (handled bool) {
-	if r.returnCode != 0 {
-		resp.SetStatus(r.returnCode)
-		if len(r.returnText) == 0 {
-			resp.SendBytes(nil)
-		} else {
-			resp.SendBytes(r.returnText)
-		}
-		return true
-	}
-
-	if len(r.handlets) > 0 { // there are handlets in this rule, so we check against origin server or proxy server here.
-		toOrigin := true
-		for _, handlet := range r.handlets {
-			if handlet.IsProxy() { // request to proxy server. checks against proxy server
-				toOrigin = false
-				if req.VersionCode() == Version1_0 {
-					resp.(*server1Response).setConnectionClose() // A proxy server MUST NOT maintain a persistent connection with an HTTP/1.0 client.
-				}
-				if handlet.IsCache() { // request to proxy cache. checks against proxy cache
-					// Add checks here.
-				}
-				break
-			}
-		}
-		if toOrigin { // request to origin server
-			methodCode := req.MethodCode()
-			/*
-				if methodCode == 0 { // unrecognized request method
-					// RFC 9110:
-					// An origin server that receives a request method that is unrecognized or not
-					// implemented SHOULD respond with the 501 (Not Implemented) status code.
-					resp.SendNotImplemented(nil)
-					return true
-				}
-			*/
-			if methodCode == MethodPUT && req.HasHeader("content-range") {
-				// RFC 9110:
-				// An origin server SHOULD respond with a 400 (Bad Request) status code
-				// if it receives Content-Range on a PUT for a target resource that
-				// does not support partial PUT requests.
-				resp.SendBadRequest(nil)
-				return true
-			}
-			// TODO: other general checks against origin server
-		}
-	}
-	// Hook revisers on request and response. When receiving or sending content, these revisers will be executed.
-	for _, reviser := range r.revisers { // hook revisers
-		req.hookReviser(reviser)
-		resp.hookReviser(reviser)
-	}
-	// Execute handlets
-	for _, handlet := range r.handlets {
-		if handled := handlet.Handle(req, resp); handled { // request is handled and a response is sent
-			return true
-		}
-	}
-	return false
-}
-func (r *Rule) executeSocket(req Request, sock Socket) (served bool) {
-	// TODO
-	/*
-		if r.socklet == nil {
-			return
-		}
-		if r.socklet.IsProxy() {
-			// TODO
-		} else {
-			// TODO
-		}
-		r.socklet.Serve(req, sock)
-	*/
-	return true
-}
-
 var ruleMatchers = map[string]struct {
 	matcher func(rule *Rule, req Request, value []byte) bool
 	fsCheck bool
@@ -717,6 +641,82 @@ func (r *Rule) notExistMatch(req Request, value []byte) bool { // value !e
 	return pathInfo == nil
 }
 
+func (r *Rule) executeExchan(req Request, resp Response) (handled bool) {
+	if r.returnCode != 0 {
+		resp.SetStatus(r.returnCode)
+		if len(r.returnText) == 0 {
+			resp.SendBytes(nil)
+		} else {
+			resp.SendBytes(r.returnText)
+		}
+		return true
+	}
+
+	if len(r.handlets) > 0 { // there are handlets in this rule, so we check against origin server or proxy server here.
+		toOrigin := true
+		for _, handlet := range r.handlets {
+			if handlet.IsProxy() { // request to proxy server. checks against proxy server
+				toOrigin = false
+				if req.VersionCode() == Version1_0 {
+					resp.(*server1Response).setConnectionClose() // A proxy server MUST NOT maintain a persistent connection with an HTTP/1.0 client.
+				}
+				if handlet.IsCache() { // request to proxy cache. checks against proxy cache
+					// Add checks here.
+				}
+				break
+			}
+		}
+		if toOrigin { // request to origin server
+			methodCode := req.MethodCode()
+			/*
+				if methodCode == 0 { // unrecognized request method
+					// RFC 9110:
+					// An origin server that receives a request method that is unrecognized or not
+					// implemented SHOULD respond with the 501 (Not Implemented) status code.
+					resp.SendNotImplemented(nil)
+					return true
+				}
+			*/
+			if methodCode == MethodPUT && req.HasHeader("content-range") {
+				// RFC 9110:
+				// An origin server SHOULD respond with a 400 (Bad Request) status code
+				// if it receives Content-Range on a PUT for a target resource that
+				// does not support partial PUT requests.
+				resp.SendBadRequest(nil)
+				return true
+			}
+			// TODO: other general checks against origin server
+		}
+	}
+	// Hook revisers on request and response. When receiving or sending content, these revisers will be executed.
+	for _, reviser := range r.revisers { // hook revisers
+		req.hookReviser(reviser)
+		resp.hookReviser(reviser)
+	}
+	// Execute handlets
+	for _, handlet := range r.handlets {
+		if handled := handlet.Handle(req, resp); handled { // request is handled and a response is sent
+			return true
+		}
+	}
+	return false
+}
+func (r *Rule) executeSocket(req Request, sock Socket) (served bool) {
+	// TODO
+	/*
+		if r.socklet == nil {
+			return
+		}
+		if r.socklet.IsProxy() {
+			// TODO
+		} else {
+			// TODO
+		}
+		r.socklet.Serve(req, sock)
+	*/
+	return true
+}
+
 // Handlet component handles the incoming request and gives an outgoing response if the request is handled.
 type Handlet interface {
 	// Imports
@@ -765,7 +765,7 @@ func (h *Handlet_) Dispatch(req Request, resp Response, notFound Handle) {
 	}
 }
 
-// Handle is a function which handles http request and gives http response.
+// Handle is a function which handles an http request and gives an http response.
 type Handle func(req Request, resp Response)
 
 // Mapper performs request mapping in handlets. Mappers are not components.

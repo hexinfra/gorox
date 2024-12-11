@@ -528,7 +528,6 @@ func (c *fcgiConn) onPut() {
 	c.lastRead = time.Time{}
 }
 
-func (c *fcgiConn) IsTLS() bool { return c.node.IsTLS() }
 func (c *fcgiConn) IsUDS() bool { return c.node.IsUDS() }
 
 func (c *fcgiConn) MakeTempName(p []byte, unixTime int64) int {

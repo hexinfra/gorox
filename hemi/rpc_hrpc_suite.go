@@ -133,8 +133,8 @@ func (g *hrpcGate) init(id int32, server *hrpcServer) {
 
 func (g *hrpcGate) Server() Server  { return g.server }
 func (g *hrpcGate) Address() string { return g.server.Address() }
-func (g *hrpcGate) IsTLS() bool     { return g.server.IsTLS() }
 func (g *hrpcGate) IsUDS() bool     { return g.server.IsUDS() }
+func (g *hrpcGate) IsTLS() bool     { return g.server.IsTLS() }
 
 func (g *hrpcGate) Open() error {
 	// TODO
@@ -167,8 +167,8 @@ func (c *hrpcConn) onPut() {
 	c.counter.Store(0)
 }
 
-func (c *hrpcConn) IsTLS() bool { return c.gate.IsTLS() }
 func (c *hrpcConn) IsUDS() bool { return c.gate.IsUDS() }
+func (c *hrpcConn) IsTLS() bool { return c.gate.IsTLS() }
 
 func (c *hrpcConn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.gate.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))

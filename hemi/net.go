@@ -139,8 +139,8 @@ var varCodes = map[string]int16{ // TODO
 	// general conn vars for quix, tcpx, and udpx
 	"srcHost": 0,
 	"srcPort": 1,
-	"isTLS":   2,
-	"isUDS":   3,
+	"isUDS":   2,
+	"isTLS":   3,
 
 	// quix conn vars
 
@@ -417,11 +417,11 @@ type Server_[G Gate] struct {
 	address           string        // hostname:port, /path/to/unix.sock
 	colonPort         string        // like: ":9876"
 	colonPortBytes    []byte        // []byte(colonPort)
-	tlsMode           bool          // use tls to secure the transport?
-	tlsConfig         *tls.Config   // set if tls mode is true
 	udsMode           bool          // is address a unix domain socket?
 	udsColonPort      string        // uds doesn't have a port. use this as port if server is listening at uds
 	udsColonPortBytes []byte        // []byte(udsColonPort)
+	tlsMode           bool          // use tls to secure the transport?
+	tlsConfig         *tls.Config   // set if tls mode is true
 	maxConnsPerGate   int32         // max concurrent connections allowed per gate
 	numGates          int32         // number of gates
 }
@@ -524,9 +524,9 @@ func (s *Server_[G]) ColonPortBytes() []byte {
 		return s.colonPortBytes
 	}
 }
+func (s *Server_[G]) IsUDS() bool            { return s.udsMode }
 func (s *Server_[G]) IsTLS() bool            { return s.tlsMode }
 func (s *Server_[G]) TLSConfig() *tls.Config { return s.tlsConfig }
-func (s *Server_[G]) IsUDS() bool            { return s.udsMode }
 func (s *Server_[G]) MaxConnsPerGate() int32 { return s.maxConnsPerGate }
 
 // Gate is the interface for all gates. Gates are not components.
@@ -535,8 +535,8 @@ type Gate interface {
 	Server() Server
 	Address() string
 	ID() int32
-	IsTLS() bool
 	IsUDS() bool
+	IsTLS() bool
 	Open() error
 	Shut() error
 	IsShut() bool
@@ -720,9 +720,9 @@ type Node_ struct {
 	// Parent
 	Component_
 	// States
+	udsMode   bool        // uds or not
 	tlsMode   bool        // tls or not
 	tlsConfig *tls.Config // TLS config if TLS is enabled
-	udsMode   bool        // uds or not
 	address   string      // hostname:port, /path/to/unix.sock
 	weight    int32       // 1, 22, 333, ...
 	down      atomic.Bool // TODO: false-sharing
@@ -771,9 +771,9 @@ func (n *Node_) OnConfigure() {
 func (n *Node_) OnPrepare() {
 }
 
+func (n *Node_) IsUDS() bool            { return n.udsMode }
 func (n *Node_) IsTLS() bool            { return n.tlsMode }
 func (n *Node_) TLSConfig() *tls.Config { return n.tlsConfig }
-func (n *Node_) IsUDS() bool            { return n.udsMode }
 
 func (n *Node_) markDown()    { n.down.Store(true) }
 func (n *Node_) markUp()      { n.down.Store(false) }

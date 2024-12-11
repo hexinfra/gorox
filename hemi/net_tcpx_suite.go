@@ -116,10 +116,10 @@ func (r *TCPXRouter) Serve() { // runner
 		}
 		r.AddGate(gate)
 		r.IncSub() // gate
-		if r.IsTLS() {
-			go gate.serveTLS()
-		} else if r.IsUDS() {
+		if r.IsUDS() {
 			go gate.serveUDS()
+		} else if r.IsTLS() {
+			go gate.serveTLS()
 		} else {
 			go gate.serveTCP()
 		}
@@ -185,8 +185,8 @@ func (g *tcpxGate) init(id int32, router *TCPXRouter) {
 
 func (g *tcpxGate) Server() Server  { return g.router }
 func (g *tcpxGate) Address() string { return g.router.Address() }
-func (g *tcpxGate) IsTLS() bool     { return g.router.IsTLS() }
 func (g *tcpxGate) IsUDS() bool     { return g.router.IsUDS() }
+func (g *tcpxGate) IsTLS() bool     { return g.router.IsTLS() }
 
 func (g *tcpxGate) Open() error {
 	var (
@@ -218,39 +218,6 @@ func (g *tcpxGate) Shut() error {
 	return g.listener.Close() // breaks serve()
 }
 
-func (g *tcpxGate) serveTLS() { // runner
-	listener := g.listener.(*net.TCPListener)
-	connID := int64(0)
-	for {
-		tcpConn, err := listener.AcceptTCP()
-		if err != nil {
-			if g.IsShut() {
-				break
-			} else {
-				continue
-			}
-		}
-		g.IncConn()
-		if actives := g.IncActives(); g.ReachLimit(actives) {
-			g.router.Logf("tcpxGate=%d: too many TLS connections!\n", g.id)
-			g.justClose(tcpConn)
-			continue
-		}
-		tlsConn := tls.Server(tcpConn, g.router.TLSConfig())
-		if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
-			g.justClose(tlsConn)
-			continue
-		}
-		conn := getTCPXConn(connID, g, tlsConn, nil)
-		go g.router.serveConn(conn) // conn is put to pool in serveConn()
-		connID++
-	}
-	g.WaitConns() // TODO: max timeout?
-	if DebugLevel() >= 2 {
-		Printf("tcpxGate=%d TLS done\n", g.id)
-	}
-	g.router.DecSub() // gate
-}
 func (g *tcpxGate) serveUDS() { // runner
 	listener := g.listener.(*net.UnixListener)
 	connID := int64(0)
@@ -281,6 +248,39 @@ func (g *tcpxGate) serveUDS() { // runner
 	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TCP done\n", g.id)
+	}
+	g.router.DecSub() // gate
+}
+func (g *tcpxGate) serveTLS() { // runner
+	listener := g.listener.(*net.TCPListener)
+	connID := int64(0)
+	for {
+		tcpConn, err := listener.AcceptTCP()
+		if err != nil {
+			if g.IsShut() {
+				break
+			} else {
+				continue
+			}
+		}
+		g.IncConn()
+		if actives := g.IncActives(); g.ReachLimit(actives) {
+			g.router.Logf("tcpxGate=%d: too many TLS connections!\n", g.id)
+			g.justClose(tcpConn)
+			continue
+		}
+		tlsConn := tls.Server(tcpConn, g.router.TLSConfig())
+		if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
+			g.justClose(tlsConn)
+			continue
+		}
+		conn := getTCPXConn(connID, g, tlsConn, nil)
+		go g.router.serveConn(conn) // conn is put to pool in serveConn()
+		connID++
+	}
+	g.WaitConns() // TODO: max timeout?
+	if DebugLevel() >= 2 {
+		Printf("tcpxGate=%d TLS done\n", g.id)
 	}
 	g.router.DecSub() // gate
 }
@@ -389,8 +389,8 @@ func (c *TCPXConn) onPut() {
 	c.lastWrite = time.Time{}
 }
 
-func (c *TCPXConn) IsTLS() bool { return c.gate.IsTLS() }
 func (c *TCPXConn) IsUDS() bool { return c.gate.IsUDS() }
+func (c *TCPXConn) IsTLS() bool { return c.gate.IsTLS() }
 
 func (c *TCPXConn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.gate.router.Stage().ID()), c.id, unixTime, c.counter.Add(1))
@@ -431,10 +431,10 @@ func (c *TCPXConn) CloseRead() {
 	c._checkClose()
 }
 func (c *TCPXConn) CloseWrite() {
-	if router := c.gate.router; router.IsTLS() {
-		c.netConn.(*tls.Conn).CloseWrite()
-	} else if router.IsUDS() {
+	if router := c.gate.router; router.IsUDS() {
 		c.netConn.(*net.UnixConn).CloseWrite()
+	} else if router.IsTLS() {
+		c.netConn.(*tls.Conn).CloseWrite()
 	} else {
 		c.netConn.(*net.TCPConn).CloseWrite()
 	}
@@ -459,8 +459,8 @@ var tcpxConnVariables = [...]func(*TCPXConn) []byte{ // keep sync with varCodes
 	// TODO
 	0: nil, // srcHost
 	1: nil, // srcPort
-	2: nil, // isTLS
-	3: nil, // isUDS
+	2: nil, // isUDS
+	3: nil, // isTLS
 	4: nil, // serverName
 	5: nil, // nextProto
 }
@@ -781,10 +781,10 @@ func (n *tcpxNode) dial() (*TConn, error) {
 		tConn *TConn
 		err   error
 	)
-	if n.IsTLS() {
-		tConn, err = n._dialTLS()
-	} else if n.IsUDS() {
+	if n.IsUDS() {
 		tConn, err = n._dialUDS()
+	} else if n.IsTLS() {
+		tConn, err = n._dialTLS()
 	} else {
 		tConn, err = n._dialTCP()
 	}
@@ -793,6 +793,24 @@ func (n *tcpxNode) dial() (*TConn, error) {
 	}
 	n.IncSub() // conn
 	return tConn, err
+}
+func (n *tcpxNode) _dialUDS() (*TConn, error) {
+	// TODO: dynamic address names?
+	netConn, err := net.DialTimeout("unix", n.address, n.backend.DialTimeout())
+	if err != nil {
+		n.markDown()
+		return nil, err
+	}
+	if DebugLevel() >= 2 {
+		Printf("tcpxNode=%s dial %s OK!\n", n.name, n.address)
+	}
+	connID := n.backend.nextConnID()
+	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
+	if err != nil {
+		netConn.Close()
+		return nil, err
+	}
+	return getTConn(connID, n, netConn, rawConn), nil
 }
 func (n *tcpxNode) _dialTLS() (*TConn, error) {
 	// TODO: dynamic address names?
@@ -815,24 +833,6 @@ func (n *tcpxNode) _dialTLS() (*TConn, error) {
 		return nil, err
 	}
 	return getTConn(connID, n, tlsConn, nil), nil
-}
-func (n *tcpxNode) _dialUDS() (*TConn, error) {
-	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("unix", n.address, n.backend.DialTimeout())
-	if err != nil {
-		n.markDown()
-		return nil, err
-	}
-	if DebugLevel() >= 2 {
-		Printf("tcpxNode=%s dial %s OK!\n", n.name, n.address)
-	}
-	connID := n.backend.nextConnID()
-	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
-	if err != nil {
-		netConn.Close()
-		return nil, err
-	}
-	return getTConn(connID, n, netConn, rawConn), nil
 }
 func (n *tcpxNode) _dialTCP() (*TConn, error) {
 	// TODO: dynamic address names?
@@ -947,10 +947,10 @@ func (c *TConn) recv() (p []byte, err error) {
 }
 
 func (c *TConn) closeWrite() {
-	if node := c.node; node.IsTLS() {
-		c.netConn.(*tls.Conn).CloseWrite()
-	} else if node.IsUDS() {
+	if node := c.node; node.IsUDS() {
 		c.netConn.(*net.UnixConn).CloseWrite()
+	} else if node.IsTLS() {
+		c.netConn.(*tls.Conn).CloseWrite()
 	} else {
 		c.netConn.(*net.TCPConn).CloseWrite()
 	}

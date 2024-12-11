@@ -82,7 +82,7 @@ type echoGate struct {
 }
 
 func (g *echoGate) init(id int32, server *echoServer) {
-	g.Gate_.Init(id, server.MaxConnsPerGate())
+	g.Gate_.Init(id)
 	g.server = server
 }
 
@@ -119,10 +119,6 @@ func (g *echoGate) serve() { // runner
 			}
 		}
 		g.IncConn()
-		if actives := g.IncActives(); g.ReachLimit(actives) {
-			g.justClose(tcpConn)
-			continue
-		}
 		echoConn := getEchoConn(connID, g, tcpConn)
 		go g.server.serveConn(echoConn) // echoConn is put to pool in serve()
 		connID++
@@ -136,7 +132,6 @@ func (g *echoGate) serve() { // runner
 
 func (g *echoGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()
-	g.DecActives()
 	g.DecConn()
 }
 
@@ -185,6 +180,5 @@ func (c *echoConn) IsTLS() bool { return c.gate.IsTLS() }
 
 func (c *echoConn) closeConn() {
 	c.tcpConn.Close()
-	c.gate.DecActives()
 	c.gate.DecConn()
 }

@@ -87,7 +87,7 @@ type socksGate struct {
 }
 
 func (g *socksGate) init(id int32, server *socksServer) {
-	g.Gate_.Init(id, server.MaxConnsPerGate())
+	g.Gate_.Init(id)
 	g.server = server
 }
 
@@ -124,10 +124,6 @@ func (g *socksGate) serve() { // runner
 			}
 		}
 		g.IncConn()
-		if actives := g.IncActives(); g.ReachLimit(actives) {
-			g.justClose(tcpConn)
-			continue
-		}
 		socksConn := getSocksConn(connID, g, tcpConn)
 		go g.server.serveConn(socksConn) // socksConn is put to pool in serve()
 		connID++
@@ -141,7 +137,6 @@ func (g *socksGate) serve() { // runner
 
 func (g *socksGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()
-	g.DecActives()
 	g.DecConn()
 }
 
@@ -193,6 +188,5 @@ func (c *socksConn) IsTLS() bool { return c.gate.IsTLS() }
 
 func (c *socksConn) Close() {
 	c.tcpConn.Close()
-	c.gate.DecActives()
 	c.gate.DecConn()
 }

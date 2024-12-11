@@ -165,6 +165,25 @@ func (s *webServer_[G]) findWebapp(hostname []byte) *Webapp {
 	return s.defaultWebapp // may be nil
 }
 
+// webGate_ is the parent for http[x3]Gate.
+type webGate_ struct {
+	// Parent
+	Gate_
+	// States
+	maxActives  int32        // max concurrent conns allowed
+	activeConns atomic.Int32 // TODO: false sharing
+}
+
+func (g *webGate_) init(id int32, maxActives int32) {
+	g.Gate_.Init(id)
+	g.maxActives = maxActives
+	g.activeConns.Store(0)
+}
+
+func (g *webGate_) DecActives() int32             { return g.activeConns.Add(-1) }
+func (g *webGate_) IncActives() int32             { return g.activeConns.Add(1) }
+func (g *webGate_) ReachLimit(actives int32) bool { return actives > g.maxActives }
+
 // serverRequest_ is the parent for server[1-3]Request.
 type serverRequest_ struct { // incoming. needs parsing
 	// Parent

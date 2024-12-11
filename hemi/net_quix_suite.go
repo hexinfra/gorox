@@ -163,13 +163,21 @@ type quixGate struct {
 	// Assocs
 	router *QUIXRouter
 	// States
-	listener *quic.Listener // the real gate. set after open
+	maxActives  int32          // max concurrent conns allowed
+	activeConns atomic.Int32   // TODO: false sharing
+	listener    *quic.Listener // the real gate. set after open
 }
 
 func (g *quixGate) init(id int32, router *QUIXRouter) {
-	g.Gate_.Init(id, router.MaxConnsPerGate())
+	g.Gate_.Init(id)
+	g.maxActives = router.MaxConnsPerGate()
+	g.activeConns.Store(0)
 	g.router = router
 }
+
+func (g *quixGate) DecActives() int32             { return g.activeConns.Add(-1) }
+func (g *quixGate) IncActives() int32             { return g.activeConns.Add(1) }
+func (g *quixGate) ReachLimit(actives int32) bool { return actives > g.maxActives }
 
 func (g *quixGate) Server() Server  { return g.router }
 func (g *quixGate) Address() string { return g.router.Address() }
@@ -199,7 +207,6 @@ func (g *quixGate) serveTLS() { // runner
 
 func (g *quixGate) justClose(quicConn *quic.Conn) {
 	quicConn.Close()
-	g.DecActives()
 	g.DecConn()
 }
 

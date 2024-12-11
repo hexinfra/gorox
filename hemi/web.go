@@ -1300,7 +1300,7 @@ type Socklet interface {
 	// Imports
 	Component
 	// Methods
-	IsProxy() bool // proxys and origins are different, we must differentiate them
+	IsProxy() bool // proxies and origins are different, we must differentiate them
 	Serve(req Request, sock Socket)
 }
 
@@ -1315,6 +1315,7 @@ func (s *Socklet_) IsProxy() bool { return false } // override this for proxy so
 
 // Socket is the server-side webSocket.
 type Socket interface { // for *server[1-3]Socket
+	// TODO
 	Read(p []byte) (int, error)
 	Write(p []byte) (int, error)
 	Close() error

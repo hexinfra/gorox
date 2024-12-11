@@ -25,7 +25,7 @@ func init() {
 	})
 }
 
-// hrpcServer is the HRPC server. It has many hrpcGates.
+// hrpcServer is the HRPC server. An hrpcServer has many hrpcGates.
 type hrpcServer struct {
 	// Parent
 	Server_[*hrpcGate]
@@ -127,7 +127,7 @@ type hrpcGate struct {
 }
 
 func (g *hrpcGate) init(id int32, server *hrpcServer) {
-	g.Gate_.Init(id, server.MaxConnsPerGate())
+	g.Gate_.Init(id)
 	g.server = server
 }
 

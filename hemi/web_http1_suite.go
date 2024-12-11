@@ -4,7 +4,7 @@
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
 // HTTP/1.x server and backend. See RFC 9112.
-// NOTE: HTTP/1.x uses httpxServer and httpxGate together with HTTP/2.
+// NOTE: httpxServer and httpxGate are used for both HTTP/1.x and HTTP/2.
 
 // For server, both HTTP/1.0 and HTTP/1.1 are supported. Pipelining is supported but not optimized because it's rarely used.
 // For backend, only HTTP/1.1 is used, so backends MUST support HTTP/1.1. Pipelining is not used.

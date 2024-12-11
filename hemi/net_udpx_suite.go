@@ -171,7 +171,7 @@ type udpxGate struct {
 }
 
 func (g *udpxGate) init(id int32, router *UDPXRouter) {
-	g.Gate_.Init(id, router.MaxConnsPerGate())
+	g.Gate_.Init(id)
 	g.router = router
 }
 
@@ -203,7 +203,6 @@ func (g *udpxGate) serveUDP() { // runner
 
 func (g *udpxGate) justClose(pktConn net.PacketConn) {
 	pktConn.Close()
-	g.DecActives()
 	g.DecConn()
 }
 

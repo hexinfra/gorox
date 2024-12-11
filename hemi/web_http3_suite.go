@@ -33,7 +33,7 @@ func init() {
 	})
 }
 
-// http3Server is the HTTP/3 server. It has many http3Gates.
+// http3Server is the HTTP/3 server. An http3Server has many http3Gates.
 type http3Server struct {
 	// Parent
 	webServer_[*http3Gate]
@@ -42,7 +42,7 @@ type http3Server struct {
 
 func (s *http3Server) onCreate(name string, stage *Stage) {
 	s.webServer_.onCreate(name, stage)
-	s.tlsConfig = new(tls.Config) // tls mode is always enabled in http/3
+	s.tlsConfig = new(tls.Config) // currently tls mode is always enabled in http/3
 }
 
 func (s *http3Server) OnConfigure() {
@@ -77,7 +77,7 @@ func (s *http3Server) Serve() { // runner
 // http3Gate is a gate of http3Server.
 type http3Gate struct {
 	// Parent
-	Gate_
+	webGate_
 	// Assocs
 	server *http3Server
 	// States
@@ -85,7 +85,7 @@ type http3Gate struct {
 }
 
 func (g *http3Gate) init(id int32, server *http3Server) {
-	g.Gate_.Init(id, server.MaxConnsPerGate())
+	g.webGate_.init(id, server.MaxConnsPerGate())
 	g.server = server
 }
 

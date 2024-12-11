@@ -545,28 +545,20 @@ type Gate interface {
 // Gate_ is the parent for all gates.
 type Gate_ struct {
 	// States
-	id          int32          // gate id
-	shut        atomic.Bool    // is gate shut?
-	maxActives  int32          // max concurrent conns allowed
-	activeConns atomic.Int32   // TODO: false sharing
-	subConns    sync.WaitGroup // sub conns to wait for
+	id       int32          // gate id
+	shut     atomic.Bool    // is gate shut?
+	subConns sync.WaitGroup // sub conns to wait for
 }
 
-func (g *Gate_) Init(id int32, maxActives int32) {
+func (g *Gate_) Init(id int32) {
 	g.id = id
 	g.shut.Store(false)
-	g.maxActives = maxActives
-	g.activeConns.Store(0)
 }
 
 func (g *Gate_) ID() int32 { return g.id }
 
 func (g *Gate_) IsShut() bool { return g.shut.Load() }
 func (g *Gate_) MarkShut()    { g.shut.Store(true) }
-
-func (g *Gate_) DecActives() int32             { return g.activeConns.Add(-1) }
-func (g *Gate_) IncActives() int32             { return g.activeConns.Add(1) }
-func (g *Gate_) ReachLimit(actives int32) bool { return actives > g.maxActives }
 
 func (g *Gate_) IncConn()   { g.subConns.Add(1) }
 func (g *Gate_) WaitConns() { g.subConns.Wait() }

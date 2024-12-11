@@ -4,7 +4,7 @@
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
 // HTTP/2 server and backend. See RFC 9113 and 7541.
-// NOTE: httpxServer and httpxGate are used for both HTTP/1.x and HTTP/2.
+// NOTE: httpxServer and httpxGate are used for both HTTP/2 and HTTP/1.x.
 
 // Server Push is not supported because it's rarely used. Chrome and Firefox even removed it.
 
@@ -41,7 +41,7 @@ func init() {
 	})
 }
 
-// httpxServer is the HTTP/1.x and HTTP/2 server. It has many httpxGates.
+// httpxServer is the HTTP/1.x and HTTP/2 server. An httpxServer has many httpxGates.
 type httpxServer struct {
 	// Parent
 	webServer_[*httpxGate]
@@ -124,7 +124,7 @@ func (s *httpxServer) Serve() { // runner
 // httpxGate is a gate of httpxServer.
 type httpxGate struct {
 	// Parent
-	Gate_
+	webGate_
 	// Assocs
 	server *httpxServer
 	// States
@@ -132,7 +132,7 @@ type httpxGate struct {
 }
 
 func (g *httpxGate) init(id int32, server *httpxServer) {
-	g.Gate_.Init(id, server.MaxConnsPerGate())
+	g.webGate_.init(id, server.MaxConnsPerGate())
 	g.server = server
 }
 

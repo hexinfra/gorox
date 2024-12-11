@@ -22,7 +22,7 @@ func init() {
 	})
 }
 
-// grpcServer is the gRPC server. It has many grpcGates.
+// grpcServer is the gRPC server. A grpcServer has many grpcGates.
 type grpcServer struct {
 	// Parent
 	Server_[*grpcGate]
@@ -124,7 +124,7 @@ type grpcGate struct {
 }
 
 func (g *grpcGate) init(id int32, server *grpcServer) {
-	g.Gate_.Init(id, server.MaxConnsPerGate())
+	g.Gate_.Init(id)
 	g.server = server
 }
 

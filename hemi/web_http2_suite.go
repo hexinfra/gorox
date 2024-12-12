@@ -4,7 +4,7 @@
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
 // HTTP/2 server and backend implementation. See RFC 9113 and 7541.
-// NOTE: httpxServer and httpxGate are used for both HTTP/2 and HTTP/1.x.
+// NOTE: httpxServer and httpxGate are used by both HTTP/2 and HTTP/1.x.
 
 // Server Push is not supported because it's rarely used. Chrome and Firefox even removed it.
 

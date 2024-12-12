@@ -24,6 +24,52 @@ func init() {
 	})
 }
 
+// stream is the backend-side http stream.
+type stream interface { // for *backend[1-3]Stream
+	Request() request
+	Exchange() error
+	Response() response
+
+	Socket() socket
+
+	isBroken() bool
+	markBroken()
+}
+
+// request is the backend-side http request.
+type request interface { // for *backend[1-3]Request
+	setMethodURI(method []byte, uri []byte, hasContent bool) bool
+	setAuthority(hostname []byte, colonPort []byte) bool
+	proxyCopyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
+	proxyCopyHead(req Request, config *WebExchanProxyConfig) bool
+	proxyPass(req Request) error                   // pass content to backend directly
+	proxyPost(content any, hasTrailers bool) error // post held content to backend
+	proxyCopyTail(req Request, config *WebExchanProxyConfig) bool
+	isVague() bool
+	endVague() error
+}
+
+// response is the backend-side http response.
+type response interface { // for *backend[1-3]Response
+	KeepAlive() int8
+	HeadResult() int16
+	BodyResult() int16
+	Status() int16
+	HasContent() bool
+	ContentSize() int64
+	HasTrailers() bool
+	IsVague() bool
+	examineTail() bool
+	takeContent() any // used by proxies
+	readContent() (p []byte, err error)
+	delHopHeaders()
+	delHopTrailers()
+	forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
+	forTrailers(callback func(header *pair, name []byte, value []byte) bool) bool
+	recvHead()
+	reuse()
+}
+
 // httpProxy handlet passes http requests to http backends and caches responses.
 type httpProxy struct {
 	// Parent
@@ -300,6 +346,13 @@ type Hobject struct {
 
 func (o *Hobject) todo() {
 	// TODO
+}
+
+// socket is the backend-side webSocket.
+type socket interface { // for *backend[1-3]Socket
+	Read(p []byte) (int, error)
+	Write(p []byte) (int, error)
+	Close() error
 }
 
 // sockProxy socklet passes webSockets to http backends.

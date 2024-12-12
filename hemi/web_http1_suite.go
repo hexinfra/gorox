@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// HTTP/1.x server and backend. See RFC 9112.
+// HTTP/1.x server and backend implementation. See RFC 9112.
 // NOTE: httpxServer and httpxGate are used for both HTTP/1.x and HTTP/2.
 
 // For server, both HTTP/1.0 and HTTP/1.1 are supported. Pipelining is supported but not optimized because it's rarely used.
@@ -116,26 +116,24 @@ func (c *server1Conn) serve() { // runner
 		stream.onEnd()
 	}
 
-	// RFC 7230 (section 6.6):
-	//
+	// RFC 9112 (section 9.6):
 	// If a server performs an immediate close of a TCP connection, there is
 	// a significant risk that the client will not be able to read the last
-	// HTTP response.  If the server receives additional data from the
-	// client on a fully closed connection, such as another request that was
-	// sent by the client before receiving the server's response, the
-	// server's TCP stack will send a reset packet to the client;
-	// unfortunately, the reset packet might erase the client's
-	// unacknowledged input buffers before they can be read and interpreted
-	// by the client's HTTP parser.
-	//
+	// HTTP response. If the server receives additional data from the
+	// client on a fully closed connection, such as another request sent by
+	// the client before receiving the server's response, the server's TCP
+	// stack will send a reset packet to the client; unfortunately, the
+	// reset packet might erase the client's unacknowledged input buffers
+	// before they can be read and interpreted by the client's HTTP parser.
+
 	// To avoid the TCP reset problem, servers typically close a connection
-	// in stages.  First, the server performs a half-close by closing only
-	// the write side of the read/write connection.  The server then
+	// in stages. First, the server performs a half-close by closing only
+	// the write side of the read/write connection. The server then
 	// continues to read from the connection until it receives a
 	// corresponding close by the client, or until the server is reasonably
 	// certain that its own TCP stack has received the client's
 	// acknowledgement of the packet(s) containing the server's last
-	// response.  Finally, the server fully closes the connection.
+	// response. Finally, the server fully closes the connection.
 	netConn := c.netConn
 	if !c.closeSafe {
 		if c.IsUDS() {
@@ -482,7 +480,7 @@ func (r *server1Request) _recvControl() bool { // method SP request-target SP HT
 				if b := r.input[r.pFore]; b >= 'a' && b <= 'z' || b >= '0' && b <= '9' || b == '+' || b == '-' || b == '.' {
 					// Do nothing
 				} else if b >= 'A' && b <= 'Z' {
-					// RFC 7230 (section 2.7.3.  http and https URI Normalization and Comparison):
+					// RFC 9110 (section 4.2.3):
 					// The scheme and host are case-insensitive and normally provided in lowercase;
 					// all other components are compared in a case-sensitive manner.
 					r.input[r.pFore] = b + 0x20 // to lower
@@ -558,7 +556,7 @@ func (r *server1Request) _recvControl() bool { // method SP request-target SP HT
 			}
 			r.pBack = r.pFore // at '/'.
 		}
-		// RFC 7230 (5.3.1.  origin-form)
+		// RFC 9112 (3.2.1)
 		//
 		// The most common form of request-target is the origin-form.
 		//
@@ -570,10 +568,10 @@ func (r *server1Request) _recvControl() bool { // method SP request-target SP HT
 		// When making a request directly to an origin server, other than a
 		// CONNECT or server-wide OPTIONS request (as detailed below), a client
 		// MUST send only the absolute path and query components of the target
-		// URI as the request-target.  If the target URI's path component is
+		// URI as the request-target. If the target URI's path component is
 		// empty, the client MUST send "/" as the path within the origin-form of
-		// request-target.  A Host header field is also sent, as defined in
-		// Section 5.4.
+		// request-target. A Host header field is also sent, as defined in
+		// Section 7.2 of [HTTP].
 		var (
 			state = 1   // in path
 			octet byte  // byte value of %xx
@@ -723,9 +721,10 @@ func (r *server1Request) _recvControl() bool { // method SP request-target SP HT
 			r.headResult, r.failReason = StatusBadRequest, "malformed asterisk-form"
 			return false
 		}
-		// RFC 7230 (section 5.5):
+		// RFC 9112 (section 3.3):
 		// If the request-target is in authority-form or asterisk-form, the
-		// effective request URI's combined path and query component is empty.
+		// target URI's combined path and query component is empty. Otherwise,
+		// the target URI's combined path and query component is the request-target.
 	} else { // r.methodCode == MethodCONNECT, authority-form
 		r.targetForm = httpTargetAuthority
 		// RFC 9112 (section 3.2.3):
@@ -753,9 +752,10 @@ func (r *server1Request) _recvControl() bool { // method SP request-target SP HT
 			r.headResult, r.failReason = StatusBadRequest, "invalid authority"
 			return false
 		}
-		// RFC 7230 (section 5.5):
+		// RFC 9112 (section 3.3):
 		// If the request-target is in authority-form or asterisk-form, the
-		// effective request URI's combined path and query component is empty.
+		// target URI's combined path and query component is empty. Otherwise,
+		// the target URI's combined path and query component is the request-target.
 	}
 
 beforeVersion: // r.pFore is at ' '.
@@ -1027,9 +1027,9 @@ func (r *server1Response) finalizeHeaders() { // add at most 256 bytes
 			} else if r.request.VersionCode() == Version1_1 { // transfer-encoding: chunked\r\n
 				r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
 			} else {
-				// RFC 7230 (section 3.3.1): A server MUST NOT send a
-				// response containing Transfer-Encoding unless the corresponding
-				// request indicates HTTP/1.1 (or later).
+				// RFC 9112 (section 6.1):
+				// A server MUST NOT send a response containing Transfer-Encoding unless
+				// the corresponding request indicates HTTP/1.1 (or later minor revisions).
 				conn.persistent = false // close conn anyway for HTTP/1.0
 			}
 		}

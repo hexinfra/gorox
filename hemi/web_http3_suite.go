@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// HTTP/3 server and backend. See RFC 9114 and 9204.
+// HTTP/3 server and backend implementation. See RFC 9114 and 9204.
 
 // Server Push is not supported because it's rarely used. Chrome and Firefox even removed it.
 

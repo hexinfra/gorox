@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// General HTTP server and backend. See RFC 9110 and 9111.
+// General HTTP server and backend implementation. See RFC 9110 and 9111.
 
 package hemi
 
@@ -609,12 +609,11 @@ func (r *serverRequest_) examineHead() bool {
 		}
 	}
 	if r.methodCode&(MethodCONNECT|MethodOPTIONS|MethodTRACE) != 0 {
-		// RFC 7232 (section 5):
-		// Likewise, a server
-		// MUST ignore the conditional request header fields defined by this
-		// specification when received with a request method that does not
-		// involve the selection or modification of a selected representation,
-		// such as CONNECT, OPTIONS, or TRACE.
+		// RFC 9110 (section 13.2.1):
+		// Likewise, a server MUST ignore the conditional request header
+		// fields defined by this specification when received with a request
+		// method that does not involve the selection or modification of a
+		// selected representation, such as CONNECT, OPTIONS, or TRACE.
 		if r.ifMatch != 0 {
 			r.delHeader(bytesIfMatch, hashIfMatch)
 			r.ifMatch = 0
@@ -660,7 +659,7 @@ func (r *serverRequest_) examineHead() bool {
 			return false
 		}
 	} else { // content exists (sized or vague)
-		// Content is not allowed in some methods, according to RFC 7231.
+		// Content is not allowed in some methods, according to RFC 9110.
 		if r.methodCode&(MethodCONNECT|MethodTRACE) != 0 {
 			r.headResult, r.failReason = StatusBadRequest, "content is not allowed in CONNECT and TRACE method"
 			return false
@@ -673,10 +672,9 @@ func (r *serverRequest_) examineHead() bool {
 		}
 		if r.iContentType == 0 { // no content-type
 			if r.methodCode == MethodOPTIONS {
-				// RFC 7231 (section 4.3.7):
-				// A client that generates an OPTIONS request containing a payload body
-				// MUST send a valid Content-Type header field describing the
-				// representation media type.
+				// RFC 9110 (section 9.3.7):
+				// A client that generates an OPTIONS request containing content MUST send
+				// a valid Content-Type header field describing the representation media type.
 				r.headResult, r.failReason = StatusBadRequest, "OPTIONS with content but without a content-type"
 				return false
 			}
@@ -814,7 +812,7 @@ func (r *serverRequest_) checkHost(header *pair, index uint8) bool { // Host = h
 	}
 	host := header.value
 	if host.notEmpty() {
-		// RFC 7230 (section 2.7.3.  http and https URI Normalization and Comparison):
+		// RFC 9110 (section 4.2.3):
 		// The scheme and host are case-insensitive and normally provided in lowercase;
 		// all other components are compared in a case-sensitive manner.
 		bytesToLower(r.input[host.from:host.edge])
@@ -1072,7 +1070,7 @@ func (r *serverRequest_) checkExpect(pairs []pair, from uint8, edge uint8) bool 
 			}
 		}
 	} else { // HTTP/1.0
-		// RFC 7231 (section 5.1.1):
+		// RFC 9110 (section 10.1.1):
 		// A server that receives a 100-continue expectation in an HTTP/1.0 request MUST ignore that expectation.
 		for i := from; i < edge; i++ {
 			pairs[i].zero() // since HTTP/1.0 doesn't support 1xx status codes, we delete the expect.
@@ -2792,31 +2790,6 @@ func (n *webNode_) OnPrepare() {
 	n.Node_.OnPrepare()
 }
 
-// stream is the backend-side http stream.
-type stream interface { // for *backend[1-3]Stream
-	Request() request
-	Exchange() error
-	Response() response
-
-	Socket() socket
-
-	isBroken() bool
-	markBroken()
-}
-
-// request is the backend-side http request.
-type request interface { // for *backend[1-3]Request
-	setMethodURI(method []byte, uri []byte, hasContent bool) bool
-	setAuthority(hostname []byte, colonPort []byte) bool
-	proxyCopyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
-	proxyCopyHead(req Request, config *WebExchanProxyConfig) bool
-	proxyPass(req Request) error                   // pass content to backend directly
-	proxyPost(content any, hasTrailers bool) error // post held content to backend
-	proxyCopyTail(req Request, config *WebExchanProxyConfig) bool
-	isVague() bool
-	endVague() error
-}
-
 // backendRequest_ is the parent for backend[1-3]Request.
 type backendRequest_ struct { // outgoing. needs building
 	// Parent
@@ -3092,27 +3065,6 @@ func (r *backendRequest_) proxyCopyTail(req Request, config *WebExchanProxyConfi
 	return req.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.message.addTrailer(name, value)
 	})
-}
-
-// response is the backend-side http response.
-type response interface { // for *backend[1-3]Response
-	KeepAlive() int8
-	HeadResult() int16
-	BodyResult() int16
-	Status() int16
-	HasContent() bool
-	ContentSize() int64
-	HasTrailers() bool
-	IsVague() bool
-	examineTail() bool
-	takeContent() any // used by proxies
-	readContent() (p []byte, err error)
-	delHopHeaders()
-	delHopTrailers()
-	forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
-	forTrailers(callback func(header *pair, name []byte, value []byte) bool) bool
-	recvHead()
-	reuse()
 }
 
 // backendResponse_ is the parent for backend[1-3]Response.
@@ -3506,13 +3458,6 @@ func (r *backendResponse_) applyTrailer(index uint8) bool {
 	//trailer := &r.primes[index]
 	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
-}
-
-// socket is the backend-side webSocket.
-type socket interface { // for *backend[1-3]Socket
-	Read(p []byte) (int, error)
-	Write(p []byte) (int, error)
-	Close() error
 }
 
 // backendSocket_ is the parent for backend[1-3]Socket.
@@ -4142,17 +4087,15 @@ func (r *webIn_) _parseField(field *pair, fdesc *fdesc, p []byte, fully bool) bo
 }
 
 func (r *webIn_) checkContentLength(header *pair, index uint8) bool { // Content-Length = 1*DIGIT
-	// RFC 7230 (section 3.3.2):
-	// If a message is received that has multiple Content-Length header
-	// fields with field-values consisting of the same decimal value, or a
-	// single Content-Length header field with a field value containing a
-	// list of identical decimal values (e.g., "Content-Length: 42, 42"),
-	// indicating that duplicate Content-Length header fields have been
-	// generated or combined by an upstream message processor, then the
-	// recipient MUST either reject the message as invalid or replace the
-	// duplicated field-values with a single valid Content-Length field
-	// containing that decimal value prior to determining the message body
-	// length or forwarding the message.
+	// RFC 9110 (section 8.6):
+	// Likewise, a sender MUST NOT forward a message with a Content-Length
+	// header field value that does not match the ABNF above, with one
+	// exception: a recipient of a Content-Length header field value
+	// consisting of the same decimal value repeated as a comma-separated
+	// list (e.g, "Content-Length: 42, 42") MAY either reject the message as
+	// invalid or replace that invalid field value with a single instance of
+	// the decimal value, since this likely indicates that a duplicate was
+	// generated or combined by an upstream message processor.
 	if r.contentSize == -1 { // r.contentSize can only be -1 or >= 0 here. -2 is set after all of the headers are received if the content is vague
 		if size, ok := decToI64(header.valueAt(r.input)); ok {
 			r.contentSize = size
@@ -4160,14 +4103,6 @@ func (r *webIn_) checkContentLength(header *pair, index uint8) bool { // Content
 			return true
 		}
 	}
-	// RFC 7230 (section 3.3.3):
-	// If a message is received without Transfer-Encoding and with
-	// either multiple Content-Length header fields having differing
-	// field-values or a single Content-Length header field having an
-	// invalid value, then the message framing is invalid and the
-	// recipient MUST treat it as an unrecoverable error.  If this is a
-	// request message, the server MUST respond with a 400 (Bad Request)
-	// status code and then close the connection.
 	r.headResult, r.failReason = StatusBadRequest, "bad content-length"
 	return false
 }

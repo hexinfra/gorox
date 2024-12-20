@@ -635,12 +635,12 @@ type fcgiRequest struct { // outgoing. needs building
 	params      []byte        // place the payload of exactly one FCGI_PARAMS record. [<r.stockParams>/16K]
 	sendTimeout time.Duration // timeout to send the whole request. zero means no timeout
 	// Exchan states (zeros)
-	sendTime     time.Time   // the time when first send operation is performed
-	vector       net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after exchan
-	fixedVector  [7][]byte   // for sending request. reset after exchan. 120B
-	fcgiRequest0             // all values must be zero by default in this struct!
+	sendTime      time.Time   // the time when first send operation is performed
+	vector        net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after exchan
+	fixedVector   [7][]byte   // for sending request. reset after exchan. 120B
+	_fcgiRequest0             // all values in this struct must be zero by default!
 }
-type fcgiRequest0 struct { // for fast reset, entirely
+type _fcgiRequest0 struct { // for fast reset, entirely
 	paramsEdge    uint16 // edge of r.params. max size of r.params must be <= 16K.
 	forbidContent bool   // forbid content?
 	forbidFraming bool   // forbid content-length and transfer-encoding?
@@ -661,7 +661,7 @@ func (r *fcgiRequest) onEnd() {
 	r.vector = nil
 	r.fixedVector = [7][]byte{}
 
-	r.fcgiRequest0 = fcgiRequest0{}
+	r._fcgiRequest0 = _fcgiRequest0{}
 }
 
 func (r *fcgiRequest) proxyCopyHead(req Request, proxy *fcgiProxy) bool {
@@ -1036,14 +1036,14 @@ type fcgiResponse struct { // incoming. needs parsing
 	headResult     int16         // result of receiving response head. values are same as http status for convenience
 	bodyResult     int16         // result of receiving response body. values are same as http status for convenience
 	// Exchan states (zeros)
-	failReason    string    // the reason of headResult or bodyResult
-	recvTime      time.Time // the time when receiving response
-	bodyTime      time.Time // the time when first body read operation is performed on this exchan
-	contentText   []byte    // if loadable, the received and loaded content of current response is at r.contentText[:r.receivedSize]
-	contentFile   *os.File  // used by r.takeContent(), if content is tempFile. will be closed on exchan ends
-	fcgiResponse0           // all values must be zero by default in this struct!
+	failReason     string    // the reason of headResult or bodyResult
+	recvTime       time.Time // the time when receiving response
+	bodyTime       time.Time // the time when first body read operation is performed on this exchan
+	contentText    []byte    // if loadable, the received and loaded content of current response is at r.contentText[:r.receivedSize]
+	contentFile    *os.File  // used by r.takeContent(), if content is tempFile. will be closed on exchan ends
+	_fcgiResponse0           // all values in this struct must be zero by default!
 }
-type fcgiResponse0 struct { // for fast reset, entirely
+type _fcgiResponse0 struct { // for fast reset, entirely
 	recordsFrom     int32    // from position of current records
 	recordsEdge     int32    // edge position of current records
 	stdoutFrom      int32    // if stdout's payload is too large to be appended to r.input, use this to note current from position
@@ -1139,7 +1139,7 @@ func (r *fcgiResponse) onEnd() {
 		r.contentFile = nil
 	}
 
-	r.fcgiResponse0 = fcgiResponse0{}
+	r._fcgiResponse0 = _fcgiResponse0{}
 }
 
 func (r *fcgiResponse) reuse() {

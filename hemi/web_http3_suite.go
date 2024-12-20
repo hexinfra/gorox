@@ -155,10 +155,10 @@ type server3Conn struct {
 	buffer   *http3Buffer      // ...
 	table    http3DynamicTable // ...
 	// Conn states (zeros)
-	streams      [http3MaxActiveStreams]*server3Stream // active (open, remoteClosed, localClosed) streams
-	server3Conn0                                       // all values must be zero by default in this struct!
+	streams       [http3MaxActiveStreams]*server3Stream // active (open, remoteClosed, localClosed) streams
+	_server3Conn0                                       // all values in this struct must be zero by default!
 }
-type server3Conn0 struct { // for fast reset, entirely
+type _server3Conn0 struct { // for fast reset, entirely
 	bufferEdge uint32 // incoming data ends at c.buffer.buf[c.bufferEdge]
 	pBack      uint32 // incoming frame part (header or payload) begins from c.buffer.buf[c.pBack]
 	pFore      uint32 // incoming frame part (header or payload) ends at c.buffer.buf[c.pFore]
@@ -197,7 +197,7 @@ func (c *server3Conn) onPut() {
 	// c.buffer is reserved
 	// c.table is reserved
 	c.streams = [http3MaxActiveStreams]*server3Stream{}
-	c.server3Conn0 = server3Conn0{}
+	c._server3Conn0 = _server3Conn0{}
 	c.gate = nil
 
 	c.webConn_.onPut()
@@ -239,9 +239,9 @@ type server3Stream struct {
 	conn       *server3Conn
 	quicStream *quic.Stream // the underlying quic stream
 	// Stream states (zeros)
-	server3Stream0 // all values must be zero by default in this struct!
+	_server3Stream0 // all values in this struct must be zero by default!
 }
-type server3Stream0 struct { // for fast reset, entirely
+type _server3Stream0 struct { // for fast reset, entirely
 	index uint8
 	state uint8
 	reset bool
@@ -287,7 +287,7 @@ func (s *server3Stream) onEnd() { // for zeros
 	}
 	s.conn = nil
 	s.quicStream = nil
-	s.server3Stream0 = server3Stream0{}
+	s._server3Stream0 = _server3Stream0{}
 	s.webStream_.onEnd()
 }
 
@@ -584,11 +584,11 @@ type backend3Conn struct {
 	quicConn *quic.Conn // the underlying quic connection
 	expire   time.Time  // when the conn is considered expired
 	// Conn states (zeros)
-	nStreams      atomic.Int32                           // concurrent streams
-	streams       [http3MaxActiveStreams]*backend3Stream // active (open, remoteClosed, localClosed) streams
-	backend3Conn0                                        // all values must be zero by default in this struct!
+	nStreams       atomic.Int32                           // concurrent streams
+	streams        [http3MaxActiveStreams]*backend3Stream // active (open, remoteClosed, localClosed) streams
+	_backend3Conn0                                        // all values in this struct must be zero by default!
 }
-type backend3Conn0 struct { // for fast reset, entirely
+type _backend3Conn0 struct { // for fast reset, entirely
 }
 
 // poolBackend3Conn is the backend-side HTTP/3 connection pool.
@@ -620,7 +620,7 @@ func (c *backend3Conn) onPut() {
 	c.quicConn = nil
 	c.nStreams.Store(0)
 	c.streams = [http3MaxActiveStreams]*backend3Stream{}
-	c.backend3Conn0 = backend3Conn0{}
+	c._backend3Conn0 = _backend3Conn0{}
 	c.node = nil
 	c.expire = time.Time{}
 
@@ -669,9 +669,9 @@ type backend3Stream struct {
 	conn       *backend3Conn
 	quicStream *quic.Stream // the underlying quic stream
 	// Stream states (zeros)
-	backend3Stream0 // all values must be zero by default in this struct!
+	_backend3Stream0 // all values in this struct must be zero by default!
 }
-type backend3Stream0 struct { // for fast reset, entirely
+type _backend3Stream0 struct { // for fast reset, entirely
 }
 
 // poolBackend3Stream
@@ -714,7 +714,7 @@ func (s *backend3Stream) onEnd() { // for zeros
 	}
 	s.conn = nil
 	s.quicStream = nil
-	s.backend3Stream0 = backend3Stream0{}
+	s._backend3Stream0 = _backend3Stream0{}
 	s.webStream_.onEnd()
 }
 

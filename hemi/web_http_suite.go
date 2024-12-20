@@ -37,7 +37,7 @@ type webServer_[G Gate] struct {
 	// Parent
 	Server_[G]
 	// Mixins
-	_contentSaver_ // so responses can save their large contents in local file system.
+	_contentSaver_ // so requests can save their large contents in local file system.
 	// Assocs
 	defaultWebapp *Webapp // default webapp if not found
 	// States
@@ -195,14 +195,14 @@ type serverRequest_ struct { // incoming. needs parsing
 	// Stream states (non-zeros)
 	upfiles []Upfile // decoded upfiles -> r.array (for metadata) and temp files in local file system. [<r.stockUpfiles>/(make=16/128)]
 	// Stream states (zeros)
-	webapp         *Webapp     // target webapp of this request. set before executing the stream
-	path           []byte      // decoded path. only a reference. refers to r.array or region if rewrited, so can't be a span
-	absPath        []byte      // webapp.webRoot + r.UnsafePath(). if webapp.webRoot is not set then this is nil. set when dispatching to handlets. only a reference
-	pathInfo       os.FileInfo // cached result of os.Stat(r.absPath) if r.absPath is not nil
-	formWindow     []byte      // a window used for reading and parsing content as multipart/form-data. [<none>/r.contentText/4K/16K]
-	serverRequest0             // all values must be zero by default in this struct!
+	webapp          *Webapp     // target webapp of this request. set before executing the stream
+	path            []byte      // decoded path. only a reference. refers to r.array or region if rewrited, so can't be a span
+	absPath         []byte      // webapp.webRoot + r.UnsafePath(). if webapp.webRoot is not set then this is nil. set when dispatching to handlets. only a reference
+	pathInfo        os.FileInfo // cached result of os.Stat(r.absPath) if r.absPath is not nil
+	formWindow      []byte      // a window used for reading and parsing content as multipart/form-data. [<none>/r.contentText/4K/16K]
+	_serverRequest0             // all values in this struct must be zero by default!
 }
-type serverRequest0 struct { // for fast reset, entirely
+type _serverRequest0 struct { // for fast reset, entirely
 	gotInput        bool     // got some input from client? for request timeout handling
 	targetForm      int8     // request-target form. see httpTargetXXX
 	asteriskOptions bool     // true if method and uri is: OPTIONS *
@@ -297,7 +297,7 @@ func (r *serverRequest_) onEnd() { // for zeros
 	r.absPath = nil
 	r.pathInfo = nil
 	r.formWindow = nil // if r.formWindow is fetched from pool, it's put into pool on return. so just set as nil
-	r.serverRequest0 = serverRequest0{}
+	r._serverRequest0 = _serverRequest0{}
 
 	r.webIn_.onEnd()
 }
@@ -2329,10 +2329,10 @@ type serverResponse_ struct { // outgoing. needs building
 		lastModified int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
 	}
 	// Stream states (zeros)
-	webapp          *Webapp // associated webapp
-	serverResponse0         // all values must be zero by default in this struct!
+	webapp           *Webapp // associated webapp
+	_serverResponse0         // all values in this struct must be zero by default!
 }
-type serverResponse0 struct { // for fast reset, entirely
+type _serverResponse0 struct { // for fast reset, entirely
 	indexes struct {
 		expires      uint8
 		lastModified uint8
@@ -2351,7 +2351,7 @@ func (r *serverResponse_) onUse(httpVersion uint8) { // for non-zeros
 }
 func (r *serverResponse_) onEnd() { // for zeros
 	r.webapp = nil
-	r.serverResponse0 = serverResponse0{}
+	r._serverResponse0 = _serverResponse0{}
 
 	r.webOut_.onEnd()
 }
@@ -2683,9 +2683,9 @@ type serverSocket_ struct {
 	// Assocs
 	// Stream states (non-zeros)
 	// Stream states (zeros)
-	serverSocket0 // all values must be zero by default in this struct!
+	_serverSocket0 // all values in this struct must be zero by default!
 }
-type serverSocket0 struct { // for fast reset, entirely
+type _serverSocket0 struct { // for fast reset, entirely
 }
 
 func (s *serverSocket_) onUse() {
@@ -2693,7 +2693,7 @@ func (s *serverSocket_) onUse() {
 	s.webSocket_.onUse(asServer)
 }
 func (s *serverSocket_) onEnd() {
-	s.serverSocket0 = serverSocket0{}
+	s._serverSocket0 = _serverSocket0{}
 
 	s.webSocket_.onEnd()
 }
@@ -2804,9 +2804,9 @@ type backendRequest_ struct { // outgoing. needs building
 		ifUnmodifiedSince int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
 	}
 	// Stream states (zeros)
-	backendRequest0 // all values must be zero by default in this struct!
+	_backendRequest0 // all values in this struct must be zero by default!
 }
-type backendRequest0 struct { // for fast reset, entirely
+type _backendRequest0 struct { // for fast reset, entirely
 	indexes struct {
 		host              uint8
 		ifModifiedSince   uint8
@@ -2823,7 +2823,7 @@ func (r *backendRequest_) onUse(httpVersion uint8) { // for non-zeros
 	r.unixTimes.ifUnmodifiedSince = -1 // not set
 }
 func (r *backendRequest_) onEnd() { // for zeros
-	r.backendRequest0 = backendRequest0{}
+	r._backendRequest0 = _backendRequest0{}
 
 	r.webOut_.onEnd()
 }
@@ -3075,9 +3075,9 @@ type backendResponse_ struct { // incoming. needs parsing
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
-	backendResponse0 // all values must be zero by default in this struct!
+	_backendResponse0 // all values in this struct must be zero by default!
 }
-type backendResponse0 struct { // for fast reset, entirely
+type _backendResponse0 struct { // for fast reset, entirely
 	status      int16    // 200, 302, 404, ...
 	acceptBytes bool     // accept-ranges: bytes?
 	hasAllow    bool     // has allow header?
@@ -3120,7 +3120,7 @@ func (r *backendResponse_) onUse(httpVersion uint8) { // for non-zeros
 	r.webIn_.onUse(httpVersion, asResponse)
 }
 func (r *backendResponse_) onEnd() { // for zeros
-	r.backendResponse0 = backendResponse0{}
+	r._backendResponse0 = _backendResponse0{}
 
 	r.webIn_.onEnd()
 }
@@ -3466,9 +3466,9 @@ type backendSocket_ struct {
 	webSocket_
 	// Assocs
 	// Stream states (zeros)
-	backendSocket0 // all values must be zero by default in this struct!
+	_backendSocket0 // all values in this struct must be zero by default!
 }
-type backendSocket0 struct { // for fast reset, entirely
+type _backendSocket0 struct { // for fast reset, entirely
 }
 
 func (s *backendSocket_) onUse() {
@@ -3476,7 +3476,7 @@ func (s *backendSocket_) onUse() {
 	s.webSocket_.onUse(asServer)
 }
 func (s *backendSocket_) onEnd() {
-	s.backendSocket0 = backendSocket0{}
+	s._backendSocket0 = _backendSocket0{}
 
 	s.webSocket_.onEnd()
 }
@@ -3607,9 +3607,9 @@ type webIn_ struct { // incoming. needs parsing
 	bodyTime    time.Time // the time when first body read operation is performed on this stream
 	contentText []byte    // if loadable, the received and loaded content of current message is at r.contentText[:r.receivedSize]. [<none>/r.input/4K/16K/64K1/(make)]
 	contentFile *os.File  // used by r.holdContent(), if content is tempFile. will be closed on stream ends
-	webIn0                // all values must be zero by default in this struct!
+	_webIn0               // all values in this struct must be zero by default!
 }
-type webIn0 struct { // for fast reset, entirely
+type _webIn0 struct { // for fast reset, entirely
 	pBack            int32   // element begins from. for parsing elements in control & headers & content & trailers
 	pFore            int32   // element spanning to. for parsing elements in control & headers & content & trailers
 	head             span    // head (control + headers) of current message -> r.input. set after head is received. only for debugging
@@ -3729,7 +3729,7 @@ func (r *webIn_) onEnd() { // for zeros
 		r.contentFile = nil
 	}
 
-	r.webIn0 = webIn0{}
+	r._webIn0 = _webIn0{}
 }
 
 func (r *webIn_) UnsafeMake(size int) []byte { return r.stream.unsafeMake(size) }
@@ -4981,9 +4981,9 @@ type webOut_ struct { // outgoing. needs building
 	rangeType     string      // if outgoing content is ranged, this will be the content type for each range
 	vector        net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream
 	fixedVector   [4][]byte   // for sending/echoing message. reset after stream
-	webOut0                   // all values must be zero by default in this struct!
+	_webOut0                  // all values in this struct must be zero by default!
 }
-type webOut0 struct { // for fast reset, entirely
+type _webOut0 struct { // for fast reset, entirely
 	controlEdge   uint16 // edge of control in r.fields. only used by request to mark the method and request-target
 	fieldsEdge    uint16 // edge of r.fields. max size of r.fields must be <= 16K. used by both headers and trailers because they are not manipulated at the same time
 	hasRevisers   bool   // are there any outgoing revisers hooked on this outgoing message?
@@ -5016,7 +5016,7 @@ func (r *webOut_) onEnd() { // for zeros
 	r.rangeType = ""
 	r.vector = nil
 	r.fixedVector = [4][]byte{}
-	r.webOut0 = webOut0{}
+	r._webOut0 = _webOut0{}
 }
 
 func (r *webOut_) unsafeMake(size int) []byte { return r.stream.unsafeMake(size) }
@@ -5392,16 +5392,16 @@ type webSocket_ struct { // incoming and outgoing.
 	// Stream states (non-zeros)
 	asServer bool // treat this socket as a server socket?
 	// Stream states (zeros)
-	webSocket0 // all values must be zero by default in this struct!
+	_webSocket0 // all values in this struct must be zero by default!
 }
-type webSocket0 struct { // for fast reset, entirely
+type _webSocket0 struct { // for fast reset, entirely
 }
 
 func (s *webSocket_) onUse(asServer bool) {
 	s.asServer = asServer
 }
 func (s *webSocket_) onEnd() {
-	s.webSocket0 = webSocket0{}
+	s._webSocket0 = _webSocket0{}
 }
 
 func (s *webSocket_) todo() {

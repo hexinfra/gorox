@@ -211,13 +211,13 @@ func (s *server1Stream) execute() {
 	// target URI's scheme is "https"; if not, the scheme is "http".
 	if server.forceScheme != -1 { // forceScheme is set explicitly
 		req.schemeCode = uint8(server.forceScheme)
-	} else { // scheme is not forced
-		if conn.IsTLS() {
-			if req.schemeCode == SchemeHTTP && server.adjustScheme {
+	} else { // scheme is not forced. should it be aligned?
+		if conn.IsTLS() { // secured
+			if req.schemeCode == SchemeHTTP && server.alignScheme {
 				req.schemeCode = SchemeHTTPS
 			}
 		} else { // not secured
-			if req.schemeCode == SchemeHTTPS && server.adjustScheme {
+			if req.schemeCode == SchemeHTTPS && server.alignScheme {
 				req.schemeCode = SchemeHTTP
 			}
 		}
@@ -857,7 +857,7 @@ type server1Response struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
-func (r *server1Response) control() []byte { // HTTP/1.1 xxx ?
+func (r *server1Response) control() []byte { // HTTP/1.1 NNN X
 	var start []byte
 	if r.status >= int16(len(http1Controls)) || http1Controls[r.status] == nil {
 		r.start = http1Template
@@ -2710,7 +2710,7 @@ func (s *webSocket_) todo1() {
 
 //////////////////////////////////////// HTTP/1.x protocol elements ////////////////////////////////////////
 
-var http1Template = [16]byte{'H', 'T', 'T', 'P', '/', '1', '.', '1', ' ', 'x', 'x', 'x', ' ', '?', '\r', '\n'}
+var http1Template = [16]byte{'H', 'T', 'T', 'P', '/', '1', '.', '1', ' ', 'N', 'N', 'N', ' ', 'X', '\r', '\n'}
 var http1Controls = [...][]byte{ // size: 512*24B=12K. keep sync with http2Control and http3Control!
 	// 1XX
 	StatusContinue:           []byte("HTTP/1.1 100 Continue\r\n"),

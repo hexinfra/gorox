@@ -10,6 +10,6 @@ httpxServer "hs1" {
 	.recvTimeout         = 120s
 	.sendTimeout         = 120s
 	.forceScheme         = ""
-	.adjustScheme        = true
+	.alignScheme         = true
 	.saveContentFilesDir = %tmpDir + "/web/servers/hs1"
 }

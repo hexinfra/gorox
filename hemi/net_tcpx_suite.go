@@ -175,20 +175,20 @@ type tcpxGate struct {
 	// Assocs
 	router *TCPXRouter
 	// States
-	maxActives  int32        // max concurrent conns allowed
-	activeConns atomic.Int32 // TODO: false sharing
-	listener    net.Listener // the real gate. set after open
+	maxActives int32        // max concurrent conns allowed
+	curActives atomic.Int32 // TODO: false sharing
+	listener   net.Listener // the real gate. set after open
 }
 
 func (g *tcpxGate) init(id int32, router *TCPXRouter) {
 	g.Gate_.Init(id)
 	g.router = router
 	g.maxActives = router.MaxConnsPerGate()
-	g.activeConns.Store(0)
+	g.curActives.Store(0)
 }
 
-func (g *tcpxGate) DecActives() int32             { return g.activeConns.Add(-1) }
-func (g *tcpxGate) IncActives() int32             { return g.activeConns.Add(1) }
+func (g *tcpxGate) DecActives() int32             { return g.curActives.Add(-1) }
+func (g *tcpxGate) IncActives() int32             { return g.curActives.Add(1) }
 func (g *tcpxGate) ReachLimit(actives int32) bool { return actives > g.maxActives }
 
 func (g *tcpxGate) Server() Server  { return g.router }
@@ -612,7 +612,7 @@ type TCPXProxyConfig struct {
 }
 
 // TCPXReverseProxy
-func TCPXReverseProxy(conn *TCPXConn, backend *TCPXBackend, config *TCPXProxyConfig) {
+func TCPXReverseProxy(conn *TCPXConn, backend *TCPXBackend, proxyConfig *TCPXProxyConfig) {
 	backConn, backErr := backend.Dial()
 	if backErr != nil {
 		conn.Close()

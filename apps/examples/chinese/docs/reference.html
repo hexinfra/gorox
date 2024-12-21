@@ -1357,7 +1357,7 @@ httpProxy {
 		.recvTimeout = 120s
 		.sendTimeout = 120s
 		.forceScheme = ""
-		.adjustScheme = true
+		.alignScheme = true
 	}
 }
 </code>
@@ -1434,14 +1434,14 @@ httpProxy {
 				</li>
 
 				<li>
-					<p>.adjustScheme 是否矫正协议？如果在 http 请求行里面使用了绝对 URL，并且绝对 URL 协议与当前的请求不一致。</p>
-					<code>语法：.adjustScheme = false
+					<p>.alignScheme 是否矫正协议？如果在 http 请求行里面使用了绝对 URL，并且绝对 URL 协议与当前的请求不一致。</p>
+					<code>语法：.alignScheme = false
 						默认值：false
 						取值范围：false | true
 					</code>
 
 					<p>例子</p>
-					<code>// 如果在 https 请求中，使用了如下的请求行。如果.adjustScheme = true，则强制跳转到 http协议上。
+					<code>// 如果在 https 请求中，使用了如下的请求行。如果.alignScheme = true，则强制跳转到 http协议上。
 						GET http://www.example.org/pub/WWW/TheProject.html HTTP/1.1
 					</code>
 				</li>

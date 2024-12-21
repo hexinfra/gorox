@@ -1128,10 +1128,10 @@ type Response interface { // for *server[1-3]Response
 	addTrailer(name []byte, value []byte) bool
 	endVague() error
 	proxyPass1xx(backResp response) bool
-	proxyPass(backResp response) error             // pass content to client directly
-	proxyPost(content any, hasTrailers bool) error // post held content to client
-	proxyCopyHead(resp response, config *WebExchanProxyConfig) bool
-	proxyCopyTail(resp response, config *WebExchanProxyConfig) bool
+	proxyPassMessage(backResp response) error             // pass content to client directly
+	proxyPostMessage(content any, hasTrailers bool) error // post held content to client
+	proxyCopyHead(resp response, proxyConfig *WebExchanProxyConfig) bool
+	proxyCopyTail(resp response, proxyConfig *WebExchanProxyConfig) bool
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
 }

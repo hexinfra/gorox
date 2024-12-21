@@ -117,42 +117,42 @@ func (h *fcgiProxy) OnPrepare() {
 func (h *fcgiProxy) IsProxy() bool { return true }
 func (h *fcgiProxy) IsCache() bool { return h.cacher != nil }
 
-func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
+func (h *fcgiProxy) Handle(httpReq Request, httpResp Response) (handled bool) {
 	handled = true
 
-	var content any
-	hasContent := req.HasContent()
-	if hasContent && (h.BufferClientContent || req.IsVague()) { // including size 0
-		content = req.takeContent()
-		if content == nil { // take failed
-			// stream was marked as broken
-			resp.SetStatus(StatusBadRequest)
-			resp.SendBytes(nil)
+	var httpContent any
+	httpHasContent := httpReq.HasContent()
+	if httpHasContent && (h.BufferClientContent || httpReq.IsVague()) { // including size 0
+		httpContent = httpReq.takeContent()
+		if httpContent == nil { // take failed
+			// httpStream was marked as broken
+			httpResp.SetStatus(StatusBadRequest)
+			httpResp.SendBytes(nil)
 			return
 		}
 	}
 
 	fcgiExchan, fcgiErr := h.backend.fetchExchan()
 	if fcgiErr != nil {
-		resp.SendBadGateway(nil)
+		httpResp.SendBadGateway(nil)
 		return
 	}
 	defer h.backend.storeExchan(fcgiExchan)
 
 	fcgiReq := &fcgiExchan.request
-	if !fcgiReq.proxyCopyHead(req, h) {
+	if !fcgiReq.proxyCopyHead(httpReq, h) {
 		fcgiExchan.markBroken()
-		resp.SendBadGateway(nil)
+		httpResp.SendBadGateway(nil)
 		return
 	}
-	if hasContent && !h.BufferClientContent && !req.IsVague() {
-		fcgiErr = fcgiReq.proxyPass(req)
+	if httpHasContent && !h.BufferClientContent && !httpReq.IsVague() {
+		fcgiErr = fcgiReq.proxyPassMessage(httpReq)
 	} else { // nil, []byte, tempFile
-		fcgiErr = fcgiReq.proxyPost(content)
+		fcgiErr = fcgiReq.proxyPostMessage(httpContent)
 	}
 	if fcgiErr != nil {
 		fcgiExchan.markBroken()
-		resp.SendBadGateway(nil)
+		httpResp.SendBadGateway(nil)
 		return
 	}
 
@@ -161,22 +161,22 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 		fcgiResp.recvHead()
 		if fcgiResp.HeadResult() != StatusOK || fcgiResp.status == StatusSwitchingProtocols { // webSocket is not served in handlets.
 			fcgiExchan.markBroken()
-			resp.SendBadGateway(nil)
+			httpResp.SendBadGateway(nil)
 			return
 		}
 		if fcgiResp.status >= StatusOK {
 			break
 		}
 		// We got 1xx
-		if req.VersionCode() == Version1_0 {
+		if httpReq.VersionCode() == Version1_0 { // 1xx response is not supported by HTTP/1.0
 			fcgiExchan.markBroken()
-			resp.SendBadGateway(nil)
+			httpResp.SendBadGateway(nil)
 			return
 		}
 		// A proxy MUST forward 1xx responses unless the proxy itself requested the generation of the 1xx response.
 		// For example, if a proxy adds an "Expect: 100-continue" header field when it forwards a request, then it
 		// need not forward the corresponding 100 (Continue) response(s).
-		if !resp.proxyPass1xx(fcgiResp) {
+		if !httpResp.proxyPass1xx(fcgiResp) {
 			fcgiExchan.markBroken()
 			return
 		}
@@ -185,28 +185,28 @@ func (h *fcgiProxy) Handle(req Request, resp Response) (handled bool) {
 
 	var fcgiContent any
 	fcgiHasContent := false // TODO: if fcgi server includes a content even for HEAD method, what should we do?
-	if req.MethodCode() != MethodHEAD {
+	if httpReq.MethodCode() != MethodHEAD {
 		fcgiHasContent = fcgiResp.HasContent()
 	}
 	if fcgiHasContent && h.BufferServerContent { // including size 0
 		fcgiContent = fcgiResp.takeContent()
 		if fcgiContent == nil { // take failed
 			// fcgiExchan was marked as broken
-			resp.SendBadGateway(nil)
+			httpResp.SendBadGateway(nil)
 			return
 		}
 	}
 
-	if !resp.proxyCopyHead(fcgiResp, &h.WebExchanProxyConfig) {
+	if !httpResp.proxyCopyHead(fcgiResp, &h.WebExchanProxyConfig) {
 		fcgiExchan.markBroken()
 		return
 	}
 	if fcgiHasContent && !h.BufferServerContent {
-		if err := resp.proxyPass(fcgiResp); err != nil {
+		if err := httpResp.proxyPassMessage(fcgiResp); err != nil {
 			fcgiExchan.markBroken()
 			return
 		}
-	} else if err := resp.proxyPost(fcgiContent, false); err != nil { // false means no trailers
+	} else if err := httpResp.proxyPostMessage(fcgiContent, false); err != nil { // false means no trailers
 		return
 	}
 
@@ -823,7 +823,7 @@ func (r *fcgiRequest) _growParams(size int) (from int, edge int, ok bool) { // t
 	return
 }
 
-func (r *fcgiRequest) proxyPass(req Request) error { // only for sized (>0) content. vague content must use proxyPost(), as we don't use backend-side chunking
+func (r *fcgiRequest) proxyPassMessage(req Request) error { // only for sized (>0) content. vague content must use proxyPostMessage(), as we don't use backend-side chunking
 	r.vector = r.fixedVector[0:4]
 	r._setBeginRequest(&r.vector[0])
 	r.vector[1] = r.paramsHeader[:]
@@ -861,7 +861,7 @@ func (r *fcgiRequest) proxyPass(req Request) error { // only for sized (>0) cont
 	}
 	return r._writeBytes(fcgiEmptyStdin)
 }
-func (r *fcgiRequest) proxyPost(content any) error { // nil, []byte, and *os.File. for bufferClientContent or vague Request content
+func (r *fcgiRequest) proxyPostMessage(content any) error { // nil, []byte, and *os.File. for bufferClientContent or vague Request content
 	if contentText, ok := content.([]byte); ok { // text, <= 64K1
 		return r.sendText(contentText)
 	} else if contentFile, ok := content.(*os.File); ok { // file

@@ -48,7 +48,7 @@ type webServer_[G Gate] struct {
 	maxMemoryContentSize int32                  // max content size that can be loaded into memory directly
 	maxStreamsPerConn    int32                  // max streams of one conn. 0 means infinite
 	forceScheme          int8                   // scheme (http/https) that must be used
-	adjustScheme         bool                   // use https scheme for TLS and http scheme for others?
+	alignScheme          bool                   // use https scheme for TLS and http scheme for others?
 }
 
 func (s *webServer_[G]) onCreate(name string, stage *Stage) {
@@ -95,8 +95,8 @@ func (s *webServer_[G]) onConfigure() {
 		s.forceScheme = SchemeHTTPS
 	}
 
-	// adjustScheme
-	s.ConfigureBool("adjustScheme", &s.adjustScheme, true)
+	// alignScheme
+	s.ConfigureBool("alignScheme", &s.alignScheme, true)
 }
 func (s *webServer_[G]) onPrepare() {
 	s.Server_.OnPrepare()
@@ -170,18 +170,18 @@ type webGate_ struct {
 	// Parent
 	Gate_
 	// States
-	maxActives  int32        // max concurrent conns allowed
-	activeConns atomic.Int32 // TODO: false sharing
+	maxActives int32        // max concurrent conns allowed
+	curActives atomic.Int32 // TODO: false sharing
 }
 
 func (g *webGate_) init(id int32, maxActives int32) {
 	g.Gate_.Init(id)
 	g.maxActives = maxActives
-	g.activeConns.Store(0)
+	g.curActives.Store(0)
 }
 
-func (g *webGate_) DecActives() int32             { return g.activeConns.Add(-1) }
-func (g *webGate_) IncActives() int32             { return g.activeConns.Add(1) }
+func (g *webGate_) DecActives() int32             { return g.curActives.Add(-1) }
+func (g *webGate_) IncActives() int32             { return g.curActives.Add(1) }
 func (g *webGate_) ReachLimit(actives int32) bool { return actives > g.maxActives }
 
 // serverRequest_ is the parent for server[1-3]Request.
@@ -2609,7 +2609,7 @@ func (r *serverResponse_) _removeLastModified() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified)
 }
 
-func (r *serverResponse_) proxyPass(backResp response) error {
+func (r *serverResponse_) proxyPassMessage(backResp response) error {
 	pass := r.message.passBytes
 	if backResp.IsVague() || r.hasRevisers { // if we need to revise, we always use vague no matter the original content is sized or vague
 		pass = r.EchoBytes
@@ -2644,7 +2644,7 @@ func (r *serverResponse_) proxyPass(backResp response) error {
 	}
 	return nil
 }
-func (r *serverResponse_) proxyCopyHead(resp response, config *WebExchanProxyConfig) bool {
+func (r *serverResponse_) proxyCopyHead(resp response, proxyConfig *WebExchanProxyConfig) bool {
 	resp.delHopHeaders()
 
 	// copy control (:status)
@@ -2665,7 +2665,7 @@ func (r *serverResponse_) proxyCopyHead(resp response, config *WebExchanProxyCon
 
 	return true
 }
-func (r *serverResponse_) proxyCopyTail(resp response, config *WebExchanProxyConfig) bool {
+func (r *serverResponse_) proxyCopyTail(resp response, proxyConfig *WebExchanProxyConfig) bool {
 	return resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.message.addTrailer(name, value)
 	})
@@ -2936,7 +2936,7 @@ func (r *backendRequest_) _removeIfUnmodifiedSince() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince)
 }
 
-func (r *backendRequest_) proxyPass(req Request) error {
+func (r *backendRequest_) proxyPassMessage(req Request) error {
 	pass := r.message.passBytes
 	if req.IsVague() {
 		pass = r.EchoBytes
@@ -2971,7 +2971,7 @@ func (r *backendRequest_) proxyPass(req Request) error {
 	}
 	return nil
 }
-func (r *backendRequest_) proxyCopyHead(req Request, config *WebExchanProxyConfig) bool {
+func (r *backendRequest_) proxyCopyHead(req Request, proxyConfig *WebExchanProxyConfig) bool {
 	req.delHopHeaders()
 
 	// copy control (:method, :path, :authority, :scheme)
@@ -2985,7 +2985,7 @@ func (r *backendRequest_) proxyCopyHead(req Request, config *WebExchanProxyConfi
 	if !r.message.(request).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
 		return false
 	}
-	if req.IsAbsoluteForm() || len(config.Hostname) != 0 || len(config.ColonPort) != 0 { // TODO: what about HTTP/2 and HTTP/3?
+	if req.IsAbsoluteForm() || len(proxyConfig.Hostname) != 0 || len(proxyConfig.ColonPort) != 0 { // TODO: what about HTTP/2 and HTTP/3?
 		req.unsetHost()
 		if req.IsAbsoluteForm() {
 			if !r.message.addHeader(bytesHost, req.UnsafeAuthority()) {
@@ -2996,15 +2996,15 @@ func (r *backendRequest_) proxyCopyHead(req Request, config *WebExchanProxyConfi
 				hostname  []byte
 				colonPort []byte
 			)
-			if len(config.Hostname) == 0 { // no custom hostname
+			if len(proxyConfig.Hostname) == 0 { // no custom hostname
 				hostname = req.UnsafeHostname()
 			} else {
-				hostname = config.Hostname
+				hostname = proxyConfig.Hostname
 			}
-			if len(config.ColonPort) == 0 { // no custom colonPort
+			if len(proxyConfig.ColonPort) == 0 { // no custom colonPort
 				colonPort = req.UnsafeColonPort()
 			} else {
-				colonPort = config.ColonPort
+				colonPort = proxyConfig.ColonPort
 			}
 			if !r.message.(request).setAuthority(hostname, colonPort) {
 				return false
@@ -3029,12 +3029,12 @@ func (r *backendRequest_) proxyCopyHead(req Request, config *WebExchanProxyConfi
 	if req.HasCookies() && !r.message.(request).proxyCopyCookies(req) {
 		return false
 	}
-	if !r.message.addHeader(bytesVia, config.InboundViaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
+	if !r.message.addHeader(bytesVia, proxyConfig.InboundViaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
 		return false
 	}
 
 	// copy added headers
-	for name, vValue := range config.AddRequestHeaders {
+	for name, vValue := range proxyConfig.AddRequestHeaders {
 		var value []byte
 		if vValue.IsVariable() {
 			value = vValue.BytesVar(req)
@@ -3055,13 +3055,13 @@ func (r *backendRequest_) proxyCopyHead(req Request, config *WebExchanProxyConfi
 		return false
 	}
 
-	for _, name := range config.DelRequestHeaders {
+	for _, name := range proxyConfig.DelRequestHeaders {
 		r.message.delHeader(name)
 	}
 
 	return true
 }
-func (r *backendRequest_) proxyCopyTail(req Request, config *WebExchanProxyConfig) bool {
+func (r *backendRequest_) proxyCopyTail(req Request, proxyConfig *WebExchanProxyConfig) bool {
 	return req.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.message.addTrailer(name, value)
 	})
@@ -5214,7 +5214,7 @@ func (r *webOut_) Trailer(name string) (value string, ok bool) {
 	return string(v), ok
 }
 
-func (r *webOut_) proxyPost(content any, hasTrailers bool) error {
+func (r *webOut_) proxyPostMessage(content any, hasTrailers bool) error {
 	if contentText, ok := content.([]byte); ok {
 		if hasTrailers { // if (in the future) we supports taking vague content in buffer, this happens
 			return r.echoText(contentText)

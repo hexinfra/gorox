@@ -2644,16 +2644,16 @@ func (r *serverResponse_) proxyPassMessage(backResp response) error {
 	}
 	return nil
 }
-func (r *serverResponse_) proxyCopyHead(resp response, proxyConfig *WebExchanProxyConfig) bool {
-	resp.delHopHeaders()
+func (r *serverResponse_) proxyCopyHeaders(backResp response, proxyConfig *WebExchanProxyConfig) bool {
+	backResp.delHopHeaders()
 
 	// copy control (:status)
-	r.SetStatus(resp.Status())
+	r.SetStatus(backResp.Status())
 
 	// copy selective forbidden headers (excluding set-cookie, which is copied directly) from resp
 
 	// copy remaining headers from resp
-	if !resp.forHeaders(func(header *pair, name []byte, value []byte) bool {
+	if !backResp.forHeaders(func(header *pair, name []byte, value []byte) bool {
 		if header.nameHash == hashSetCookie && bytes.Equal(name, bytesSetCookie) { // set-cookie is copied directly
 			return r.message.addHeader(name, value)
 		} else {
@@ -2665,8 +2665,8 @@ func (r *serverResponse_) proxyCopyHead(resp response, proxyConfig *WebExchanPro
 
 	return true
 }
-func (r *serverResponse_) proxyCopyTail(resp response, proxyConfig *WebExchanProxyConfig) bool {
-	return resp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
+func (r *serverResponse_) proxyCopyTrailers(backResp response, proxyConfig *WebExchanProxyConfig) bool {
+	return backResp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.message.addTrailer(name, value)
 	})
 }
@@ -2936,20 +2936,20 @@ func (r *backendRequest_) _removeIfUnmodifiedSince() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince)
 }
 
-func (r *backendRequest_) proxyPassMessage(req Request) error {
+func (r *backendRequest_) proxyPassMessage(foreReq Request) error {
 	pass := r.message.passBytes
-	if req.IsVague() {
+	if foreReq.IsVague() {
 		pass = r.EchoBytes
 	} else {
 		r.isSent = true
-		r.contentSize = req.ContentSize()
+		r.contentSize = foreReq.ContentSize()
 		// TODO: find a way to reduce i/o syscalls if content is small?
 		if err := r.message.passHeaders(); err != nil {
 			return err
 		}
 	}
 	for {
-		p, err := req.readContent()
+		p, err := foreReq.readContent()
 		if len(p) >= 0 {
 			if e := pass(p); e != nil {
 				return e
@@ -2962,8 +2962,8 @@ func (r *backendRequest_) proxyPassMessage(req Request) error {
 			return err
 		}
 	}
-	if req.HasTrailers() { // added trailers will be written by upper code eventually.
-		if !req.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
+	if foreReq.HasTrailers() { // added trailers will be written by upper code eventually.
+		if !foreReq.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 			return r.message.addTrailer(name, value)
 		}) {
 			return webOutTrailerFailed
@@ -2971,24 +2971,24 @@ func (r *backendRequest_) proxyPassMessage(req Request) error {
 	}
 	return nil
 }
-func (r *backendRequest_) proxyCopyHead(req Request, proxyConfig *WebExchanProxyConfig) bool {
-	req.delHopHeaders()
+func (r *backendRequest_) proxyCopyHeaders(foreReq Request, proxyConfig *WebExchanProxyConfig) bool {
+	foreReq.delHopHeaders()
 
 	// copy control (:method, :path, :authority, :scheme)
-	uri := req.UnsafeURI()
-	if req.IsAsteriskOptions() { // OPTIONS *
+	uri := foreReq.UnsafeURI()
+	if foreReq.IsAsteriskOptions() { // OPTIONS *
 		// RFC 9112 (3.2.4):
 		// If a proxy receives an OPTIONS request with an absolute-form of request-target in which the URI has an empty path and no query component,
 		// then the last proxy on the request chain MUST send a request-target of "*" when it forwards the request to the indicated origin server.
 		uri = bytesAsterisk
 	}
-	if !r.message.(request).setMethodURI(req.UnsafeMethod(), uri, req.HasContent()) {
+	if !r.message.(request).setMethodURI(foreReq.UnsafeMethod(), uri, foreReq.HasContent()) {
 		return false
 	}
-	if req.IsAbsoluteForm() || len(proxyConfig.Hostname) != 0 || len(proxyConfig.ColonPort) != 0 { // TODO: what about HTTP/2 and HTTP/3?
-		req.unsetHost()
-		if req.IsAbsoluteForm() {
-			if !r.message.addHeader(bytesHost, req.UnsafeAuthority()) {
+	if foreReq.IsAbsoluteForm() || len(proxyConfig.Hostname) != 0 || len(proxyConfig.ColonPort) != 0 { // TODO: what about HTTP/2 and HTTP/3?
+		foreReq.unsetHost()
+		if foreReq.IsAbsoluteForm() {
+			if !r.message.addHeader(bytesHost, foreReq.UnsafeAuthority()) {
 				return false
 			}
 		} else { // custom authority (hostname or colonPort)
@@ -2997,12 +2997,12 @@ func (r *backendRequest_) proxyCopyHead(req Request, proxyConfig *WebExchanProxy
 				colonPort []byte
 			)
 			if len(proxyConfig.Hostname) == 0 { // no custom hostname
-				hostname = req.UnsafeHostname()
+				hostname = foreReq.UnsafeHostname()
 			} else {
 				hostname = proxyConfig.Hostname
 			}
 			if len(proxyConfig.ColonPort) == 0 { // no custom colonPort
-				colonPort = req.UnsafeColonPort()
+				colonPort = foreReq.UnsafeColonPort()
 			} else {
 				colonPort = proxyConfig.ColonPort
 			}
@@ -3026,7 +3026,7 @@ func (r *backendRequest_) proxyCopyHead(req Request, proxyConfig *WebExchanProxy
 	}
 
 	// copy selective forbidden headers (including cookie) from req
-	if req.HasCookies() && !r.message.(request).proxyCopyCookies(req) {
+	if foreReq.HasCookies() && !r.message.(request).proxyCopyCookies(foreReq) {
 		return false
 	}
 	if !r.message.addHeader(bytesVia, proxyConfig.InboundViaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
@@ -3037,7 +3037,7 @@ func (r *backendRequest_) proxyCopyHead(req Request, proxyConfig *WebExchanProxy
 	for name, vValue := range proxyConfig.AddRequestHeaders {
 		var value []byte
 		if vValue.IsVariable() {
-			value = vValue.BytesVar(req)
+			value = vValue.BytesVar(foreReq)
 		} else if v, ok := vValue.Bytes(); ok {
 			value = v
 		} else {
@@ -3049,7 +3049,7 @@ func (r *backendRequest_) proxyCopyHead(req Request, proxyConfig *WebExchanProxy
 	}
 
 	// copy remaining headers from req
-	if !req.forHeaders(func(header *pair, name []byte, value []byte) bool {
+	if !foreReq.forHeaders(func(header *pair, name []byte, value []byte) bool {
 		return r.message.insertHeader(header.nameHash, name, value)
 	}) {
 		return false
@@ -3061,8 +3061,8 @@ func (r *backendRequest_) proxyCopyHead(req Request, proxyConfig *WebExchanProxy
 
 	return true
 }
-func (r *backendRequest_) proxyCopyTail(req Request, proxyConfig *WebExchanProxyConfig) bool {
-	return req.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
+func (r *backendRequest_) proxyCopyTrailers(foreReq Request, proxyConfig *WebExchanProxyConfig) bool {
+	return foreReq.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.message.addTrailer(name, value)
 	})
 }
@@ -4369,7 +4369,7 @@ func (r *webIn_) _loadContent() { // into memory. [0, r.maxContentSize]
 		r.stream.markBroken()
 	}
 }
-func (r *webIn_) takeContent() any { // used by proxies
+func (r *webIn_) proxyTakeContent() any { // used by proxies
 	if r.contentReceived {
 		if r.contentFile == nil {
 			return r.contentText // immediate
@@ -4799,10 +4799,10 @@ func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name [
 	}
 }
 
-func (r *webIn_) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by webOut.proxyCopyHead(). excluding sub headers
+func (r *webIn_) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by webOut.proxyCopyHeaders(). excluding sub headers
 	return r._forMainFields(r.headers, pairHeader, callback)
 }
-func (r *webIn_) forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // by webOut.proxyCopyTail(). excluding sub trailers
+func (r *webIn_) forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // by webOut.proxyCopyTrailers(). excluding sub trailers
 	return r._forMainFields(r.trailers, pairTrailer, callback)
 }
 func (r *webIn_) _forMainFields(fields zone, extraKind int8, callback func(field *pair, name []byte, value []byte) bool) bool {

@@ -957,7 +957,7 @@ type Request interface { // for *server[1-3]Request
 	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
 	forCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool
 	unsetHost()
-	takeContent() any // used by proxies
+	proxyTakeContent() any // used by proxies
 	readContent() (p []byte, err error)
 	examineTail() bool
 	hookReviser(reviser Reviser)
@@ -1128,10 +1128,10 @@ type Response interface { // for *server[1-3]Response
 	addTrailer(name []byte, value []byte) bool
 	endVague() error
 	proxyPass1xx(backResp response) bool
-	proxyPassMessage(backResp response) error             // pass content to client directly
-	proxyPostMessage(content any, hasTrailers bool) error // post held content to client
-	proxyCopyHead(resp response, proxyConfig *WebExchanProxyConfig) bool
-	proxyCopyTail(resp response, proxyConfig *WebExchanProxyConfig) bool
+	proxyPassMessage(backResp response) error                     // pass content to client directly
+	proxyPostMessage(backContent any, backHasTrailers bool) error // post held content to client
+	proxyCopyHeaders(backResp response, proxyConfig *WebExchanProxyConfig) bool
+	proxyCopyTrailers(backResp response, proxyConfig *WebExchanProxyConfig) bool
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
 }

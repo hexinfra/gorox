@@ -1551,9 +1551,9 @@ func (r *backend1Request) AddCookie(name string, value string) bool { // cookie:
 	// TODO. need some space to place the cookie. use stream.unsafeMake()?
 	return false
 }
-func (r *backend1Request) proxyCopyCookies(req Request) bool { // merge all cookies into one "cookie" header
+func (r *backend1Request) proxyCopyCookies(foreReq Request) bool { // merge all cookies into one "cookie" header
 	headerSize := len(bytesCookie) + len(bytesColonSpace) // `cookie: `
-	req.forCookies(func(cookie *pair, name []byte, value []byte) bool {
+	foreReq.forCookies(func(cookie *pair, name []byte, value []byte) bool {
 		headerSize += len(name) + 1 + len(value) + 2 // `name=value; `
 		return true
 	})
@@ -1562,7 +1562,7 @@ func (r *backend1Request) proxyCopyCookies(req Request) bool { // merge all cook
 		r.fields[from] = ':'
 		r.fields[from+1] = ' '
 		from += 2
-		req.forCookies(func(cookie *pair, name []byte, value []byte) bool {
+		foreReq.forCookies(func(cookie *pair, name []byte, value []byte) bool {
 			from += copy(r.fields[from:], name)
 			r.fields[from] = '='
 			from++

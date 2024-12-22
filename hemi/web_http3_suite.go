@@ -788,7 +788,7 @@ func (r *backend3Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
 	return false
 }
-func (r *backend3Request) proxyCopyCookies(req Request) bool { // DO NOT merge into one "cookie" header!
+func (r *backend3Request) proxyCopyCookies(foreReq Request) bool { // DO NOT merge into one "cookie" header!
 	// TODO: one by one?
 	return true
 }

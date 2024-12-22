@@ -22,7 +22,6 @@ type configurator struct {
 	// States
 	tokens  []token // the token list
 	index   int     // token index
-	limit   int     // limit of token index
 	counter int     // the name for components without a name
 }
 
@@ -34,7 +33,7 @@ func (c *configurator) stageFromText(text string) (stage *Stage, err error) {
 	}()
 	var l lexer
 	c.tokens = l.scanText(text)
-	return c.parse()
+	return c.newStage()
 }
 func (c *configurator) stageFromFile(base string, path string) (stage *Stage, err error) {
 	defer func() {
@@ -44,7 +43,7 @@ func (c *configurator) stageFromFile(base string, path string) (stage *Stage, er
 	}()
 	var l lexer
 	c.tokens = l.scanFile(base, path)
-	return c.parse()
+	return c.newStage()
 }
 
 func (c *configurator) showTokens() {
@@ -61,7 +60,7 @@ func (c *configurator) forwardToken() *token {
 }
 func (c *configurator) currentTokenIs(kind int16) bool { return c.tokens[c.index].kind == kind }
 func (c *configurator) nextTokenIs(kind int16) bool {
-	if c.index == c.limit {
+	if c.index == len(c.tokens) {
 		return false
 	}
 	return c.tokens[c.index+1].kind == kind
@@ -78,21 +77,21 @@ func (c *configurator) forwardExpectToken(kind int16) *token {
 	return c.expectToken(kind)
 }
 func (c *configurator) _forwardCheckEOF() {
-	if c.index++; c.index == c.limit {
+	if c.index++; c.index == len(c.tokens) {
 		panic(errors.New("configurator: unexpected EOF"))
 	}
 }
 
-func (c *configurator) newName() string {
+func (c *configurator) makeName() string {
 	c.counter++
 	return strconv.Itoa(c.counter)
 }
 
-func (c *configurator) parse() (stage *Stage, err error) {
+func (c *configurator) newStage() (stage *Stage, err error) {
 	if current := c.currentToken(); current.kind != tokenComponent || current.info != compStage {
 		panic(errors.New("configurator error: root component is not stage"))
 	}
-	stage = newStage()
+	stage = createStage()
 	stage.setParent(nil)
 	c.parseStage(stage)
 	return stage, nil
@@ -181,7 +180,7 @@ func (c *configurator) parseNode(backend Backend) { // node <name> {}
 		nodeName = current.text
 		c.forwardToken()
 	} else {
-		nodeName = c.newName()
+		nodeName = c.makeName()
 	}
 	node := backend.CreateNode(nodeName)
 	node.setParent(backend)
@@ -206,7 +205,7 @@ func (c *configurator) parseUDPXDealet(sign *token, router *UDPXRouter, kase *ud
 	parseComponent1(c, sign, router, router.createDealet, kase, kase.addDealet)
 }
 func (c *configurator) parseQUIXCase(router *QUIXRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
-	kase := router.createCase(c.newName()) // use a temp name by default
+	kase := router.createCase(c.makeName()) // use a temp name by default
 	kase.setParent(router)
 	c.forwardToken()
 	if !c.currentTokenIs(tokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
@@ -242,7 +241,7 @@ func (c *configurator) parseQUIXCase(router *QUIXRouter) { // case <name> {}, ca
 	}
 }
 func (c *configurator) parseTCPXCase(router *TCPXRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
-	kase := router.createCase(c.newName()) // use a temp name by default
+	kase := router.createCase(c.makeName()) // use a temp name by default
 	kase.setParent(router)
 	c.forwardToken()
 	if !c.currentTokenIs(tokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
@@ -278,7 +277,7 @@ func (c *configurator) parseTCPXCase(router *TCPXRouter) { // case <name> {}, ca
 	}
 }
 func (c *configurator) parseUDPXCase(router *UDPXRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
-	kase := router.createCase(c.newName()) // use a temp name by default
+	kase := router.createCase(c.makeName()) // use a temp name by default
 	kase.setParent(router)
 	c.forwardToken()
 	if !c.currentTokenIs(tokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
@@ -402,7 +401,7 @@ func (c *configurator) parseSocklet(sign *token, webapp *Webapp, rule *Rule) { /
 	parseComponent2(c, sign, webapp, webapp.createSocklet, rule, rule.addSocklet)
 }
 func (c *configurator) parseRule(webapp *Webapp) { // rule <name> {}, rule <name> <cond> {}, rule <cond> {}, rule {}
-	rule := webapp.createRule(c.newName()) // use a temp name by default
+	rule := webapp.createRule(c.makeName()) // use a temp name by default
 	rule.setParent(webapp)
 	c.forwardToken()
 	if !c.currentTokenIs(tokenLeftBrace) { // rule <name> {}, rule <name> <cond> {}, rule <cond> {}
@@ -712,7 +711,7 @@ func parseComponent1[R Component, T Component, C any](c *configurator, sign *tok
 		name = current.text
 		c.forwardToken()
 	} else if kase != nil { // in case
-		name = c.newName()
+		name = c.makeName()
 	}
 	component := create(sign.text, name)
 	component.setParent(router)
@@ -727,7 +726,7 @@ func parseComponent2[T Component](c *configurator, sign *token, webapp *Webapp, 
 		name = current.text
 		c.forwardToken()
 	} else if rule != nil { // in rule
-		name = c.newName()
+		name = c.makeName()
 	}
 	component := create(sign.text, name)
 	component.setParent(webapp)

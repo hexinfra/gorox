@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// Common elements.
+// Common elements in the engine.
 
 package hemi
 
@@ -16,7 +16,6 @@ import (
 	"net"
 	"os"
 	"strings"
-	"sync"
 	"time"
 	"unsafe"
 )
@@ -69,75 +68,6 @@ func _exitln(exitCode int, prefix string, args ...any) {
 func _exitf(exitCode int, prefix, format string, args ...any) {
 	fmt.Fprintf(os.Stderr, prefix+format, args...)
 	os.Exit(exitCode)
-}
-
-const ( // units
-	K = 1 << 10
-	M = 1 << 20
-	G = 1 << 30
-	T = 1 << 40
-)
-
-const ( // sizes
-	_1K   = 1 * K    // mostly used by stock buffers
-	_4K   = 4 * K    // mostly used by pooled buffers
-	_16K  = 16 * K   // mostly used by pooled buffers
-	_64K1 = 64*K - 1 // mostly used by pooled buffers
-
-	_128K = 128 * K
-	_256K = 256 * K
-	_512K = 512 * K
-	_1M   = 1 * M
-	_2M   = 2 * M
-	_4M   = 4 * M
-	_8M   = 8 * M
-	_16M  = 16 * M
-	_32M  = 32 * M
-	_64M  = 64 * M
-	_128M = 128 * M
-	_256M = 256 * M
-	_512M = 512 * M
-	_1G   = 1 * G
-	_2G1  = 2*G - 1 // suitable for max int32 [-2147483648, 2147483647]
-
-	_1T = 1 * T
-)
-
-var ( // pools
-	pool4K   sync.Pool
-	pool16K  sync.Pool
-	pool64K1 sync.Pool
-)
-
-func Get4K() []byte   { return getNK(&pool4K, _4K) }
-func Get16K() []byte  { return getNK(&pool16K, _16K) }
-func Get64K1() []byte { return getNK(&pool64K1, _64K1) }
-func GetNK(n int64) []byte {
-	if n <= _4K {
-		return getNK(&pool4K, _4K)
-	} else if n <= _16K {
-		return getNK(&pool16K, _16K)
-	} else { // n > _16K
-		return getNK(&pool64K1, _64K1)
-	}
-}
-func getNK(pool *sync.Pool, size int) []byte {
-	if x := pool.Get(); x != nil {
-		return x.([]byte)
-	}
-	return make([]byte, size)
-}
-func PutNK(p []byte) {
-	switch cap(p) {
-	case _4K:
-		pool4K.Put(p)
-	case _16K:
-		pool16K.Put(p)
-	case _64K1:
-		pool64K1.Put(p)
-	default:
-		BugExitln("bad buffer")
-	}
 }
 
 func ConstBytes(s string) (p []byte) { // WARNING: *DO NOT* mutate s through p!

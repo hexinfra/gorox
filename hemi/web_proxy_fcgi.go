@@ -120,10 +120,10 @@ func (h *fcgiProxy) IsCache() bool { return h.cacher != nil }
 func (h *fcgiProxy) Handle(httpReq Request, httpResp Response) (handled bool) {
 	handled = true
 
-	var httpContent any
+	var httpContent any // nil, []byte, tempFile
 	httpHasContent := httpReq.HasContent()
 	if httpHasContent && (h.BufferClientContent || httpReq.IsVague()) { // including size 0
-		httpContent = httpReq.takeContent()
+		httpContent = httpReq.proxyTakeContent()
 		if httpContent == nil { // take failed
 			// httpStream was marked as broken
 			httpResp.SetStatus(StatusBadRequest)
@@ -140,14 +140,14 @@ func (h *fcgiProxy) Handle(httpReq Request, httpResp Response) (handled bool) {
 	defer h.backend.storeExchan(fcgiExchan)
 
 	fcgiReq := &fcgiExchan.request
-	if !fcgiReq.proxyCopyHead(httpReq, h) {
+	if !fcgiReq.proxyCopyHeaders(httpReq, h) {
 		fcgiExchan.markBroken()
 		httpResp.SendBadGateway(nil)
 		return
 	}
 	if httpHasContent && !h.BufferClientContent && !httpReq.IsVague() {
 		fcgiErr = fcgiReq.proxyPassMessage(httpReq)
-	} else { // nil, []byte, tempFile
+	} else {
 		fcgiErr = fcgiReq.proxyPostMessage(httpContent)
 	}
 	if fcgiErr != nil {
@@ -189,7 +189,7 @@ func (h *fcgiProxy) Handle(httpReq Request, httpResp Response) (handled bool) {
 		fcgiHasContent = fcgiResp.HasContent()
 	}
 	if fcgiHasContent && h.BufferServerContent { // including size 0
-		fcgiContent = fcgiResp.takeContent()
+		fcgiContent = fcgiResp.proxyTakeContent()
 		if fcgiContent == nil { // take failed
 			// fcgiExchan was marked as broken
 			httpResp.SendBadGateway(nil)
@@ -197,7 +197,7 @@ func (h *fcgiProxy) Handle(httpReq Request, httpResp Response) (handled bool) {
 		}
 	}
 
-	if !httpResp.proxyCopyHead(fcgiResp, &h.WebExchanProxyConfig) {
+	if !httpResp.proxyCopyHeaders(fcgiResp, &h.WebExchanProxyConfig) {
 		fcgiExchan.markBroken()
 		return
 	}
@@ -664,7 +664,7 @@ func (r *fcgiRequest) onEnd() {
 	r._fcgiRequest0 = _fcgiRequest0{}
 }
 
-func (r *fcgiRequest) proxyCopyHead(req Request, proxy *fcgiProxy) bool {
+func (r *fcgiRequest) proxyCopyHeaders(httpReq Request, proxy *fcgiProxy) bool {
 	// Add meta params
 	if !r._addMetaParam(fcgiBytesGatewayInterface, fcgiBytesCGI1_1) { // GATEWAY_INTERFACE
 		return false
@@ -672,33 +672,33 @@ func (r *fcgiRequest) proxyCopyHead(req Request, proxy *fcgiProxy) bool {
 	if !r._addMetaParam(fcgiBytesServerSoftware, bytesGorox) { // SERVER_SOFTWARE
 		return false
 	}
-	if !r._addMetaParam(fcgiBytesServerProtocol, req.UnsafeVersion()) { // SERVER_PROTOCOL
+	if !r._addMetaParam(fcgiBytesServerProtocol, httpReq.UnsafeVersion()) { // SERVER_PROTOCOL
 		return false
 	}
-	if !r._addMetaParam(fcgiBytesRequestMethod, req.UnsafeMethod()) { // REQUEST_METHOD
+	if !r._addMetaParam(fcgiBytesRequestMethod, httpReq.UnsafeMethod()) { // REQUEST_METHOD
 		return false
 	}
-	if !r._addMetaParam(fcgiBytesRequestScheme, req.UnsafeScheme()) { // REQUEST_SCHEME
+	if !r._addMetaParam(fcgiBytesRequestScheme, httpReq.UnsafeScheme()) { // REQUEST_SCHEME
 		return false
 	}
-	if !r._addMetaParam(fcgiBytesRequestURI, req.UnsafeURI()) { // REQUEST_URI
+	if !r._addMetaParam(fcgiBytesRequestURI, httpReq.UnsafeURI()) { // REQUEST_URI
 		return false
 	}
-	if !r._addMetaParam(fcgiBytesServerName, req.UnsafeHostname()) { // SERVER_NAME
+	if !r._addMetaParam(fcgiBytesServerName, httpReq.UnsafeHostname()) { // SERVER_NAME
 		return false
 	}
 	if !r._addMetaParam(fcgiBytesRedirectStatus, fcgiBytes200) { // REDIRECT_STATUS
 		return false
 	}
-	if req.IsHTTPS() && !r._addMetaParam(fcgiBytesHTTPS, fcgiBytesON) { // HTTPS
+	if httpReq.IsHTTPS() && !r._addMetaParam(fcgiBytesHTTPS, fcgiBytesON) { // HTTPS
 		return false
 	}
 	scriptFilename := proxy.scriptFilename
 	if len(scriptFilename) == 0 {
-		absPath := req.unsafeAbsPath()
+		absPath := httpReq.unsafeAbsPath()
 		indexFile := proxy.indexFile
 		if absPath[len(absPath)-1] == '/' && len(indexFile) > 0 {
-			scriptFilename = req.UnsafeMake(len(absPath) + len(indexFile))
+			scriptFilename = httpReq.UnsafeMake(len(absPath) + len(indexFile))
 			copy(scriptFilename, absPath)
 			copy(scriptFilename[len(absPath):], indexFile)
 		} else {
@@ -708,11 +708,11 @@ func (r *fcgiRequest) proxyCopyHead(req Request, proxy *fcgiProxy) bool {
 	if !r._addMetaParam(fcgiBytesScriptFilename, scriptFilename) { // SCRIPT_FILENAME
 		return false
 	}
-	if !r._addMetaParam(fcgiBytesScriptName, req.UnsafePath()) { // SCRIPT_NAME
+	if !r._addMetaParam(fcgiBytesScriptName, httpReq.UnsafePath()) { // SCRIPT_NAME
 		return false
 	}
 	var value []byte
-	if value = req.UnsafeQueryString(); len(value) > 1 {
+	if value = httpReq.UnsafeQueryString(); len(value) > 1 {
 		value = value[1:] // excluding '?'
 	} else {
 		value = nil
@@ -720,15 +720,15 @@ func (r *fcgiRequest) proxyCopyHead(req Request, proxy *fcgiProxy) bool {
 	if !r._addMetaParam(fcgiBytesQueryString, value) { // QUERY_STRING
 		return false
 	}
-	if value = req.UnsafeContentLength(); value != nil && !r._addMetaParam(fcgiBytesContentLength, value) { // CONTENT_LENGTH
+	if value = httpReq.UnsafeContentLength(); value != nil && !r._addMetaParam(fcgiBytesContentLength, value) { // CONTENT_LENGTH
 		return false
 	}
-	if value = req.UnsafeContentType(); value != nil && !r._addMetaParam(fcgiBytesContentType, value) { // CONTENT_TYPE
+	if value = httpReq.UnsafeContentType(); value != nil && !r._addMetaParam(fcgiBytesContentType, value) { // CONTENT_TYPE
 		return false
 	}
 
 	// Add http params
-	if !req.forHeaders(func(header *pair, name []byte, value []byte) bool {
+	if !httpReq.forHeaders(func(header *pair, name []byte, value []byte) bool {
 		return r._addHTTPParam(header, name, value)
 	}) {
 		return false
@@ -823,7 +823,7 @@ func (r *fcgiRequest) _growParams(size int) (from int, edge int, ok bool) { // t
 	return
 }
 
-func (r *fcgiRequest) proxyPassMessage(req Request) error { // only for sized (>0) content. vague content must use proxyPostMessage(), as we don't use backend-side chunking
+func (r *fcgiRequest) proxyPassMessage(httpReq Request) error { // only for sized (>0) content. vague content must use proxyPostMessage(), as we don't use backend-side chunking
 	r.vector = r.fixedVector[0:4]
 	r._setBeginRequest(&r.vector[0])
 	r.vector[1] = r.paramsHeader[:]
@@ -833,7 +833,7 @@ func (r *fcgiRequest) proxyPassMessage(req Request) error { // only for sized (>
 		return err
 	}
 	for {
-		stdin, err := req.readContent()
+		stdin, err := httpReq.readContent()
 		if len(stdin) > 0 {
 			size := len(stdin)
 			r.stdinHeader[4], r.stdinHeader[5] = byte(size>>8), byte(size)
@@ -861,10 +861,10 @@ func (r *fcgiRequest) proxyPassMessage(req Request) error { // only for sized (>
 	}
 	return r._writeBytes(fcgiEmptyStdin)
 }
-func (r *fcgiRequest) proxyPostMessage(content any) error { // nil, []byte, and *os.File. for bufferClientContent or vague Request content
-	if contentText, ok := content.([]byte); ok { // text, <= 64K1
+func (r *fcgiRequest) proxyPostMessage(httpContent any) error { // nil, []byte, and *os.File. for bufferClientContent or vague Request content
+	if contentText, ok := httpContent.([]byte); ok { // text, <= 64K1
 		return r.sendText(contentText)
-	} else if contentFile, ok := content.(*os.File); ok { // file
+	} else if contentFile, ok := httpContent.(*os.File); ok { // file
 		fileInfo, err := contentFile.Stat()
 		if err != nil {
 			contentFile.Close()
@@ -1040,7 +1040,7 @@ type fcgiResponse struct { // incoming. needs parsing
 	recvTime       time.Time // the time when receiving response
 	bodyTime       time.Time // the time when first body read operation is performed on this exchan
 	contentText    []byte    // if loadable, the received and loaded content of current response is at r.contentText[:r.receivedSize]
-	contentFile    *os.File  // used by r.takeContent(), if content is tempFile. will be closed on exchan ends
+	contentFile    *os.File  // used by r.proxyTakeContent(), if content is tempFile. will be closed on exchan ends
 	_fcgiResponse0           // all values in this struct must be zero by default!
 }
 type _fcgiResponse0 struct { // for fast reset, entirely
@@ -1513,7 +1513,7 @@ func (r *fcgiResponse) HasContent() bool {
 	// All other responses do include content, although that content might be of zero length.
 	return true
 }
-func (r *fcgiResponse) takeContent() any { // to tempFile since we don't know the size of vague content
+func (r *fcgiResponse) proxyTakeContent() any { // to tempFile since we don't know the size of vague content
 	switch content := r._recvContent().(type) {
 	case tempFile: // [0, r.maxContentSize]
 		r.contentFile = content.(*os.File)
@@ -1580,7 +1580,7 @@ func (r *fcgiResponse) examineTail() bool { return true }  // fcgi doesn't suppo
 func (r *fcgiResponse) delHopHeaders()  {} // for fcgi, nothing to delete
 func (r *fcgiResponse) delHopTrailers() {} // fcgi doesn't support trailers
 
-func (r *fcgiResponse) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by Response.proxyCopyHead(). excluding sub headers
+func (r *fcgiResponse) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by Response.proxyCopyHeaders(). excluding sub headers
 	for i := 1; i < len(r.primes); i++ { // r.primes[0] is not used
 		if header := &r.primes[i]; header.nameHash != 0 && !header.isSubField() {
 			if !callback(header, header.nameAt(r.input), header.valueAt(r.input)) {

@@ -40,11 +40,11 @@ type stream interface { // for *backend[1-3]Stream
 type request interface { // for *backend[1-3]Request
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	setAuthority(hostname []byte, colonPort []byte) bool
-	proxyCopyCookies(req Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
-	proxyCopyHead(req Request, proxyConfig *WebExchanProxyConfig) bool
-	proxyPassMessage(req Request) error                   // pass content to backend directly
-	proxyPostMessage(content any, hasTrailers bool) error // post held content to backend
-	proxyCopyTail(req Request, proxyConfig *WebExchanProxyConfig) bool
+	proxyCopyCookies(foreReq Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
+	proxyCopyHeaders(foreReq Request, proxyConfig *WebExchanProxyConfig) bool
+	proxyPassMessage(foreReq Request) error                       // pass content to backend directly
+	proxyPostMessage(foreContent any, foreHasTrailers bool) error // post held content to backend
+	proxyCopyTrailers(foreReq Request, proxyConfig *WebExchanProxyConfig) bool
 	isVague() bool
 	endVague() error
 }
@@ -60,7 +60,7 @@ type response interface { // for *backend[1-3]Response
 	HasTrailers() bool
 	IsVague() bool
 	examineTail() bool
-	takeContent() any // used by proxies
+	proxyTakeContent() any // used by proxies
 	readContent() (p []byte, err error)
 	delHopHeaders()
 	delHopTrailers()
@@ -193,10 +193,10 @@ type WebExchanProxyConfig struct {
 
 // WebExchanReverseProxy
 func WebExchanReverseProxy(foreReq Request, foreResp Response, cacher Cacher, backend WebBackend, proxyConfig *WebExchanProxyConfig) {
-	var foreContent any
+	var foreContent any // nil, []byte, tempFile
 	foreHasContent := foreReq.HasContent()
 	if foreHasContent && proxyConfig.BufferClientContent { // including size 0
-		foreContent = foreReq.takeContent()
+		foreContent = foreReq.proxyTakeContent()
 		if foreContent == nil { // take failed
 			// foreStream was marked as broken
 			foreResp.SetStatus(StatusBadRequest)
@@ -213,7 +213,7 @@ func WebExchanReverseProxy(foreReq Request, foreResp Response, cacher Cacher, ba
 	defer backend.StoreStream(backStream)
 
 	backReq := backStream.Request()
-	if !backReq.proxyCopyHead(foreReq, proxyConfig) {
+	if !backReq.proxyCopyHeaders(foreReq, proxyConfig) {
 		backStream.markBroken()
 		foreResp.SendBadGateway(nil)
 		return
@@ -221,9 +221,9 @@ func WebExchanReverseProxy(foreReq Request, foreResp Response, cacher Cacher, ba
 
 	if !foreHasContent || proxyConfig.BufferClientContent {
 		foreHasTrailers := foreReq.HasTrailers()
-		backErr = backReq.proxyPostMessage(foreContent, foreHasTrailers) // nil (no content), []byte, tempFile
+		backErr = backReq.proxyPostMessage(foreContent, foreHasTrailers)
 		if backErr == nil && foreHasTrailers {
-			if !backReq.proxyCopyTail(foreReq, proxyConfig) {
+			if !backReq.proxyCopyTrailers(foreReq, proxyConfig) {
 				backStream.markBroken()
 				backErr = webOutTrailerFailed
 			} else if backErr = backReq.endVague(); backErr != nil {
@@ -278,13 +278,13 @@ func WebExchanReverseProxy(foreReq Request, foreResp Response, cacher Cacher, ba
 		backResp.reuse()
 	}
 
-	var backContent any
+	var backContent any // nil, []byte, tempFile
 	backHasContent := false
 	if foreReq.MethodCode() != MethodHEAD {
 		backHasContent = backResp.HasContent()
 	}
 	if backHasContent && proxyConfig.BufferServerContent { // including size 0
-		backContent = backResp.takeContent()
+		backContent = backResp.proxyTakeContent()
 		if backContent == nil { // take failed
 			// backStream was marked as broken
 			foreResp.SendBadGateway(nil)
@@ -292,19 +292,19 @@ func WebExchanReverseProxy(foreReq Request, foreResp Response, cacher Cacher, ba
 		}
 	}
 
-	if !foreResp.proxyCopyHead(backResp, proxyConfig) {
+	if !foreResp.proxyCopyHeaders(backResp, proxyConfig) {
 		backStream.markBroken()
 		return
 	}
 	if !backHasContent || proxyConfig.BufferServerContent {
 		backHasTrailers := backResp.HasTrailers()
-		if foreResp.proxyPostMessage(backContent, backHasTrailers) != nil { // nil (no content), []byte, tempFile
+		if foreResp.proxyPostMessage(backContent, backHasTrailers) != nil {
 			if backHasTrailers {
 				backStream.markBroken()
 			}
 			return
 		}
-		if backHasTrailers && !foreResp.proxyCopyTail(backResp, proxyConfig) {
+		if backHasTrailers && !foreResp.proxyCopyTrailers(backResp, proxyConfig) {
 			return
 		}
 	} else if err := foreResp.proxyPassMessage(backResp); err != nil {

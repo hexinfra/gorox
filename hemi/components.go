@@ -371,8 +371,8 @@ type Stage struct {
 	blkFile string
 }
 
-// newStage creates a new stage which runs alongside existing stage.
-func newStage() *Stage {
+// createStage creates a new stage which runs alongside existing stage.
+func createStage() *Stage {
 	stage := new(Stage)
 	stage.onCreate()
 	stage.setShell(stage)

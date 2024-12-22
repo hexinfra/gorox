@@ -956,7 +956,7 @@ type Request interface { // for *server[1-3]Request
 	forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
 	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
 	forCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool
-	unsetHost()
+	proxyUnsetHost()
 	proxyTakeContent() any // used by proxies
 	readContent() (p []byte, err error)
 	examineTail() bool

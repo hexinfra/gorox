@@ -149,7 +149,7 @@ func (w *worker) start(configBase string, configFile string, dieChan chan int) {
 	}
 
 	// Create worker process
-	process, err := os.StartProcess(system.ExePath, common.ExeArgs, &os.ProcAttr{
+	process, err := os.StartProcess(system.ExePath, common.ProgramArgs, &os.ProcAttr{
 		Env:   []string{"_DAEMON_=" + admGate.Addr().String() + "|" + w.connKey, "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
 		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr}, // inherit standard files from leader
 		Sys:   system.DaemonSysAttr(),

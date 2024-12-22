@@ -201,7 +201,7 @@ func (s *server1Stream) execute() {
 	conn := s.conn
 	server := conn.gate.server
 
-	// RFC 9112:
+	// RFC 9112 (section 3.3):
 	// If the server's configuration provides for a fixed URI scheme, or a
 	// scheme is provided by a trusted outbound gateway, that scheme is
 	// used for the target URI. This is common in large-scale deployments
@@ -412,7 +412,7 @@ type server1Request struct { // incoming. needs parsing
 	// Stream states (zeros)
 }
 
-func (r *server1Request) recvHead() { // control + headers
+func (r *server1Request) recvHead() { // request-line + headers
 	// The entire request head must be received in one timeout
 	if err := r._beforeRead(&r.recvTime); err != nil {
 		r.headResult = -1
@@ -422,7 +422,7 @@ func (r *server1Request) recvHead() { // control + headers
 		// r.headResult is set.
 		return
 	}
-	if !r._recvControl() || !r.recvHeaders1() || !r.examineHead() {
+	if !r._recvRequestLine() || !r.recvHeaders1() || !r.examineHead() {
 		// r.headResult is set.
 		return
 	}
@@ -431,7 +431,7 @@ func (r *server1Request) recvHead() { // control + headers
 		Printf("[server1Stream=%d]<------- [%s]\n", r.stream.Conn().ID(), r.input[r.head.from:r.head.edge])
 	}
 }
-func (r *server1Request) _recvControl() bool { // method SP request-target SP HTTP-version CRLF
+func (r *server1Request) _recvRequestLine() bool { // request-line = method SP request-target SP HTTP-version CRLF
 	r.pBack, r.pFore = 0, 0
 
 	// method = token
@@ -1635,7 +1635,7 @@ type backend1Response struct { // incoming. needs parsing
 	// Stream states (zeros)
 }
 
-func (r *backend1Response) recvHead() { // control + headers
+func (r *backend1Response) recvHead() { // status-line + headers
 	// The entire response head must be received within one timeout
 	if err := r._beforeRead(&r.recvTime); err != nil {
 		r.headResult = -1
@@ -1645,7 +1645,7 @@ func (r *backend1Response) recvHead() { // control + headers
 		// r.headResult is set.
 		return
 	}
-	if !r._recvControl() || !r.recvHeaders1() || !r.examineHead() {
+	if !r._recvStatusLine() || !r.recvHeaders1() || !r.examineHead() {
 		// r.headResult is set.
 		return
 	}
@@ -1654,7 +1654,7 @@ func (r *backend1Response) recvHead() { // control + headers
 		Printf("[backend1Stream=%d]<======= [%s]\n", r.stream.Conn().ID(), r.input[r.head.from:r.head.edge])
 	}
 }
-func (r *backend1Response) _recvControl() bool { // HTTP-version SP status-code SP [ reason-phrase ] CRLF
+func (r *backend1Response) _recvStatusLine() bool { // status-line = HTTP-version SP status-code SP [ reason-phrase ] CRLF
 	// HTTP-version = HTTP-name "/" DIGIT "." DIGIT
 	// HTTP-name = %x48.54.54.50 ; "HTTP", case-sensitive
 	if have := r.inputEdge - r.pFore; have >= 9 {

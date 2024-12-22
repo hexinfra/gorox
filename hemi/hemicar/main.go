@@ -17,10 +17,10 @@ import (
 
 func main() {
 	procmgr.Main(&procmgr.Opts{
-		Program:    "hemicar",
-		Title:      "HemiCar",
-		DebugLevel: 2,
-		CmdUIAddr:  "127.0.0.1:9523",
-		WebUIAddr:  "127.0.0.1:9524",
+		ProgramName:  "hemicar",
+		ProgramTitle: "HemiCar",
+		DebugLevel:   2,
+		CmdUIAddr:    "127.0.0.1:9523",
+		WebUIAddr:    "127.0.0.1:9524",
 	})
 }

@@ -41,7 +41,7 @@ func GetConfig() (configBase string, configFile string) {
 	} else {
 		if ConfigFile == "" {
 			configBase = TopDir
-			configFile = "conf/" + Program + ".conf"
+			configFile = "conf/" + ProgramName + ".conf"
 		} else if filepath.IsAbs(ConfigFile) { // /path/to/file.conf
 			configBase = filepath.Dir(ConfigFile)
 			configFile = filepath.Base(ConfigFile)
@@ -55,8 +55,8 @@ func GetConfig() (configBase string, configFile string) {
 }
 
 var (
-	Program string                                             // gorox, myrox, ...
-	ExeArgs = append([]string{system.ExePath}, os.Args[1:]...) // /path/to/exe arg1 arg2 ...
+	ProgramName string                                             // gorox, myrox, ...
+	ProgramArgs = append([]string{system.ExePath}, os.Args[1:]...) // /path/to/exe arg1 arg2 ...
 )
 
 const (

@@ -1570,7 +1570,7 @@ func (r *serverRequest_) EvalRanges(contentSize int64) []Range { // returned ran
 	return r.ranges[:r.nRanges]
 }
 
-func (r *serverRequest_) unsetHost() { // used by proxies
+func (r *serverRequest_) proxyUnsetHost() { // used by proxies
 	r._delPrime(r.indexes.host) // zero safe
 }
 
@@ -1602,7 +1602,7 @@ func (r *serverRequest_) _loadURLEncodedForm() { // into memory entirely
 		return
 	}
 	var (
-		state = 2 // to be consistent with r._recvControl() in HTTP/1
+		state = 2 // to be consistent with HTTP/1.x
 		octet byte
 	)
 	form := &r.mainPair
@@ -2986,7 +2986,7 @@ func (r *backendRequest_) proxyCopyHeaders(foreReq Request, proxyConfig *WebExch
 		return false
 	}
 	if foreReq.IsAbsoluteForm() || len(proxyConfig.Hostname) != 0 || len(proxyConfig.ColonPort) != 0 { // TODO: what about HTTP/2 and HTTP/3?
-		foreReq.unsetHost()
+		foreReq.proxyUnsetHost()
 		if foreReq.IsAbsoluteForm() {
 			if !r.message.addHeader(bytesHost, foreReq.UnsafeAuthority()) {
 				return false

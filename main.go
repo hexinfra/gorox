@@ -17,10 +17,10 @@ import (
 
 func main() {
 	procmgr.Main(&procmgr.Opts{
-		Program:    "gorox",
-		Title:      "Gorox",
-		DebugLevel: 0,
-		CmdUIAddr:  "127.0.0.1:9527",
-		WebUIAddr:  "127.0.0.1:9528",
+		ProgramName:  "gorox",
+		ProgramTitle: "Gorox",
+		DebugLevel:   0,
+		CmdUIAddr:    "127.0.0.1:9527",
+		WebUIAddr:    "127.0.0.1:9528",
 	})
 }

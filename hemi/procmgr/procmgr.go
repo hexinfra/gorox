@@ -81,12 +81,12 @@ OPTIONS
 
 // Opts is the options passed to Main() to control its behavior.
 type Opts struct {
-	Program    string
-	Title      string
-	Usage      string
-	DebugLevel int
-	CmdUIAddr  string
-	WebUIAddr  string
+	ProgramName  string
+	ProgramTitle string
+	ProgramUsage string
+	DebugLevel   int
+	CmdUIAddr    string
+	WebUIAddr    string
 }
 
 // Main is the main() for client process, leader process, and worker process.
@@ -95,13 +95,13 @@ func Main(opts *Opts) {
 		common.Crash("current platform (os + arch) is not supported.")
 	}
 
-	common.Program = opts.Program
+	common.ProgramName = opts.ProgramName
 
 	flag.Usage = func() {
-		if opts.Usage == "" {
-			fmt.Printf(usage, opts.Title, hemi.Version, opts.Program, opts.DebugLevel, opts.CmdUIAddr, opts.CmdUIAddr, opts.WebUIAddr, opts.Program, opts.Program, opts.Program)
+		if opts.ProgramUsage == "" {
+			fmt.Printf(usage, opts.ProgramTitle, hemi.Version, opts.ProgramName, opts.DebugLevel, opts.CmdUIAddr, opts.CmdUIAddr, opts.WebUIAddr, opts.ProgramName, opts.ProgramName, opts.ProgramName)
 		} else {
-			fmt.Println(opts.Usage)
+			fmt.Println(opts.ProgramUsage)
 		}
 	}
 	flag.IntVar(&common.DebugLevel, "debug", opts.DebugLevel, "")
@@ -184,7 +184,7 @@ func Main(opts *Opts) {
 		} else if common.DaemonMode { // start leader daemon and exit
 			newFile := func(file string, ext string, osFile *os.File) *os.File {
 				if file == "" {
-					file = common.LogDir + "/" + common.Program + ext
+					file = common.LogDir + "/" + common.ProgramName + ext
 				} else if !filepath.IsAbs(file) {
 					file = common.TopDir + "/" + file
 				}
@@ -206,7 +206,7 @@ func Main(opts *Opts) {
 			if err != nil {
 				common.Crash(err.Error())
 			}
-			if process, err := os.StartProcess(system.ExePath, common.ExeArgs, &os.ProcAttr{
+			if process, err := os.StartProcess(system.ExePath, common.ProgramArgs, &os.ProcAttr{
 				Env:   []string{"_DAEMON_=leader", "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
 				Files: []*os.File{devNull, stdout, stderr},
 				Sys:   system.DaemonSysAttr(),

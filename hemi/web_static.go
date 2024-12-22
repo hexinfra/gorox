@@ -168,7 +168,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 				resp.SendNotFound(h.webapp.text404)
 			} else if h.autoIndex { // index file not found, but auto index is turned on, try list directory
 				if dir, err := os.Open(WeakString(fullPath[:pathSize])); err == nil {
-					h.listDir(dir, resp)
+					staticListDir(dir, resp)
 					dir.Close()
 				} else if !os.IsNotExist(err) {
 					h.webapp.Logf("open dir error=%s\n", err.Error())
@@ -236,7 +236,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 	return true
 }
 
-func (h *staticHandlet) listDir(dir *os.File, resp Response) {
+func staticListDir(dir *os.File, resp Response) {
 	fis, err := dir.Readdir(-1)
 	if err != nil {
 		resp.SendInternalServerError([]byte("Internal Server Error 5"))

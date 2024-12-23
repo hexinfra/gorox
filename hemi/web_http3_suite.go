@@ -33,6 +33,8 @@ func init() {
 	})
 }
 
+//////////////////////////////////////// HTTP/3 server implementation ////////////////////////////////////////
+
 // http3Server is the HTTP/3 server. An http3Server has many http3Gates.
 type http3Server struct {
 	// Parent
@@ -371,7 +373,7 @@ type server3Response struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
-func (r *server3Response) control() []byte { // :status xxx
+func (r *server3Response) control() []byte { // :status NNN
 	var start []byte
 	if r.status >= int16(len(http3Controls)) || http3Controls[r.status] == nil {
 		copy(r.start[:], http3Template[:])
@@ -481,6 +483,8 @@ func (s *server3Socket) onUse() {
 func (s *server3Socket) onEnd() {
 	s.serverSocket_.onEnd()
 }
+
+//////////////////////////////////////// HTTP/3 backend implementation ////////////////////////////////////////
 
 // HTTP3Backend
 type HTTP3Backend struct {
@@ -718,11 +722,7 @@ func (s *backend3Stream) onEnd() { // for zeros
 	s.webStream_.onEnd()
 }
 
-func (s *backend3Stream) Request() request { return &s.request }
-func (s *backend3Stream) Exchange() error { // request & response
-	// TODO
-	return nil
-}
+func (s *backend3Stream) Request() request   { return &s.request }
 func (s *backend3Stream) Response() response { return &s.response }
 
 func (s *backend3Stream) Socket() socket { return nil } // TODO. See RFC 9220
@@ -861,7 +861,7 @@ func (s *backend3Socket) onEnd() {
 	s.backendSocket_.onEnd()
 }
 
-//////////////////////////////////////// HTTP/3 i/o ////////////////////////////////////////
+//////////////////////////////////////// HTTP/3 i/o implementation ////////////////////////////////////////
 
 // HTTP/3 incoming
 

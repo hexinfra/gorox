@@ -23,6 +23,8 @@ import (
 	"time"
 )
 
+//////////////////////////////////////// HTTP server implementation ////////////////////////////////////////
+
 // WebServer
 type WebServer interface { // for *http[x3]Server
 	// Imports
@@ -307,11 +309,10 @@ func (r *serverRequest_) Webapp() *Webapp { return r.webapp }
 func (r *serverRequest_) IsAbsoluteForm() bool    { return r.targetForm == httpTargetAbsolute }
 func (r *serverRequest_) IsAsteriskOptions() bool { return r.asteriskOptions }
 
-func (r *serverRequest_) SchemeCode() uint8 { return r.schemeCode }
-func (r *serverRequest_) IsHTTP() bool      { return r.schemeCode == SchemeHTTP }
-func (r *serverRequest_) IsHTTPS() bool     { return r.schemeCode == SchemeHTTPS }
-func (r *serverRequest_) Scheme() string    { return httpSchemeStrings[r.schemeCode] }
-
+func (r *serverRequest_) SchemeCode() uint8    { return r.schemeCode }
+func (r *serverRequest_) IsHTTP() bool         { return r.schemeCode == SchemeHTTP }
+func (r *serverRequest_) IsHTTPS() bool        { return r.schemeCode == SchemeHTTPS }
+func (r *serverRequest_) Scheme() string       { return httpSchemeStrings[r.schemeCode] }
 func (r *serverRequest_) UnsafeScheme() []byte { return httpSchemeByteses[r.schemeCode] }
 
 func (r *serverRequest_) MethodCode() uint32   { return r.methodCode }
@@ -2271,7 +2272,7 @@ func (r *serverRequest_) applyTrailer(index uint8) bool {
 	return true
 }
 
-func (r *serverRequest_) hookReviser(reviser Reviser) {
+func (r *serverRequest_) hookReviser(reviser Reviser) { // to revise input content
 	r.hasRevisers = true
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
 }
@@ -2323,7 +2324,7 @@ type serverResponse_ struct { // outgoing. needs building
 	// Stream states (non-zeros)
 	status    int16    // 200, 302, 404, 500, ...
 	_         [6]byte  // padding
-	start     [16]byte // exactly 16 bytes for "HTTP/1.1 xxx ?\r\n". also used by HTTP/2 and HTTP/3, but shorter
+	start     [16]byte // exactly 16 bytes for "HTTP/1.1 NNN X\r\n". also used by HTTP/2 and HTTP/3, but shorter
 	unixTimes struct { // in seconds
 		expires      int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
 		lastModified int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
@@ -2473,7 +2474,7 @@ footer{padding:20px;}
 		if status < 400 || control == nil {
 			continue
 		}
-		phrase := control[len("HTTP/1.1 XXX ") : len(control)-2]
+		phrase := control[len("HTTP/1.1 NNN ") : len(control)-2]
 		pages[int16(status)] = []byte(fmt.Sprintf(template, status, phrase, status, phrase))
 	}
 	return pages
@@ -2671,7 +2672,7 @@ func (r *serverResponse_) proxyCopyTrailers(backResp response, proxyConfig *WebE
 	})
 }
 
-func (r *serverResponse_) hookReviser(reviser Reviser) {
+func (r *serverResponse_) hookReviser(reviser Reviser) { // to revise output content
 	r.hasRevisers = true
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
 }
@@ -2700,6 +2701,8 @@ func (s *serverSocket_) onEnd() {
 
 func (s *serverSocket_) serverTodo() {
 }
+
+//////////////////////////////////////// HTTP backend implementation ////////////////////////////////////////
 
 // WebBackend
 type WebBackend interface { // for *HTTP[1-3]Backend
@@ -3488,7 +3491,7 @@ func (s *backendSocket_) onEnd() {
 func (s *backendSocket_) backendTodo() {
 }
 
-//////////////////////////////////////// HTTP i/o ////////////////////////////////////////
+//////////////////////////////////////// HTTP i/o implementation ////////////////////////////////////////
 
 // webHolder collects shared methods between *http[x3]Server and *http[1-3]Backend.
 type webHolder interface {

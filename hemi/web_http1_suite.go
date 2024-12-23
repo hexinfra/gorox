@@ -29,6 +29,8 @@ func init() {
 	})
 }
 
+//////////////////////////////////////// HTTP/1.x server implementation ////////////////////////////////////////
+
 // server1Conn is the server-side HTTP/1.x connection.
 type server1Conn struct {
 	// Parent
@@ -1082,6 +1084,8 @@ func (s *server1Socket) onEnd() {
 	s.serverSocket_.onEnd()
 }
 
+//////////////////////////////////////// HTTP/1.x backend implementation ////////////////////////////////////////
+
 // HTTP1Backend
 type HTTP1Backend struct {
 	// Parent
@@ -1235,6 +1239,7 @@ func (n *http1Node) _dialTLS() (*backend1Conn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
 	if err != nil {
+		// TODO: handle ephemeral port exhaustion
 		n.markDown()
 		return nil, err
 	}
@@ -1257,6 +1262,7 @@ func (n *http1Node) _dialTCP() (*backend1Conn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
 	if err != nil {
+		// TODO: handle ephemeral port exhaustion
 		n.markDown()
 		return nil, err
 	}
@@ -1439,11 +1445,7 @@ func (s *backend1Stream) onEnd() { // for zeros
 	s.webStream_.onEnd()
 }
 
-func (s *backend1Stream) Request() request { return &s.request }
-func (s *backend1Stream) Exchange() error { // request & response
-	// TODO
-	return nil
-}
+func (s *backend1Stream) Request() request   { return &s.request }
 func (s *backend1Stream) Response() response { return &s.response }
 
 func (s *backend1Stream) Socket() socket { return nil } // TODO. See RFC 6455
@@ -1801,7 +1803,7 @@ func (s *backend1Socket) onEnd() {
 	s.backendSocket_.onEnd()
 }
 
-//////////////////////////////////////// HTTP/1.x i/o ////////////////////////////////////////
+//////////////////////////////////////// HTTP/1.x i/o implementation ////////////////////////////////////////
 
 // HTTP/1.x incoming
 

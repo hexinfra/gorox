@@ -824,6 +824,7 @@ func (n *tcpxNode) _dialTLS() (*TConn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
 	if err != nil {
+		// TODO: handle ephemeral port exhaustion
 		n.markDown()
 		return nil, err
 	}
@@ -846,6 +847,7 @@ func (n *tcpxNode) _dialTCP() (*TConn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
 	if err != nil {
+		// TODO: handle ephemeral port exhaustion
 		n.markDown()
 		return nil, err
 	}

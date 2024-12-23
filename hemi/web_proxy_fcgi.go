@@ -400,6 +400,7 @@ func (n *fcgiNode) _dialTCP() (*fcgiConn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
 	if err != nil {
+		// TODO: handle ephemeral port exhaustion
 		n.markDown()
 		return nil, err
 	}

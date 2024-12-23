@@ -27,9 +27,7 @@ func init() {
 // stream is the backend-side http stream.
 type stream interface { // for *backend[1-3]Stream
 	Request() request
-	Exchange() error
 	Response() response
-
 	Socket() socket
 
 	isBroken() bool

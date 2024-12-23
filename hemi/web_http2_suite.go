@@ -41,6 +41,8 @@ func init() {
 	})
 }
 
+//////////////////////////////////////// HTTP/2 server implementation ////////////////////////////////////////
+
 // httpxServer is the HTTP/1.x and HTTP/2 server. An httpxServer has many httpxGates.
 type httpxServer struct {
 	// Parent
@@ -991,8 +993,8 @@ func (c *server2Conn) _joinContinuations(headers *http2InFrame) error { // into 
 		// End of headers?
 		if continuation.endHeaders {
 			headers.endHeaders = true
-			headers.buffer = c.buffer
-			c.pFore = c.cFore // for next frame.
+			headers.buffer = c.buffer // restore the buffer
+			c.pFore = c.cFore         // for next frame.
 			break
 		} else {
 			c.cBack = c.cFore
@@ -1256,7 +1258,7 @@ type server2Response struct { // outgoing. needs building
 	// Stream states (zeros)
 }
 
-func (r *server2Response) control() []byte { // :status xxx
+func (r *server2Response) control() []byte { // :status NNN
 	var start []byte
 	if r.status >= int16(len(http2Controls)) || http2Controls[r.status] == nil {
 		copy(r.start[:], http2Template[:])
@@ -1366,6 +1368,8 @@ func (s *server2Socket) onUse() {
 func (s *server2Socket) onEnd() {
 	s.serverSocket_.onEnd()
 }
+
+//////////////////////////////////////// HTTP/2 backend implementation ////////////////////////////////////////
 
 // HTTP2Backend
 type HTTP2Backend struct {
@@ -1630,11 +1634,7 @@ func (s *backend2Stream) onEnd() { // for zeros
 	s.webStream_.onEnd()
 }
 
-func (s *backend2Stream) Request() request { return &s.request }
-func (s *backend2Stream) Exchange() error { // request & response
-	// TODO
-	return nil
-}
+func (s *backend2Stream) Request() request   { return &s.request }
 func (s *backend2Stream) Response() response { return &s.response }
 
 func (s *backend2Stream) Socket() socket { return nil } // TODO. See RFC 8441: https://datatracker.ietf.org/doc/html/rfc8441
@@ -1773,7 +1773,7 @@ func (s *backend2Socket) onEnd() {
 	s.backendSocket_.onEnd()
 }
 
-//////////////////////////////////////// HTTP/2 i/o ////////////////////////////////////////
+//////////////////////////////////////// HTTP/2 i/o implementation ////////////////////////////////////////
 
 // HTTP/2 incoming
 

@@ -34,6 +34,8 @@ type stream interface { // for *backend[1-3]Stream
 	markBroken()
 }
 
+//////////////////////////////////////// HTTP exchan proxy implementation ////////////////////////////////////////
+
 // request is the backend-side http request.
 type request interface { // for *backend[1-3]Request
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
@@ -345,6 +347,8 @@ type Hobject struct {
 func (o *Hobject) todo() {
 	// TODO
 }
+
+//////////////////////////////////////// HTTP socket proxy implementation ////////////////////////////////////////
 
 // socket is the backend-side webSocket.
 type socket interface { // for *backend[1-3]Socket

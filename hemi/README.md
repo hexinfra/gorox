@@ -95,7 +95,7 @@ TODO
 * cacher implementation.
 * tcpoh (tcp over http) server implementation.
 * udpoh (udp over http) server implementation.
-* ipoh (ip over http) server implementation.
+* ipxoh (ipv4 and ipv6 over http) server implementation.
 * web application framework implementation.
 * documentation.
 * official websites.

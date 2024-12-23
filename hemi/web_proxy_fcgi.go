@@ -1777,18 +1777,18 @@ var ( // fcgi request records
 		0, 0, // padding length = 0, reserved = 0
 		0, 1, 0, 0, 0, 0, 0, 0, // role=responder, flags=dontKeep
 	}
-	fcgiEmptyParams = []byte{ // 8 bytes
+	fcgiEmptyParams = []byte{ // end of params, 8 bytes
 		1, 4, // version, FCGI_PARAMS
 		0, 1, // request id = 1
 		0, 0, // payload length = 0
 		0, 0, // padding length = 0, reserved = 0
-	} // end of params
-	fcgiEmptyStdin = []byte{ // 8 bytes
+	}
+	fcgiEmptyStdin = []byte{ // end of stdins, 8 bytes
 		1, 5, // version, FCGI_STDIN
 		0, 1, // request id = 1
 		0, 0, // payload length = 0
 		0, 0, // padding length = 0, reserved = 0
-	} // end of stdins
+	}
 )
 
 var ( // fcgi request param names

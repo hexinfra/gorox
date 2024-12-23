@@ -175,7 +175,7 @@ type tcpxGate struct {
 	// Assocs
 	router *TCPXRouter
 	// States
-	maxActives int32        // max concurrent conns allowed
+	maxActives int32        // max concurrent conns allowed for this gate
 	curActives atomic.Int32 // TODO: false sharing
 	listener   net.Listener // the real gate. set after open
 }

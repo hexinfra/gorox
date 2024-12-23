@@ -170,7 +170,7 @@ type webGate_ struct {
 	// Parent
 	Gate_
 	// States
-	maxActives int32        // max concurrent conns allowed
+	maxActives int32        // max concurrent conns allowed for this gate
 	curActives atomic.Int32 // TODO: false sharing
 }
 
@@ -3157,7 +3157,7 @@ func (r *backendResponse_) examineHead() bool {
 
 	// Basic checks against versions
 	switch r.httpVersion {
-	case Version1_0: // we don't support HTTP/1.0 in backend side
+	case Version1_0: // we don't support HTTP/1.0 in backend side!
 		BugExitln("HTTP/1.0 must be denied priorly")
 	case Version1_1:
 		if r.keepAlive == -1 { // no connection header

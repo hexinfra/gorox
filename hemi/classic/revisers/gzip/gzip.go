@@ -69,7 +69,7 @@ func (r *gzipReviser) BeforeRecv(req Request, resp Response) { // sized
 	// TODO
 	return
 }
-func (r *gzipReviser) OnInput(req Request, resp Response, chain *Chain) bool {
+func (r *gzipReviser) OnInput(req Request, resp Response, input *Chain) bool {
 	// TODO
 	return true
 }
@@ -88,7 +88,7 @@ func (r *gzipReviser) BeforeSend(req Request, resp Response) { // sized
 func (r *gzipReviser) BeforeEcho(req Request, resp Response) { // vague
 	// TODO
 }
-func (r *gzipReviser) OnOutput(req Request, resp Response, chain *Chain) {
+func (r *gzipReviser) OnOutput(req Request, resp Response, output *Chain) {
 	// TODO
 }
 func (r *gzipReviser) FinishEcho(req Request, resp Response) { // vague

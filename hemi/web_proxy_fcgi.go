@@ -1147,7 +1147,7 @@ func (r *fcgiResponse) reuse() {
 	r.onUse()
 }
 
-func (r *fcgiResponse) KeepAlive() int8 { return -1 } // TODO: confirm this
+func (r *fcgiResponse) KeepAlive() int8 { return -1 } // same as "no connection header". TODO: confirm this
 
 func (r *fcgiResponse) HeadResult() int16 { return r.headResult }
 func (r *fcgiResponse) BodyResult() int16 { return r.bodyResult }

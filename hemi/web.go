@@ -658,7 +658,9 @@ func (r *Rule) executeExchan(req Request, resp Response) (handled bool) {
 			if handlet.IsProxy() { // request to proxy server. checks against proxy server
 				toOrigin = false
 				if req.VersionCode() == Version1_0 {
-					resp.(*server1Response).setConnectionClose() // A proxy server MUST NOT maintain a persistent connection with an HTTP/1.0 client.
+					// RFC 9112 (section 9.3):
+					// A proxy server MUST NOT maintain a persistent connection with an HTTP/1.0 client.
+					resp.(*server1Response).setConnectionClose()
 				}
 				if handlet.IsCache() { // request to proxy cache. checks against proxy cache
 					// Add checks here.
@@ -784,16 +786,16 @@ type Reviser interface {
 	Rank() int8 // 0-31 (with 0-15 as tunable, 16-31 as fixed)
 
 	// For incoming requests, either sized or vague
-	BeforeRecv(req Request, resp Response) // for sized content
-	BeforeDraw(req Request, resp Response) // for vague content
-	OnInput(req Request, resp Response, chain *Chain) bool
-	FinishDraw(req Request, resp Response) // for vague content
+	BeforeRecv(req Request, resp Response)                 // for sized content
+	BeforeDraw(req Request, resp Response)                 // for vague content
+	OnInput(req Request, resp Response, input *Chain) bool // for both sized and vague
+	FinishDraw(req Request, resp Response)                 // for vague content
 
 	// For outgoing responses, either sized or vague
-	BeforeSend(req Request, resp Response) // for sized content
-	BeforeEcho(req Request, resp Response) // for vague content
-	OnOutput(req Request, resp Response, chain *Chain)
-	FinishEcho(req Request, resp Response) // for vague content
+	BeforeSend(req Request, resp Response)              // for sized content
+	BeforeEcho(req Request, resp Response)              // for vague content
+	OnOutput(req Request, resp Response, output *Chain) // for both sized and vague
+	FinishEcho(req Request, resp Response)              // for vague content
 }
 
 // Reviser_ is the parent for all revisers.

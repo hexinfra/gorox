@@ -1577,8 +1577,8 @@ func (r *fcgiResponse) readContent() (p []byte, err error) {
 func (r *fcgiResponse) HasTrailers() bool { return false } // fcgi doesn't support trailers
 func (r *fcgiResponse) examineTail() bool { return true }  // fcgi doesn't support trailers
 
-func (r *fcgiResponse) delHopHeaders()  {} // for fcgi, nothing to delete
-func (r *fcgiResponse) delHopTrailers() {} // fcgi doesn't support trailers
+func (r *fcgiResponse) proxyDelHopHeaders()  {} // for fcgi, nothing to delete
+func (r *fcgiResponse) proxyDelHopTrailers() {} // fcgi doesn't support trailers
 
 func (r *fcgiResponse) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by Response.proxyCopyHeaders(). excluding sub headers
 	for i := 1; i < len(r.primes); i++ { // r.primes[0] is not used

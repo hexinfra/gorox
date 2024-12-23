@@ -256,9 +256,9 @@ func getServer3Stream(conn *server3Conn, quicStream *quic.Stream) *server3Stream
 		stream = new(server3Stream)
 		req, resp := &stream.request, &stream.response
 		req.stream = stream
-		req.message = req
+		req.inMessage = req
 		resp.stream = stream
-		resp.message = resp
+		resp.outMessage = resp
 		resp.request = req
 	} else {
 		stream = x.(*server3Stream)
@@ -420,7 +420,7 @@ func (r *server3Response) addTrailer(name []byte, value []byte) bool {
 func (r *server3Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer3(name) }
 
 func (r *server3Response) proxyPass1xx(backResp response) bool {
-	backResp.delHopHeaders()
+	backResp.proxyDelHopHeaders()
 	r.status = backResp.Status()
 	if !backResp.forHeaders(func(header *pair, name []byte, value []byte) bool {
 		return r.insertHeader(header.nameHash, name, value)
@@ -683,10 +683,10 @@ func getBackend3Stream(conn *backend3Conn, quicStream *quic.Stream) *backend3Str
 		stream = new(backend3Stream)
 		req, resp := &stream.request, &stream.response
 		req.stream = stream
-		req.message = req
+		req.outMessage = req
 		req.response = resp
 		resp.stream = stream
-		resp.message = resp
+		resp.inMessage = resp
 	} else {
 		stream = x.(*backend3Stream)
 	}
@@ -773,7 +773,7 @@ func (r *backend3Request) setMethodURI(method []byte, uri []byte, hasContent boo
 	// TODO: set :method and :path
 	return false
 }
-func (r *backend3Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
+func (r *backend3Request) proxySetAuthority(hostname []byte, colonPort []byte) bool {
 	// TODO: set :authority
 	return false
 }

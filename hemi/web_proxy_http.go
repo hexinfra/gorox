@@ -39,8 +39,8 @@ type stream interface { // for *backend[1-3]Stream
 // request is the backend-side http request.
 type request interface { // for *backend[1-3]Request
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
-	setAuthority(hostname []byte, colonPort []byte) bool
-	proxyCopyCookies(foreReq Request) bool // HTTP 1/2/3 have different requirements on "cookie" header
+	proxySetAuthority(hostname []byte, colonPort []byte) bool
+	proxyCopyCookies(foreReq Request) bool // HTTP 1.x/2/3 have different requirements on "cookie" header
 	proxyCopyHeaders(foreReq Request, proxyConfig *WebExchanProxyConfig) bool
 	proxyPassMessage(foreReq Request) error                       // pass content to backend directly
 	proxyPostMessage(foreContent any, foreHasTrailers bool) error // post held content to backend
@@ -60,10 +60,10 @@ type response interface { // for *backend[1-3]Response
 	HasTrailers() bool
 	IsVague() bool
 	examineTail() bool
-	proxyTakeContent() any // used by proxies
+	proxyTakeContent() any
 	readContent() (p []byte, err error)
-	delHopHeaders()
-	delHopTrailers()
+	proxyDelHopHeaders()
+	proxyDelHopTrailers()
 	forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
 	forTrailers(callback func(header *pair, name []byte, value []byte) bool) bool
 	recvHead()

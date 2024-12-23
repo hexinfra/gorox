@@ -951,13 +951,13 @@ type Request interface { // for *server[1-3]Request
 	getPathInfo() os.FileInfo
 	unsafeAbsPath() []byte
 	makeAbsPath()
-	delHopHeaders()
-	delHopTrailers()
+	proxyDelHopHeaders()
+	proxyDelHopTrailers()
 	forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
 	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
 	forCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool
 	proxyUnsetHost()
-	proxyTakeContent() any // used by proxies
+	proxyTakeContent() any
 	readContent() (p []byte, err error)
 	examineTail() bool
 	hookReviser(reviser Reviser)

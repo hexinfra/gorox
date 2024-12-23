@@ -1124,9 +1124,9 @@ func getServer2Stream(conn *server2Conn, id uint32, outWindow int32) *server2Str
 		stream = new(server2Stream)
 		req, resp := &stream.request, &stream.response
 		req.stream = stream
-		req.message = req
+		req.inMessage = req
 		resp.stream = stream
-		resp.message = resp
+		resp.outMessage = resp
 		resp.request = req
 	} else {
 		stream = x.(*server2Stream)
@@ -1305,7 +1305,7 @@ func (r *server2Response) addTrailer(name []byte, value []byte) bool {
 func (r *server2Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer2(name) }
 
 func (r *server2Response) proxyPass1xx(backResp response) bool {
-	backResp.delHopHeaders()
+	backResp.proxyDelHopHeaders()
 	r.status = backResp.Status()
 	if !backResp.forHeaders(func(header *pair, name []byte, value []byte) bool {
 		return r.insertHeader(header.nameHash, name, value)
@@ -1596,10 +1596,10 @@ func getBackend2Stream(conn *backend2Conn, id uint32) *backend2Stream {
 		stream = new(backend2Stream)
 		req, resp := &stream.request, &stream.response
 		req.stream = stream
-		req.message = req
+		req.outMessage = req
 		req.response = resp
 		resp.stream = stream
-		resp.message = resp
+		resp.inMessage = resp
 	} else {
 		stream = x.(*backend2Stream)
 	}
@@ -1685,7 +1685,7 @@ func (r *backend2Request) setMethodURI(method []byte, uri []byte, hasContent boo
 	// TODO: set :method and :path
 	return false
 }
-func (r *backend2Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
+func (r *backend2Request) proxySetAuthority(hostname []byte, colonPort []byte) bool {
 	// TODO: set :authority
 	return false
 }

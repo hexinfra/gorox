@@ -224,7 +224,7 @@ type _serverRequest0 struct { // for fast reset, entirely
 	nRanges         int8     // num of ranges. controls r.ranges
 	maxForwards     int8     // parsed value of "Max-Forwards" header, must <= 127
 	expectContinue  bool     // expect: 100-continue?
-	acceptTrailers  bool     // does client accept trailers? i.e. te: trailers, gzip
+	acceptTrailers  bool     // does client accept trailers? i.e. te: trailers
 	pathInfoGot     bool     // is r.pathInfo got?
 	_               [3]byte  // padding
 	indexes         struct { // indexes of some selected singleton headers, for fast accessing
@@ -1570,7 +1570,7 @@ func (r *serverRequest_) EvalRanges(contentSize int64) []Range { // returned ran
 	return r.ranges[:r.nRanges]
 }
 
-func (r *serverRequest_) proxyUnsetHost() { // used by proxies
+func (r *serverRequest_) proxyUnsetHost() {
 	r._delPrime(r.indexes.host) // zero safe
 }
 
@@ -2445,7 +2445,7 @@ func (r *serverResponse_) sendError(status int16, content []byte) error {
 	r.piece.SetText(content)
 	r.chain.PushTail(&r.piece)
 	r.contentSize = int64(len(content))
-	return r.message.sendChain()
+	return r.outMessage.sendChain()
 }
 
 var serverErrorPages = func() map[int16][]byte {
@@ -2480,7 +2480,7 @@ footer{padding:20px;}
 }()
 
 func (r *serverResponse_) beforeSend() {
-	resp := r.message.(Response)
+	resp := r.outMessage.(Response)
 	for _, id := range r.revisers {
 		if id == 0 { // id of effective reviser is ensured to be > 0
 			continue
@@ -2491,7 +2491,7 @@ func (r *serverResponse_) beforeSend() {
 }
 func (r *serverResponse_) doSend() error {
 	if r.hasRevisers {
-		resp := r.message.(Response)
+		resp := r.outMessage.(Response)
 		for _, id := range r.revisers { // revise sized content
 			if id == 0 {
 				continue
@@ -2506,11 +2506,11 @@ func (r *serverResponse_) doSend() error {
 			return webOutTooLarge
 		}
 	}
-	return r.message.sendChain()
+	return r.outMessage.sendChain()
 }
 
 func (r *serverResponse_) beforeEcho() {
-	resp := r.message.(Response)
+	resp := r.outMessage.(Response)
 	for _, id := range r.revisers { // revise headers
 		if id == 0 { // id of effective reviser is ensured to be > 0
 			continue
@@ -2526,7 +2526,7 @@ func (r *serverResponse_) doEcho() error {
 	r.chain.PushTail(&r.piece)
 	defer r.chain.free()
 	if r.hasRevisers {
-		resp := r.message.(Response)
+		resp := r.outMessage.(Response)
 		for _, id := range r.revisers { // revise vague content
 			if id == 0 { // id of effective reviser is ensured to be > 0
 				continue
@@ -2535,14 +2535,14 @@ func (r *serverResponse_) doEcho() error {
 			reviser.OnOutput(resp.Request(), resp, &r.chain)
 		}
 	}
-	return r.message.echoChain()
+	return r.outMessage.echoChain()
 }
 func (r *serverResponse_) endVague() error {
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
 	if r.hasRevisers {
-		resp := r.message.(Response)
+		resp := r.outMessage.(Response)
 		for _, id := range r.revisers { // finish vague content
 			if id == 0 { // id of effective reviser is ensured to be > 0
 				continue
@@ -2551,7 +2551,7 @@ func (r *serverResponse_) endVague() error {
 			reviser.FinishEcho(resp.Request(), resp)
 		}
 	}
-	return r.message.finalizeVague()
+	return r.outMessage.finalizeVague()
 }
 
 var ( // perfect hash table for response critical headers
@@ -2583,7 +2583,7 @@ func (r *serverResponse_) insertHeader(nameHash uint16, name []byte, value []byt
 		}
 		return h.fAdd(r, value)
 	}
-	return r.message.addHeader(name, value)
+	return r.outMessage.addHeader(name, value)
 }
 func (r *serverResponse_) _insertExpires(expires []byte) (ok bool) {
 	return r._addUnixTime(&r.unixTimes.expires, &r.indexes.expires, bytesExpires, expires)
@@ -2600,7 +2600,7 @@ func (r *serverResponse_) removeHeader(nameHash uint16, name []byte) bool {
 		}
 		return h.fDel(r)
 	}
-	return r.message.delHeader(name)
+	return r.outMessage.delHeader(name)
 }
 func (r *serverResponse_) _removeExpires() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.expires, &r.indexes.expires)
@@ -2610,14 +2610,14 @@ func (r *serverResponse_) _removeLastModified() (deleted bool) {
 }
 
 func (r *serverResponse_) proxyPassMessage(backResp response) error {
-	pass := r.message.passBytes
+	pass := r.outMessage.passBytes
 	if backResp.IsVague() || r.hasRevisers { // if we need to revise, we always use vague no matter the original content is sized or vague
 		pass = r.EchoBytes
 	} else { // backResp is sized and there are no revisers, use passBytes
 		r.isSent = true
 		r.contentSize = backResp.ContentSize()
 		// TODO: find a way to reduce i/o syscalls if content is small?
-		if err := r.message.passHeaders(); err != nil {
+		if err := r.outMessage.passHeaders(); err != nil {
 			return err
 		}
 	}
@@ -2637,7 +2637,7 @@ func (r *serverResponse_) proxyPassMessage(backResp response) error {
 	}
 	if backResp.HasTrailers() { // added trailers will be written by upper code eventually.
 		if !backResp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
-			return r.message.addTrailer(name, value)
+			return r.outMessage.addTrailer(name, value)
 		}) {
 			return webOutTrailerFailed
 		}
@@ -2645,7 +2645,7 @@ func (r *serverResponse_) proxyPassMessage(backResp response) error {
 	return nil
 }
 func (r *serverResponse_) proxyCopyHeaders(backResp response, proxyConfig *WebExchanProxyConfig) bool {
-	backResp.delHopHeaders()
+	backResp.proxyDelHopHeaders()
 
 	// copy control (:status)
 	r.SetStatus(backResp.Status())
@@ -2655,9 +2655,9 @@ func (r *serverResponse_) proxyCopyHeaders(backResp response, proxyConfig *WebEx
 	// copy remaining headers from resp
 	if !backResp.forHeaders(func(header *pair, name []byte, value []byte) bool {
 		if header.nameHash == hashSetCookie && bytes.Equal(name, bytesSetCookie) { // set-cookie is copied directly
-			return r.message.addHeader(name, value)
+			return r.outMessage.addHeader(name, value)
 		} else {
-			return r.message.insertHeader(header.nameHash, name, value)
+			return r.outMessage.insertHeader(header.nameHash, name, value)
 		}
 	}) {
 		return false
@@ -2667,7 +2667,7 @@ func (r *serverResponse_) proxyCopyHeaders(backResp response, proxyConfig *WebEx
 }
 func (r *serverResponse_) proxyCopyTrailers(backResp response, proxyConfig *WebExchanProxyConfig) bool {
 	return backResp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
-		return r.message.addTrailer(name, value)
+		return r.outMessage.addTrailer(name, value)
 	})
 }
 
@@ -2831,7 +2831,7 @@ func (r *backendRequest_) onEnd() { // for zeros
 func (r *backendRequest_) Response() response { return r.response }
 
 func (r *backendRequest_) SetMethodURI(method string, uri string, hasContent bool) bool {
-	return r.message.(request).setMethodURI(ConstBytes(method), ConstBytes(uri), hasContent)
+	return r.outMessage.(request).setMethodURI(ConstBytes(method), ConstBytes(uri), hasContent)
 }
 func (r *backendRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only. HTTP/1.x doesn't use this!
 	// TODO: copy `:scheme $scheme` to r.fields
@@ -2848,7 +2848,7 @@ func (r *backendRequest_) SetIfUnmodifiedSince(since int64) bool {
 
 func (r *backendRequest_) beforeSend() {} // revising is not supported in backend side.
 func (r *backendRequest_) doSend() error { // revising is not supported in backend side.
-	return r.message.sendChain()
+	return r.outMessage.sendChain()
 }
 
 func (r *backendRequest_) beforeEcho() {} // revising is not supported in backend side.
@@ -2858,13 +2858,13 @@ func (r *backendRequest_) doEcho() error { // revising is not supported in backe
 	}
 	r.chain.PushTail(&r.piece)
 	defer r.chain.free()
-	return r.message.echoChain()
+	return r.outMessage.echoChain()
 }
 func (r *backendRequest_) endVague() error { // revising is not supported in backend side.
 	if r.stream.isBroken() {
 		return webOutWriteBroken
 	}
-	return r.message.finalizeVague()
+	return r.outMessage.finalizeVague()
 }
 
 var ( // perfect hash table for request critical headers
@@ -2898,7 +2898,7 @@ func (r *backendRequest_) insertHeader(nameHash uint16, name []byte, value []byt
 		}
 		return h.fAdd(r, value)
 	}
-	return r.message.addHeader(name, value)
+	return r.outMessage.addHeader(name, value)
 }
 func (r *backendRequest_) _insertHost(host []byte) (ok bool) {
 	return r._appendSingleton(&r.indexes.host, bytesHost, host)
@@ -2921,7 +2921,7 @@ func (r *backendRequest_) removeHeader(nameHash uint16, name []byte) bool {
 		}
 		return h.fDel(r)
 	}
-	return r.message.delHeader(name)
+	return r.outMessage.delHeader(name)
 }
 func (r *backendRequest_) _removeHost() (deleted bool) {
 	return r._deleteSingleton(&r.indexes.host)
@@ -2937,14 +2937,14 @@ func (r *backendRequest_) _removeIfUnmodifiedSince() (deleted bool) {
 }
 
 func (r *backendRequest_) proxyPassMessage(foreReq Request) error {
-	pass := r.message.passBytes
+	pass := r.outMessage.passBytes
 	if foreReq.IsVague() {
 		pass = r.EchoBytes
 	} else {
 		r.isSent = true
 		r.contentSize = foreReq.ContentSize()
 		// TODO: find a way to reduce i/o syscalls if content is small?
-		if err := r.message.passHeaders(); err != nil {
+		if err := r.outMessage.passHeaders(); err != nil {
 			return err
 		}
 	}
@@ -2964,7 +2964,7 @@ func (r *backendRequest_) proxyPassMessage(foreReq Request) error {
 	}
 	if foreReq.HasTrailers() { // added trailers will be written by upper code eventually.
 		if !foreReq.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
-			return r.message.addTrailer(name, value)
+			return r.outMessage.addTrailer(name, value)
 		}) {
 			return webOutTrailerFailed
 		}
@@ -2972,7 +2972,7 @@ func (r *backendRequest_) proxyPassMessage(foreReq Request) error {
 	return nil
 }
 func (r *backendRequest_) proxyCopyHeaders(foreReq Request, proxyConfig *WebExchanProxyConfig) bool {
-	foreReq.delHopHeaders()
+	foreReq.proxyDelHopHeaders()
 
 	// copy control (:method, :path, :authority, :scheme)
 	uri := foreReq.UnsafeURI()
@@ -2982,13 +2982,13 @@ func (r *backendRequest_) proxyCopyHeaders(foreReq Request, proxyConfig *WebExch
 		// then the last proxy on the request chain MUST send a request-target of "*" when it forwards the request to the indicated origin server.
 		uri = bytesAsterisk
 	}
-	if !r.message.(request).setMethodURI(foreReq.UnsafeMethod(), uri, foreReq.HasContent()) {
+	if !r.outMessage.(request).setMethodURI(foreReq.UnsafeMethod(), uri, foreReq.HasContent()) {
 		return false
 	}
 	if foreReq.IsAbsoluteForm() || len(proxyConfig.Hostname) != 0 || len(proxyConfig.ColonPort) != 0 { // TODO: what about HTTP/2 and HTTP/3?
 		foreReq.proxyUnsetHost()
 		if foreReq.IsAbsoluteForm() {
-			if !r.message.addHeader(bytesHost, foreReq.UnsafeAuthority()) {
+			if !r.outMessage.addHeader(bytesHost, foreReq.UnsafeAuthority()) {
 				return false
 			}
 		} else { // custom authority (hostname or colonPort)
@@ -3006,7 +3006,7 @@ func (r *backendRequest_) proxyCopyHeaders(foreReq Request, proxyConfig *WebExch
 			} else {
 				colonPort = proxyConfig.ColonPort
 			}
-			if !r.message.(request).setAuthority(hostname, colonPort) {
+			if !r.outMessage.(request).proxySetAuthority(hostname, colonPort) {
 				return false
 			}
 		}
@@ -3026,11 +3026,15 @@ func (r *backendRequest_) proxyCopyHeaders(foreReq Request, proxyConfig *WebExch
 	}
 
 	// copy selective forbidden headers (including cookie) from req
-	if foreReq.HasCookies() && !r.message.(request).proxyCopyCookies(foreReq) {
+	if foreReq.HasCookies() && !r.outMessage.(request).proxyCopyCookies(foreReq) {
 		return false
 	}
-	if !r.message.addHeader(bytesVia, proxyConfig.InboundViaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
+	if !r.outMessage.addHeader(bytesVia, proxyConfig.InboundViaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
 		return false
+	}
+	if foreReq.AcceptTrailers() {
+		// TODO: add te: trailers
+		// TODO: add connection: te
 	}
 
 	// copy added headers
@@ -3043,27 +3047,27 @@ func (r *backendRequest_) proxyCopyHeaders(foreReq Request, proxyConfig *WebExch
 		} else {
 			// Invalid values are treated as empty
 		}
-		if !r.message.addHeader(ConstBytes(name), value) {
+		if !r.outMessage.addHeader(ConstBytes(name), value) {
 			return false
 		}
 	}
 
 	// copy remaining headers from req
 	if !foreReq.forHeaders(func(header *pair, name []byte, value []byte) bool {
-		return r.message.insertHeader(header.nameHash, name, value)
+		return r.outMessage.insertHeader(header.nameHash, name, value)
 	}) {
 		return false
 	}
 
 	for _, name := range proxyConfig.DelRequestHeaders {
-		r.message.delHeader(name)
+		r.outMessage.delHeader(name)
 	}
 
 	return true
 }
 func (r *backendRequest_) proxyCopyTrailers(foreReq Request, proxyConfig *WebExchanProxyConfig) bool {
 	return foreReq.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
-		return r.message.addTrailer(name, value)
+		return r.outMessage.addTrailer(name, value)
 	})
 }
 
@@ -3568,8 +3572,8 @@ func (s *webStream_) onEnd() {
 // webIn_ is the parent for serverRequest_ and backendResponse_.
 type webIn_ struct { // incoming. needs parsing
 	// Assocs
-	stream  webStream   // *server[1-3]Stream, *backend[1-3]Stream
-	message interface { // *server[1-3]Request, *backend[1-3]Response
+	stream    webStream   // *server[1-3]Stream, *backend[1-3]Stream
+	inMessage interface { // *server[1-3]Request, *backend[1-3]Response
 		readContent() (p []byte, err error)
 		examineTail() bool
 	}
@@ -4369,7 +4373,7 @@ func (r *webIn_) _loadContent() { // into memory. [0, r.maxContentSize]
 		r.stream.markBroken()
 	}
 }
-func (r *webIn_) proxyTakeContent() any { // used by proxies
+func (r *webIn_) proxyTakeContent() any {
 	if r.contentReceived {
 		if r.contentFile == nil {
 			return r.contentText // immediate
@@ -4430,7 +4434,7 @@ func (r *webIn_) _recvContent(retain bool) any { // to []byte (for small content
 		}
 		var p []byte
 		for {
-			p, err = r.message.readContent()
+			p, err = r.inMessage.readContent()
 			if len(p) > 0 { // skip 0, nothing to write
 				if _, e := contentFile.Write(p); e != nil {
 					err = e
@@ -4751,10 +4755,10 @@ func (r *webIn_) _placeOf(pair *pair) []byte {
 	return place
 }
 
-func (r *webIn_) delHopHeaders() {
+func (r *webIn_) proxyDelHopHeaders() {
 	r._delHopFields(r.headers, pairHeader, r.delHeader)
 }
-func (r *webIn_) delHopTrailers() {
+func (r *webIn_) proxyDelHopTrailers() {
 	r._delHopFields(r.trailers, pairTrailer, r.delTrailer)
 }
 func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name []byte, nameHash uint16)) { // TODO: improve performance
@@ -4767,7 +4771,8 @@ func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name [
 	delField(bytesTransferEncoding, hashTransferEncoding)
 	delField(bytesUpgrade, hashUpgrade)
 
-	// Now remove options in primes and extras. Note: we don't remove ("connection: xxx") itself, since we simply ignore it when acting as a proxy.
+	// Now remove options in primes and extras.
+	// Note: we don't remove ("connection: xxx") itself, we simply ignore it when acting as a proxy.
 	for i := r.zConnection.from; i < r.zConnection.edge; i++ {
 		prime := &r.primes[i]
 		// Skip fields that are not "connection: xxx"
@@ -4789,8 +4794,8 @@ func (r *webIn_) _delHopFields(fields zone, extraKind int8, delField func(name [
 		if !r.hasExtra[extraKind] {
 			continue
 		}
-		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.nameHash == optionHash && extra.kind == extraKind {
+		for j := 0; j < len(r.extras); j++ {
+			if extra := &r.extras[j]; extra.nameHash == optionHash && extra.kind == extraKind {
 				if p := r._placeOf(extra); extra.nameEqualBytes(p, optionName) {
 					extra.zero()
 				}
@@ -4935,8 +4940,8 @@ var ( // webIn_ errors
 // webOut_ is the parent for serverResponse_ and backendRequest_.
 type webOut_ struct { // outgoing. needs building
 	// Assocs
-	stream  webStream   // *server[1-3]Stream, *backend[1-3]Stream
-	message interface { // *server[1-3]Response, *backend[1-3]Request
+	stream     webStream   // *server[1-3]Stream, *backend[1-3]Stream
+	outMessage interface { // *server[1-3]Response, *backend[1-3]Request
 		control() []byte
 		addHeader(name []byte, value []byte) bool
 		header(name []byte) (value []byte, ok bool)
@@ -5029,11 +5034,11 @@ func (r *webOut_) AddContentTypeBytes(contentType []byte) bool {
 }
 
 func (r *webOut_) Header(name string) (value string, ok bool) {
-	v, ok := r.message.header(ConstBytes(name))
+	v, ok := r.outMessage.header(ConstBytes(name))
 	return string(v), ok
 }
 func (r *webOut_) HasHeader(name string) bool {
-	return r.message.hasHeader(ConstBytes(name))
+	return r.outMessage.hasHeader(ConstBytes(name))
 }
 func (r *webOut_) AddHeader(name string, value string) bool {
 	return r.AddHeaderBytes(ConstBytes(name), ConstBytes(value))
@@ -5048,7 +5053,7 @@ func (r *webOut_) AddHeaderBytes(name []byte, value []byte) bool {
 			return false
 		}
 	}
-	return r.message.insertHeader(nameHash, lower, value)
+	return r.outMessage.insertHeader(nameHash, lower, value)
 }
 func (r *webOut_) DelHeader(name string) bool {
 	return r.DelHeaderBytes(ConstBytes(name))
@@ -5058,7 +5063,7 @@ func (r *webOut_) DelHeaderBytes(name []byte) bool {
 	if !valid {
 		return false
 	}
-	return r.message.removeHeader(nameHash, lower)
+	return r.outMessage.removeHeader(nameHash, lower)
 }
 func (r *webOut_) _nameCheck(name []byte) (nameHash uint16, valid bool, lower []byte) { // TODO: improve performance
 	n := len(name)
@@ -5102,7 +5107,7 @@ func (r *webOut_) _insertDate(date []byte) (ok bool) { // rarely used in backend
 	return r._appendSingleton(&r.iDate, bytesDate, date)
 }
 func (r *webOut_) _appendSingleton(pIndex *uint8, name []byte, value []byte) bool {
-	if *pIndex > 0 || !r.message.addHeader(name, value) {
+	if *pIndex > 0 || !r.outMessage.addHeader(name, value) {
 		return false
 	}
 	*pIndex = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
@@ -5115,7 +5120,7 @@ func (r *webOut_) _deleteSingleton(pIndex *uint8) bool {
 	if *pIndex == 0 { // not exist
 		return false
 	}
-	r.message.delHeaderAt(*pIndex)
+	r.outMessage.delHeaderAt(*pIndex)
 	*pIndex = 0
 	return true
 }
@@ -5125,7 +5130,7 @@ func (r *webOut_) _setUnixTime(pUnixTime *int64, pIndex *uint8, unixTime int64) 
 		return false
 	}
 	if *pUnixTime == -2 { // was set through general api, must delete it
-		r.message.delHeaderAt(*pIndex)
+		r.outMessage.delHeaderAt(*pIndex)
 		*pIndex = 0
 	}
 	*pUnixTime = unixTime
@@ -5133,12 +5138,12 @@ func (r *webOut_) _setUnixTime(pUnixTime *int64, pIndex *uint8, unixTime int64) 
 }
 func (r *webOut_) _addUnixTime(pUnixTime *int64, pIndex *uint8, name []byte, httpDate []byte) bool {
 	if *pUnixTime == -2 { // was set through general api, must delete it
-		r.message.delHeaderAt(*pIndex)
+		r.outMessage.delHeaderAt(*pIndex)
 		*pIndex = 0
 	} else { // >= 0 or -1
 		*pUnixTime = -2
 	}
-	if !r.message.addHeader(name, httpDate) {
+	if !r.outMessage.addHeader(name, httpDate) {
 		return false
 	}
 	*pIndex = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
@@ -5149,7 +5154,7 @@ func (r *webOut_) _delUnixTime(pUnixTime *int64, pIndex *uint8) bool {
 		return false
 	}
 	if *pUnixTime == -2 { // was set through general api, must delete it
-		r.message.delHeaderAt(*pIndex)
+		r.outMessage.delHeaderAt(*pIndex)
 		*pIndex = 0
 	}
 	*pUnixTime = -1
@@ -5207,10 +5212,10 @@ func (r *webOut_) AddTrailerBytes(name []byte, value []byte) bool {
 	if !r.isSent { // trailers must be added after headers & content are sent, otherwise r.fields will be messed up
 		return false
 	}
-	return r.message.addTrailer(name, value)
+	return r.outMessage.addTrailer(name, value)
 }
 func (r *webOut_) Trailer(name string) (value string, ok bool) {
-	v, ok := r.message.trailer(ConstBytes(name))
+	v, ok := r.outMessage.trailer(ConstBytes(name))
 	return string(v), ok
 }
 
@@ -5237,7 +5242,7 @@ func (r *webOut_) proxyPostMessage(content any, hasTrailers bool) error {
 			return err
 		}
 		r.forbidContent = true
-		return r.message.doSend()
+		return r.outMessage.doSend()
 	}
 }
 
@@ -5248,7 +5253,7 @@ func (r *webOut_) sendText(content []byte) error {
 	r.piece.SetText(content)
 	r.chain.PushTail(&r.piece)
 	r.contentSize = int64(len(content)) // initial size, may be changed by revisers
-	return r.message.doSend()
+	return r.outMessage.doSend()
 }
 func (r *webOut_) sendFile(content *os.File, info os.FileInfo, shut bool) error {
 	if err := r._beforeSend(); err != nil {
@@ -5257,7 +5262,7 @@ func (r *webOut_) sendFile(content *os.File, info os.FileInfo, shut bool) error 
 	r.piece.SetFile(content, info, shut)
 	r.chain.PushTail(&r.piece)
 	r.contentSize = info.Size() // initial size, may be changed by revisers
-	return r.message.doSend()
+	return r.outMessage.doSend()
 }
 func (r *webOut_) _beforeSend() error {
 	if r.isSent {
@@ -5265,7 +5270,7 @@ func (r *webOut_) _beforeSend() error {
 	}
 	r.isSent = true
 	if r.hasRevisers {
-		r.message.beforeSend()
+		r.outMessage.beforeSend()
 	}
 	return nil
 }
@@ -5279,7 +5284,7 @@ func (r *webOut_) echoText(chunk []byte) error {
 	}
 	r.piece.SetText(chunk)
 	defer r.piece.zero()
-	return r.message.doEcho()
+	return r.outMessage.doEcho()
 }
 func (r *webOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {
 	if err := r._beforeEcho(); err != nil {
@@ -5293,7 +5298,7 @@ func (r *webOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {
 	}
 	r.piece.SetFile(chunk, info, shut)
 	defer r.piece.zero()
-	return r.message.doEcho()
+	return r.outMessage.doEcho()
 }
 func (r *webOut_) _beforeEcho() error {
 	if r.stream.isBroken() {
@@ -5308,9 +5313,9 @@ func (r *webOut_) _beforeEcho() error {
 	r.isSent = true
 	r.contentSize = -2 // vague
 	if r.hasRevisers {
-		r.message.beforeEcho()
+		r.outMessage.beforeEcho()
 	}
-	return r.message.echoHeaders()
+	return r.outMessage.echoHeaders()
 }
 
 func (r *webOut_) growHeader(size int) (from int, edge int, ok bool) { // headers and trailers are not manipulated at the same time

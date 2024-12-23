@@ -57,9 +57,9 @@ func getServer1Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall
 		stream.conn = serverConn
 		req, resp := &stream.request, &stream.response
 		req.stream = stream
-		req.message = req
+		req.inMessage = req
 		resp.stream = stream
-		resp.message = resp
+		resp.outMessage = resp
 		resp.request = req
 	} else {
 		serverConn = x.(*server1Conn)
@@ -980,7 +980,7 @@ func (r *server1Response) addTrailer(name []byte, value []byte) bool {
 func (r *server1Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }
 
 func (r *server1Response) proxyPass1xx(backResp response) bool {
-	backResp.delHopHeaders()
+	backResp.proxyDelHopHeaders()
 	r.status = backResp.Status()
 	if !backResp.forHeaders(func(header *pair, name []byte, value []byte) bool {
 		return r.insertHeader(header.nameHash, name, value)
@@ -1348,10 +1348,10 @@ func getBackend1Conn(id int64, node *http1Node, netConn net.Conn, rawConn syscal
 		stream.conn = backendConn
 		req, resp := &stream.request, &stream.response
 		req.stream = stream
-		req.message = req
+		req.outMessage = req
 		req.response = resp
 		resp.stream = stream
-		resp.message = resp
+		resp.inMessage = resp
 	} else {
 		backendConn = x.(*backend1Conn)
 	}
@@ -1518,7 +1518,7 @@ func (r *backend1Request) setMethodURI(method []byte, uri []byte, hasContent boo
 		return false
 	}
 }
-func (r *backend1Request) setAuthority(hostname []byte, colonPort []byte) bool { // used by proxies
+func (r *backend1Request) proxySetAuthority(hostname []byte, colonPort []byte) bool {
 	if r.stream.Conn().IsTLS() {
 		if bytes.Equal(colonPort, bytesColonPort443) {
 			colonPort = nil
@@ -2105,7 +2105,7 @@ func (r *webIn_) _readVagueContent1() (p []byte, err error) {
 				}
 			} else if r.bodyWindow[r.cFore] != '\n' { // must be trailer-section = *( field-line CRLF)
 				r.receiving = httpSectionTrailers
-				if !r.recvTrailers1() || !r.message.examineTail() {
+				if !r.recvTrailers1() || !r.inMessage.examineTail() {
 					goto badRead
 				}
 				// r.recvTrailers1() must ends with r.cFore being at the last '\n' after trailer-section.
@@ -2424,7 +2424,7 @@ func (r *webOut_) sendChain1() error { // TODO: if conn is TLS, don't use writev
 	}
 	// Partial content.
 	if !r.asRequest { // as response
-		r.message.(Response).SetStatus(StatusPartialContent)
+		r.outMessage.(Response).SetStatus(StatusPartialContent)
 	}
 	if nContentRanges == 1 {
 		return r._sendSingleRange1()
@@ -2433,7 +2433,7 @@ func (r *webOut_) sendChain1() error { // TODO: if conn is TLS, don't use writev
 	}
 }
 func (r *webOut_) _sendEntireChain1() error {
-	r.message.finalizeHeaders()
+	r.outMessage.finalizeHeaders()
 	vector := r._prepareVector1() // waiting to write
 	if DebugLevel() >= 2 {
 		if r.asRequest {
@@ -2520,9 +2520,9 @@ func (r *webOut_) _prepareVector1() [][]byte {
 	} else { // nPieces >= 2
 		vector = make([][]byte, 3+nPieces) // TODO(diogin): get from pool? defer pool.put()
 	}
-	vector[0] = r.message.control()
-	vector[1] = r.message.addedHeaders()
-	vector[2] = r.message.fixedHeaders()
+	vector[0] = r.outMessage.control()
+	vector[1] = r.outMessage.addedHeaders()
+	vector[2] = r.outMessage.fixedHeaders()
 	return vector
 }
 
@@ -2586,11 +2586,11 @@ func (r *webOut_) finalizeVague1() error {
 }
 
 func (r *webOut_) writeHeaders1() error { // used by echo and pass
-	r.message.finalizeHeaders()
+	r.outMessage.finalizeHeaders()
 	r.vector = r.fixedVector[0:3]
-	r.vector[0] = r.message.control()
-	r.vector[1] = r.message.addedHeaders()
-	r.vector[2] = r.message.fixedHeaders()
+	r.vector[0] = r.outMessage.control()
+	r.vector[1] = r.outMessage.addedHeaders()
+	r.vector[2] = r.outMessage.fixedHeaders()
 	if DebugLevel() >= 2 {
 		if r.asRequest {
 			Printf("[backend1Stream=%d]", r.stream.Conn().ID())

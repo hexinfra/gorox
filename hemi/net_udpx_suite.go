@@ -222,7 +222,6 @@ type UDPXConn struct {
 	lastWrite time.Time    // deadline of last write operation
 }
 
-// poolUDPXConn
 var poolUDPXConn sync.Pool
 
 func getUDPXConn(id int64, gate *udpxGate, pktConn net.PacketConn, rawConn syscall.RawConn) *UDPXConn {
@@ -564,7 +563,6 @@ type UConn struct {
 	broken    atomic.Bool  // is conn broken?
 }
 
-// poolUConn
 var poolUConn sync.Pool
 
 func getUConn(id int64, node *udpxNode, netConn net.PacketConn, rawConn syscall.RawConn) *UConn {

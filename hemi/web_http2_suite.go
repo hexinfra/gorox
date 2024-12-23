@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// HTTP/2 server and backend implementation. See RFC 9113 and 7541.
+// HTTP/2 server and backend implementation. See RFC 9113, RFC 7541, and RFC 9218.
 // NOTE: httpxServer and httpxGate are used by both HTTP/2 and HTTP/1.x.
 
 // Server Push is not supported because it's rarely used. Chrome and Firefox even removed it.
@@ -347,7 +347,6 @@ type _server2Conn0 struct { // for fast reset, entirely
 	//queuedControlFrames?
 }
 
-// poolServer2Conn is the server-side HTTP/2 connection pool.
 var poolServer2Conn sync.Pool
 
 func getServer2Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) *server2Conn {
@@ -418,7 +417,7 @@ func (c *server2Conn) serve() { // runner
 		Printf("========================== conn=%d exit =========================\n", c.id)
 		putServer2Conn(c)
 	}()
-	if err := c.handshake(); err != nil {
+	if err := c._handshake(); err != nil {
 		c.closeConn()
 		return
 	}
@@ -441,9 +440,9 @@ serve:
 				} else { // processor i/o error
 					c.goawayCloseConn(http2ErrorInternal)
 				}
-				// c.serve() is broken, but c.receive() is not. need wait
+				// c.serve() was broken, but c.receive() was not. need wait
 				c.waitReceive = true
-			} else { // c.receive() is broken and quit.
+			} else { // c.receive() was broken and quit.
 				if h2e, ok := incoming.(http2Error); ok {
 					c.goawayCloseConn(h2e)
 				} else if netErr, ok := incoming.(net.Error); ok && netErr.Timeout() {
@@ -487,8 +486,7 @@ serve:
 	}
 	Printf("conn=%d c.serve() quit\n", c.id)
 }
-
-func (c *server2Conn) handshake() error {
+func (c *server2Conn) _handshake() error {
 	// Set deadline for the first request headers
 	if err := c.setReadDeadline(); err != nil {
 		return err
@@ -518,23 +516,6 @@ func (c *server2Conn) handshake() error {
 	}
 	return err
 }
-func (c *server2Conn) receive() { // runner
-	if DebugLevel() >= 1 {
-		defer Printf("conn=%d c.receive() quit\n", c.id)
-	}
-	for { // each incoming frame
-		inFrame, err := c.recvFrame()
-		if err != nil {
-			c.incomingChan <- err
-			return
-		}
-		if inFrame.kind == http2FrameGoaway {
-			c.incomingChan <- http2ErrorNoError
-			return
-		}
-		c.incomingChan <- inFrame
-	}
-}
 
 var server2PrefaceAndMore = []byte{
 	// server preface settings
@@ -560,6 +541,24 @@ var server2PrefaceAndMore = []byte{
 	0,          // flags=
 	0, 0, 0, 0, // streamID=0
 	0x7f, 0xff, 0x00, 0x00, // windowSize=2G1-64K1
+}
+
+func (c *server2Conn) receive() { // runner
+	if DebugLevel() >= 1 {
+		defer Printf("conn=%d c.receive() quit\n", c.id)
+	}
+	for { // each incoming frame
+		inFrame, err := c.recvFrame()
+		if err != nil {
+			c.incomingChan <- err
+			return
+		}
+		if inFrame.kind == http2FrameGoaway {
+			c.incomingChan <- http2ErrorNoError
+			return
+		}
+		c.incomingChan <- inFrame
+	}
 }
 
 func (c *server2Conn) goawayCloseConn(h2e http2Error) {
@@ -912,7 +911,7 @@ func (c *server2Conn) recvFrame() (*http2InFrame, error) {
 		return nil, http2ErrorSettingsTimeout
 	}
 	if inFrame.kind == http2FrameHeaders {
-		if !inFrame.endHeaders { // continuations follow
+		if !inFrame.endHeaders { // continuations follow, join them into headers
 			if err := c._joinContinuations(inFrame); err != nil {
 				return nil, err
 			}
@@ -984,27 +983,26 @@ func (c *server2Conn) _joinContinuations(headers *http2InFrame) error { // into 
 		if err := c._growContinuation(continuation.length, headers); err != nil {
 			return err
 		}
-		c.nInFrames++
-		// Append to headers
-		copy(c.buffer.buf[headers.pEdge:], c.buffer.buf[c.cBack:c.cFore]) // overwrite padding if exists
+		// TODO: limit the number of continuation frames to avoid DoS attack
+		c.nInFrames++ // got the continuation frame.
+		// Append continuation to headers
+		copy(c.buffer.buf[headers.pEdge:], c.buffer.buf[c.cBack:c.cFore]) // may overwrite padding if exists
 		headers.pEdge += continuation.length
-		headers.length += continuation.length // we don't care that padding is overwrite. just accumulate
+		headers.length += continuation.length // we don't care if padding is overwritten. just accumulate
 		c.pFore += continuation.length        // also accumulate headers payload, with padding included
 		// End of headers?
 		if continuation.endHeaders {
 			headers.endHeaders = true
 			headers.buffer = c.buffer // restore the buffer
 			c.pFore = c.cFore         // for next frame.
-			break
-		} else {
-			c.cBack = c.cFore
+			return nil
 		}
+		c.cBack = c.cFore
 	}
-	return nil
 }
 func (c *server2Conn) _growContinuation(size uint32, headers *http2InFrame) error {
-	c.cFore += size // won't overflow
-	if c.cFore <= c.bufferEdge {
+	c.cFore += size              // won't overflow
+	if c.cFore <= c.bufferEdge { // buffer is sufficient
 		return nil
 	}
 	// Needs grow. Cases are (A is payload of the headers frame):
@@ -1117,7 +1115,6 @@ type _server2Stream0 struct { // for fast reset, entirely
 	reset bool  // received a RST_STREAM?
 }
 
-// poolServer2Stream is the server-side HTTP/2 stream pool.
 var poolServer2Stream sync.Pool
 
 func getServer2Stream(conn *server2Conn, id uint32, outWindow int32) *server2Stream {
@@ -1351,7 +1348,6 @@ type server2Socket struct { // incoming and outgoing
 	// Stream states (zeros)
 }
 
-// poolServer2Socket
 var poolServer2Socket sync.Pool
 
 func getServer2Socket(stream *server2Stream) *server2Socket {
@@ -1476,7 +1472,6 @@ type backend2Conn struct {
 type _backend2Conn0 struct { // for fast reset, entirely
 }
 
-// poolBackend2Conn is the backend-side HTTP/2 connection pool.
 var poolBackend2Conn sync.Pool
 
 func getBackend2Conn(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) *backend2Conn {
@@ -1591,7 +1586,6 @@ type backend2Stream struct {
 type _backend2Stream0 struct { // for fast reset, entirely
 }
 
-// poolBackend2Stream
 var poolBackend2Stream sync.Pool
 
 func getBackend2Stream(conn *backend2Conn, id uint32) *backend2Stream {
@@ -1755,7 +1749,6 @@ type backend2Socket struct { // incoming and outgoing
 	// Stream states (zeros)
 }
 
-// poolBackend2Socket
 var poolBackend2Socket sync.Pool
 
 func getBackend2Socket(stream *backend2Stream) *backend2Socket {
@@ -1890,7 +1883,6 @@ type http2Buffer struct {
 	ref atomic.Int32
 }
 
-// poolHTTP2Buffer
 var poolHTTP2Buffer sync.Pool
 
 func getHTTP2Buffer() *http2Buffer {

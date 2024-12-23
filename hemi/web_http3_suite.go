@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// HTTP/3 server and backend implementation. See RFC 9114 and 9204.
+// HTTP/3 server and backend implementation. See RFC 9114, RFC 9204, and RFC 9218.
 
 // Server Push is not supported because it's rarely used. Chrome and Firefox even removed it.
 
@@ -166,7 +166,6 @@ type _server3Conn0 struct { // for fast reset, entirely
 	pFore      uint32 // incoming frame part (header or payload) ends at c.buffer.buf[c.pFore]
 }
 
-// poolServer3Conn is the server-side HTTP/3 connection pool.
 var poolServer3Conn sync.Pool
 
 func getServer3Conn(id int64, gate *http3Gate, quicConn *quic.Conn) *server3Conn {
@@ -249,7 +248,6 @@ type _server3Stream0 struct { // for fast reset, entirely
 	reset bool
 }
 
-// poolServer3Stream is the server-side HTTP/3 stream pool.
 var poolServer3Stream sync.Pool
 
 func getServer3Stream(conn *server3Conn, quicStream *quic.Stream) *server3Stream {
@@ -466,7 +464,6 @@ type server3Socket struct { // incoming and outgoing
 	// Stream states (zeros)
 }
 
-// poolServer3Socket
 var poolServer3Socket sync.Pool
 
 func getServer3Socket(stream *server3Stream) *server3Socket {
@@ -595,7 +592,6 @@ type backend3Conn struct {
 type _backend3Conn0 struct { // for fast reset, entirely
 }
 
-// poolBackend3Conn is the backend-side HTTP/3 connection pool.
 var poolBackend3Conn sync.Pool
 
 func getBackend3Conn(id int64, node *http3Node, quicConn *quic.Conn) *backend3Conn {
@@ -678,7 +674,6 @@ type backend3Stream struct {
 type _backend3Stream0 struct { // for fast reset, entirely
 }
 
-// poolBackend3Stream
 var poolBackend3Stream sync.Pool
 
 func getBackend3Stream(conn *backend3Conn, quicStream *quic.Stream) *backend3Stream {
@@ -843,7 +838,6 @@ type backend3Socket struct { // incoming and outgoing
 	// Stream states (zeros)
 }
 
-// poolBackend3Socket
 var poolBackend3Socket sync.Pool
 
 func getBackend3Socket(stream *backend3Stream) *backend3Socket {
@@ -966,7 +960,6 @@ type http3Buffer struct {
 	ref atomic.Int32
 }
 
-// poolHTTP3Buffer
 var poolHTTP3Buffer sync.Pool
 
 func getHTTP3Buffer() *http3Buffer {

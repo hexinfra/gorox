@@ -485,7 +485,6 @@ type fcgiConn struct {
 	broken      atomic.Bool  // is conn broken?
 }
 
-// poolFCGIConn
 var poolFCGIConn sync.Pool
 
 func getFCGIConn(id int64, node *fcgiNode, netConn net.Conn, rawConn syscall.RawConn) *fcgiConn {
@@ -1745,7 +1744,6 @@ const ( // fcgi constants
 	fcgiMaxRecords = fcgiHeaderSize + fcgiMaxPayload + fcgiMaxPadding
 )
 
-// poolFCGIRecords
 var poolFCGIRecords sync.Pool
 
 func getFCGIRecords() []byte {

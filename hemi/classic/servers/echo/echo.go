@@ -147,7 +147,6 @@ type echoConn struct {
 	// Conn states (zeros)
 }
 
-// poolEchoConn
 var poolEchoConn sync.Pool
 
 func getEchoConn(id int64, gate *echoGate, tcpConn *net.TCPConn) *echoConn {

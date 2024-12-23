@@ -28,7 +28,7 @@ Architecture
 Logical
 -------
 
-The logical architecture of a stage in Hemi engine looks like this:
+The logical architecture of a stage in Hemi Engine looks like this:
 
 ```
    ^     +---------------------------------------------+  shutdown
@@ -57,7 +57,7 @@ prepare  +-----------+---------------+-----------------+     v
 Dependencies
 ------------
 
-A program (like Gorox) using Hemi engine typically has these dependencies:
+A program (like Gorox) using Hemi Engine typically has these dependencies:
 
 ```
   +-------------------------------------------------------------+

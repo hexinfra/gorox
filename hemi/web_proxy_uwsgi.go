@@ -247,7 +247,6 @@ type uwsgiConn struct {
 	lastRead  time.Time    // deadline of last read operation
 }
 
-// poolUwsgiConn
 var poolUwsgiConn sync.Pool
 
 func getUwsgiConn(tConn *TConn) *uwsgiConn {

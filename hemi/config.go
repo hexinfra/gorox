@@ -17,12 +17,28 @@ import (
 	"time"
 )
 
+// caseCond is the case condition.
+type caseCond struct {
+	varCode  int16    // see varCodes. set as -1 if not available
+	varName  string   // used if varCode is not available
+	compare  string   // ==, ^=, $=, *=, ~=, !=, !^, !$, !*, !~
+	patterns []string // ...
+}
+
+// ruleCond is the rule condition.
+type ruleCond struct {
+	varCode  int16    // see varCodes. set as -1 if not available
+	varName  string   // used if varCode is not available
+	compare  string   // ==, ^=, $=, *=, ~=, !=, !^, !$, !*, !~, -f, -d, -e, -D, -E, !f, !d, !e
+	patterns []string // ("GET", "POST"), ("https"), ("abc.com"), ("/hello", "/world")
+}
+
 // configurator applies configuration and creates a new stage.
 type configurator struct {
 	// States
 	tokens  []token // the token list
-	index   int     // token index
-	counter int     // the name for components without a name
+	index   int     // index of current token, for parsing
+	counter int     // used to create names for components without a name
 }
 
 func (c *configurator) stageFromText(text string) (stage *Stage, err error) {
@@ -734,22 +750,6 @@ func parseComponent2[T Component](c *configurator, sign *token, webapp *Webapp, 
 		assign(component)
 	}
 	c._parseLeaf(component)
-}
-
-// caseCond is the case condition.
-type caseCond struct {
-	varCode  int16    // see varCodes. set as -1 if not available
-	varName  string   // used if varCode is not available
-	compare  string   // ==, ^=, $=, *=, ~=, !=, !^, !$, !*, !~
-	patterns []string // ...
-}
-
-// ruleCond is the rule condition.
-type ruleCond struct {
-	varCode  int16    // see varCodes. set as -1 if not available
-	varName  string   // used if varCode is not available
-	compare  string   // ==, ^=, $=, *=, ~=, !=, !^, !$, !*, !~, -f, -d, -e, -D, -E, !f, !d, !e
-	patterns []string // ("GET", "POST"), ("https"), ("abc.com"), ("/hello", "/world")
 }
 
 const ( // list of tokens. if you change this list, change tokenNames too.

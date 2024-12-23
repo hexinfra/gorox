@@ -48,7 +48,6 @@ type server1Conn struct {
 	// Conn states (zeros)
 }
 
-// poolServer1Conn is the server-side HTTP/1.x connection pool.
 var poolServer1Conn sync.Pool
 
 func getServer1Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) *server1Conn {
@@ -1066,7 +1065,6 @@ type server1Socket struct { // incoming and outgoing
 	// Stream states (zeros)
 }
 
-// poolServer1Socket
 var poolServer1Socket sync.Pool
 
 func getServer1Socket(stream *server1Stream) *server1Socket {
@@ -1343,7 +1341,6 @@ type backend1Conn struct {
 	// Conn states (zeros)
 }
 
-// poolBackend1Conn is the backend-side HTTP/1.x connection pool.
 var poolBackend1Conn sync.Pool
 
 func getBackend1Conn(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) *backend1Conn {
@@ -1785,7 +1782,6 @@ type backend1Socket struct { // incoming and outgoing
 	// Stream states (zeros)
 }
 
-// poolBackend1Socket
 var poolBackend1Socket sync.Pool
 
 func getBackend1Socket(stream *backend1Stream) *backend1Socket {

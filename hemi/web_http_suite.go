@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// General HTTP server and backend implementation. See RFC 9110 and 9111.
+// General HTTP server and backend implementation. See RFC 9110 and RFC 9111.
 
 package hemi
 
@@ -5863,7 +5863,6 @@ type pair struct { // 24 bytes
 	dataEdge int32  // fields only. data ends at
 }
 
-// poolPairs
 var poolPairs sync.Pool
 
 const maxPairs = 250 // 24B*250=6000B
@@ -6070,7 +6069,6 @@ type Piece struct { // 64 bytes
 	time int64    // file mod time
 }
 
-// poolPiece
 var poolPiece sync.Pool
 
 func GetPiece() *Piece {

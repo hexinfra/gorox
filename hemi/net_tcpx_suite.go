@@ -355,7 +355,6 @@ type TCPXConn struct {
 	lastWrite time.Time    // deadline of last write operation
 }
 
-// poolTCPXConn
 var poolTCPXConn sync.Pool
 
 func getTCPXConn(id int64, gate *tcpxGate, netConn net.Conn, rawConn syscall.RawConn) *TCPXConn {
@@ -881,7 +880,6 @@ type TConn struct {
 	lastRead  time.Time    // deadline of last read operation
 }
 
-// poolTConn
 var poolTConn sync.Pool
 
 func getTConn(id int64, node *tcpxNode, netConn net.Conn, rawConn syscall.RawConn) *TConn {

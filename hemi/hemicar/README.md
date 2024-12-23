@@ -1,7 +1,7 @@
 HemiCar
 =======
 
-  HemiCar is used to develop the Hemi engine.
+  HemiCar is used to develop the Hemi Engine.
 
 
 Build

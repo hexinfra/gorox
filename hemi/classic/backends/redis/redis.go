@@ -136,7 +136,6 @@ type RedisConn struct {
 	lastRead  time.Time    // deadline of last read operation
 }
 
-// poolRedisConn
 var poolRedisConn sync.Pool
 
 func getRedisConn(id int64, node *redisNode, netConn net.Conn, rawConn syscall.RawConn) *RedisConn {

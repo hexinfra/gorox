@@ -153,7 +153,6 @@ type socksConn struct {
 	// Conn states (zeros)
 }
 
-// poolSocksConn
 var poolSocksConn sync.Pool
 
 func getSocksConn(id int64, gate *socksGate, tcpConn *net.TCPConn) *socksConn {

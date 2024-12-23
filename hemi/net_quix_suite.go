@@ -225,7 +225,6 @@ type QUIXConn struct {
 	lastWrite time.Time    // deadline of last write operation
 }
 
-// poolQUIXConn
 var poolQUIXConn sync.Pool
 
 func getQUIXConn(id int64, gate *quixGate, quicConn *quic.Conn) *QUIXConn {
@@ -600,7 +599,6 @@ type QConn struct {
 	broken      atomic.Bool  // is connection broken?
 }
 
-// poolQConn
 var poolQConn sync.Pool
 
 func getQConn(id int64, node *quixNode, quicConn *quic.Conn) *QConn {
@@ -667,7 +665,6 @@ type QStream struct {
 	quicStream *quic.Stream
 }
 
-// poolQStream
 var poolQStream sync.Pool
 
 func getQStream(conn *QConn, quicStream *quic.Stream) *QStream {

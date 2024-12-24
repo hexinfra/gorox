@@ -19,7 +19,8 @@ Hemi contains these directories:
 How to use
 ==========
 
-For examples showing how to use Hemi, see: https://github.com/hexinfra/examples.
+For examples showing how to use the Hemi Engine, please see our examples at
+https://github.com/hexinfra/examples.
 
 
 Architecture
@@ -95,7 +96,6 @@ TODO
 * cacher implementation.
 * tcpoh (tcp over http) server implementation.
 * udpoh (udp over http) server implementation.
-* ipxoh (ipv4 and ipv6 over http) server implementation.
 * web application framework implementation.
 * documentation.
 * official websites.

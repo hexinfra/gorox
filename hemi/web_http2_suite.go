@@ -312,8 +312,8 @@ type server2Conn struct {
 	// Conn states (controlled)
 	outFrame http2OutFrame // used by c.serve() to send special out frames. immediately reset after use
 	// Conn states (non-zeros)
-	gate           *httpxGate
-	netConn        net.Conn            // the connection (TCP/TLS)
+	gate           *httpxGate          // the gate to which the connection belongs
+	netConn        net.Conn            // the connection (TCP/TLS/UDS)
 	rawConn        syscall.RawConn     // for syscall. only usable when netConn is TCP
 	buffer         *http2Buffer        // http2Buffer in use, for receiving incoming frames
 	clientSettings http2Settings       // settings of remote client
@@ -325,7 +325,7 @@ type server2Conn struct {
 	// Conn states (zeros)
 	inFrame0      http2InFrame                          // incoming frame, server2Conn controlled
 	inFrame1      http2InFrame                          // incoming frame, server2Conn controlled
-	inFrame       *http2InFrame                         // current incoming frame, used by recvFrame(). refers to c.inFrame0 or c.inFrame1 in turn
+	inFrame       *http2InFrame                         // current incoming frame, used by recvFrame(). refers to inFrame0 or inFrame1 in turn
 	streams       [http2MaxActiveStreams]*server2Stream // active (open, remoteClosed, localClosed) streams
 	vector        net.Buffers                           // used by writev in c.serve()
 	fixedVector   [2][]byte                             // used by writev in c.serve()
@@ -337,7 +337,7 @@ type _server2Conn0 struct { // for fast reset, entirely
 	pFore        uint32                            // incoming frame part (header or payload) ends at c.buffer.buf[c.pFore]
 	cBack        uint32                            // incoming continuation part (header or payload) begins from c.buffer.buf[c.cBack]
 	cFore        uint32                            // incoming continuation part (header or payload) ends at c.buffer.buf[c.cFore]
-	lastStreamID uint32                            // last served stream id
+	lastStreamID uint32                            // last received client stream id
 	streamIDs    [http2MaxActiveStreams + 1]uint32 // ids of c.streams. the extra 1 id is used for fast linear searching
 	nInFrames    int64                             // num of incoming frames
 	nStreams     uint8                             // num of active streams
@@ -899,6 +899,7 @@ func (c *server2Conn) recvFrame() (*http2InFrame, error) {
 	inFrame.buffer = c.buffer
 	inFrame.pFrom = c.pBack
 	inFrame.pEdge = c.pFore
+	// Reject unexpected frames
 	if inFrame.kind == http2FramePushPromise || inFrame.kind == http2FrameContinuation {
 		return nil, http2ErrorProtocol
 	}
@@ -1460,10 +1461,10 @@ type backend2Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node    *http2Node
-	netConn net.Conn // the connection (TCP/TLS)
-	rawConn syscall.RawConn
-	expire  time.Time // when the conn is considered expired
+	node    *http2Node      // the node to which the connection belongs
+	netConn net.Conn        // the connection (TCP/TLS/UDS)
+	rawConn syscall.RawConn // for syscall. only usable when netConn is TCP
+	expire  time.Time       // when the conn is considered expired
 	// Conn states (zeros)
 	nStreams       atomic.Int32                           // concurrent streams
 	streams        [http2MaxActiveStreams]*backend2Stream // active (open, remoteClosed, localClosed) streams
@@ -2319,6 +2320,13 @@ func (f *http2InFrame) decodeHeader(header []byte) error {
 func (f *http2InFrame) isUnknown() bool   { return f.kind > http2FrameMax }
 func (f *http2InFrame) effective() []byte { return f.buffer.buf[f.pFrom:f.pEdge] } // effective payload
 
+func (f *http2InFrame) check() error {
+	if f.isUnknown() {
+		return nil
+	}
+	return http2InFrameCheckers[f.kind](f)
+}
+
 var http2InFrameCheckers = [...]func(*http2InFrame) error{
 	(*http2InFrame).checkAsData,
 	(*http2InFrame).checkAsHeaders,
@@ -2332,11 +2340,30 @@ var http2InFrameCheckers = [...]func(*http2InFrame) error{
 	nil, // continuation frames are rejected before check() in recvFrame()
 }
 
-func (f *http2InFrame) check() error {
-	if f.isUnknown() {
-		return nil
+func (f *http2InFrame) checkAsData() error {
+	var minLength uint32 = 1 // Data
+	if f.padded {
+		minLength += 1 // Pad Length
 	}
-	return http2InFrameCheckers[f.kind](f)
+	if f.length < minLength {
+		return http2ErrorFrameSize
+	}
+	if f.streamID == 0 {
+		return http2ErrorProtocol
+	}
+	var padLength, othersLen uint32 = 0, 0
+	if f.padded {
+		padLength = uint32(f.buffer.buf[f.pFrom])
+		othersLen += 1
+		f.pFrom += 1
+	}
+	if padLength > 0 { // drop padding
+		if othersLen+padLength >= f.length {
+			return http2ErrorProtocol
+		}
+		f.pEdge -= padLength
+	}
+	return nil
 }
 func (f *http2InFrame) checkAsHeaders() error {
 	var minLength uint32 = 1 // Field Block Fragment
@@ -2370,28 +2397,12 @@ func (f *http2InFrame) checkAsHeaders() error {
 	}
 	return nil
 }
-func (f *http2InFrame) checkAsData() error {
-	var minLength uint32 = 1 // Data
-	if f.padded {
-		minLength += 1 // Pad Length
-	}
-	if f.length < minLength {
+func (f *http2InFrame) checkAsPriority() error {
+	if f.length != 5 {
 		return http2ErrorFrameSize
 	}
 	if f.streamID == 0 {
 		return http2ErrorProtocol
-	}
-	var padLength, othersLen uint32 = 0, 0
-	if f.padded {
-		padLength = uint32(f.buffer.buf[f.pFrom])
-		othersLen += 1
-		f.pFrom += 1
-	}
-	if padLength > 0 { // drop padding
-		if othersLen+padLength >= f.length {
-			return http2ErrorProtocol
-		}
-		f.pEdge -= padLength
 	}
 	return nil
 }
@@ -2404,12 +2415,6 @@ func (f *http2InFrame) checkAsRSTStream() error {
 	}
 	return nil
 }
-func (f *http2InFrame) checkAsWindowUpdate() error {
-	if f.length != 4 {
-		return http2ErrorFrameSize
-	}
-	return nil
-}
 func (f *http2InFrame) checkAsSettings() error {
 	if f.length%6 != 0 || f.length > 48 { // we allow 8 defined settings.
 		return http2ErrorFrameSize
@@ -2419,15 +2424,6 @@ func (f *http2InFrame) checkAsSettings() error {
 	}
 	if f.ack && f.length != 0 {
 		return http2ErrorFrameSize
-	}
-	return nil
-}
-func (f *http2InFrame) checkAsPriority() error {
-	if f.length != 5 {
-		return http2ErrorFrameSize
-	}
-	if f.streamID == 0 {
-		return http2ErrorProtocol
 	}
 	return nil
 }
@@ -2446,6 +2442,12 @@ func (f *http2InFrame) checkAsGoaway() error {
 	}
 	if f.streamID != 0 {
 		return http2ErrorProtocol
+	}
+	return nil
+}
+func (f *http2InFrame) checkAsWindowUpdate() error {
+	if f.length != 4 {
+		return http2ErrorFrameSize
 	}
 	return nil
 }

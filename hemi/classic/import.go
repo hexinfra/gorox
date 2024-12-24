@@ -42,7 +42,6 @@ import ( // preload all
 	_ "github.com/hexinfra/gorox/hemi/classic/revisers/ssi"
 	_ "github.com/hexinfra/gorox/hemi/classic/revisers/wrap"
 	_ "github.com/hexinfra/gorox/hemi/classic/servers/echo"
-	_ "github.com/hexinfra/gorox/hemi/classic/servers/ipxoh"
 	_ "github.com/hexinfra/gorox/hemi/classic/servers/socks"
 	_ "github.com/hexinfra/gorox/hemi/classic/servers/tcpoh"
 	_ "github.com/hexinfra/gorox/hemi/classic/servers/udpoh"

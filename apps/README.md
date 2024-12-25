@@ -1,13 +1,6 @@
 This directory holds your Web applications in gorox, generally one webapp one
 directory, but many related webapps can be grouped into a container directory.
 
-Some example webapps are:
-
-  examples/chinese/    - Chinese version of official website.
-  examples/english/    - English version of official website.
-  examples/forums/     - An example forums webapp.
-  examples/hello/      - An example "hello, world" webapp.
-
 To add a new static or configured webapp named "foo":
 
   1. Create a folder called "foo" in this directory,

@@ -9,7 +9,8 @@ Layout
 
 Hemi contains these directories:
 
-  * classic/  - Place classic components,
+  * classic/  - Place official components,
+  * contrib/  - Place community contributed components,
   * hemicar/  - A prototype application used to develop Hemi,
   * library/  - Place general purpose libraries,
   * procmgr/  - A process manager for programs using Hemi,
@@ -72,7 +73,7 @@ A program (like Gorox) using Hemi Engine typically has these dependencies:
                 |                     |         |          |
                 v                     v         v          v
   +-----------------------+   +---------------------------------+
-  |       <classic>       |-->+              <hemi>             |
+  | <classic> & <contrib> |-->+              <hemi>             |
   +-----------------------+   +---------------------------------+
 ```
 

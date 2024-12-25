@@ -588,6 +588,10 @@ var server2FrameProcessors = [...]func(*server2Conn, *http2InFrame) error{
 	nil, // discrete continuation frames are rejected in c.recvFrame()
 }
 
+func (c *server2Conn) processDataFrame(inFrame *http2InFrame) error {
+	// TODO
+	return nil
+}
 func (c *server2Conn) processHeadersFrame(inFrame *http2InFrame) error {
 	var (
 		stream *server2Stream
@@ -749,17 +753,16 @@ func (c *server2Conn) _decodeString(src []byte, req *server2Request) (int, bool)
 		return j, true
 	}
 }
-func (c *server2Conn) processDataFrame(inFrame *http2InFrame) error {
+func (c *server2Conn) processPriorityFrame(inFrame *http2InFrame) error {
+	// TODO
 	return nil
 }
-func (c *server2Conn) processWindowUpdateFrame(inFrame *http2InFrame) error {
-	windowSize := binary.BigEndian.Uint32(inFrame.effective())
-	if windowSize == 0 || windowSize > _2G1 {
+func (c *server2Conn) processRSTStreamFrame(inFrame *http2InFrame) error {
+	streamID := inFrame.streamID
+	if streamID > c.lastStreamID {
 		return http2ErrorProtocol
 	}
 	// TODO
-	c.inWindow = int32(windowSize)
-	Printf("conn=%d stream=%d windowUpdate=%d\n", c.id, inFrame.streamID, windowSize)
 	return nil
 }
 func (c *server2Conn) processSettingsFrame(inFrame *http2InFrame) error {
@@ -812,14 +815,6 @@ func (c *server2Conn) _updateClientSettings(inFrame *http2InFrame) error {
 }
 func (c *server2Conn) _adjustStreamWindows(delta int32) {
 }
-func (c *server2Conn) processRSTStreamFrame(inFrame *http2InFrame) error {
-	// TODO
-	return nil
-}
-func (c *server2Conn) processPriorityFrame(inFrame *http2InFrame) error {
-	// TODO
-	return nil
-}
 func (c *server2Conn) processPingFrame(inFrame *http2InFrame) error {
 	pong := &c.outFrame
 	pong.length = 8
@@ -831,20 +826,30 @@ func (c *server2Conn) processPingFrame(inFrame *http2InFrame) error {
 	pong.zero()
 	return err
 }
+func (c *server2Conn) processWindowUpdateFrame(inFrame *http2InFrame) error {
+	windowSize := binary.BigEndian.Uint32(inFrame.effective())
+	if windowSize == 0 || windowSize > _2G1 {
+		return http2ErrorProtocol
+	}
+	// TODO
+	c.inWindow = int32(windowSize)
+	Printf("conn=%d stream=%d windowUpdate=%d\n", c.id, inFrame.streamID, windowSize)
+	return nil
+}
 
 func (c *server2Conn) findStream(streamID uint32) *server2Stream {
-	c.streamIDs[http2MaxActiveStreams] = streamID
+	c.streamIDs[http2MaxActiveStreams] = streamID // the stream id to search for
 	index := uint8(0)
-	for c.streamIDs[index] != streamID { // searching stream id
+	for c.streamIDs[index] != streamID { // searching for stream id
 		index++
 	}
-	if index == http2MaxActiveStreams { // not found.
-		return nil
+	if index != http2MaxActiveStreams { // found
+		if DebugLevel() >= 2 {
+			Printf("conn=%d findStream=%d at %d\n", c.id, streamID, index)
+		}
+		return c.streams[index]
 	}
-	if DebugLevel() >= 2 {
-		Printf("conn=%d findStream=%d at %d\n", c.id, streamID, index)
-	}
-	return c.streams[index]
+	return nil // not found
 }
 func (c *server2Conn) joinStream(stream *server2Stream) {
 	c.streamIDs[http2MaxActiveStreams] = 0
@@ -1912,10 +1917,10 @@ func (b *http2Buffer) decRef() {
 const ( // HTTP/2 frame kinds
 	http2FrameData         = 0x0
 	http2FrameHeaders      = 0x1
-	http2FramePriority     = 0x2
+	http2FramePriority     = 0x2 // deprecated
 	http2FrameRSTStream    = 0x3
 	http2FrameSettings     = 0x4
-	http2FramePushPromise  = 0x5
+	http2FramePushPromise  = 0x5 // not supported
 	http2FramePing         = 0x6
 	http2FrameGoaway       = 0x7
 	http2FrameWindowUpdate = 0x8
@@ -1975,10 +1980,10 @@ var http2InitialSettings = http2Settings{ // default settings of remote peer
 var http2FrameNames = [...]string{
 	http2FrameData:         "DATA",
 	http2FrameHeaders:      "HEADERS",
-	http2FramePriority:     "PRIORITY",
+	http2FramePriority:     "PRIORITY", // deprecated
 	http2FrameRSTStream:    "RST_STREAM",
 	http2FrameSettings:     "SETTINGS",
-	http2FramePushPromise:  "PUSH_PROMISE",
+	http2FramePushPromise:  "PUSH_PROMISE", // not supported
 	http2FramePing:         "PING",
 	http2FrameGoaway:       "GOAWAY",
 	http2FrameWindowUpdate: "WINDOW_UPDATE",
@@ -2341,9 +2346,9 @@ var http2InFrameCheckers = [...]func(*http2InFrame) error{
 }
 
 func (f *http2InFrame) checkAsData() error {
-	var minLength uint32 = 1 // Data
+	var minLength uint32 = 1 // Data (..)
 	if f.padded {
-		minLength += 1 // Pad Length
+		minLength += 1 // Pad Length (8)
 	}
 	if f.length < minLength {
 		return http2ErrorFrameSize
@@ -2368,10 +2373,10 @@ func (f *http2InFrame) checkAsData() error {
 func (f *http2InFrame) checkAsHeaders() error {
 	var minLength uint32 = 1 // Field Block Fragment
 	if f.padded {
-		minLength += 1 // Pad Length
+		minLength += 1 // Pad Length (8)
 	}
 	if f.priority {
-		minLength += 5 // Stream Dependency + Weight
+		minLength += 5 // Exclusive (1) + Stream Dependency (31) + Weight (8)
 	}
 	if f.length < minLength {
 		return http2ErrorFrameSize

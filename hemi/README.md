@@ -14,7 +14,8 @@ Hemi contains these directories:
   * hemicar/  - A prototype application used to develop Hemi,
   * library/  - Place general purpose libraries,
   * procmgr/  - A process manager for programs using Hemi,
-  * toolkit/  - Place useful commands.
+  * toolkit/  - Place useful commands,
+  * website/  - The official website application.
 
 
 How to use
@@ -101,7 +102,7 @@ TODO
 * documentation.
 * official websites.
 * logger implementation.
-* goben design and implementation.
+* rperf design and implementation.
 * more unit tests.
 * black/white box tests.
 * online parsing algorithm for forms.

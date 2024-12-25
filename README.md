@@ -135,10 +135,10 @@ View Gorox documentation online:
   * English version: https://gorox.org/docs
   * Chinese version: https://www.gorox.org/docs
 
-Or view locally (ensure your local Gorox is started):
+Or view locally (ensure your local Website is started):
 
-  * English version: http://gorox.net:3080/docs
-  * Chinese version: http://www.gorox.net:3080/docs
+  * English version: http://localhost:3080/docs
+  * Chinese version: http://127.0.0.1:3080/docs
 
 
 Layout

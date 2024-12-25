@@ -6,4 +6,4 @@ Visit online:
 
 Visit locally:
 
-  http://www.gorox.net:3080/
+  http://127.0.0.1:3080/

@@ -4,6 +4,6 @@ Visit online:
 
   https://gorox.org/
 
-Visit locally:
+Visit locally (ensure your local website is started):
 
-  http://localhost:3080/
+  http://localhost:5080/

@@ -5,7 +5,7 @@
 
 // Referer tests.
 
-package referer
+package referer1
 
 import (
 	"bytes"

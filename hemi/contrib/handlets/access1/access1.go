@@ -3,9 +3,9 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// Access checkers allow limiting access to certain client addresses.
+// Access1 checkers allow limiting access to certain client addresses.
 
-package access
+package access1
 
 import (
 	"bytes"
@@ -24,15 +24,15 @@ const (
 )
 
 func init() {
-	RegisterHandlet("accessChecker", func(name string, stage *Stage, webapp *Webapp) Handlet {
-		h := new(accessChecker)
+	RegisterHandlet("access1Checker", func(name string, stage *Stage, webapp *Webapp) Handlet {
+		h := new(access1Checker)
 		h.onCreate(name, stage, webapp)
 		return h
 	})
 }
 
-// accessChecker
-type accessChecker struct {
+// access1Checker
+type access1Checker struct {
 	// Parent
 	Handlet_
 	// Assocs
@@ -46,16 +46,16 @@ type accessChecker struct {
 	denyRules  []*ipRule
 }
 
-func (h *accessChecker) onCreate(name string, stage *Stage, webapp *Webapp) {
+func (h *access1Checker) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.webapp = webapp
 }
-func (h *accessChecker) OnShutdown() {
+func (h *access1Checker) OnShutdown() {
 	h.webapp.DecSub() // handlet
 }
 
-func (h *accessChecker) OnConfigure() {
+func (h *access1Checker) OnConfigure() {
 	// allow
 	h.ConfigureStringList("allow", &h.allow, func(rules []string) error { return checkRule(rules) }, []string{"all"})
 
@@ -67,7 +67,7 @@ func (h *accessChecker) OnConfigure() {
 		return checkRuleConflict(h.allow, rules)
 	}, nil)
 }
-func (h *accessChecker) OnPrepare() {
+func (h *access1Checker) OnPrepare() {
 	h.allowRules = h.parseRule(h.allow)
 	h.denyRules = h.parseRule(h.deny)
 
@@ -77,7 +77,7 @@ func (h *accessChecker) OnPrepare() {
 }
 
 // priority: ip > ip/24 > ip/16 > all
-func (h *accessChecker) Handle(req Request, resp Response) (handled bool) {
+func (h *access1Checker) Handle(req Request, resp Response) (handled bool) {
 	if len(h.denyRules) == 0 {
 		return false
 	}
@@ -132,7 +132,7 @@ forbidden:
 	return true
 }
 
-func (h *accessChecker) parseRule(rules []string) []*ipRule {
+func (h *access1Checker) parseRule(rules []string) []*ipRule {
 	p := make([]*ipRule, 0, len(rules))
 	for _, rule := range rules {
 		if rule == "all" {
@@ -142,7 +142,7 @@ func (h *accessChecker) parseRule(rules []string) []*ipRule {
 		} else if _, ipnet, err := net.ParseCIDR(rule); err == nil {
 			p = append(p, &ipRule{cidr: ipnet, rank: rankCIDR})
 		} else {
-			//h.stage.Logf("accessChecker illegal ip rule: %v", rule)
+			//h.stage.Logf("access1Checker illegal ip rule: %v", rule)
 		}
 	}
 	return p

@@ -3,9 +3,9 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// Referer checkers check referer header.
+// Referer1 checkers check referer header.
 
-package referer
+package referer1
 
 import (
 	"bytes"
@@ -21,15 +21,15 @@ var (
 )
 
 func init() {
-	RegisterHandlet("refererChecker", func(name string, stage *Stage, webapp *Webapp) Handlet {
-		h := new(refererChecker)
+	RegisterHandlet("referer1Checker", func(name string, stage *Stage, webapp *Webapp) Handlet {
+		h := new(referer1Checker)
 		h.onCreate(name, stage, webapp)
 		return h
 	})
 }
 
-// refererChecker
-type refererChecker struct {
+// referer1Checker
+type referer1Checker struct {
 	// Parent
 	Handlet_
 	// Assocs
@@ -44,16 +44,16 @@ type refererChecker struct {
 	IsBlocked bool
 }
 
-func (h *refererChecker) onCreate(name string, stage *Stage, webapp *Webapp) {
+func (h *referer1Checker) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.webapp = webapp
 }
-func (h *refererChecker) OnShutdown() {
+func (h *referer1Checker) OnShutdown() {
 	h.webapp.DecSub() // handlet
 }
 
-func (h *refererChecker) OnConfigure() {
+func (h *referer1Checker) OnConfigure() {
 	// allow
 	h.ConfigureBytesList("serverNames", &h.serverNames, func(rules [][]byte) error { return checkRule(rules) }, nil)
 	// none
@@ -62,7 +62,7 @@ func (h *refererChecker) OnConfigure() {
 	h.ConfigureBool("blocked", &h.IsBlocked, false)
 
 }
-func (h *refererChecker) OnPrepare() {
+func (h *referer1Checker) OnPrepare() {
 	h.serverNameRules = make([]*refererRule, 0, len(h.serverNames))
 	for _, serverName := range h.serverNames {
 		if len(serverName) == 0 {
@@ -97,7 +97,7 @@ func (h *refererChecker) OnPrepare() {
 	}
 }
 
-func (h *refererChecker) Handle(req Request, resp Response) (handled bool) {
+func (h *referer1Checker) Handle(req Request, resp Response) (handled bool) {
 	var (
 		hostname, path []byte
 		index          = -1

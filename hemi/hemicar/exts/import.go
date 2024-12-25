@@ -10,6 +10,8 @@ package exts
 import _ "github.com/hexinfra/gorox/hemi/classic"
 
 import ( // import contrib exts here
+	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/access1"
+	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/referer1"
 )
 
 import ( // import vendor exts here

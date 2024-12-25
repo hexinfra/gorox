@@ -126,11 +126,11 @@ article table.none tr td {
 		<li><a href="#stage-redisCacher">stage &gt; redisCacher</a></li>
 		<li><a href="#stage-webapp">stage &gt; webapp</a></li>
 		<li><a href="#stage-webapp-rule">stage &gt; webapp &gt; rule</a></li>
-		<li><a href="#stage-webapp-accessChecker">stage &gt; webapp &gt; [rule &gt;] accessChecker</a></li>
+		<li><a href="#stage-webapp-access1Checker">stage &gt; webapp &gt; [rule &gt;] access1Checker</a></li>
 		<li><a href="#stage-webapp-hostnameChecker">stage &gt; webapp &gt; [rule &gt;] hostnameChecker</a></li>
 		<li><a href="#stage-webapp-httpsChecker">stage &gt; webapp &gt; [rule &gt;] httpsChecker</a></li>
 		<li><a href="#stage-webapp-limitChecker">stage &gt; webapp &gt; [rule &gt;] limitChecker</a></li>
-		<li><a href="#stage-webapp-refererChecker">stage &gt; webapp &gt; [rule &gt;] refererChecker</a></li>
+		<li><a href="#stage-webapp-referer1Checker">stage &gt; webapp &gt; [rule &gt;] referer1Checker</a></li>
 		<li><a href="#stage-webapp-rewriter">stage &gt; webapp &gt; [rule &gt;] rewriter</a></li>
 		<li><a href="#stage-webapp-favicon">stage &gt; webapp &gt; [rule &gt;] favicon</a></li>
 		<li><a href="#stage-webapp-fcgiProxy">stage &gt; webapp &gt; [rule &gt;] fcgiProxy</a></li>
@@ -775,9 +775,9 @@ webapp "main" {
 			</ul>
 		</li>
 
-		<li id="stage-webapp-accessChecker">
-			<h4>stage &gt; webapp &gt; accessChecker </h4>
-			<p> accessChecker 对 ip 做检测，可以设置白名单或者黑名单。其中白名单和黑名单不能有同样的配置。拒绝访问 ip 将会返回403。</p>
+		<li id="stage-webapp-access1Checker">
+			<h4>stage &gt; webapp &gt; access1Checker </h4>
+			<p> access1Checker 对 ip 做检测，可以设置白名单或者黑名单。其中白名单和黑名单不能有同样的配置。拒绝访问 ip 将会返回403。</p>
 			<ul>
 				<li>
 					<p>.allow 设置白名单。</p>
@@ -804,17 +804,17 @@ webapp "main" {
 				</li>
 				<li>
 					<p>例子</p>
-					<code>accessChecker { // 只允许 本机ip、10.109.*.*、192.168.1.* 的ip访问。
+					<code>access1Checker { // 只允许 本机ip、10.109.*.*、192.168.1.* 的ip访问。
 					.allow = ("10.109.1.1/16", "127.0.0.1", "::1", "192.168.1.1/24")
 					.deny = ("all")
 					}
 					
-					accessChecker { // 192.168.1的 ip 段，只允许 192.168.1.1、192.168.1.2 访问。
+					access1Checker { // 192.168.1的 ip 段，只允许 192.168.1.1、192.168.1.2 访问。
 					.allow = ("192.168.1.1", "192.168.1.2")
 					.deny = ("192.168.1.1/24")
 					}
 					
-					accessChecker { // 不允许 10.109 开头的 ip 段访问。
+					access1Checker { // 不允许 10.109 开头的 ip 段访问。
 					.allow = ("all")
 					.deny = ("10.109.1.1/16")
 					}
@@ -869,9 +869,9 @@ webapp "main" {
 			<h4>stage &gt; webapp &gt; limitChecker </h4>
 		</li>
 
-		<li id="stage-webapp-refererChecker">
-			<h4>stage &gt; webapp &gt; refererChecker </h4>
-			<p> refererChecker 验证 http 请求中的 referer 是否符合要求。</p>
+		<li id="stage-webapp-referer1Checker">
+			<h4>stage &gt; webapp &gt; referer1Checker </h4>
+			<p> referer1Checker 验证 http 请求中的 referer 是否符合要求。</p>
 			<ul>
 				<li>
 					<p>.serverNames 配置域名和path部分。</p>
@@ -899,11 +899,11 @@ webapp "main" {
 				</li>
 				<li>
 					<p>例子</p>
-					<code>refererChecker { // referer 存在就算通过。
+					<code>referer1Checker { // referer 存在就算通过。
 							.blocked = true
 						}
 
-						refererChecker { // referer 可以不存在，但是如果存在就必须符合 .serverNames 的配置规则。
+						referer1Checker { // referer 可以不存在，但是如果存在就必须符合 .serverNames 的配置规则。
 							.none = false
 							.serverNames = ("*.gorox.com"）
 						}

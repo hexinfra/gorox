@@ -17,18 +17,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/library/quic"
 )
 
-func init() {
-	RegisterQUIXDealet("quixProxy", func(name string, stage *Stage, router *QUIXRouter) QUIXDealet {
-		d := new(quixProxy)
-		d.onCreate(name, stage, router)
-		return d
-	})
-	RegisterBackend("quixBackend", func(name string, stage *Stage) Backend {
-		b := new(QUIXBackend)
-		b.onCreate(name, stage)
-		return b
-	})
-}
+//////////////////////////////////////// QUIX router implementation ////////////////////////////////////////
 
 // QUIXRouter
 type QUIXRouter struct {
@@ -425,6 +414,16 @@ type QUIXDealet_ struct {
 	// States
 }
 
+//////////////////////////////////////// QUIX reverse proxy implementation ////////////////////////////////////////
+
+func init() {
+	RegisterQUIXDealet("quixProxy", func(name string, stage *Stage, router *QUIXRouter) QUIXDealet {
+		d := new(quixProxy)
+		d.onCreate(name, stage, router)
+		return d
+	})
+}
+
 // QUIXProxyConfig
 type QUIXProxyConfig struct {
 	// TODO
@@ -480,6 +479,16 @@ func (d *quixProxy) OnPrepare() {
 func (d *quixProxy) Deal(conn *QUIXConn, stream *QUIXStream) (dealt bool) {
 	QUIXReverseProxy(conn, stream, d.backend, &d.QUIXProxyConfig)
 	return true
+}
+
+//////////////////////////////////////// QUIX backend implementation ////////////////////////////////////////
+
+func init() {
+	RegisterBackend("quixBackend", func(name string, stage *Stage) Backend {
+		b := new(QUIXBackend)
+		b.onCreate(name, stage)
+		return b
+	})
 }
 
 // QUIXBackend component.

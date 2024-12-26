@@ -11,19 +11,6 @@ import (
 	"strings"
 )
 
-func init() {
-	RegisterHandlet("httpProxy", func(name string, stage *Stage, webapp *Webapp) Handlet {
-		h := new(httpProxy)
-		h.onCreate(name, stage, webapp)
-		return h
-	})
-	RegisterSocklet("sockProxy", func(name string, stage *Stage, webapp *Webapp) Socklet {
-		s := new(sockProxy)
-		s.onCreate(name, stage, webapp)
-		return s
-	})
-}
-
 // stream is the backend-side http stream.
 type stream interface { // for *backend[1-3]Stream
 	Request() request
@@ -68,6 +55,14 @@ type response interface { // for *backend[1-3]Response
 	forTrailers(callback func(header *pair, name []byte, value []byte) bool) bool
 	recvHead()
 	reuse()
+}
+
+func init() {
+	RegisterHandlet("httpProxy", func(name string, stage *Stage, webapp *Webapp) Handlet {
+		h := new(httpProxy)
+		h.onCreate(name, stage, webapp)
+		return h
+	})
 }
 
 // httpProxy handlet passes http requests to http backends and caches responses.
@@ -355,6 +350,14 @@ type socket interface { // for *backend[1-3]Socket
 	Read(p []byte) (int, error)
 	Write(p []byte) (int, error)
 	Close() error
+}
+
+func init() {
+	RegisterSocklet("sockProxy", func(name string, stage *Stage, webapp *Webapp) Socklet {
+		s := new(sockProxy)
+		s.onCreate(name, stage, webapp)
+		return s
+	})
 }
 
 // sockProxy socklet passes webSockets to http backends.

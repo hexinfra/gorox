@@ -21,14 +21,6 @@ import (
 	"time"
 )
 
-func init() {
-	RegisterBackend("http1Backend", func(name string, stage *Stage) Backend {
-		b := new(HTTP1Backend)
-		b.onCreate(name, stage)
-		return b
-	})
-}
-
 //////////////////////////////////////// HTTP/1.x server implementation ////////////////////////////////////////
 
 // server1Conn is the server-side HTTP/1.x connection.
@@ -992,7 +984,7 @@ func (r *server1Response) proxyPass1xx(backResp response) bool {
 	r.vector[0] = r.control()
 	r.vector[1] = r.addedHeaders()
 	r.vector[2] = bytesCRLF
-	// 1xx has no content.
+	// 1xx response has no content.
 	if r.writeVector1() != nil {
 		return false
 	}
@@ -1001,8 +993,8 @@ func (r *server1Response) proxyPass1xx(backResp response) bool {
 	r.onUse(Version1_1)
 	return true
 }
-func (r *server1Response) passHeaders() error       { return r.writeHeaders1() }
-func (r *server1Response) passBytes(p []byte) error { return r.passBytes1(p) }
+func (r *server1Response) proxyPassHeaders() error       { return r.writeHeaders1() }
+func (r *server1Response) proxyPassBytes(p []byte) error { return r.proxyPassBytes1(p) }
 
 func (r *server1Response) finalizeHeaders() { // add at most 256 bytes
 	// date: Sun, 06 Nov 1994 08:49:37 GMT\r\n
@@ -1083,6 +1075,14 @@ func (s *server1Socket) onEnd() {
 }
 
 //////////////////////////////////////// HTTP/1.x backend implementation ////////////////////////////////////////
+
+func init() {
+	RegisterBackend("http1Backend", func(name string, stage *Stage) Backend {
+		b := new(HTTP1Backend)
+		b.onCreate(name, stage)
+		return b
+	})
+}
 
 // HTTP1Backend
 type HTTP1Backend struct {
@@ -1589,8 +1589,8 @@ func (r *backend1Request) addTrailer(name []byte, value []byte) bool {
 }
 func (r *backend1Request) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }
 
-func (r *backend1Request) passHeaders() error       { return r.writeHeaders1() }
-func (r *backend1Request) passBytes(p []byte) error { return r.passBytes1(p) }
+func (r *backend1Request) proxyPassHeaders() error       { return r.writeHeaders1() }
+func (r *backend1Request) proxyPassBytes(p []byte) error { return r.proxyPassBytes1(p) }
 
 func (r *backend1Request) finalizeHeaders() { // add at most 256 bytes
 	// if-modified-since: Sun, 06 Nov 1994 08:49:37 GMT\r\n
@@ -2569,7 +2569,7 @@ func (r *webOut_) trailer1(name []byte) (value []byte, ok bool) {
 }
 func (r *webOut_) trailers1() []byte { return r.fields[0:r.fieldsEdge] } // Headers and trailers are not manipulated at the same time, so after headers is sent, r.fields is used by trailers.
 
-func (r *webOut_) passBytes1(p []byte) error { return r.writeBytes1(p) }
+func (r *webOut_) proxyPassBytes1(p []byte) error { return r.writeBytes1(p) }
 
 func (r *webOut_) finalizeVague1() error {
 	if r.nTrailers == 1 { // no trailers

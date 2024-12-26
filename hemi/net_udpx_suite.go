@@ -16,18 +16,7 @@ import (
 	"time"
 )
 
-func init() {
-	RegisterUDPXDealet("udpxProxy", func(name string, stage *Stage, router *UDPXRouter) UDPXDealet {
-		d := new(udpxProxy)
-		d.onCreate(name, stage, router)
-		return d
-	})
-	RegisterBackend("udpxBackend", func(name string, stage *Stage) Backend {
-		b := new(UDPXBackend)
-		b.onCreate(name, stage)
-		return b
-	})
-}
+//////////////////////////////////////// UDPX router implementation ////////////////////////////////////////
 
 // UDPXRouter
 type UDPXRouter struct {
@@ -418,6 +407,16 @@ type UDPXDealet_ struct {
 	// States
 }
 
+//////////////////////////////////////// UDPX reverse proxy implementation ////////////////////////////////////////
+
+func init() {
+	RegisterUDPXDealet("udpxProxy", func(name string, stage *Stage, router *UDPXRouter) UDPXDealet {
+		d := new(udpxProxy)
+		d.onCreate(name, stage, router)
+		return d
+	})
+}
+
 // UDPXProxyConfig
 type UDPXProxyConfig struct {
 	// TODO
@@ -473,6 +472,16 @@ func (d *udpxProxy) OnPrepare() {
 func (d *udpxProxy) Deal(conn *UDPXConn) (dealt bool) {
 	UDPXReverseProxy(conn, d.backend, &d.UDPXProxyConfig)
 	return true
+}
+
+//////////////////////////////////////// UDPX backend implementation ////////////////////////////////////////
+
+func init() {
+	RegisterBackend("udpxBackend", func(name string, stage *Stage) Backend {
+		b := new(UDPXBackend)
+		b.onCreate(name, stage)
+		return b
+	})
 }
 
 // UDPXBackend component.

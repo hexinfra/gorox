@@ -2611,39 +2611,7 @@ func (r *serverResponse_) _removeLastModified() (deleted bool) {
 }
 
 func (r *serverResponse_) proxyPassMessage(backResp response) error {
-	pass := r.outMessage.passBytes
-	if backResp.IsVague() || r.hasRevisers { // if we need to revise, we always use vague no matter the original content is sized or vague
-		pass = r.EchoBytes
-	} else { // backResp is sized and there are no revisers, use passBytes
-		r.isSent = true
-		r.contentSize = backResp.ContentSize()
-		// TODO: find a way to reduce i/o syscalls if content is small?
-		if err := r.outMessage.passHeaders(); err != nil {
-			return err
-		}
-	}
-	for {
-		p, err := backResp.readContent()
-		if len(p) >= 0 {
-			if e := pass(p); e != nil {
-				return e
-			}
-		}
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-	}
-	if backResp.HasTrailers() { // added trailers will be written by upper code eventually.
-		if !backResp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
-			return r.outMessage.addTrailer(name, value)
-		}) {
-			return webOutTrailerFailed
-		}
-	}
-	return nil
+	return r._proxyPassMessage(backResp)
 }
 func (r *serverResponse_) proxyCopyHeaders(backResp response, proxyConfig *WebExchanProxyConfig) bool {
 	backResp.proxyDelHopHeaders()
@@ -2664,12 +2632,14 @@ func (r *serverResponse_) proxyCopyHeaders(backResp response, proxyConfig *WebEx
 		return false
 	}
 
+	for _, name := range proxyConfig.DelResponseHeaders {
+		r.outMessage.delHeader(name)
+	}
+
 	return true
 }
 func (r *serverResponse_) proxyCopyTrailers(backResp response, proxyConfig *WebExchanProxyConfig) bool {
-	return backResp.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
-		return r.outMessage.addTrailer(name, value)
-	})
+	return r._proxyCopyTrailers(backResp, proxyConfig)
 }
 
 func (r *serverResponse_) hookReviser(reviser Reviser) { // to revise output content
@@ -2940,39 +2910,7 @@ func (r *backendRequest_) _removeIfUnmodifiedSince() (deleted bool) {
 }
 
 func (r *backendRequest_) proxyPassMessage(foreReq Request) error {
-	pass := r.outMessage.passBytes
-	if foreReq.IsVague() {
-		pass = r.EchoBytes
-	} else {
-		r.isSent = true
-		r.contentSize = foreReq.ContentSize()
-		// TODO: find a way to reduce i/o syscalls if content is small?
-		if err := r.outMessage.passHeaders(); err != nil {
-			return err
-		}
-	}
-	for {
-		p, err := foreReq.readContent()
-		if len(p) >= 0 {
-			if e := pass(p); e != nil {
-				return e
-			}
-		}
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-	}
-	if foreReq.HasTrailers() { // added trailers will be written by upper code eventually.
-		if !foreReq.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
-			return r.outMessage.addTrailer(name, value)
-		}) {
-			return webOutTrailerFailed
-		}
-	}
-	return nil
+	return r._proxyPassMessage(foreReq)
 }
 func (r *backendRequest_) proxyCopyHeaders(foreReq Request, proxyConfig *WebExchanProxyConfig) bool {
 	foreReq.proxyDelHopHeaders()
@@ -3025,7 +2963,7 @@ func (r *backendRequest_) proxyCopyHeaders(foreReq Request, proxyConfig *WebExch
 			return false
 		}
 	} else {
-		// we have no way to set scheme in HTTP/1.x unless we use absolute-form, which is a risk as many servers may not support it.
+		// we have no way to set scheme in HTTP/1.x unless we use absolute-form, which is a risk as some servers may not support it.
 	}
 
 	// copy selective forbidden headers (including cookie) from req
@@ -3069,9 +3007,7 @@ func (r *backendRequest_) proxyCopyHeaders(foreReq Request, proxyConfig *WebExch
 	return true
 }
 func (r *backendRequest_) proxyCopyTrailers(foreReq Request, proxyConfig *WebExchanProxyConfig) bool {
-	return foreReq.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
-		return r.outMessage.addTrailer(name, value)
-	})
+	return r._proxyCopyTrailers(foreReq, proxyConfig)
 }
 
 // backendResponse_ is the parent for backend[1-3]Response.
@@ -3572,14 +3508,22 @@ func (s *webStream_) onEnd() {
 	s.region.Free()
 }
 
+// webIn collects shared methods between *server[1-3]Request and *backend[1-3]Response.
+type webIn interface {
+	ContentSize() int64
+	IsVague() bool
+	HasTrailers() bool
+
+	readContent() (p []byte, err error)
+	examineTail() bool
+	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
+}
+
 // webIn_ is the parent for serverRequest_ and backendResponse_.
 type webIn_ struct { // incoming. needs parsing
 	// Assocs
-	stream    webStream   // *server[1-3]Stream, *backend[1-3]Stream
-	inMessage interface { // *server[1-3]Request, *backend[1-3]Response
-		readContent() (p []byte, err error)
-		examineTail() bool
-	}
+	stream    webStream // *server[1-3]Stream, *backend[1-3]Stream
+	inMessage webIn     // *server[1-3]Request, *backend[1-3]Response
 	// Stream states (stocks)
 	stockPrimes [40]pair   // for r.primes
 	stockExtras [30]pair   // for r.extras
@@ -3742,14 +3686,13 @@ func (r *webIn_) onEnd() { // for zeros
 func (r *webIn_) UnsafeMake(size int) []byte { return r.stream.unsafeMake(size) }
 func (r *webIn_) RemoteAddr() net.Addr       { return r.stream.remoteAddr() }
 
-func (r *webIn_) VersionCode() uint8 { return r.httpVersion }
-func (r *webIn_) IsHTTP1() bool      { return r.httpVersion <= Version1_1 }
-func (r *webIn_) IsHTTP1_0() bool    { return r.httpVersion == Version1_0 }
-func (r *webIn_) IsHTTP1_1() bool    { return r.httpVersion == Version1_1 }
-func (r *webIn_) IsHTTP2() bool      { return r.httpVersion == Version2 }
-func (r *webIn_) IsHTTP3() bool      { return r.httpVersion == Version3 }
-func (r *webIn_) Version() string    { return httpVersionStrings[r.httpVersion] }
-
+func (r *webIn_) VersionCode() uint8    { return r.httpVersion }
+func (r *webIn_) IsHTTP1() bool         { return r.httpVersion <= Version1_1 }
+func (r *webIn_) IsHTTP1_0() bool       { return r.httpVersion == Version1_0 }
+func (r *webIn_) IsHTTP1_1() bool       { return r.httpVersion == Version1_1 }
+func (r *webIn_) IsHTTP2() bool         { return r.httpVersion == Version2 }
+func (r *webIn_) IsHTTP3() bool         { return r.httpVersion == Version3 }
+func (r *webIn_) Version() string       { return httpVersionStrings[r.httpVersion] }
 func (r *webIn_) UnsafeVersion() []byte { return httpVersionByteses[r.httpVersion] }
 
 func (r *webIn_) KeepAlive() int8   { return r.keepAlive }
@@ -4938,35 +4881,38 @@ var ( // webIn_ errors
 	webInTooSlow  = errors.New("web incoming too slow")
 )
 
+// webOut collects shared methods between *server[1-3]Response and *backend[1-3]Request.
+type webOut interface {
+	control() []byte
+	addHeader(name []byte, value []byte) bool
+	header(name []byte) (value []byte, ok bool)
+	hasHeader(name []byte) bool
+	delHeader(name []byte) (deleted bool)
+	delHeaderAt(i uint8)
+	insertHeader(nameHash uint16, name []byte, value []byte) bool
+	removeHeader(nameHash uint16, name []byte) (deleted bool)
+	addedHeaders() []byte
+	fixedHeaders() []byte
+	finalizeHeaders()
+	beforeSend()
+	doSend() error
+	sendChain() error // content
+	beforeEcho()
+	echoHeaders() error
+	doEcho() error
+	echoChain() error // chunks
+	addTrailer(name []byte, value []byte) bool
+	trailer(name []byte) (value []byte, ok bool)
+	finalizeVague() error
+	proxyPassHeaders() error
+	proxyPassBytes(p []byte) error
+}
+
 // webOut_ is the parent for serverResponse_ and backendRequest_.
 type webOut_ struct { // outgoing. needs building
 	// Assocs
-	stream     webStream   // *server[1-3]Stream, *backend[1-3]Stream
-	outMessage interface { // *server[1-3]Response, *backend[1-3]Request
-		control() []byte
-		addHeader(name []byte, value []byte) bool
-		header(name []byte) (value []byte, ok bool)
-		hasHeader(name []byte) bool
-		delHeader(name []byte) (deleted bool)
-		delHeaderAt(i uint8)
-		insertHeader(nameHash uint16, name []byte, value []byte) bool
-		removeHeader(nameHash uint16, name []byte) (deleted bool)
-		addedHeaders() []byte
-		fixedHeaders() []byte
-		finalizeHeaders()
-		beforeSend()
-		doSend() error
-		sendChain() error // content
-		beforeEcho()
-		echoHeaders() error
-		doEcho() error
-		echoChain() error // chunks
-		addTrailer(name []byte, value []byte) bool
-		trailer(name []byte) (value []byte, ok bool)
-		finalizeVague() error
-		passHeaders() error
-		passBytes(p []byte) error
-	}
+	stream     webStream // *server[1-3]Stream, *backend[1-3]Stream
+	outMessage webOut    // *server[1-3]Response, *backend[1-3]Request
 	// Stream states (stocks)
 	stockFields [1536]byte // for r.fields
 	// Stream states (controlled)
@@ -5220,6 +5166,41 @@ func (r *webOut_) Trailer(name string) (value string, ok bool) {
 	return string(v), ok
 }
 
+func (r *webOut_) _proxyPassMessage(inMessage webIn) error {
+	proxyPass := r.outMessage.proxyPassBytes
+	if inMessage.IsVague() || r.hasRevisers { // if we need to revise, we always use vague no matter the original content is sized or vague
+		proxyPass = r.EchoBytes
+	} else { // inMessage is sized and there are no revisers, use proxyPassBytes
+		r.isSent = true
+		r.contentSize = inMessage.ContentSize()
+		// TODO: find a way to reduce i/o syscalls if content is small?
+		if err := r.outMessage.proxyPassHeaders(); err != nil {
+			return err
+		}
+	}
+	for {
+		p, err := inMessage.readContent()
+		if len(p) >= 0 {
+			if e := proxyPass(p); e != nil {
+				return e
+			}
+		}
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+	}
+	if inMessage.HasTrailers() { // added trailers will be written by upper code eventually.
+		if !inMessage.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
+			return r.outMessage.addTrailer(name, value)
+		}) {
+			return webOutTrailerFailed
+		}
+	}
+	return nil
+}
 func (r *webOut_) proxyPostMessage(content any, hasTrailers bool) error {
 	if contentText, ok := content.([]byte); ok {
 		if hasTrailers { // if (in the future) we supports taking vague content in buffer, this happens
@@ -5245,6 +5226,11 @@ func (r *webOut_) proxyPostMessage(content any, hasTrailers bool) error {
 		r.forbidContent = true
 		return r.outMessage.doSend()
 	}
+}
+func (r *webOut_) _proxyCopyTrailers(inMessage webIn, proxyConfig *WebExchanProxyConfig) bool {
+	return inMessage.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
+		return r.outMessage.addTrailer(name, value)
+	})
 }
 
 func (r *webOut_) sendText(content []byte) error {

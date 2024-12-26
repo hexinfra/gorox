@@ -28,20 +28,15 @@ import (
 	"github.com/hexinfra/gorox/hemi/library/system"
 )
 
+//////////////////////////////////////// HTTP/2 server implementation ////////////////////////////////////////
+
 func init() {
 	RegisterServer("httpxServer", func(name string, stage *Stage) Server {
 		s := new(httpxServer)
 		s.onCreate(name, stage)
 		return s
 	})
-	RegisterBackend("http2Backend", func(name string, stage *Stage) Backend {
-		b := new(HTTP2Backend)
-		b.onCreate(name, stage)
-		return b
-	})
 }
-
-//////////////////////////////////////// HTTP/2 server implementation ////////////////////////////////////////
 
 // httpxServer is the HTTP/1.x and HTTP/2 server. An httpxServer has many httpxGates.
 type httpxServer struct {
@@ -1323,8 +1318,8 @@ func (r *server2Response) proxyPass1xx(backResp response) bool {
 	r.onUse(Version2)
 	return false
 }
-func (r *server2Response) passHeaders() error       { return r.writeHeaders2() }
-func (r *server2Response) passBytes(p []byte) error { return r.passBytes2(p) }
+func (r *server2Response) proxyPassHeaders() error       { return r.writeHeaders2() }
+func (r *server2Response) proxyPassBytes(p []byte) error { return r.proxyPassBytes2(p) }
 
 func (r *server2Response) finalizeHeaders() { // add at most 256 bytes
 	// TODO
@@ -1372,6 +1367,14 @@ func (s *server2Socket) onEnd() {
 }
 
 //////////////////////////////////////// HTTP/2 backend implementation ////////////////////////////////////////
+
+func init() {
+	RegisterBackend("http2Backend", func(name string, stage *Stage) Backend {
+		b := new(HTTP2Backend)
+		b.onCreate(name, stage)
+		return b
+	})
+}
 
 // HTTP2Backend
 type HTTP2Backend struct {
@@ -1715,8 +1718,8 @@ func (r *backend2Request) addTrailer(name []byte, value []byte) bool {
 }
 func (r *backend2Request) trailer(name []byte) (value []byte, ok bool) { return r.trailer2(name) }
 
-func (r *backend2Request) passHeaders() error       { return r.writeHeaders2() }
-func (r *backend2Request) passBytes(p []byte) error { return r.passBytes2(p) }
+func (r *backend2Request) proxyPassHeaders() error       { return r.writeHeaders2() }
+func (r *backend2Request) proxyPassBytes(p []byte) error { return r.proxyPassBytes2(p) }
 
 func (r *backend2Request) finalizeHeaders() { // add at most 256 bytes
 	// TODO
@@ -1843,7 +1846,7 @@ func (r *webOut_) trailers2() []byte {
 	return nil
 }
 
-func (r *webOut_) passBytes2(p []byte) error { return r.writeBytes2(p) }
+func (r *webOut_) proxyPassBytes2(p []byte) error { return r.writeBytes2(p) }
 
 func (r *webOut_) finalizeVague2() error {
 	// TODO

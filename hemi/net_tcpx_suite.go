@@ -21,18 +21,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/library/system"
 )
 
-func init() {
-	RegisterTCPXDealet("tcpxProxy", func(name string, stage *Stage, router *TCPXRouter) TCPXDealet {
-		d := new(tcpxProxy)
-		d.onCreate(name, stage, router)
-		return d
-	})
-	RegisterBackend("tcpxBackend", func(name string, stage *Stage) Backend {
-		b := new(TCPXBackend)
-		b.onCreate(name, stage)
-		return b
-	})
-}
+//////////////////////////////////////// TCPX router implementation ////////////////////////////////////////
 
 // TCPXRouter
 type TCPXRouter struct {
@@ -604,6 +593,16 @@ type TCPXDealet_ struct {
 	// States
 }
 
+//////////////////////////////////////// TCPX reverse proxy implementation ////////////////////////////////////////
+
+func init() {
+	RegisterTCPXDealet("tcpxProxy", func(name string, stage *Stage, router *TCPXRouter) TCPXDealet {
+		d := new(tcpxProxy)
+		d.onCreate(name, stage, router)
+		return d
+	})
+}
+
 // TCPXProxyConfig
 type TCPXProxyConfig struct {
 	// Inbound
@@ -709,6 +708,16 @@ func (d *tcpxProxy) OnPrepare() {
 func (d *tcpxProxy) Deal(conn *TCPXConn) (dealt bool) {
 	TCPXReverseProxy(conn, d.backend, &d.TCPXProxyConfig)
 	return true
+}
+
+//////////////////////////////////////// TCPX backend implementation ////////////////////////////////////////
+
+func init() {
+	RegisterBackend("tcpxBackend", func(name string, stage *Stage) Backend {
+		b := new(TCPXBackend)
+		b.onCreate(name, stage)
+		return b
+	})
 }
 
 // TCPXBackend component.

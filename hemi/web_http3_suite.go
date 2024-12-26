@@ -20,20 +20,15 @@ import (
 	"github.com/hexinfra/gorox/hemi/library/quic"
 )
 
+//////////////////////////////////////// HTTP/3 server implementation ////////////////////////////////////////
+
 func init() {
 	RegisterServer("http3Server", func(name string, stage *Stage) Server {
 		s := new(http3Server)
 		s.onCreate(name, stage)
 		return s
 	})
-	RegisterBackend("http3Backend", func(name string, stage *Stage) Backend {
-		b := new(HTTP3Backend)
-		b.onCreate(name, stage)
-		return b
-	})
 }
-
-//////////////////////////////////////// HTTP/3 server implementation ////////////////////////////////////////
 
 // http3Server is the HTTP/3 server. An http3Server has many http3Gates.
 type http3Server struct {
@@ -433,8 +428,8 @@ func (r *server3Response) proxyPass1xx(backResp response) bool {
 	r.onUse(Version3)
 	return false
 }
-func (r *server3Response) passHeaders() error       { return r.writeHeaders3() }
-func (r *server3Response) passBytes(p []byte) error { return r.passBytes3(p) }
+func (r *server3Response) proxyPassHeaders() error       { return r.writeHeaders3() }
+func (r *server3Response) proxyPassBytes(p []byte) error { return r.proxyPassBytes3(p) }
 
 func (r *server3Response) finalizeHeaders() { // add at most 256 bytes
 	// TODO
@@ -482,6 +477,14 @@ func (s *server3Socket) onEnd() {
 }
 
 //////////////////////////////////////// HTTP/3 backend implementation ////////////////////////////////////////
+
+func init() {
+	RegisterBackend("http3Backend", func(name string, stage *Stage) Backend {
+		b := new(HTTP3Backend)
+		b.onCreate(name, stage)
+		return b
+	})
+}
 
 // HTTP3Backend
 type HTTP3Backend struct {
@@ -798,8 +801,8 @@ func (r *backend3Request) addTrailer(name []byte, value []byte) bool {
 }
 func (r *backend3Request) trailer(name []byte) (value []byte, ok bool) { return r.trailer3(name) }
 
-func (r *backend3Request) passHeaders() error       { return r.writeHeaders3() }
-func (r *backend3Request) passBytes(p []byte) error { return r.passBytes3(p) }
+func (r *backend3Request) proxyPassHeaders() error       { return r.writeHeaders3() }
+func (r *backend3Request) proxyPassBytes(p []byte) error { return r.proxyPassBytes3(p) }
 
 func (r *backend3Request) finalizeHeaders() { // add at most 256 bytes
 	// TODO
@@ -915,7 +918,7 @@ func (r *webOut_) trailers3() []byte {
 	return nil
 }
 
-func (r *webOut_) passBytes3(p []byte) error { return r.writeBytes3(p) }
+func (r *webOut_) proxyPassBytes3(p []byte) error { return r.writeBytes3(p) }
 
 func (r *webOut_) finalizeVague3() error {
 	// TODO

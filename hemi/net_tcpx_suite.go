@@ -928,6 +928,9 @@ func (c *TConn) onPut() {
 	c.lastRead = time.Time{}
 }
 
+func (c *TConn) IsUDS() bool { return c.node.IsUDS() }
+func (c *TConn) IsTLS() bool { return c.node.IsTLS() }
+
 func (c *TConn) MakeTempName(p []byte, unixTime int64) int {
 	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }

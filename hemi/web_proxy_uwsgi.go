@@ -17,16 +17,13 @@ import (
 	"time"
 )
 
+//////////////////////////////////////// uwsgi proxy implementation ////////////////////////////////////////
+
 func init() {
 	RegisterHandlet("uwsgiProxy", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(uwsgiProxy)
 		h.onCreate(name, stage, webapp)
 		return h
-	})
-	RegisterBackend("uwsgiBackend", func(name string, stage *Stage) Backend {
-		b := new(uwsgiBackend)
-		b.onCreate(name, stage)
-		return b
 	})
 }
 
@@ -98,6 +95,16 @@ func (h *uwsgiProxy) Handle(httpReq Request, httpResp Response) (handled bool) {
 	// TODO: implementation
 	httpResp.Send("uwsgi")
 	return true
+}
+
+//////////////////////////////////////// uwsgi backend implementation ////////////////////////////////////////
+
+func init() {
+	RegisterBackend("uwsgiBackend", func(name string, stage *Stage) Backend {
+		b := new(uwsgiBackend)
+		b.onCreate(name, stage)
+		return b
+	})
 }
 
 // uwsgiBackend

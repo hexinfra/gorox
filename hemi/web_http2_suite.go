@@ -2313,7 +2313,7 @@ func (f *http2InFrame) decodeHeader(header []byte) error {
 		return http2ErrorFrameSize
 	}
 	f.streamID = uint32(header[5]&0x7f)<<24 | uint32(header[6])<<16 | uint32(header[7])<<8 | uint32(header[8])
-	if f.streamID > 0 && f.streamID&0x1 == 0 { // only for server side
+	if f.streamID > 0 && f.streamID&0x1 == 0 { // we don't support server push
 		return http2ErrorProtocol
 	}
 	f.kind = header[3]

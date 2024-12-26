@@ -27,16 +27,13 @@ import (
 	"time"
 )
 
+//////////////////////////////////////// FCGI proxy implementation ////////////////////////////////////////
+
 func init() {
 	RegisterHandlet("fcgiProxy", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(fcgiProxy)
 		h.onCreate(name, stage, webapp)
 		return h
-	})
-	RegisterBackend("fcgiBackend", func(name string, stage *Stage) Backend {
-		b := new(fcgiBackend)
-		b.onCreate(name, stage)
-		return b
 	})
 }
 
@@ -211,6 +208,16 @@ func (h *fcgiProxy) Handle(httpReq Request, httpResp Response) (handled bool) {
 	}
 
 	return
+}
+
+//////////////////////////////////////// FCGI backend implementation ////////////////////////////////////////
+
+func init() {
+	RegisterBackend("fcgiBackend", func(name string, stage *Stage) Backend {
+		b := new(fcgiBackend)
+		b.onCreate(name, stage)
+		return b
+	})
 }
 
 // fcgiBackend

@@ -952,13 +952,11 @@ type fixture interface {
 	run() // runner
 }
 
+const signClock = "clock"
+
 func init() {
 	registerFixture(signClock)
-	registerFixture(signFcache)
-	registerFixture(signResolv)
 }
-
-const signClock = "clock"
 
 func createClock(stage *Stage) *clockFixture {
 	clock := new(clockFixture)
@@ -1288,6 +1286,10 @@ var ( // perfect hash table for months
 
 const signFcache = "fcache"
 
+func init() {
+	registerFixture(signFcache)
+}
+
 func createFcache(stage *Stage) *fcacheFixture {
 	fcache := new(fcacheFixture)
 	fcache.onCreate(stage)
@@ -1482,6 +1484,10 @@ func (e *fcacheEntry) decRef() {
 }
 
 const signResolv = "resolv"
+
+func init() {
+	registerFixture(signResolv)
+}
 
 func createResolv(stage *Stage) *resolvFixture {
 	resolv := new(resolvFixture)

@@ -15,6 +15,9 @@ func init() {
 	RegisterWebappInit("shared", func(webapp *Webapp) error {
 		return nil
 	})
+}
+
+func init() {
 	RegisterHandlet("sharedHandlet", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(sharedHandlet)
 		h.onCreate(name, stage, webapp)

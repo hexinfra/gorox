@@ -96,8 +96,7 @@ TODO
 * http/2 implementation.
 * quic and http/3 implementation.
 * cacher implementation.
-* tcpoh (tcp over http) server implementation.
-* udpoh (udp over http) server implementation.
+* http tunnel proxy (tcp, udp, ip) implementation.
 * web application framework implementation.
 * documentation.
 * official websites.

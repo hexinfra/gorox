@@ -18,7 +18,7 @@ worker 进程
   多个 server.Serve() 并发
     每个 server 有多个 gate.serve() 并发
       每个 gate 有多个 gate.server.serveConn() 并发
-      每个 http/2 conn 有一个 serve() 和一个 receive() 并发
+      每个 http/2 conn 有一个 serve() 和一个 receiver() 并发
         每个 http/2 conn 有多个 http/2 stream.execute() 并发
       每个 http/3 conn 并发模型待定
   多个 cronjob.Schedule() 并发

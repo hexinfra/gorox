@@ -480,9 +480,9 @@ type fcgiConn struct {
 	// Conn states (non-zeros)
 	id         int64 // the conn id
 	node       *fcgiNode
+	expire     time.Time       // when the conn is considered expired
 	netConn    net.Conn        // *net.TCPConn or *net.UnixConn
 	rawConn    syscall.RawConn // for syscall
-	expire     time.Time       // when the conn is considered expired
 	persistent bool            // keep the connection after current exchan?
 	// Conn states (zeros)
 	counter     atomic.Int64 // can be used to generate a random number
@@ -518,9 +518,9 @@ func putFCGIConn(conn *fcgiConn) {
 func (c *fcgiConn) onGet(id int64, node *fcgiNode, netConn net.Conn, rawConn syscall.RawConn) {
 	c.id = id
 	c.node = node
+	c.expire = time.Now().Add(node.backend.aliveTimeout)
 	c.netConn = netConn
 	c.rawConn = rawConn
-	c.expire = time.Now().Add(node.backend.aliveTimeout)
 	c.persistent = node.backend.keepConn
 }
 func (c *fcgiConn) onPut() {
@@ -528,8 +528,8 @@ func (c *fcgiConn) onPut() {
 	c.broken.Store(false)
 	c.netConn = nil
 	c.rawConn = nil
-	c.node = nil
 	c.expire = time.Time{}
+	c.node = nil
 	c.counter.Store(0)
 	c.lastWrite = time.Time{}
 	c.lastRead = time.Time{}
@@ -1055,8 +1055,8 @@ type _fcgiResponse0 struct { // for fast reset, entirely
 	recordsEdge     int32    // edge position of current records
 	stdoutFrom      int32    // if stdout's payload is too large to be appended to r.input, use this to note current from position
 	stdoutEdge      int32    // see above, to note current edge position
-	pBack           int32    // element begins from. for parsing header elements
-	pFore           int32    // element spanning to. for parsing header elements
+	elemBack        int32    // element begins from. for parsing header elements
+	elemFore        int32    // element spanning to. for parsing header elements
 	head            span     // for debugging
 	imme            span     // immediate bytes in r.input that belongs to content, not headers
 	hasExtra        [8]bool  // see pairXXX for indexes
@@ -1232,15 +1232,15 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 	header.zero()
 	header.kind = pairHeader
 	header.place = placeInput // all received headers are in r.input
-	// r.pFore is at headers (if any) or end of headers (if none).
+	// r.elemFore is at headers (if any) or end of headers (if none).
 	for { // each header
 		// End of headers?
-		if b := r.input[r.pFore]; b == '\r' {
+		if b := r.input[r.elemFore]; b == '\r' {
 			// Skip '\r'
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead() {
 				return false
 			}
-			if r.input[r.pFore] != '\n' {
+			if r.input[r.elemFore] != '\n' {
 				r.headResult, r.failReason = StatusBadRequest, "bad end of headers"
 				return false
 			}
@@ -1252,14 +1252,14 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 		// field-name = token
 		// token = 1*tchar
 
-		r.pBack = r.pFore // now r.pBack is at header-field
+		r.elemBack = r.elemFore // now r.elemBack is at header-field
 		for {
-			b := r.input[r.pFore]
+			b := r.input[r.elemFore]
 			if t := httpTchar[b]; t == 1 {
 				// Fast path, do nothing
 			} else if t == 2 { // A-Z
 				b += 0x20 // to lower
-				r.input[r.pFore] = b
+				r.input[r.elemFore] = b
 			} else if t == 3 { // '_'
 				// For fcgi, do nothing
 			} else if b == ':' {
@@ -1269,39 +1269,39 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 				return false
 			}
 			header.nameHash += uint16(b)
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead() {
 				return false
 			}
 		}
-		if nameSize := r.pFore - r.pBack; nameSize > 0 && nameSize <= 255 {
-			header.nameFrom, header.nameSize = r.pBack, uint8(nameSize)
+		if nameSize := r.elemFore - r.elemBack; nameSize > 0 && nameSize <= 255 {
+			header.nameFrom, header.nameSize = r.elemBack, uint8(nameSize)
 		} else {
 			r.headResult, r.failReason = StatusBadRequest, "header name out of range"
 			return false
 		}
 		// Skip ':'
-		if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
+		if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead() {
 			return false
 		}
 		// Skip OWS before field-value (and OWS after field-value if it is empty)
-		for r.input[r.pFore] == ' ' || r.input[r.pFore] == '\t' {
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
+		for r.input[r.elemFore] == ' ' || r.input[r.elemFore] == '\t' {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead() {
 				return false
 			}
 		}
 		// field-value = *( field-content | LWSP )
-		r.pBack = r.pFore // now r.pBack is at field-value (if not empty) or EOL (if field-value is empty)
+		r.elemBack = r.elemFore // now r.elemBack is at field-value (if not empty) or EOL (if field-value is empty)
 		for {
-			if b := r.input[r.pFore]; (b >= 0x20 && b != 0x7F) || b == 0x09 {
-				if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
+			if b := r.input[r.elemFore]; (b >= 0x20 && b != 0x7F) || b == 0x09 {
+				if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead() {
 					return false
 				}
 			} else if b == '\r' {
 				// Skip '\r'
-				if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
+				if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead() {
 					return false
 				}
-				if r.input[r.pFore] != '\n' {
+				if r.input[r.elemFore] != '\n' {
 					r.headResult, r.failReason = StatusBadRequest, "header value contains bad eol"
 					return false
 				}
@@ -1313,17 +1313,17 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 				return false
 			}
 		}
-		// r.pFore is at '\n'
-		fore := r.pFore
+		// r.elemFore is at '\n'
+		fore := r.elemFore
 		if r.input[fore-1] == '\r' {
 			fore--
 		}
-		if fore > r.pBack { // field-value is not empty. now trim OWS after field-value
+		if fore > r.elemBack { // field-value is not empty. now trim OWS after field-value
 			for r.input[fore-1] == ' ' || r.input[fore-1] == '\t' {
 				fore--
 			}
 		}
-		header.value.set(r.pBack, fore)
+		header.value.set(r.elemBack, fore)
 
 		// Header is received in general algorithm. Now add it
 		if !r.addPrime(header) {
@@ -1332,17 +1332,17 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 		}
 
 		// Header is successfully received. Skip '\n'
-		if r.pFore++; r.pFore == r.inputEdge && !r.growHead() {
+		if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead() {
 			return false
 		}
-		// r.pFore is now at the next header or end of headers.
+		// r.elemFore is now at the next header or end of headers.
 		header.nameHash, header.flags = 0, 0 // reset for next header
 	}
 	r.receiving = httpSectionContent
 	// Skip end of headers
-	r.pFore++
-	// Now the head is received, and r.pFore is at the beginning of content (if exists).
-	r.head.set(0, r.pFore)
+	r.elemFore++
+	// Now the head is received, and r.elemFore is at the beginning of content (if exists).
+	r.head.set(0, r.elemFore)
 
 	return true
 }
@@ -1505,7 +1505,7 @@ func (r *fcgiResponse) _delHeaders(pairs []pair, from int, edge int) bool {
 
 func (r *fcgiResponse) cleanInput() {
 	if r.HasContent() {
-		r.imme.set(r.pFore, r.inputEdge)
+		r.imme.set(r.elemFore, r.inputEdge)
 		// We don't know the size of vague content. Let content receiver to decide & clean r.input.
 	} else if _, _, err := r.fcgiRecvStdout(); err != io.EOF { // no content. must receive an endRequest
 		r.headResult, r.failReason = StatusBadRequest, "bad endRequest"

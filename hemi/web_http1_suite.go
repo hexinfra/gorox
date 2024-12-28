@@ -33,8 +33,8 @@ type server1Conn struct {
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	gate       *httpxGate      // the gate to which the conn belongs
-	netConn    net.Conn        // the connection (TCP/TLS/UDS)
-	rawConn    syscall.RawConn // for syscall, only when netConn is TCP/UDS
+	netConn    net.Conn        // *net.TCPConn, *tls.Conn, *net.UnixConn
+	rawConn    syscall.RawConn // for syscall, only usable when netConn is TCP/UDS
 	persistent bool            // keep the connection after current stream? true by default
 	closeSafe  bool            // if false, send a FIN first to avoid TCP's RST following immediate close(). true by default
 	// Conn states (zeros)
@@ -186,7 +186,7 @@ func (s *server1Stream) execute() {
 	}
 
 	if req.methodCode == MethodCONNECT {
-		req.headResult, req.failReason = StatusNotImplemented, "tcp over http is not implemented here"
+		req.headResult, req.failReason = StatusNotImplemented, "http tunnel proxy is not implemented here"
 		s.serveAbnormal(req, resp)
 		return
 	}
@@ -425,15 +425,15 @@ func (r *server1Request) recvHead() { // request-line + headers
 	}
 }
 func (r *server1Request) _recvRequestLine() bool { // request-line = method SP request-target SP HTTP-version CRLF
-	r.pBack, r.pFore = 0, 0
+	r.elemBack, r.elemFore = 0, 0
 
 	// method = token
 	// token = 1*tchar
 	methodHash := uint16(0)
 	for {
-		if b := r.input[r.pFore]; httpTchar[b] != 0 {
+		if b := r.input[r.elemFore]; httpTchar[b] != 0 {
 			methodHash += uint16(b)
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 		} else if b == ' ' {
@@ -443,22 +443,22 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 			return false
 		}
 	}
-	if r.pBack == r.pFore {
+	if r.elemBack == r.elemFore {
 		r.headResult, r.failReason = StatusBadRequest, "empty method"
 		return false
 	}
 	r.gotInput = true
-	r.method.set(r.pBack, r.pFore)
-	r.recognizeMethod(r.input[r.pBack:r.pFore], methodHash)
+	r.method.set(r.elemBack, r.elemFore)
+	r.recognizeMethod(r.input[r.elemBack:r.elemFore], methodHash)
 	// Skip SP after method
-	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 
-	// Now r.pFore is at request-target.
-	r.pBack = r.pFore
+	// Now r.elemFore is at request-target.
+	r.elemBack = r.elemFore
 	// request-target = absolute-form / origin-form / authority-form / asterisk-form
-	if b := r.input[r.pFore]; b != '*' && r.methodCode != MethodCONNECT { // absolute-form / origin-form
+	if b := r.input[r.elemFore]; b != '*' && r.methodCode != MethodCONNECT { // absolute-form / origin-form
 		if b != '/' { // absolute-form
 			r.targetForm = httpTargetAbsolute
 			// absolute-form = absolute-URI
@@ -470,24 +470,24 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 
 			// Scheme
 			for {
-				if b := r.input[r.pFore]; b >= 'a' && b <= 'z' || b >= '0' && b <= '9' || b == '+' || b == '-' || b == '.' {
+				if b := r.input[r.elemFore]; b >= 'a' && b <= 'z' || b >= '0' && b <= '9' || b == '+' || b == '-' || b == '.' {
 					// Do nothing
 				} else if b >= 'A' && b <= 'Z' {
 					// RFC 9110 (section 4.2.3):
 					// The scheme and host are case-insensitive and normally provided in lowercase;
 					// all other components are compared in a case-sensitive manner.
-					r.input[r.pFore] = b + 0x20 // to lower
+					r.input[r.elemFore] = b + 0x20 // to lower
 				} else if b == ':' {
 					break
 				} else {
 					r.headResult, r.failReason = StatusBadRequest, "bad scheme"
 					return false
 				}
-				if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+				if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 					return false
 				}
 			}
-			if scheme := r.input[r.pBack:r.pFore]; bytes.Equal(scheme, bytesHTTP) {
+			if scheme := r.input[r.elemBack:r.elemFore]; bytes.Equal(scheme, bytesHTTP) {
 				r.schemeCode = SchemeHTTP
 			} else if bytes.Equal(scheme, bytesHTTPS) {
 				r.schemeCode = SchemeHTTPS
@@ -496,43 +496,43 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 				return false
 			}
 			// Skip ':'
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
-			if r.input[r.pFore] != '/' {
+			if r.input[r.elemFore] != '/' {
 				r.headResult, r.failReason = StatusBadRequest, "bad first slash"
 				return false
 			}
 			// Skip '/'
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
-			if r.input[r.pFore] != '/' {
+			if r.input[r.elemFore] != '/' {
 				r.headResult, r.failReason = StatusBadRequest, "bad second slash"
 				return false
 			}
 			// Skip '/'
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 			// authority = host [ ":" port ]
 			// host = IP-literal / IPv4address / reg-name
-			r.pBack = r.pFore
+			r.elemBack = r.elemFore
 			for {
-				if b = r.input[r.pFore]; b >= 'A' && b <= 'Z' {
-					r.input[r.pFore] = b + 0x20 // to lower
+				if b = r.input[r.elemFore]; b >= 'A' && b <= 'Z' {
+					r.input[r.elemFore] = b + 0x20 // to lower
 				} else if b == '/' || b == ' ' {
 					break
 				}
-				if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+				if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 					return false
 				}
 			}
-			if r.pBack == r.pFore {
+			if r.elemBack == r.elemFore {
 				r.headResult, r.failReason = StatusBadRequest, "empty authority is not allowed"
 				return false
 			}
-			if !r.parseAuthority(r.pBack, r.pFore, true) { // save = true
+			if !r.parseAuthority(r.elemBack, r.elemFore, true) { // save = true
 				r.headResult, r.failReason = StatusBadRequest, "bad authority"
 				return false
 			}
@@ -547,7 +547,7 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 				}
 				goto beforeVersion // request target is done, since origin-form always starts with '/', while b is ' ' here.
 			}
-			r.pBack = r.pFore // at '/'.
+			r.elemBack = r.elemFore // at '/'.
 		}
 		// RFC 9112 (3.2.1)
 		//
@@ -575,10 +575,10 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 		query.kind = pairQuery
 		query.place = placeArray // all received queries are placed in r.array because queries are decoded
 
-		// r.pFore is at '/'.
+		// r.elemFore is at '/'.
 	uri:
 		for { // TODO: use a better algorithm to improve performance, state machine might be slow here.
-			b := r.input[r.pFore]
+			b := r.input[r.elemFore]
 			switch state {
 			case 1: // in path
 				if httpPchar[b] == 1 { // excluding '?'
@@ -591,7 +591,7 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 					r.queries.from = uint8(len(r.primes))
 					r.queries.edge = r.queries.from
 					query.nameFrom = r.arrayEdge
-					qsOff = r.pFore - r.pBack
+					qsOff = r.elemFore - r.elemBack
 					state = 2
 				} else if b == ' ' { // end of request-target
 					break uri
@@ -669,17 +669,17 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 					state >>= 4 // restore previous state
 				}
 			}
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 		}
 		if state == 1 { // path ends without a '?'
 			r.path = r.array[0:r.arrayEdge]
 		} else if state == 2 { // in query string and no '=' found
-			r.queryString.set(r.pBack+qsOff, r.pFore)
+			r.queryString.set(r.elemBack+qsOff, r.elemFore)
 			// Since there is no '=', we ignore this query
 		} else if state == 3 { // in query string and no '&' found
-			r.queryString.set(r.pBack+qsOff, r.pFore)
+			r.queryString.set(r.elemBack+qsOff, r.elemFore)
 			query.value.edge = r.arrayEdge
 			if query.nameSize > 0 && !r.addQuery(query) {
 				return false
@@ -689,11 +689,11 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 			return false
 		}
 
-		r.uri.set(r.pBack, r.pFore)
+		r.uri.set(r.elemBack, r.elemFore)
 		if qsOff == 0 {
 			r.encodedPath = r.uri
 		} else {
-			r.encodedPath.set(r.pBack, r.pBack+qsOff)
+			r.encodedPath.set(r.elemBack, r.elemBack+qsOff)
 		}
 		r.cleanPath()
 	} else if b == '*' { // OPTIONS *, asterisk-form
@@ -705,12 +705,12 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 			return false
 		}
 		// Skip '*'. We don't use it as uri! Instead, we use '/'. To test OPTIONS *, test r.asteriskOptions set below.
-		if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+		if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 			return false
 		}
 		r.asteriskOptions = true
 		// Expect SP
-		if r.input[r.pFore] != ' ' {
+		if r.input[r.elemFore] != ' ' {
 			r.headResult, r.failReason = StatusBadRequest, "malformed asterisk-form"
 			return false
 		}
@@ -728,20 +728,20 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 		// When making a CONNECT request to establish a tunnel through one or more proxies,
 		// a client MUST send only the host and port of the tunnel destination as the request-target.
 		for {
-			if b := r.input[r.pFore]; b >= 'A' && b <= 'Z' {
-				r.input[r.pFore] = b + 0x20 // to lower
+			if b := r.input[r.elemFore]; b >= 'A' && b <= 'Z' {
+				r.input[r.elemFore] = b + 0x20 // to lower
 			} else if b == ' ' {
 				break
 			}
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 		}
-		if r.pBack == r.pFore {
+		if r.elemBack == r.elemFore {
 			r.headResult, r.failReason = StatusBadRequest, "empty authority is not allowed"
 			return false
 		}
-		if !r.parseAuthority(r.pBack, r.pFore, true) { // save = true
+		if !r.parseAuthority(r.elemBack, r.elemFore, true) { // save = true
 			r.headResult, r.failReason = StatusBadRequest, "invalid authority"
 			return false
 		}
@@ -751,31 +751,31 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 		// the target URI's combined path and query component is the request-target.
 	}
 
-beforeVersion: // r.pFore is at ' '.
+beforeVersion: // r.elemFore is at ' '.
 	// Skip SP before HTTP-version
-	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 
-	// Now r.pFore is at HTTP-version.
-	r.pBack = r.pFore
+	// Now r.elemFore is at HTTP-version.
+	r.elemBack = r.elemFore
 	// HTTP-version = HTTP-name "/" DIGIT "." DIGIT
 	// HTTP-name = %x48.54.54.50 ; "HTTP", case-sensitive
-	if have := r.inputEdge - r.pFore; have >= 9 {
-		// r.pFore -> EOL
+	if have := r.inputEdge - r.elemFore; have >= 9 {
+		// r.elemFore -> EOL
 		// r.inputEdge -> after EOL or more
-		r.pFore += 8
+		r.elemFore += 8
 	} else { // have < 9, but len("HTTP/1.X\n") = 9.
-		// r.pFore at 'H' -> EOL
+		// r.elemFore at 'H' -> EOL
 		// r.inputEdge at "TTP/1.X\n" -> after EOL
-		r.pFore = r.inputEdge - 1
+		r.elemFore = r.inputEdge - 1
 		for i, n := int32(0), 9-have; i < n; i++ {
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 		}
 	}
-	if version := r.input[r.pBack:r.pFore]; bytes.Equal(version, bytesHTTP1_1) {
+	if version := r.input[r.elemBack:r.elemFore]; bytes.Equal(version, bytesHTTP1_1) {
 		r.httpVersion = Version1_1
 	} else if bytes.Equal(version, bytesHTTP1_0) {
 		r.httpVersion = Version1_0
@@ -783,37 +783,37 @@ beforeVersion: // r.pFore is at ' '.
 		r.headResult = StatusHTTPVersionNotSupported
 		return false
 	}
-	if r.input[r.pFore] == '\r' {
-		if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+	if r.input[r.elemFore] == '\r' {
+		if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 			return false
 		}
 	}
-	if r.input[r.pFore] != '\n' {
+	if r.input[r.elemFore] != '\n' {
 		r.headResult, r.failReason = StatusBadRequest, "bad eol of start line"
 		return false
 	}
 	r.receiving = httpSectionHeaders
 	// Skip '\n'
-	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 
 	return true
 }
 func (r *server1Request) cleanInput() {
-	// r.pFore is at the beginning of content (if exists) or next request (if exists and is pipelined).
+	// r.elemFore is at the beginning of content (if exists) or next request (if exists and is pipelined).
 	if r.contentSize == -1 { // no content
-		r.contentReceived = true   // we treat it as "received"
-		r.formReceived = true      // set anyway
-		if r.pFore < r.inputEdge { // still has data, stream is pipelined
-			r.inputNext = r.pFore // mark the beginning of the next request
-		} else { // r.pFore == r.inputEdge, no data anymore
+		r.contentReceived = true      // we treat it as "received"
+		r.formReceived = true         // set anyway
+		if r.elemFore < r.inputEdge { // still has data, stream is pipelined
+			r.inputNext = r.elemFore // mark the beginning of the next request
+		} else { // r.elemFore == r.inputEdge, no data anymore
 			r.inputNext, r.inputEdge = 0, 0 // reset
 		}
 		return
 	}
 	// content exists (sized or vague)
-	r.imme.set(r.pFore, r.inputEdge)
+	r.imme.set(r.elemFore, r.inputEdge)
 	if r.contentSize >= 0 { // sized mode
 		immeSize := int64(r.imme.size())
 		if immeSize == 0 || immeSize <= r.contentSize {
@@ -821,13 +821,13 @@ func (r *server1Request) cleanInput() {
 		}
 		if immeSize >= r.contentSize {
 			r.contentReceived = true
-			edge := r.pFore + int32(r.contentSize)
+			edge := r.elemFore + int32(r.contentSize)
 			if immeSize > r.contentSize { // still has data, streams are pipelined
-				r.imme.set(r.pFore, edge)
+				r.imme.set(r.elemFore, edge)
 				r.inputNext = edge // mark the beginning of next request
 			}
-			r.receivedSize = r.contentSize        // content is received entirely.
-			r.contentText = r.input[r.pFore:edge] // exact.
+			r.receivedSize = r.contentSize           // content is received entirely.
+			r.contentText = r.input[r.elemFore:edge] // exact.
 			r.contentTextKind = httpContentTextInput
 		}
 		if r.contentSize == 0 {
@@ -1334,9 +1334,9 @@ type backend1Conn struct {
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	node       *http1Node
-	netConn    net.Conn        // the connection (TCP/TLS/UDS)
-	rawConn    syscall.RawConn // used when netConn is TCP/UDS
 	expire     time.Time       // when the conn is considered expired
+	netConn    net.Conn        // *net.TCPConn, *tls.Conn, *net.UnixConn
+	rawConn    syscall.RawConn // for syscall, only usable when netConn is TCP/UDS
 	persistent bool            // keep the connection after current stream? true by default
 	// Conn states (zeros)
 }
@@ -1370,16 +1370,16 @@ func (c *backend1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawCon
 	c.webConn_.onGet(id)
 
 	c.node = node
+	c.expire = time.Now().Add(node.backend.aliveTimeout)
 	c.netConn = netConn
 	c.rawConn = rawConn
-	c.expire = time.Now().Add(node.backend.aliveTimeout)
 	c.persistent = true
 }
 func (c *backend1Conn) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
-	c.node = nil
 	c.expire = time.Time{}
+	c.node = nil
 
 	c.webConn_.onPut()
 }
@@ -1656,79 +1656,79 @@ func (r *backend1Response) recvHead() { // status-line + headers
 func (r *backend1Response) _recvStatusLine() bool { // status-line = HTTP-version SP status-code SP [ reason-phrase ] CRLF
 	// HTTP-version = HTTP-name "/" DIGIT "." DIGIT
 	// HTTP-name = %x48.54.54.50 ; "HTTP", case-sensitive
-	if have := r.inputEdge - r.pFore; have >= 9 {
-		// r.pFore -> ' '
+	if have := r.inputEdge - r.elemFore; have >= 9 {
+		// r.elemFore -> ' '
 		// r.inputEdge -> after ' ' or more
-		r.pFore += 8
+		r.elemFore += 8
 	} else { // have < 9, but len("HTTP/1.X ") = 9.
-		// r.pFore at 'H' -> ' '
+		// r.elemFore at 'H' -> ' '
 		// r.inputEdge at "TTP/1.X " -> after ' '
-		r.pFore = r.inputEdge - 1
+		r.elemFore = r.inputEdge - 1
 		for i, n := int32(0), 9-have; i < n; i++ {
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 		}
 	}
-	if !bytes.Equal(r.input[r.pBack:r.pFore], bytesHTTP1_1) { // for HTTP/1.x, only HTTP/1.1 is supported in backend side
+	if !bytes.Equal(r.input[r.elemBack:r.elemFore], bytesHTTP1_1) { // for HTTP/1.x, only HTTP/1.1 is supported in backend side
 		r.headResult = StatusHTTPVersionNotSupported
 		return false
 	}
 
 	// Skip SP
-	if r.input[r.pFore] != ' ' {
+	if r.input[r.elemFore] != ' ' {
 		goto invalid
 	}
-	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 
 	// status-code = 3DIGIT
-	if b := r.input[r.pFore]; b >= '1' && b <= '9' {
+	if b := r.input[r.elemFore]; b >= '1' && b <= '9' {
 		r.status = int16(b-'0') * 100
 	} else {
 		goto invalid
 	}
-	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
-	if b := r.input[r.pFore]; b >= '0' && b <= '9' {
+	if b := r.input[r.elemFore]; b >= '0' && b <= '9' {
 		r.status += int16(b-'0') * 10
 	} else {
 		goto invalid
 	}
-	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
-	if b := r.input[r.pFore]; b >= '0' && b <= '9' {
+	if b := r.input[r.elemFore]; b >= '0' && b <= '9' {
 		r.status += int16(b - '0')
 	} else {
 		goto invalid
 	}
-	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 
 	// Skip SP
-	if r.input[r.pFore] != ' ' {
+	if r.input[r.elemFore] != ' ' {
 		goto invalid
 	}
-	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 
 	// reason-phrase = 1*( HTAB / SP / VCHAR / obs-text )
 	for {
-		if b := r.input[r.pFore]; b == '\n' {
+		if b := r.input[r.elemFore]; b == '\n' {
 			break
 		}
-		if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+		if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 			return false
 		}
 	}
 	r.receiving = httpSectionHeaders
 	// Skip '\n'
-	if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 		return false
 	}
 	return true
@@ -1737,10 +1737,10 @@ invalid:
 	return false
 }
 func (r *backend1Response) cleanInput() {
-	// r.pFore is at the beginning of content (if exists) or next response (if exists and is pipelined).
+	// r.elemFore is at the beginning of content (if exists) or next response (if exists and is pipelined).
 	if r.contentSize == -1 { // no content
 		r.contentReceived = true
-		if r.pFore < r.inputEdge { // still has data
+		if r.elemFore < r.inputEdge { // still has data
 			// RFC 9112 (section 6.3):
 			// If the final response to the last request on a connection has been completely received
 			// and there remains additional data to read, a user agent MAY discard the remaining data
@@ -1754,7 +1754,7 @@ func (r *backend1Response) cleanInput() {
 		return
 	}
 	// content exists (sized or vague)
-	r.imme.set(r.pFore, r.inputEdge)
+	r.imme.set(r.elemFore, r.inputEdge)
 	if r.contentSize >= 0 { // sized mode
 		if immeSize := int64(r.imme.size()); immeSize >= r.contentSize {
 			r.contentReceived = true
@@ -1762,7 +1762,7 @@ func (r *backend1Response) cleanInput() {
 				// TODO: log? possible response splitting
 			}
 			r.receivedSize = r.contentSize
-			r.contentText = r.input[r.pFore : r.pFore+int32(r.contentSize)] // exact.
+			r.contentText = r.input[r.elemFore : r.elemFore+int32(r.contentSize)] // exact.
 			r.contentTextKind = httpContentTextInput
 		}
 	} else { // vague mode
@@ -1799,7 +1799,7 @@ func (s *backend1Socket) onEnd() {
 	s.backendSocket_.onEnd()
 }
 
-//////////////////////////////////////// HTTP/1.x i/o implementation ////////////////////////////////////////
+//////////////////////////////////////// HTTP/1.x in/out implementation ////////////////////////////////////////
 
 // HTTP/1.x incoming
 
@@ -1846,15 +1846,15 @@ func (r *webIn_) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS 
 	header.zero()
 	header.kind = pairHeader
 	header.place = placeInput // all received headers are in r.input
-	// r.pFore is at headers (if any) or end of headers (if none).
+	// r.elemFore is at headers (if any) or end of headers (if none).
 	for { // each header
 		// End of headers?
-		if b := r.input[r.pFore]; b == '\r' {
+		if b := r.input[r.elemFore]; b == '\r' {
 			// Skip '\r'
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
-			if r.input[r.pFore] != '\n' {
+			if r.input[r.elemFore] != '\n' {
 				r.headResult, r.failReason = StatusBadRequest, "bad end of headers"
 				return false
 			}
@@ -1868,14 +1868,14 @@ func (r *webIn_) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS 
 		// field-name = token
 		// token = 1*tchar
 
-		r.pBack = r.pFore // now r.pBack is at header-field
+		r.elemBack = r.elemFore // now r.elemBack is at header-field
 		for {
-			b := r.input[r.pFore]
+			b := r.input[r.elemFore]
 			if t := httpTchar[b]; t == 1 {
 				// Fast path, do nothing
 			} else if t == 2 { // A-Z
 				b += 0x20 // to lower
-				r.input[r.pFore] = b
+				r.input[r.elemFore] = b
 			} else if t == 3 { // '_'
 				header.setUnderscore()
 			} else if b == ':' {
@@ -1885,23 +1885,23 @@ func (r *webIn_) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS 
 				return false
 			}
 			header.nameHash += uint16(b)
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 		}
-		if nameSize := r.pFore - r.pBack; nameSize > 0 && nameSize <= 255 {
-			header.nameFrom, header.nameSize = r.pBack, uint8(nameSize)
+		if nameSize := r.elemFore - r.elemBack; nameSize > 0 && nameSize <= 255 {
+			header.nameFrom, header.nameSize = r.elemBack, uint8(nameSize)
 		} else {
 			r.headResult, r.failReason = StatusBadRequest, "header name out of range"
 			return false
 		}
 		// Skip ':'
-		if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+		if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 			return false
 		}
 		// Skip OWS before field-value (and OWS after field-value if it is empty)
-		for r.input[r.pFore] == ' ' || r.input[r.pFore] == '\t' {
-			if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+		for r.input[r.elemFore] == ' ' || r.input[r.elemFore] == '\t' {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 				return false
 			}
 		}
@@ -1911,18 +1911,18 @@ func (r *webIn_) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS 
 		// In other words, a string of octets is a field-value if and only if:
 		// - it is *( %x21-7E / %x80-FF / %x20 / %x09)
 		// - if it is not empty, it starts and ends with field-vchar
-		r.pBack = r.pFore // now r.pBack is at field-value (if not empty) or EOL (if field-value is empty)
+		r.elemBack = r.elemFore // now r.elemBack is at field-value (if not empty) or EOL (if field-value is empty)
 		for {
-			if b := r.input[r.pFore]; (b >= 0x20 && b != 0x7F) || b == 0x09 {
-				if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+			if b := r.input[r.elemFore]; (b >= 0x20 && b != 0x7F) || b == 0x09 {
+				if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 					return false
 				}
 			} else if b == '\r' {
 				// Skip '\r'
-				if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+				if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 					return false
 				}
-				if r.input[r.pFore] != '\n' {
+				if r.input[r.elemFore] != '\n' {
 					r.headResult, r.failReason = StatusBadRequest, "header value contains bad eol"
 					return false
 				}
@@ -1934,17 +1934,17 @@ func (r *webIn_) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS 
 				return false
 			}
 		}
-		// r.pFore is at '\n'
-		fore := r.pFore
+		// r.elemFore is at '\n'
+		fore := r.elemFore
 		if r.input[fore-1] == '\r' {
 			fore--
 		}
-		if fore > r.pBack { // field-value is not empty. now trim OWS after field-value
+		if fore > r.elemBack { // field-value is not empty. now trim OWS after field-value
 			for r.input[fore-1] == ' ' || r.input[fore-1] == '\t' {
 				fore--
 			}
 		}
-		header.value.set(r.pBack, fore)
+		header.value.set(r.elemBack, fore)
 
 		// Header is received in general algorithm. Now add it
 		if !r.addHeader(header) {
@@ -1953,17 +1953,17 @@ func (r *webIn_) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS 
 		}
 
 		// Header is successfully received. Skip '\n'
-		if r.pFore++; r.pFore == r.inputEdge && !r.growHead1() {
+		if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
 			return false
 		}
-		// r.pFore is now at the next header or end of headers.
+		// r.elemFore is now at the next header or end of headers.
 		header.nameHash, header.flags = 0, 0 // reset for next header
 	}
 	r.receiving = httpSectionContent
 	// Skip end of headers
-	r.pFore++
-	// Now the head is received, and r.pFore is at the beginning of content (if exists) or next message (if exists and is pipelined).
-	r.head.set(0, r.pFore)
+	r.elemFore++
+	// Now the head is received, and r.elemFore is at the beginning of content (if exists) or next message (if exists and is pipelined).
+	r.head.set(0, r.elemFore)
 
 	return true
 }
@@ -2025,26 +2025,26 @@ func (r *webIn_) _readVagueContent1() (p []byte, err error) {
 	}
 	switch r.chunkSize { // size left in receiving current chunk
 	case -2: // got chunk-data. needs CRLF or LF
-		if r.bodyWindow[r.cFore] == '\r' {
-			if r.cFore++; r.cFore == r.chunkEdge && !r.growChunked1() {
+		if r.bodyWindow[r.chunkFore] == '\r' {
+			if r.chunkFore++; r.chunkFore == r.chunkEdge && !r.growChunked1() {
 				goto badRead
 			}
 		}
 		fallthrough
 	case -1: // got chunk-data CR. needs LF
-		if r.bodyWindow[r.cFore] != '\n' {
+		if r.bodyWindow[r.chunkFore] != '\n' {
 			goto badRead
 		}
 		// Skip '\n'
-		if r.cFore++; r.cFore == r.chunkEdge && !r.growChunked1() {
+		if r.chunkFore++; r.chunkFore == r.chunkEdge && !r.growChunked1() {
 			goto badRead
 		}
 		fallthrough
 	case 0: // start a new chunk = chunk-size [chunk-ext] CRLF chunk-data CRLF
-		r.cBack = r.cFore // now r.bodyWindow is used for receiving: chunk-size [chunk-ext] CRLF
+		r.chunkBack = r.chunkFore // now r.bodyWindow is used for receiving: chunk-size [chunk-ext] CRLF
 		chunkSize := int64(0)
 		for { // chunk-size = 1*HEXDIG
-			b := r.bodyWindow[r.cFore]
+			b := r.bodyWindow[r.chunkFore]
 			if b >= '0' && b <= '9' {
 				b = b - '0'
 			} else if b >= 'a' && b <= 'f' {
@@ -2056,27 +2056,27 @@ func (r *webIn_) _readVagueContent1() (p []byte, err error) {
 			}
 			chunkSize <<= 4
 			chunkSize += int64(b)
-			if r.cFore++; r.cFore-r.cBack >= 16 || (r.cFore == r.chunkEdge && !r.growChunked1()) {
+			if r.chunkFore++; r.chunkFore-r.chunkBack >= 16 || (r.chunkFore == r.chunkEdge && !r.growChunked1()) {
 				goto badRead
 			}
 		}
 		if chunkSize < 0 { // bad chunk size.
 			goto badRead
 		}
-		if b := r.bodyWindow[r.cFore]; b == ';' { // ignore chunk-ext = *( ";" chunk-ext-name [ "=" chunk-ext-val ] )
-			for r.bodyWindow[r.cFore] != '\n' {
-				if r.cFore++; r.cFore == r.chunkEdge && !r.growChunked1() {
+		if b := r.bodyWindow[r.chunkFore]; b == ';' { // ignore chunk-ext = *( ";" chunk-ext-name [ "=" chunk-ext-val ] )
+			for r.bodyWindow[r.chunkFore] != '\n' {
+				if r.chunkFore++; r.chunkFore == r.chunkEdge && !r.growChunked1() {
 					goto badRead
 				}
 			}
 		} else if b == '\r' {
 			// Skip '\r'
-			if r.cFore++; r.cFore == r.chunkEdge && !r.growChunked1() {
+			if r.chunkFore++; r.chunkFore == r.chunkEdge && !r.growChunked1() {
 				goto badRead
 			}
 		}
 		// Must be LF
-		if r.bodyWindow[r.cFore] != '\n' {
+		if r.bodyWindow[r.chunkFore] != '\n' {
 			goto badRead
 		}
 		// Check target size
@@ -2087,33 +2087,33 @@ func (r *webIn_) _readVagueContent1() (p []byte, err error) {
 			goto badRead
 		}
 		// Skip '\n' at the end of: chunk-size [chunk-ext] CRLF
-		if r.cFore++; r.cFore == r.chunkEdge && !r.growChunked1() {
+		if r.chunkFore++; r.chunkFore == r.chunkEdge && !r.growChunked1() {
 			goto badRead
 		}
 		// Last chunk?
 		if r.chunkSize == 0 { // last-chunk = 1*("0") [chunk-ext] CRLF
 			// last-chunk trailer-section CRLF
-			if r.bodyWindow[r.cFore] == '\r' {
+			if r.bodyWindow[r.chunkFore] == '\r' {
 				// Skip '\r'
-				if r.cFore++; r.cFore == r.chunkEdge && !r.growChunked1() {
+				if r.chunkFore++; r.chunkFore == r.chunkEdge && !r.growChunked1() {
 					goto badRead
 				}
-				if r.bodyWindow[r.cFore] != '\n' {
+				if r.bodyWindow[r.chunkFore] != '\n' {
 					goto badRead
 				}
-			} else if r.bodyWindow[r.cFore] != '\n' { // must be trailer-section = *( field-line CRLF)
+			} else if r.bodyWindow[r.chunkFore] != '\n' { // must be trailer-section = *( field-line CRLF)
 				r.receiving = httpSectionTrailers
 				if !r.recvTrailers1() || !r.inMessage.examineTail() {
 					goto badRead
 				}
-				// r.recvTrailers1() must ends with r.cFore being at the last '\n' after trailer-section.
+				// r.recvTrailers1() must ends with r.chunkFore being at the last '\n' after trailer-section.
 			}
 			// Skip the last '\n'
-			r.cFore++ // now the whole vague content is received and r.cFore is immediately after the vague content.
+			r.chunkFore++ // now the whole vague content is received and r.chunkFore is immediately after the vague content.
 			// Now we have found the end of current message, so determine r.inputNext and r.inputEdge.
-			if r.cFore < r.chunkEdge { // still has data, stream is pipelined
-				r.overChunked = true                            // so r.bodyWindow will be used as r.input on stream ends
-				r.inputNext, r.inputEdge = r.cFore, r.chunkEdge // mark the next message
+			if r.chunkFore < r.chunkEdge { // still has data, stream is pipelined
+				r.overChunked = true                                // so r.bodyWindow will be used as r.input on stream ends
+				r.inputNext, r.inputEdge = r.chunkFore, r.chunkEdge // mark the next message
 			} else { // no data anymore, stream is not pipelined
 				r.inputNext, r.inputEdge = 0, 0 // reset input
 				PutNK(r.bodyWindow)
@@ -2121,13 +2121,13 @@ func (r *webIn_) _readVagueContent1() (p []byte, err error) {
 			}
 			return nil, io.EOF
 		}
-		// Not last chunk, now r.cFore is at the beginning of: chunk-data CRLF
+		// Not last chunk, now r.chunkFore is at the beginning of: chunk-data CRLF
 		fallthrough
 	default: // r.chunkSize > 0, we are receiving: chunk-data CRLF
-		r.cBack = 0   // so growChunked1() works correctly
-		var data span // the chunk data we are receiving
-		data.from = r.cFore
-		if haveSize := int64(r.chunkEdge - r.cFore); haveSize <= r.chunkSize { // 1 <= haveSize <= r.chunkSize. chunk-data can be taken entirely
+		r.chunkBack = 0 // so growChunked1() works correctly
+		var data span   // the chunk data we are receiving
+		data.from = r.chunkFore
+		if haveSize := int64(r.chunkEdge - r.chunkFore); haveSize <= r.chunkSize { // 1 <= haveSize <= r.chunkSize. chunk-data can be taken entirely
 			r.receivedSize += haveSize
 			data.edge = r.chunkEdge
 			if haveSize == r.chunkSize { // exact chunk-data
@@ -2135,10 +2135,10 @@ func (r *webIn_) _readVagueContent1() (p []byte, err error) {
 			} else { // haveSize < r.chunkSize, not enough data.
 				r.chunkSize -= haveSize
 			}
-			r.cFore, r.chunkEdge = 0, 0 // all data taken
+			r.chunkFore, r.chunkEdge = 0, 0 // all data taken
 		} else { // haveSize > r.chunkSize, more than chunk-data
 			r.receivedSize += r.chunkSize
-			data.edge = r.cFore + int32(r.chunkSize)
+			data.edge = r.chunkFore + int32(r.chunkSize)
 			if sizeLeft := r.chunkEdge - data.edge; sizeLeft == 1 { // chunk-data ?
 				if b := r.bodyWindow[data.edge]; b == '\r' { // exact chunk-data CR
 					r.chunkSize = -1 // got chunk-data CR, needs LF
@@ -2147,17 +2147,17 @@ func (r *webIn_) _readVagueContent1() (p []byte, err error) {
 				} else { // chunk-data X
 					goto badRead
 				}
-				r.cFore, r.chunkEdge = 0, 0 // all data taken
+				r.chunkFore, r.chunkEdge = 0, 0 // all data taken
 			} else if r.bodyWindow[data.edge] == '\r' && r.bodyWindow[data.edge+1] == '\n' { // chunk-data CRLF..
 				r.chunkSize = 0
 				if sizeLeft == 2 { // exact chunk-data CRLF
-					r.cFore, r.chunkEdge = 0, 0 // all data taken
+					r.chunkFore, r.chunkEdge = 0, 0 // all data taken
 				} else { // > 2, chunk-data CRLF X
-					r.cFore = data.edge + 2
+					r.chunkFore = data.edge + 2
 				}
 			} else if r.bodyWindow[data.edge] == '\n' { // >=2, chunk-data LF X
 				r.chunkSize = 0
-				r.cFore = data.edge + 1
+				r.chunkFore = data.edge + 1
 			} else { // >=2, chunk-data XX
 				goto badRead
 			}
@@ -2169,10 +2169,10 @@ badRead:
 }
 
 func (r *webIn_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
-	copy(r.bodyWindow, r.bodyWindow[r.cFore:r.chunkEdge]) // slide to start, we need a clean r.bodyWindow
-	r.chunkEdge -= r.cFore
-	r.cBack, r.cFore = 0, 0 // setting r.cBack = 0 means r.bodyWindow will not slide, so the whole trailers must fit in r.bodyWindow.
-	r.pBack, r.pFore = 0, 0 // for parsing trailer fields
+	copy(r.bodyWindow, r.bodyWindow[r.chunkFore:r.chunkEdge]) // slide to start, we need a clean r.bodyWindow
+	r.chunkEdge -= r.chunkFore
+	r.chunkBack, r.chunkFore = 0, 0 // setting r.chunkBack = 0 means r.bodyWindow will not slide, so the whole trailers must fit in r.bodyWindow.
+	r.elemBack, r.elemFore = 0, 0   // for parsing trailer fields
 
 	r.trailers.from = uint8(len(r.primes))
 	r.trailers.edge = r.trailers.from
@@ -2181,12 +2181,12 @@ func (r *webIn_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
 	trailer.kind = pairTrailer
 	trailer.place = placeArray // all received trailers are placed in r.array
 	for {
-		if b := r.bodyWindow[r.pFore]; b == '\r' {
+		if b := r.bodyWindow[r.elemFore]; b == '\r' {
 			// Skip '\r'
-			if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
+			if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked1() {
 				return false
 			}
-			if r.bodyWindow[r.pFore] != '\n' {
+			if r.bodyWindow[r.elemFore] != '\n' {
 				return false
 			}
 			break
@@ -2194,14 +2194,14 @@ func (r *webIn_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
 			break
 		}
 
-		r.pBack = r.pFore // for field-name
+		r.elemBack = r.elemFore // for field-name
 		for {
-			b := r.bodyWindow[r.pFore]
+			b := r.bodyWindow[r.elemFore]
 			if t := httpTchar[b]; t == 1 {
 				// Fast path, do nothing
 			} else if t == 2 { // A-Z
 				b += 0x20 // to lower
-				r.bodyWindow[r.pFore] = b
+				r.bodyWindow[r.elemFore] = b
 			} else if t == 3 { // '_'
 				trailer.setUnderscore()
 			} else if b == ':' {
@@ -2210,37 +2210,37 @@ func (r *webIn_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
 				return false
 			}
 			trailer.nameHash += uint16(b)
-			if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
+			if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked1() {
 				return false
 			}
 		}
-		if nameSize := r.pFore - r.pBack; nameSize > 0 && nameSize <= 255 {
-			trailer.nameFrom, trailer.nameSize = r.pBack, uint8(nameSize)
+		if nameSize := r.elemFore - r.elemBack; nameSize > 0 && nameSize <= 255 {
+			trailer.nameFrom, trailer.nameSize = r.elemBack, uint8(nameSize)
 		} else {
 			return false
 		}
 		// Skip ':'
-		if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
+		if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked1() {
 			return false
 		}
 		// Skip OWS before field-value (and OWS after field-value if it is empty)
-		for r.bodyWindow[r.pFore] == ' ' || r.bodyWindow[r.pFore] == '\t' {
-			if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
+		for r.bodyWindow[r.elemFore] == ' ' || r.bodyWindow[r.elemFore] == '\t' {
+			if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked1() {
 				return false
 			}
 		}
-		r.pBack = r.pFore // for field-value or EOL
+		r.elemBack = r.elemFore // for field-value or EOL
 		for {
-			if b := r.bodyWindow[r.pFore]; (b >= 0x20 && b != 0x7F) || b == 0x09 {
-				if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
+			if b := r.bodyWindow[r.elemFore]; (b >= 0x20 && b != 0x7F) || b == 0x09 {
+				if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked1() {
 					return false
 				}
 			} else if b == '\r' {
 				// Skip '\r'
-				if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
+				if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked1() {
 					return false
 				}
-				if r.bodyWindow[r.pFore] != '\n' {
+				if r.bodyWindow[r.elemFore] != '\n' {
 					return false
 				}
 				break
@@ -2250,17 +2250,17 @@ func (r *webIn_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
 				return false
 			}
 		}
-		// r.pFore is at '\n'
-		fore := r.pFore
+		// r.elemFore is at '\n'
+		fore := r.elemFore
 		if r.bodyWindow[fore-1] == '\r' {
 			fore--
 		}
-		if fore > r.pBack { // field-value is not empty. now trim OWS after field-value
+		if fore > r.elemBack { // field-value is not empty. now trim OWS after field-value
 			for r.bodyWindow[fore-1] == ' ' || r.bodyWindow[fore-1] == '\t' {
 				fore--
 			}
 		}
-		trailer.value.set(r.pBack, fore)
+		trailer.value.set(r.elemBack, fore)
 
 		// Copy trailer data to r.array
 		fore = r.arrayEdge
@@ -2280,24 +2280,24 @@ func (r *webIn_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
 		}
 
 		// Trailer is successfully received. Skip '\n'
-		if r.pFore++; r.pFore == r.chunkEdge && !r.growChunked1() {
+		if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked1() {
 			return false
 		}
-		// r.pFore is now at the next trailer or end of trailers.
+		// r.elemFore is now at the next trailer or end of trailers.
 		trailer.nameHash, trailer.flags = 0, 0 // reset for next trailer
 	}
-	r.cFore = r.pFore // r.cFore must ends at the last '\n'
+	r.chunkFore = r.elemFore // r.chunkFore must ends at the last '\n'
 	return true
 }
 func (r *webIn_) growChunked1() bool { // HTTP/1.x is not a binary protocol, we don't know how many bytes to grow, so just grow.
-	if r.chunkEdge == int32(cap(r.bodyWindow)) && r.cBack == 0 { // r.bodyWindow is full and we can't slide
+	if r.chunkEdge == int32(cap(r.bodyWindow)) && r.chunkBack == 0 { // r.bodyWindow is full and we can't slide
 		return false // element is too large
 	}
-	if r.cBack > 0 { // has previously used data, but now useless. slide to start so we can read more
-		copy(r.bodyWindow, r.bodyWindow[r.cBack:r.chunkEdge])
-		r.chunkEdge -= r.cBack
-		r.cFore -= r.cBack
-		r.cBack = 0
+	if r.chunkBack > 0 { // has previously used data, but now useless. slide to start so we can read more
+		copy(r.bodyWindow, r.bodyWindow[r.chunkBack:r.chunkEdge])
+		r.chunkEdge -= r.chunkBack
+		r.chunkFore -= r.chunkBack
+		r.chunkBack = 0
 	}
 	err := r._beforeRead(&r.bodyTime)
 	if err == nil {

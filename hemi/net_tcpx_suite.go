@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// TCPX (TCP/TLS/UDS) router, reverse proxy, and backend.
+// TCPX (TCP/TLS/UDS) router, reverse proxy, and backend implementation. See RFC 9293.
 
 package hemi
 
@@ -333,8 +333,8 @@ type TCPXConn struct {
 	// Conn states (non-zeros)
 	id        int64 // the conn id
 	gate      *tcpxGate
-	netConn   net.Conn        // the connection (TCP/TLS/UDS)
-	rawConn   syscall.RawConn // for syscall, only when netConn is TCP
+	netConn   net.Conn        // *net.TCPConn, *tls.Conn, *net.UnixConn
+	rawConn   syscall.RawConn // for syscall, only usable when netConn is TCP/UDS
 	input     []byte          // input buffer
 	region    Region          // a region-based memory pool
 	closeSema atomic.Int32    // controls read/write close

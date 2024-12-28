@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// HTTP/3 server and backend implementation. See RFC 9114, RFC 9204, and RFC 9218.
+// HTTP/3 server and backend implementation. See RFC 9114 and RFC 9204.
 
 // Server Push is not supported because it's rarely used. Chrome and Firefox even removed it.
 
@@ -149,16 +149,16 @@ type server3Conn struct {
 	// Conn states (non-zeros)
 	gate     *http3Gate
 	quicConn *quic.Conn        // the quic connection
-	buffer   *http3Buffer      // ...
+	inBuffer *http3Buffer      // ...
 	table    http3DynamicTable // ...
 	// Conn states (zeros)
 	streams       [http3MaxActiveStreams]*server3Stream // active (open, remoteClosed, localClosed) streams
 	_server3Conn0                                       // all values in this struct must be zero by default!
 }
 type _server3Conn0 struct { // for fast reset, entirely
-	bufferEdge uint32 // incoming data ends at c.buffer.buf[c.bufferEdge]
-	pBack      uint32 // incoming frame part (header or payload) begins from c.buffer.buf[c.pBack]
-	pFore      uint32 // incoming frame part (header or payload) ends at c.buffer.buf[c.pFore]
+	inBufferEdge uint32 // incoming data ends at c.inBuffer.buf[c.inBufferEdge]
+	partBack     uint32 // incoming frame part (header or payload) begins from c.inBuffer.buf[c.partBack]
+	partFore     uint32 // incoming frame part (header or payload) ends at c.inBuffer.buf[c.partFore]
 }
 
 var poolServer3Conn sync.Pool
@@ -183,14 +183,14 @@ func (c *server3Conn) onGet(id int64, gate *http3Gate, quicConn *quic.Conn) {
 
 	c.gate = gate
 	c.quicConn = quicConn
-	if c.buffer == nil {
-		c.buffer = getHTTP3Buffer()
-		c.buffer.incRef()
+	if c.inBuffer == nil {
+		c.inBuffer = getHTTP3Buffer()
+		c.inBuffer.incRef()
 	}
 }
 func (c *server3Conn) onPut() {
 	c.quicConn = nil
-	// c.buffer is reserved
+	// c.inBuffer is reserved
 	// c.table is reserved
 	c.streams = [http3MaxActiveStreams]*server3Stream{}
 	c._server3Conn0 = _server3Conn0{}
@@ -208,10 +208,10 @@ func (c *server3Conn) MakeTempName(p []byte, unixTime int64) int {
 
 func (c *server3Conn) serve() { // runner
 	// TODO
-	// use go c.receive()?
+	// use go c.receiver()?
 }
 
-func (c *server3Conn) receive() { // runner
+func (c *server3Conn) receiver() { // runner
 	// TODO
 }
 
@@ -585,8 +585,8 @@ type backend3Conn struct {
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	node     *http3Node
-	quicConn *quic.Conn // the underlying quic connection
 	expire   time.Time  // when the conn is considered expired
+	quicConn *quic.Conn // the underlying quic connection
 	// Conn states (zeros)
 	nStreams       atomic.Int32                           // concurrent streams
 	streams        [http3MaxActiveStreams]*backend3Stream // active (open, remoteClosed, localClosed) streams
@@ -616,16 +616,16 @@ func (c *backend3Conn) onGet(id int64, node *http3Node, quicConn *quic.Conn) {
 	c.webConn_.onGet(id)
 
 	c.node = node
-	c.quicConn = quicConn
 	c.expire = time.Now().Add(node.backend.aliveTimeout)
+	c.quicConn = quicConn
 }
 func (c *backend3Conn) onPut() {
 	c.quicConn = nil
 	c.nStreams.Store(0)
 	c.streams = [http3MaxActiveStreams]*backend3Stream{}
 	c._backend3Conn0 = _backend3Conn0{}
-	c.node = nil
 	c.expire = time.Time{}
+	c.node = nil
 
 	c.webConn_.onPut()
 }
@@ -858,7 +858,45 @@ func (s *backend3Socket) onEnd() {
 	s.backendSocket_.onEnd()
 }
 
-//////////////////////////////////////// HTTP/3 i/o implementation ////////////////////////////////////////
+//////////////////////////////////////// HTTP/3 in/out implementation ////////////////////////////////////////
+
+// http3InFrame is the server-side HTTP/3 incoming frame.
+type http3InFrame struct {
+	// TODO
+}
+
+func (f *http3InFrame) zero() { *f = http3InFrame{} }
+
+// http3Buffer
+type http3Buffer struct {
+	buf [_16K]byte // header + payload
+	ref atomic.Int32
+}
+
+var poolHTTP3Buffer sync.Pool
+
+func getHTTP3Buffer() *http3Buffer {
+	var buffer *http3Buffer
+	if x := poolHTTP3Buffer.Get(); x == nil {
+		buffer = new(http3Buffer)
+	} else {
+		buffer = x.(*http3Buffer)
+	}
+	return buffer
+}
+func putHTTP3Buffer(buffer *http3Buffer) { poolHTTP3Buffer.Put(buffer) }
+
+func (b *http3Buffer) size() uint32  { return uint32(cap(b.buf)) }
+func (b *http3Buffer) getRef() int32 { return b.ref.Load() }
+func (b *http3Buffer) incRef()       { b.ref.Add(1) }
+func (b *http3Buffer) decRef() {
+	if b.ref.Add(-1) == 0 {
+		if DebugLevel() >= 1 {
+			Printf("putHTTP3Buffer ref=%d\n", b.ref.Load())
+		}
+		putHTTP3Buffer(b)
+	}
+}
 
 // HTTP/3 incoming
 
@@ -872,6 +910,13 @@ func (r *webIn_) readContent3() (p []byte, err error) {
 	// TODO
 	return
 }
+
+// http3OutFrame is the server-side HTTP/3 outgoing frame.
+type http3OutFrame struct {
+	// TODO
+}
+
+func (f *http3OutFrame) zero() { *f = http3OutFrame{} }
 
 // HTTP/3 outgoing
 
@@ -956,37 +1001,6 @@ const ( // HTTP/3 sizes and limits for both of our HTTP/3 server and HTTP/3 back
 	http3MaxActiveStreams = 127
 	http3MaxTableSize     = _4K
 )
-
-// http3Buffer
-type http3Buffer struct {
-	buf [_16K]byte // header + payload
-	ref atomic.Int32
-}
-
-var poolHTTP3Buffer sync.Pool
-
-func getHTTP3Buffer() *http3Buffer {
-	var buffer *http3Buffer
-	if x := poolHTTP3Buffer.Get(); x == nil {
-		buffer = new(http3Buffer)
-	} else {
-		buffer = x.(*http3Buffer)
-	}
-	return buffer
-}
-func putHTTP3Buffer(buffer *http3Buffer) { poolHTTP3Buffer.Put(buffer) }
-
-func (b *http3Buffer) size() uint32  { return uint32(cap(b.buf)) }
-func (b *http3Buffer) getRef() int32 { return b.ref.Load() }
-func (b *http3Buffer) incRef()       { b.ref.Add(1) }
-func (b *http3Buffer) decRef() {
-	if b.ref.Add(-1) == 0 {
-		if DebugLevel() >= 1 {
-			Printf("putHTTP3Buffer ref=%d\n", b.ref.Load())
-		}
-		putHTTP3Buffer(b)
-	}
-}
 
 // http3StaticTable
 var http3StaticTable = [99]pair{ // TODO
@@ -1106,20 +1120,6 @@ type http3DynamicTable struct {
 	entries [124]http3TableEntry
 	content [_4K]byte
 }
-
-// http3InFrame is the server-side HTTP/3 incoming frame.
-type http3InFrame struct {
-	// TODO
-}
-
-func (f *http3InFrame) zero() { *f = http3InFrame{} }
-
-// http3OutFrame is the server-side HTTP/3 outgoing frame.
-type http3OutFrame struct {
-	// TODO
-}
-
-func (f *http3OutFrame) zero() { *f = http3OutFrame{} }
 
 var http3Template = [11]byte{':', 's', 't', 'a', 't', 'u', 's', ' ', 'x', 'x', 'x'}
 var http3Controls = [...][]byte{ // size: 512*24B=12K. keep sync with http1Control and http2Control!

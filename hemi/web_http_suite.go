@@ -1437,7 +1437,7 @@ func (r *serverRequest_) EvalPreconditions(date int64, etag []byte, asOrigin boo
 	if n := len(etag); n >= 2 && etag[0] == '"' && etag[n-1] == '"' {
 		etag = etag[1 : n-1]
 	}
-	// See RFC 9110 (section 13.2.2).
+	// RFC 9110 (section 13.2.2):
 	if asOrigin { // proxies may ignore if-match and if-unmodified-since.
 		if r.ifMatch != 0 { // if-match is present
 			if !r._evalIfMatch(etag) {
@@ -1686,7 +1686,7 @@ func (r *serverRequest_) _loadURLEncodedForm() { // into memory entirely
 	}
 }
 func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see RFC 7578: https://datatracker.ietf.org/doc/html/rfc7578
-	r.pBack, r.pFore = 0, 0
+	r.elemBack, r.elemFore = 0, 0
 	r.consumedSize = r.receivedSize
 	if r.contentReceived { // (0, 64K1)
 		// r.contentText is set, r.contentTextKind == httpContentTextInput. r.formWindow refers to the exact r.contentText.
@@ -1733,34 +1733,34 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 	template[n], template[n+1] = '-', '-'
 	for { // each part in multipart
 		// Now r.formWindow is used for receiving --boundary-- EOL or --boundary EOL
-		for r.formWindow[r.pFore] != '\n' {
-			if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
+		for r.formWindow[r.elemFore] != '\n' {
+			if r.elemFore++; r.elemFore == r.formEdge && !r._growMultipartForm() {
 				return
 			}
 		}
-		if r.pBack == r.pFore {
+		if r.elemBack == r.elemFore {
 			r.stream.markBroken()
 			return
 		}
-		fore := r.pFore
+		fore := r.elemFore
 		if fore >= 1 && r.formWindow[fore-1] == '\r' {
 			fore--
 		}
-		if bytes.Equal(r.formWindow[r.pBack:fore], template[1:n+2]) { // end of multipart (--boundary--)
+		if bytes.Equal(r.formWindow[r.elemBack:fore], template[1:n+2]) { // end of multipart (--boundary--)
 			// All parts are received.
 			if DebugLevel() >= 2 {
 				Println(r.arrayEdge, cap(r.array), string(r.array[0:r.arrayEdge]))
 			}
 			return
-		} else if !bytes.Equal(r.formWindow[r.pBack:fore], template[1:n]) { // not start of multipart (--boundary)
+		} else if !bytes.Equal(r.formWindow[r.elemBack:fore], template[1:n]) { // not start of multipart (--boundary)
 			r.stream.markBroken()
 			return
 		}
 		// Skip '\n'
-		if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
+		if r.elemFore++; r.elemFore == r.formEdge && !r._growMultipartForm() {
 			return
 		}
-		// r.pFore is at fields of current part.
+		// r.elemFore is at fields of current part.
 		var part struct { // current part
 			valid  bool     // true if "name" parameter in "content-disposition" field is found
 			isFile bool     // true if "filename" parameter in "content-disposition" field is found
@@ -1777,11 +1777,11 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 		part.form.place = placeArray // all received forms are placed in r.array
 		for {                        // each field in current part
 			// End of part fields?
-			if b := r.formWindow[r.pFore]; b == '\r' {
-				if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
+			if b := r.formWindow[r.elemFore]; b == '\r' {
+				if r.elemFore++; r.elemFore == r.formEdge && !r._growMultipartForm() {
 					return
 				}
-				if r.formWindow[r.pFore] != '\n' {
+				if r.formWindow[r.elemFore] != '\n' {
 					r.stream.markBroken()
 					return
 				}
@@ -1789,13 +1789,13 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 			} else if b == '\n' {
 				break
 			}
-			r.pBack = r.pFore // now r.formWindow is used for receiving field-name and onward
-			for {             // field name
-				b := r.formWindow[r.pFore]
+			r.elemBack = r.elemFore // now r.formWindow is used for receiving field-name and onward
+			for {                   // field name
+				b := r.formWindow[r.elemFore]
 				if t := httpTchar[b]; t == 1 {
 					// Fast path, do nothing
 				} else if t == 2 { // A-Z
-					r.formWindow[r.pFore] = b + 0x20 // to lower
+					r.formWindow[r.elemFore] = b + 0x20 // to lower
 				} else if t == 3 { // '_'
 					// For forms, do nothing
 				} else if b == ':' {
@@ -1804,45 +1804,45 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 					r.stream.markBroken()
 					return
 				}
-				if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
+				if r.elemFore++; r.elemFore == r.formEdge && !r._growMultipartForm() {
 					return
 				}
 			}
-			if r.pBack == r.pFore { // field-name cannot be empty
+			if r.elemBack == r.elemFore { // field-name cannot be empty
 				r.stream.markBroken()
 				return
 			}
-			r.pFieldName.set(r.pBack, r.pFore) // in case of sliding r.formWindow when r._growMultipartForm()
+			r.pFieldName.set(r.elemBack, r.elemFore) // in case of sliding r.formWindow when r._growMultipartForm()
 			// Skip ':'
-			if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
+			if r.elemFore++; r.elemFore == r.formEdge && !r._growMultipartForm() {
 				return
 			}
 			// Skip OWS before field value
-			for r.formWindow[r.pFore] == ' ' || r.formWindow[r.pFore] == '\t' {
-				if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
+			for r.formWindow[r.elemFore] == ' ' || r.formWindow[r.elemFore] == '\t' {
+				if r.elemFore++; r.elemFore == r.formEdge && !r._growMultipartForm() {
 					return
 				}
 			}
-			r.pBack = r.pFore
+			r.elemBack = r.elemFore
 			// Now r.formWindow is used for receiving field-value and onward. at this time we can still use r.pFieldName, no risk of sliding
 			if fieldName := r.formWindow[r.pFieldName.from:r.pFieldName.edge]; bytes.Equal(fieldName, bytesContentDisposition) { // content-disposition
 				// form-data; name="avatar"; filename="michael.jpg"
-				for r.formWindow[r.pFore] != ';' {
-					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
+				for r.formWindow[r.elemFore] != ';' {
+					if r.elemFore++; r.elemFore == r.formEdge && !r._growMultipartForm() {
 						return
 					}
 				}
-				if r.pBack == r.pFore || !bytes.Equal(r.formWindow[r.pBack:r.pFore], bytesFormData) {
+				if r.elemBack == r.elemFore || !bytes.Equal(r.formWindow[r.elemBack:r.elemFore], bytesFormData) {
 					r.stream.markBroken()
 					return
 				}
-				r.pBack = r.pFore // now r.formWindow is used for receiving parameters and onward
-				for r.formWindow[r.pFore] != '\n' {
-					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
+				r.elemBack = r.elemFore // now r.formWindow is used for receiving parameters and onward
+				for r.formWindow[r.elemFore] != '\n' {
+					if r.elemFore++; r.elemFore == r.formEdge && !r._growMultipartForm() {
 						return
 					}
 				}
-				fore := r.pFore
+				fore := r.elemFore
 				if r.formWindow[fore-1] == '\r' {
 					fore--
 				}
@@ -1851,7 +1851,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 					fore--
 				}
 				paras := make([]para, 2) // for name & filename. won't escape to heap
-				n, ok := r._parseParas(r.formWindow, r.pBack, fore, paras)
+				n, ok := r._parseParas(r.formWindow, r.elemBack, fore, paras)
 				if !ok {
 					r.stream.markBroken()
 					return
@@ -1908,12 +1908,12 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 				}
 			} else if bytes.Equal(fieldName, bytesContentType) { // content-type
 				// image/jpeg
-				for r.formWindow[r.pFore] != '\n' {
-					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
+				for r.formWindow[r.elemFore] != '\n' {
+					if r.elemFore++; r.elemFore == r.formEdge && !r._growMultipartForm() {
 						return
 					}
 				}
-				fore := r.pFore
+				fore := r.elemFore
 				if r.formWindow[fore-1] == '\r' {
 					fore--
 				}
@@ -1921,25 +1921,25 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 				for r.formWindow[fore-1] == ' ' || r.formWindow[fore-1] == '\t' {
 					fore--
 				}
-				if n := fore - r.pBack; n == 0 || n > 255 {
+				if n := fore - r.elemBack; n == 0 || n > 255 {
 					r.stream.markBroken()
 					return
 				}
 				part.type_.from = r.arrayEdge
-				if !r.arrayCopy(r.formWindow[r.pBack:fore]) { // add "image/jpeg"
+				if !r.arrayCopy(r.formWindow[r.elemBack:fore]) { // add "image/jpeg"
 					r.stream.markBroken()
 					return
 				}
 				part.type_.edge = r.arrayEdge
 			} else { // other fields are ignored
-				for r.formWindow[r.pFore] != '\n' {
-					if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
+				for r.formWindow[r.elemFore] != '\n' {
+					if r.elemFore++; r.elemFore == r.formEdge && !r._growMultipartForm() {
 						return
 					}
 				}
 			}
 			// Skip '\n' and goto next field or end of fields
-			if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
+			if r.elemFore++; r.elemFore == r.formEdge && !r._growMultipartForm() {
 				return
 			}
 		}
@@ -1948,7 +1948,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 			return
 		}
 		// Now all fields of the part are received. Skip end of fields and goto part data
-		if r.pFore++; r.pFore == r.formEdge && !r._growMultipartForm() {
+		if r.elemFore++; r.elemFore == r.formEdge && !r._growMultipartForm() {
 			return
 		}
 		if part.isFile {
@@ -1975,10 +1975,10 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 			part.form.nameSize = uint8(part.name.size())
 			part.form.value.from = r.arrayEdge
 		}
-		r.pBack = r.pFore // now r.formWindow is used for receiving part data and onward
-		for {             // each partial in current part
-			partial := r.formWindow[r.pBack:r.formEdge]
-			r.pFore = r.formEdge
+		r.elemBack = r.elemFore // now r.formWindow is used for receiving part data and onward
+		for {                   // each partial in current part
+			partial := r.formWindow[r.elemBack:r.formEdge]
+			r.elemFore = r.formEdge
 			mode := 0 // by default, we assume end of part ("\n--boundary") is not in partial
 			var i int
 			if i = bytes.Index(partial, separator); i >= 0 {
@@ -1987,11 +1987,11 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 				mode = 2 // partial ends with prefix of end of part ("\n--boundary")
 			}
 			if mode > 0 { // found "\n" at i
-				r.pFore = r.pBack + int32(i)
-				if r.pFore > r.pBack && r.formWindow[r.pFore-1] == '\r' {
-					r.pFore--
+				r.elemFore = r.elemBack + int32(i)
+				if r.elemFore > r.elemBack && r.formWindow[r.elemFore-1] == '\r' {
+					r.elemFore--
 				}
-				partial = r.formWindow[r.pBack:r.pFore] // pure data
+				partial = r.formWindow[r.elemBack:r.elemFore] // pure data
 			}
 			if !part.isFile {
 				if !r.arrayCopy(partial) { // join form value
@@ -2013,14 +2013,14 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 				}
 			}
 			if mode == 1 {
-				r.pBack += int32(i + 1) // at the first '-' of "--boundary"
-				r.pFore = r.pBack       // next part starts here
-				break                   // part is received.
+				r.elemBack += int32(i + 1) // at the first '-' of "--boundary"
+				r.elemFore = r.elemBack    // next part starts here
+				break                      // part is received.
 			}
 			if mode == 2 {
-				r.pBack = r.pFore // from EOL (\r or \n). need more and continue
+				r.elemBack = r.elemFore // from EOL (\r or \n). need more and continue
 			} else { // mode == 0
-				r.pBack, r.formEdge = 0, 0 // pure data, clean r.formWindow. need more and continue
+				r.elemBack, r.formEdge = 0, 0 // pure data, clean r.formWindow. need more and continue
 			}
 			// Grow more
 			if !r._growMultipartForm() {
@@ -2030,18 +2030,18 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 	}
 }
 func (r *serverRequest_) _growMultipartForm() bool { // caller needs more data from content file
-	if r.consumedSize == r.receivedSize || (r.formEdge == int32(len(r.formWindow)) && r.pBack == 0) {
+	if r.consumedSize == r.receivedSize || (r.formEdge == int32(len(r.formWindow)) && r.elemBack == 0) {
 		r.stream.markBroken()
 		return false
 	}
-	if r.pBack > 0 { // have useless data. slide to start
-		copy(r.formWindow, r.formWindow[r.pBack:r.formEdge])
-		r.formEdge -= r.pBack
-		r.pFore -= r.pBack
+	if r.elemBack > 0 { // have useless data. slide to start
+		copy(r.formWindow, r.formWindow[r.elemBack:r.formEdge])
+		r.formEdge -= r.elemBack
+		r.elemFore -= r.elemBack
 		if r.pFieldName.notEmpty() {
-			r.pFieldName.sub(r.pBack) // for fields in multipart/form-data, not for trailers
+			r.pFieldName.sub(r.elemBack) // for fields in multipart/form-data, not for trailers
 		}
-		r.pBack = 0
+		r.elemBack = 0
 	}
 	n, err := r.contentFile.Read(r.formWindow[r.formEdge:])
 	r.formEdge += int32(n)
@@ -3427,7 +3427,7 @@ func (s *backendSocket_) onEnd() {
 func (s *backendSocket_) backendTodo() {
 }
 
-//////////////////////////////////////// General HTTP i/o implementation ////////////////////////////////////////
+//////////////////////////////////////// General HTTP in/out implementation ////////////////////////////////////////
 
 // webHolder collects shared methods between *http[x3]Server and *http[1-3]Backend.
 type webHolder interface {
@@ -3561,8 +3561,8 @@ type webIn_ struct { // incoming. needs parsing
 	_webIn0               // all values in this struct must be zero by default!
 }
 type _webIn0 struct { // for fast reset, entirely
-	pBack            int32   // element begins from. for parsing elements in control & headers & content & trailers
-	pFore            int32   // element spanning to. for parsing elements in control & headers & content & trailers
+	elemBack         int32   // element begins from. for parsing elements in control & headers & content & trailers
+	elemFore         int32   // element spanning to. for parsing elements in control & headers & content & trailers
 	head             span    // head (control + headers) of current message -> r.input. set after head is received. only for debugging
 	imme             span    // HTTP/1.x only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
 	hasExtra         [8]bool // has extra pairs? see pairXXX for indexes
@@ -3591,8 +3591,8 @@ type _webIn0 struct { // for fast reset, entirely
 	contentTextKind  int8    // kind of current r.contentText if it is text. see httpContentTextXXX
 	receivedSize     int64   // bytes of currently received content. used by both sized & vague content receiver
 	chunkSize        int64   // left size of current chunk if the chunk is too large to receive in one call. HTTP/1.1 chunked only
-	cBack            int32   // for parsing chunked elements. HTTP/1.1 chunked only
-	cFore            int32   // for parsing chunked elements. HTTP/1.1 chunked only
+	chunkBack        int32   // for parsing chunked elements. HTTP/1.1 chunked only
+	chunkFore        int32   // for parsing chunked elements. HTTP/1.1 chunked only
 	chunkEdge        int32   // edge position of the filled chunked data in r.bodyWindow. HTTP/1.1 chunked only
 	transferChunked  bool    // transfer-encoding: chunked? HTTP/1.1 only
 	overChunked      bool    // for HTTP/1.1 requests, if chunked receiver over received in r.bodyWindow, then r.bodyWindow will be used as r.input on ends

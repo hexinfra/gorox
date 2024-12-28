@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// UDPX (UDP/UDS) router, reverse proxy, and backend.
+// UDPX (UDP/UDS) router, reverse proxy, and backend implementation. See RFC 768 and RFC 8085.
 
 package hemi
 
@@ -204,7 +204,7 @@ type UDPXConn struct {
 	id      int64
 	gate    *udpxGate
 	pktConn net.PacketConn
-	rawConn syscall.RawConn
+	rawConn syscall.RawConn // for syscall
 	// Conn states (zeros)
 	counter   atomic.Int64 // can be used to generate a random number
 	lastRead  time.Time    // deadline of last read operation

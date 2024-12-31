@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 )
 
-const Version = "0.2.0-alpha"
+const Version = "0.2.0"
 
 var ( // basic variables
 	_topOnce sync.Once // protects _topDir

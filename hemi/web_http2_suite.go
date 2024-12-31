@@ -2018,6 +2018,7 @@ type http2OutFrame struct { // 64 bytes
 	ack        bool     // is ACK flag set?
 	padded     bool     // is PADDED flag set?
 	priority   bool     // is PRIORITY flag set?
+	_          bool     // padding
 	header     [9]byte  // header of the frame is encoded here
 	outBuffer  [16]byte // small payload of the frame is placed here temporarily
 	payload    []byte   // refers to the payload

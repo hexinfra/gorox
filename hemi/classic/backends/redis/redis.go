@@ -128,7 +128,7 @@ type RedisConn struct {
 	id      int64 // the conn id
 	node    *redisNode
 	expire  time.Time // when the conn is considered expired
-	netConn net.Conn
+	netConn net.Conn  // *net.TCPConn, *net.UnixConn
 	rawConn syscall.RawConn
 	// Conn states (zeros)
 	counter   atomic.Int64 // can be used to generate a random number

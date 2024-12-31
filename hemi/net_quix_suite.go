@@ -416,14 +416,6 @@ type QUIXDealet_ struct {
 
 //////////////////////////////////////// QUIX reverse proxy implementation ////////////////////////////////////////
 
-func init() {
-	RegisterQUIXDealet("quixProxy", func(name string, stage *Stage, router *QUIXRouter) QUIXDealet {
-		d := new(quixProxy)
-		d.onCreate(name, stage, router)
-		return d
-	})
-}
-
 // QUIXProxyConfig
 type QUIXProxyConfig struct {
 	// TODO
@@ -432,6 +424,14 @@ type QUIXProxyConfig struct {
 // QUIXReverseProxy
 func QUIXReverseProxy(conn *QUIXConn, stream *QUIXStream, backend *QUIXBackend, proxyConfig *QUIXProxyConfig) {
 	// TODO
+}
+
+func init() {
+	RegisterQUIXDealet("quixProxy", func(name string, stage *Stage, router *QUIXRouter) QUIXDealet {
+		d := new(quixProxy)
+		d.onCreate(name, stage, router)
+		return d
+	})
 }
 
 // quixProxy dealet passes QUIX connections to QUIX backends.

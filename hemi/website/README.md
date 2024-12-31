@@ -1,7 +1,7 @@
 Website
 =======
 
-  Website is the official website of Gorox.
+  Website is the official website of the Gorox project.
 
 Build
 =====

@@ -409,14 +409,6 @@ type UDPXDealet_ struct {
 
 //////////////////////////////////////// UDPX reverse proxy implementation ////////////////////////////////////////
 
-func init() {
-	RegisterUDPXDealet("udpxProxy", func(name string, stage *Stage, router *UDPXRouter) UDPXDealet {
-		d := new(udpxProxy)
-		d.onCreate(name, stage, router)
-		return d
-	})
-}
-
 // UDPXProxyConfig
 type UDPXProxyConfig struct {
 	// TODO
@@ -425,6 +417,14 @@ type UDPXProxyConfig struct {
 // UDPXReverseProxy
 func UDPXReverseProxy(conn *UDPXConn, backend *UDPXBackend, proxyConfig *UDPXProxyConfig) {
 	// TODO
+}
+
+func init() {
+	RegisterUDPXDealet("udpxProxy", func(name string, stage *Stage, router *UDPXRouter) UDPXDealet {
+		d := new(udpxProxy)
+		d.onCreate(name, stage, router)
+		return d
+	})
 }
 
 // udpxProxy dealet passes UDPX connections to UDPX backends.

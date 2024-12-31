@@ -595,14 +595,6 @@ type TCPXDealet_ struct {
 
 //////////////////////////////////////// TCPX reverse proxy implementation ////////////////////////////////////////
 
-func init() {
-	RegisterTCPXDealet("tcpxProxy", func(name string, stage *Stage, router *TCPXRouter) TCPXDealet {
-		d := new(tcpxProxy)
-		d.onCreate(name, stage, router)
-		return d
-	})
-}
-
 // TCPXProxyConfig
 type TCPXProxyConfig struct {
 	// Inbound
@@ -660,6 +652,14 @@ func TCPXReverseProxy(conn *TCPXConn, backend *TCPXBackend, proxyConfig *TCPXPro
 		}
 	}
 	<-inboundOver
+}
+
+func init() {
+	RegisterTCPXDealet("tcpxProxy", func(name string, stage *Stage, router *TCPXRouter) TCPXDealet {
+		d := new(tcpxProxy)
+		d.onCreate(name, stage, router)
+		return d
+	})
 }
 
 // tcpxProxy dealet passes TCPX connections to TCPX backends.

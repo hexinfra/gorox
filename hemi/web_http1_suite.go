@@ -7,7 +7,7 @@
 // NOTE: httpxServer and httpxGate are used by both HTTP/1.x and HTTP/2.
 
 // For server, both HTTP/1.0 and HTTP/1.1 are supported. Pipelining is supported but not optimized because it's rarely used.
-// For backend, only HTTP/1.1 is used, so backends MUST support HTTP/1.1. Pipelining is not used.
+// For backend, only HTTP/1.1 is used, so HTTP/1.x backends MUST support HTTP/1.1. Pipelining is not used.
 
 package hemi
 

@@ -15,7 +15,7 @@ Hemi contains these directories:
   * library/  - Place general purpose libraries,
   * procmgr/  - A process manager for programs using Hemi,
   * toolkit/  - Place useful commands,
-  * website/  - A program that hosts the official website.
+  * website/  - A program that hosts the Gorox official website.
 
 
 How to use

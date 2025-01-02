@@ -409,16 +409,6 @@ type UDPXDealet_ struct {
 
 //////////////////////////////////////// UDPX reverse proxy implementation ////////////////////////////////////////
 
-// UDPXProxyConfig
-type UDPXProxyConfig struct {
-	// TODO
-}
-
-// UDPXReverseProxy
-func UDPXReverseProxy(conn *UDPXConn, backend *UDPXBackend, proxyConfig *UDPXProxyConfig) {
-	// TODO
-}
-
 func init() {
 	RegisterUDPXDealet("udpxProxy", func(name string, stage *Stage, router *UDPXRouter) UDPXDealet {
 		d := new(udpxProxy)
@@ -472,6 +462,16 @@ func (d *udpxProxy) OnPrepare() {
 func (d *udpxProxy) Deal(conn *UDPXConn) (dealt bool) {
 	UDPXReverseProxy(conn, d.backend, &d.UDPXProxyConfig)
 	return true
+}
+
+// UDPXProxyConfig
+type UDPXProxyConfig struct {
+	// TODO
+}
+
+// UDPXReverseProxy
+func UDPXReverseProxy(conn *UDPXConn, backend *UDPXBackend, proxyConfig *UDPXProxyConfig) {
+	// TODO
 }
 
 //////////////////////////////////////// UDPX backend implementation ////////////////////////////////////////

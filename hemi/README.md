@@ -1,17 +1,18 @@
 Hemi
 ====
 
-Hemi is the engine of Gorox.
+Hemi is the engine of Gorox. It is a Go module that can be used independently.
 
 
 Layout
 ======
 
-Hemi contains these directories:
+In addition to the *.go files in current directory that implement the core of
+the Hemi Engine, we also use these sub directories to supplement Hemi:
 
-  * classic/  - Place official components,
-  * contrib/  - Place community contributed components,
-  * hemicar/  - A prototype program used to develop Hemi,
+  * classic/  - Place standard Hemi components,
+  * contrib/  - Place community contributed Hemi components,
+  * hemicar/  - A prototype program that is used to develop and test Hemi,
   * library/  - Place general purpose libraries,
   * procmgr/  - A process manager for programs using Hemi,
   * toolkit/  - Place useful commands,
@@ -21,8 +22,8 @@ Hemi contains these directories:
 How to use
 ==========
 
-For examples showing how to use the Hemi Engine, please see our examples at
-https://github.com/hexinfra/examples.
+For examples showing how to use the Hemi Engine in your programs, please see our
+examples at https://github.com/hexinfra/examples.
 
 
 Architecture
@@ -41,10 +42,10 @@ The logical architecture of a stage in Hemi Engine looks like this:
    |     | s | [quix] |    server    |     server      |     |
    |     | e | [tcpx] | <gate><conn> |  <gate><conn>   |     |
    |     | r | [udpx] +--------------+-----------------+     |
-   |     | v | router |              |webapp(*) handlet|     |
-   |     | e |        |              | socklet reviser |     |
-   |     | r | dealet |  service(*)  |      rule       |     |
-   |     |(*)|  case  |              +------+   +------+     |
+   |     | v | router |              | webapp(*)  rule |     |
+   |     | e |        |              | handlet reviser |     |
+   |     | r |  case  |  service(*)  |     socklet     |     |
+   |     |(*)| dealet |              +------+   +------+     |
    |     |   |        |              |stater|   |cacher|     |
    |     +---+--------+--------------+------+---+------+     |
    |     |                  backend                    |     |

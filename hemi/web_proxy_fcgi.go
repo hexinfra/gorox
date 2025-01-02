@@ -220,7 +220,7 @@ func init() {
 	})
 }
 
-// fcgiBackend
+// fcgiBackend is a FCGI backend.
 type fcgiBackend struct {
 	// Parent
 	Backend_[*fcgiNode]
@@ -287,7 +287,7 @@ func (b *fcgiBackend) storeExchan(exchan *fcgiExchan) {
 	exchan.conn.node.storeExchan(exchan)
 }
 
-// fcgiNode
+// fcgiNode is a node in FCGI backend.
 type fcgiNode struct {
 	// Parent
 	Node_
@@ -470,7 +470,7 @@ func (n *fcgiNode) closeFree() int {
 	return qnty
 }
 
-// fcgiConn
+// fcgiConn is a connection to a FCGI node.
 type fcgiConn struct {
 	// Assocs
 	next   *fcgiConn  // the linked-list
@@ -565,7 +565,7 @@ func (c *fcgiConn) Close() error {
 	return netConn.Close()
 }
 
-// fcgiExchan
+// fcgiExchan is a request/response exchange in a FCGI connection.
 type fcgiExchan struct {
 	// Assocs
 	conn     *fcgiConn    // the fcgi conn
@@ -628,7 +628,7 @@ func (x *fcgiExchan) readAtLeast(p []byte, min int) (int, error) {
 func (x *fcgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
 func (x *fcgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }
 
-// fcgiRequest
+// fcgiRequest is the FCGI request in a FCGI exchange.
 type fcgiRequest struct { // outgoing. needs building
 	// Assocs
 	exchan   *fcgiExchan
@@ -1021,7 +1021,7 @@ var ( // fcgi request errors
 	fcgiWriteBroken  = errors.New("fcgi: write broken")
 )
 
-// fcgiResponse must implements the response interface.
+// fcgiResponse is the FCGI response in a FCGI exchange. It must implements the response interface.
 type fcgiResponse struct { // incoming. needs parsing
 	// Assocs
 	exchan *fcgiExchan

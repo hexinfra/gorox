@@ -8,7 +8,7 @@ Layout
 ======
 
 In addition to the *.go files in current directory that implement the core of
-the Hemi Engine, we also use these sub directories to supplement Hemi:
+the Hemi Engine, we also have these sub directories that supplement Hemi:
 
   * classic/  - Place standard Hemi components,
   * contrib/  - Place community contributed Hemi components,

@@ -402,8 +402,8 @@ func (c *server2Conn) onPut() {
 func (c *server2Conn) IsUDS() bool { return c.gate.IsUDS() }
 func (c *server2Conn) IsTLS() bool { return c.gate.IsTLS() }
 
-func (c *server2Conn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.gate.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+func (c *server2Conn) MakeTempName(to []byte, unixTime int64) int {
+	return makeTempName(to, int64(c.gate.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *server2Conn) serve() { // runner
@@ -1532,8 +1532,8 @@ func (c *backend2Conn) onPut() {
 func (c *backend2Conn) IsUDS() bool { return c.node.IsUDS() }
 func (c *backend2Conn) IsTLS() bool { return c.node.IsTLS() }
 
-func (c *backend2Conn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+func (c *backend2Conn) MakeTempName(to []byte, unixTime int64) int {
+	return makeTempName(to, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *backend2Conn) runOut() bool {
@@ -1699,7 +1699,7 @@ func (r *backend2Request) setMethodURI(method []byte, uri []byte, hasContent boo
 	// TODO: set :method and :path
 	return false
 }
-func (r *backend2Request) proxySetAuthority(hostname []byte, colonPort []byte) bool {
+func (r *backend2Request) proxySetAuthority(hostname []byte, colonport []byte) bool {
 	// TODO: set :authority
 	return false
 }

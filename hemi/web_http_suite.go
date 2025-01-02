@@ -123,7 +123,7 @@ func (s *webServer_[G]) bindWebapps() {
 				UseExitln(err.Error())
 			}
 			if DebugLevel() >= 1 {
-				Printf("adding certificate to %s\n", s.ColonPort())
+				Printf("adding certificate to %s\n", s.Colonport())
 			}
 			s.tlsConfig.Certificates = append(s.tlsConfig.Certificates, certificate)
 		}
@@ -221,8 +221,8 @@ type Request interface { // for *server[1-3]Request
 	UnsafeAuthority() []byte // hostname[:port]
 	Hostname() string        // hostname
 	UnsafeHostname() []byte  // hostname
-	ColonPort() string       // :port
-	UnsafeColonPort() []byte // :port
+	Colonport() string       // :port
+	UnsafeColonport() []byte // :port
 
 	URI() string               // /encodedPath?queryString
 	UnsafeURI() []byte         // /encodedPath?queryString
@@ -370,7 +370,7 @@ type _serverRequest0 struct { // for fast reset, entirely
 	method          span     // raw method -> r.input
 	authority       span     // raw hostname[:port] -> r.input
 	hostname        span     // raw hostname (without :port) -> r.input
-	colonPort       span     // raw colon port (:port, with ':') -> r.input
+	colonport       span     // raw colon port (:port, with ':') -> r.input
 	uri             span     // raw uri (raw path & raw query string) -> r.input
 	encodedPath     span     // raw path -> r.input
 	queryString     span     // raw query string (with '?') -> r.input
@@ -511,24 +511,24 @@ func (r *serverRequest_) UnsafeAuthority() []byte {
 }
 func (r *serverRequest_) Hostname() string       { return string(r.UnsafeHostname()) }
 func (r *serverRequest_) UnsafeHostname() []byte { return r.input[r.hostname.from:r.hostname.edge] }
-func (r *serverRequest_) ColonPort() string {
-	if r.colonPort.notEmpty() {
-		return string(r.input[r.colonPort.from:r.colonPort.edge])
+func (r *serverRequest_) Colonport() string {
+	if r.colonport.notEmpty() {
+		return string(r.input[r.colonport.from:r.colonport.edge])
 	}
 	if r.schemeCode == SchemeHTTPS {
-		return stringColonPort443
+		return stringColonport443
 	} else {
-		return stringColonPort80
+		return stringColonport80
 	}
 }
-func (r *serverRequest_) UnsafeColonPort() []byte {
-	if r.colonPort.notEmpty() {
-		return r.input[r.colonPort.from:r.colonPort.edge]
+func (r *serverRequest_) UnsafeColonport() []byte {
+	if r.colonport.notEmpty() {
+		return r.input[r.colonport.from:r.colonport.edge]
 	}
 	if r.schemeCode == SchemeHTTPS {
-		return bytesColonPort443
+		return bytesColonport443
 	} else {
-		return bytesColonPort80
+		return bytesColonport80
 	}
 }
 
@@ -1412,7 +1412,7 @@ func (r *serverRequest_) parseAuthority(from int32, edge int32, save bool) bool 
 	if n := fore - back; n > 6 { // max len(":65535") == 6
 		return false
 	} else if n > 1 && save { // ":" alone is ignored
-		r.colonPort.set(back, fore)
+		r.colonport.set(back, fore)
 	}
 	return true
 }
@@ -2462,7 +2462,7 @@ var serverRequestVariables = [...]func(*serverRequest_) []byte{ // keep sync wit
 	1: (*serverRequest_).UnsafeScheme,      // scheme
 	2: (*serverRequest_).UnsafeAuthority,   // authority
 	3: (*serverRequest_).UnsafeHostname,    // hostname
-	4: (*serverRequest_).UnsafeColonPort,   // colonPort
+	4: (*serverRequest_).UnsafeColonport,   // colonport
 	5: (*serverRequest_).UnsafePath,        // path
 	6: (*serverRequest_).UnsafeURI,         // uri
 	7: (*serverRequest_).UnsafeEncodedPath, // encodedPath
@@ -2994,8 +2994,8 @@ func (h *httpProxy) OnConfigure() {
 	h.ConfigureBool("bufferClientContent", &h.BufferClientContent, true)
 	// hostname
 	h.ConfigureBytes("hostname", &h.Hostname, nil, nil)
-	// colonPort
-	h.ConfigureBytes("colonPort", &h.ColonPort, nil, nil)
+	// colonport
+	h.ConfigureBytes("colonport", &h.Colonport, nil, nil)
 	// inboundViaName
 	h.ConfigureBytes("inboundViaName", &h.InboundViaName, nil, bytesGorox)
 	// delRequestHeaders
@@ -3026,7 +3026,7 @@ type WebExchanProxyConfig struct {
 	// Inbound
 	BufferClientContent bool
 	Hostname            []byte // overrides client's hostname
-	ColonPort           []byte // overrides client's colonPort
+	Colonport           []byte // overrides client's colonport
 	InboundViaName      []byte
 	AppendPathPrefix    []byte
 	AddRequestHeaders   map[string]Value
@@ -3365,7 +3365,7 @@ type stream interface { // for *backend[1-3]Stream
 // request is the backend-side http request.
 type request interface { // for *backend[1-3]Request
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
-	proxySetAuthority(hostname []byte, colonPort []byte) bool
+	proxySetAuthority(hostname []byte, colonport []byte) bool
 	proxyCopyCookies(foreReq Request) bool // HTTP 1.x/2/3 have different requirements on "cookie" header
 	proxyCopyHeaders(foreReq Request, proxyConfig *WebExchanProxyConfig) bool
 	proxyPassMessage(foreReq Request) error                       // pass content to backend directly
@@ -3538,28 +3538,28 @@ func (r *backendRequest_) proxyCopyHeaders(foreReq Request, proxyConfig *WebExch
 	if !r.outMessage.(request).setMethodURI(foreReq.UnsafeMethod(), uri, foreReq.HasContent()) {
 		return false
 	}
-	if foreReq.IsAbsoluteForm() || len(proxyConfig.Hostname) != 0 || len(proxyConfig.ColonPort) != 0 { // TODO: what about HTTP/2 and HTTP/3?
+	if foreReq.IsAbsoluteForm() || len(proxyConfig.Hostname) != 0 || len(proxyConfig.Colonport) != 0 { // TODO: what about HTTP/2 and HTTP/3?
 		foreReq.proxyUnsetHost()
 		if foreReq.IsAbsoluteForm() {
 			if !r.outMessage.addHeader(bytesHost, foreReq.UnsafeAuthority()) {
 				return false
 			}
-		} else { // custom authority (hostname or colonPort)
+		} else { // custom authority (hostname or colonport)
 			var (
 				hostname  []byte
-				colonPort []byte
+				colonport []byte
 			)
 			if len(proxyConfig.Hostname) == 0 { // no custom hostname
 				hostname = foreReq.UnsafeHostname()
 			} else {
 				hostname = proxyConfig.Hostname
 			}
-			if len(proxyConfig.ColonPort) == 0 { // no custom colonPort
-				colonPort = foreReq.UnsafeColonPort()
+			if len(proxyConfig.Colonport) == 0 { // no custom colonport
+				colonport = foreReq.UnsafeColonport()
 			} else {
-				colonPort = proxyConfig.ColonPort
+				colonport = proxyConfig.Colonport
 			}
-			if !r.outMessage.(request).proxySetAuthority(hostname, colonPort) {
+			if !r.outMessage.(request).proxySetAuthority(hostname, colonport) {
 				return false
 			}
 		}
@@ -4082,7 +4082,7 @@ type webConn interface {
 	ID() int64
 	IsUDS() bool
 	IsTLS() bool
-	MakeTempName(p []byte, unixTime int64) int
+	MakeTempName(to []byte, unixTime int64) int
 }
 
 // webConn_ is the parent for *server[1-3]Conn and *backend[1-3]Conn.
@@ -6330,8 +6330,8 @@ const ( // misc http strings.
 	stringHTTP1_1      = "HTTP/1.1"
 	stringHTTP2        = "HTTP/2"
 	stringHTTP3        = "HTTP/3"
-	stringColonPort80  = ":80"
-	stringColonPort443 = ":443"
+	stringColonport80  = ":80"
+	stringColonport443 = ":443"
 	stringSlash        = "/"
 	stringAsterisk     = "*"
 )
@@ -6343,8 +6343,8 @@ var ( // misc http byteses.
 	bytesHTTP1_1        = []byte(stringHTTP1_1)
 	bytesHTTP2          = []byte(stringHTTP2)
 	bytesHTTP3          = []byte(stringHTTP3)
-	bytesColonPort80    = []byte(stringColonPort80)
-	bytesColonPort443   = []byte(stringColonPort443)
+	bytesColonport80    = []byte(stringColonport80)
+	bytesColonport443   = []byte(stringColonport443)
 	bytesSlash          = []byte(stringSlash)
 	bytesAsterisk       = []byte(stringAsterisk)
 	bytesGET            = []byte("GET")

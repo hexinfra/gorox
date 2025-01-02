@@ -97,8 +97,8 @@ func (c *server1Conn) onPut() {
 func (c *server1Conn) IsUDS() bool { return c.gate.IsUDS() }
 func (c *server1Conn) IsTLS() bool { return c.gate.IsTLS() }
 
-func (c *server1Conn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.gate.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+func (c *server1Conn) MakeTempName(to []byte, unixTime int64) int {
+	return makeTempName(to, int64(c.gate.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *server1Conn) serve() { // runner
@@ -223,7 +223,7 @@ func (s *server1Stream) execute() {
 		s.serveAbnormal(req, resp)
 		return
 	}
-	if !webapp.isDefault && !bytes.Equal(req.UnsafeColonPort(), server.ColonPortBytes()) {
+	if !webapp.isDefault && !bytes.Equal(req.UnsafeColonport(), server.ColonportBytes()) {
 		req.headResult, req.failReason = StatusNotFound, "authoritative webapp is not found in this server"
 		s.serveAbnormal(req, resp)
 		return
@@ -900,13 +900,13 @@ func (r *server1Response) AddHostnameRedirection(hostname string) bool {
 		prefix = http1BytesLocationHTTP
 	}
 	headerSize := len(prefix)
-	// TODO: remove colonPort if colonPort is default?
-	colonPort := r.request.UnsafeColonPort()
-	headerSize += len(hostname) + len(colonPort) + len(r.request.UnsafeURI()) + len(bytesCRLF)
+	// TODO: remove colonport if colonport is default?
+	colonport := r.request.UnsafeColonport()
+	headerSize += len(hostname) + len(colonport) + len(r.request.UnsafeURI()) + len(bytesCRLF)
 	if from, _, ok := r.growHeader(headerSize); ok {
 		from += copy(r.fields[from:], prefix)
 		from += copy(r.fields[from:], hostname) // this is almost always configured, not client provided
-		from += copy(r.fields[from:], colonPort)
+		from += copy(r.fields[from:], colonport)
 		from += copy(r.fields[from:], r.request.UnsafeURI()) // original uri, won't split the response
 		r._addCRLFHeader1(from)
 		return true
@@ -1387,8 +1387,8 @@ func (c *backend1Conn) onPut() {
 func (c *backend1Conn) IsUDS() bool { return c.node.IsUDS() }
 func (c *backend1Conn) IsTLS() bool { return c.node.IsTLS() }
 
-func (c *backend1Conn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+func (c *backend1Conn) MakeTempName(to []byte, unixTime int64) int {
+	return makeTempName(to, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *backend1Conn) isAlive() bool { return time.Now().Before(c.expire) }
@@ -1517,22 +1517,22 @@ func (r *backend1Request) setMethodURI(method []byte, uri []byte, hasContent boo
 		return false
 	}
 }
-func (r *backend1Request) proxySetAuthority(hostname []byte, colonPort []byte) bool {
+func (r *backend1Request) proxySetAuthority(hostname []byte, colonport []byte) bool {
 	if r.stream.Conn().IsTLS() {
-		if bytes.Equal(colonPort, bytesColonPort443) {
-			colonPort = nil
+		if bytes.Equal(colonport, bytesColonport443) {
+			colonport = nil
 		}
-	} else if bytes.Equal(colonPort, bytesColonPort80) {
-		colonPort = nil
+	} else if bytes.Equal(colonport, bytesColonport80) {
+		colonport = nil
 	}
-	headerSize := len(bytesHost) + len(bytesColonSpace) + len(hostname) + len(colonPort) + len(bytesCRLF) // host: xxx\r\n
+	headerSize := len(bytesHost) + len(bytesColonSpace) + len(hostname) + len(colonport) + len(bytesCRLF) // host: xxx\r\n
 	if from, _, ok := r._growFields(headerSize); ok {
 		from += copy(r.fields[from:], bytesHost)
 		r.fields[from] = ':'
 		r.fields[from+1] = ' '
 		from += 2
 		from += copy(r.fields[from:], hostname)
-		from += copy(r.fields[from:], colonPort)
+		from += copy(r.fields[from:], colonport)
 		r._addCRLFHeader1(from)
 		return true
 	} else {

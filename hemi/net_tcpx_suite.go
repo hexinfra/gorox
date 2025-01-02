@@ -388,8 +388,8 @@ func (c *TCPXConn) onPut() {
 func (c *TCPXConn) IsUDS() bool { return c.gate.IsUDS() }
 func (c *TCPXConn) IsTLS() bool { return c.gate.IsTLS() }
 
-func (c *TCPXConn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.gate.router.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+func (c *TCPXConn) MakeTempName(to []byte, unixTime int64) int {
+	return makeTempName(to, int64(c.gate.router.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *TCPXConn) SetReadDeadline() error {
@@ -931,8 +931,8 @@ func (c *TConn) onPut() {
 func (c *TConn) IsUDS() bool { return c.node.IsUDS() }
 func (c *TConn) IsTLS() bool { return c.node.IsTLS() }
 
-func (c *TConn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+func (c *TConn) MakeTempName(to []byte, unixTime int64) int {
+	return makeTempName(to, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *TConn) setWriteDeadline() error {

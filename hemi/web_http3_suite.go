@@ -202,8 +202,8 @@ func (c *server3Conn) onPut() {
 func (c *server3Conn) IsUDS() bool { return c.gate.IsUDS() }
 func (c *server3Conn) IsTLS() bool { return c.gate.IsTLS() }
 
-func (c *server3Conn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.gate.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+func (c *server3Conn) MakeTempName(to []byte, unixTime int64) int {
+	return makeTempName(to, int64(c.gate.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *server3Conn) serve() { // runner
@@ -633,8 +633,8 @@ func (c *backend3Conn) onPut() {
 func (c *backend3Conn) IsUDS() bool { return c.node.IsUDS() }
 func (c *backend3Conn) IsTLS() bool { return c.node.IsTLS() }
 
-func (c *backend3Conn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+func (c *backend3Conn) MakeTempName(to []byte, unixTime int64) int {
+	return makeTempName(to, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *backend3Conn) runOut() bool {
@@ -771,7 +771,7 @@ func (r *backend3Request) setMethodURI(method []byte, uri []byte, hasContent boo
 	// TODO: set :method and :path
 	return false
 }
-func (r *backend3Request) proxySetAuthority(hostname []byte, colonPort []byte) bool {
+func (r *backend3Request) proxySetAuthority(hostname []byte, colonport []byte) bool {
 	// TODO: set :authority
 	return false
 }

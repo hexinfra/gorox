@@ -201,8 +201,8 @@ func (s *Site) load(req Request, htmlFile string) []byte {
 			switch token {
 			case "$scheme":
 				subs = append(subs, []byte(req.Scheme()))
-			case "$colonPort":
-				subs = append(subs, []byte(req.ColonPort()))
+			case "$colonport":
+				subs = append(subs, []byte(req.Colonport()))
 			case "$uri": // TODO: XSS
 				subs = append(subs, []byte(req.URI()))
 			default:

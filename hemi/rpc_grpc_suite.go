@@ -167,8 +167,8 @@ func (c *grpcConn) onPut() {
 func (c *grpcConn) IsUDS() bool { return c.gate.IsUDS() }
 func (c *grpcConn) IsTLS() bool { return c.gate.IsTLS() }
 
-func (c *grpcConn) MakeTempName(p []byte, unixTime int64) int {
-	return makeTempName(p, int64(c.gate.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+func (c *grpcConn) MakeTempName(to []byte, unixTime int64) int {
+	return makeTempName(to, int64(c.gate.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
 //func (c *grpcConn) rpcServer() *grpcServer { return c.server }

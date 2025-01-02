@@ -41,11 +41,11 @@ type Server_[G Gate] struct {
 	readTimeout       time.Duration // read() timeout
 	writeTimeout      time.Duration // write() timeout
 	address           string        // hostname:port, /path/to/unix.sock
-	colonPort         string        // like: ":9876"
-	colonPortBytes    []byte        // []byte(colonPort)
+	colonport         string        // like: ":9876"
+	colonportBytes    []byte        // []byte(colonport)
 	udsMode           bool          // is address a unix domain socket?
-	udsColonPort      string        // uds doesn't have a port. use this as port if server is listening at uds
-	udsColonPortBytes []byte        // []byte(udsColonPort)
+	udsColonport      string        // uds doesn't have a port. use this as port if server is listening at uds
+	udsColonportBytes []byte        // []byte(udsColonport)
 	tlsMode           bool          // use tls to secure the transport?
 	tlsConfig         *tls.Config   // set if tls mode is true
 	maxConnsPerGate   int32         // max concurrent connections allowed per gate
@@ -86,8 +86,8 @@ func (s *Server_[G]) OnConfigure() {
 			if p := strings.IndexByte(address, ':'); p == -1 {
 				s.udsMode = true
 			} else {
-				s.colonPort = address[p:]
-				s.colonPortBytes = []byte(s.colonPort)
+				s.colonport = address[p:]
+				s.colonportBytes = []byte(s.colonport)
 			}
 			s.address = address
 		} else {
@@ -97,9 +97,9 @@ func (s *Server_[G]) OnConfigure() {
 		UseExitln(".address is required for servers")
 	}
 
-	// udsColonPort
-	s.ConfigureString("udsColonPort", &s.udsColonPort, nil, ":80")
-	s.udsColonPortBytes = []byte(s.udsColonPort)
+	// udsColonport
+	s.ConfigureString("udsColonport", &s.udsColonport, nil, ":80")
+	s.udsColonportBytes = []byte(s.udsColonport)
 
 	// tlsMode
 	s.ConfigureBool("tlsMode", &s.tlsMode, false)
@@ -136,18 +136,18 @@ func (s *Server_[G]) Stage() *Stage               { return s.stage }
 func (s *Server_[G]) ReadTimeout() time.Duration  { return s.readTimeout }
 func (s *Server_[G]) WriteTimeout() time.Duration { return s.writeTimeout }
 func (s *Server_[G]) Address() string             { return s.address }
-func (s *Server_[G]) ColonPort() string {
+func (s *Server_[G]) Colonport() string {
 	if s.udsMode {
-		return s.udsColonPort
+		return s.udsColonport
 	} else {
-		return s.colonPort
+		return s.colonport
 	}
 }
-func (s *Server_[G]) ColonPortBytes() []byte {
+func (s *Server_[G]) ColonportBytes() []byte {
 	if s.udsMode {
-		return s.udsColonPortBytes
+		return s.udsColonportBytes
 	} else {
-		return s.colonPortBytes
+		return s.colonportBytes
 	}
 }
 func (s *Server_[G]) IsUDS() bool            { return s.udsMode }
@@ -832,7 +832,7 @@ var varCodes = map[string]int16{ // TODO
 	"scheme":      1, // http, https
 	"authority":   2, // example.com, example.org:8080
 	"hostname":    3, // example.com, example.org
-	"colonPort":   4, // :80, :8080
+	"colonport":   4, // :80, :8080
 	"path":        5, // /abc, /def/
 	"uri":         6, // /abc?x=y, /%cc%dd?y=z&z=%ff
 	"encodedPath": 7, // /abc, /%cc%dd

@@ -3,7 +3,8 @@ http1Backend "h1b1" {
 	.dialTimeout = 10s
 	.writeTimeout = 30s
 	.readTimeout = 30s
-	.aliveTimeout = 5s
+	.idleTimeout = 3s
+	.lifetime = 1m
 	.maxStreamsPerConn = 1000
 	.saveContentFilesDir = %tmpDir + "/web/backends/h1b"
 	.maxContentSize = 1T

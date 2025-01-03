@@ -313,7 +313,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		.dialTimeout = 10s
 		.writeTimeout = 30s
 		.readTimeout = 30s
-		.aliveTimeout = 4s
+		.idleTimeout = 3s
 		.maxStreamsPerConn = 1000
 		.saveContentFilesDir = %tmpDir + "/web/backends/h1b"
 		.maxContentSize = 1T
@@ -367,9 +367,9 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					</code>
 				</li>
 				<li>
-					<p>.aliveTimeout 连接存活时长，超过这个时间就从连接池剔除此连接。</p>
-					<code>语法：.aliveTimeout = Duration
-						默认值：4s
+					<p>.idleTimeout 连接空闲时长，超过这个空闲时间就从连接池剔除此连接。</p>
+					<code>语法：.idleTimeout = Duration
+						默认值：3s
 						取值范围：(1s, 10m]
 					</code>
 				</li>

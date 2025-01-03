@@ -256,7 +256,7 @@ func (b *Backend_[N]) OnConfigure() {
 
 	// balancer
 	b.ConfigureString("balancer", &b.balancer, func(value string) error {
-		if value == "roundRobin" || value == "ipHash" || value == "random" {
+		if value == "roundRobin" || value == "ipHash" || value == "random" || value == "leastLoad" {
 			return nil
 		}
 		return errors.New(".balancer has an invalid value")
@@ -270,6 +270,8 @@ func (b *Backend_[N]) OnPrepare() {
 		b.indexGet = b._nextIndexByRandom
 	case "ipHash":
 		b.indexGet = b._nextIndexByIPHash
+	case "leastLoad":
+		b.indexGet = b._nextIndexByLeastLoad
 	default:
 		BugExitln("unknown balancer")
 	}
@@ -321,6 +323,10 @@ func (b *Backend_[N]) _nextIndexByRandom() int64 {
 	return rand.Int63n(b.numNodes)
 }
 func (b *Backend_[N]) _nextIndexByIPHash() int64 {
+	// TODO
+	return 0
+}
+func (b *Backend_[N]) _nextIndexByLeastLoad() int64 {
 	// TODO
 	return 0
 }

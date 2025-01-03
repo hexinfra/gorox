@@ -3280,9 +3280,10 @@ type webBackend_[N Node] struct {
 	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
+	idleTimeout          time.Duration // conn idle timeout
+	lifetime             time.Duration // conn's lifetime
 	maxMemoryContentSize int32         // max content size that can be loaded into memory directly
 	maxStreamsPerConn    int32         // max streams of one conn. 0 means infinite
-	aliveTimeout         time.Duration // conn alive timeout
 }
 
 func (b *webBackend_[N]) onCreate(name string, stage *Stage) {
@@ -3292,6 +3293,22 @@ func (b *webBackend_[N]) onCreate(name string, stage *Stage) {
 func (b *webBackend_[N]) onConfigure() {
 	b.Backend_.OnConfigure()
 	b._contentSaver_.onConfigure(b, TmpDir()+"/web/backends/"+b.name, 60*time.Second, 60*time.Second)
+
+	// idleTimeout
+	b.ConfigureDuration("idleTimeout", &b.idleTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".idleTimeout has an invalid value")
+	}, 3*time.Second)
+
+	// lifetime
+	b.ConfigureDuration("lifetime", &b.lifetime, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".lifetime has an invalid value")
+	}, 1*time.Minute)
 
 	// maxMemoryContentSize
 	b.ConfigureInt32("maxMemoryContentSize", &b.maxMemoryContentSize, func(value int32) error {
@@ -3308,14 +3325,6 @@ func (b *webBackend_[N]) onConfigure() {
 		}
 		return errors.New(".maxStreamsPerConn has an invalid value")
 	}, 1000)
-
-	// aliveTimeout
-	b.ConfigureDuration("aliveTimeout", &b.aliveTimeout, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".aliveTimeout has an invalid value")
-	}, 5*time.Second)
 }
 func (b *webBackend_[N]) onPrepare() {
 	b.Backend_.OnPrepare()
@@ -6033,15 +6042,18 @@ var ( // webOut_ errors
 	webOutTrailerFailed = errors.New("add trailer failed")
 )
 
+// webSocket
+type webSocket interface {
+	Read(p []byte) (int, error)
+	Write(p []byte) (int, error)
+	Close() error
+}
+
 // webSocket_
 type webSocket_ struct { // incoming and outgoing.
 	// Assocs
-	stream webStream   // *server[1-3]Stream, *backend[1-3]Stream
-	socket interface { // *server[1-3]Socket, *backend[1-3]Socket
-		Read(p []byte) (int, error)
-		Write(p []byte) (int, error)
-		Close() error
-	}
+	stream webStream // *server[1-3]Stream, *backend[1-3]Stream
+	socket webSocket // *server[1-3]Socket, *backend[1-3]Socket
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

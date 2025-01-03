@@ -227,9 +227,10 @@ type fcgiBackend struct {
 	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
+	idleTimeout       time.Duration // conn idle timeout
+	lifetime          time.Duration // conn's lifetime
 	keepConn          bool          // instructs FCGI server to keep conn?
 	maxExchansPerConn int32         // max exchans of one conn. 0 means infinite
-	aliveTimeout      time.Duration // conn alive timeout
 }
 
 func (b *fcgiBackend) onCreate(name string, stage *Stage) {
@@ -239,6 +240,22 @@ func (b *fcgiBackend) onCreate(name string, stage *Stage) {
 func (b *fcgiBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
 	b._contentSaver_.onConfigure(b, TmpDir()+"/web/backends/"+b.name, 60*time.Second, 60*time.Second)
+
+	// idleTimeout
+	b.ConfigureDuration("idleTimeout", &b.idleTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".idleTimeout has an invalid value")
+	}, 3*time.Second)
+
+	// lifetime
+	b.ConfigureDuration("lifetime", &b.lifetime, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".lifetime has an invalid value")
+	}, 1*time.Minute)
 
 	// keepConn
 	b.ConfigureBool("keepConn", &b.keepConn, false)
@@ -250,14 +267,6 @@ func (b *fcgiBackend) OnConfigure() {
 		}
 		return errors.New(".maxExchansPerConn has an invalid value")
 	}, 1000)
-
-	// aliveTimeout
-	b.ConfigureDuration("aliveTimeout", &b.aliveTimeout, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".aliveTimeout has an invalid value")
-	}, 5*time.Second)
 
 	// sub components
 	b.ConfigureNodes()
@@ -480,7 +489,7 @@ type fcgiConn struct {
 	// Conn states (non-zeros)
 	id         int64 // the conn id
 	node       *fcgiNode
-	expire     time.Time       // when the conn is considered expired
+	expireTime time.Time       // when the conn is considered expired
 	netConn    net.Conn        // *net.TCPConn or *net.UnixConn
 	rawConn    syscall.RawConn // for syscall
 	persistent bool            // keep the connection after current exchan?
@@ -518,7 +527,7 @@ func putFCGIConn(conn *fcgiConn) {
 func (c *fcgiConn) onGet(id int64, node *fcgiNode, netConn net.Conn, rawConn syscall.RawConn) {
 	c.id = id
 	c.node = node
-	c.expire = time.Now().Add(node.backend.aliveTimeout)
+	c.expireTime = time.Now().Add(node.backend.idleTimeout)
 	c.netConn = netConn
 	c.rawConn = rawConn
 	c.persistent = node.backend.keepConn
@@ -528,7 +537,7 @@ func (c *fcgiConn) onPut() {
 	c.broken.Store(false)
 	c.netConn = nil
 	c.rawConn = nil
-	c.expire = time.Time{}
+	c.expireTime = time.Time{}
 	c.node = nil
 	c.counter.Store(0)
 	c.lastWrite = time.Time{}
@@ -541,15 +550,14 @@ func (c *fcgiConn) MakeTempName(to []byte, unixTime int64) int {
 	return makeTempName(to, c.node.backend.Stage().ID(), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *fcgiConn) isAlive() bool { return time.Now().Before(c.expire) }
-
-func (c *fcgiConn) runOut() bool {
-	return c.usedExchans.Add(1) > c.node.backend.maxExchansPerConn
-}
+func (c *fcgiConn) isAlive() bool { return time.Now().Before(c.expireTime) }
 
 func (c *fcgiConn) markBroken()    { c.broken.Store(true) }
 func (c *fcgiConn) isBroken() bool { return c.broken.Load() }
 
+func (c *fcgiConn) runOut() bool {
+	return c.usedExchans.Add(1) > c.node.backend.maxExchansPerConn
+}
 func (c *fcgiConn) fetchExchan() (*fcgiExchan, error) {
 	exchan := &c.exchan
 	exchan.onUse()

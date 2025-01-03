@@ -172,13 +172,13 @@ func (s *server1Stream) execute() {
 	req.recvHead()
 
 	if req.HeadResult() != StatusOK { // receiving request error
-		s.serveAbnormal(req, resp)
+		s._serveAbnormal(req, resp)
 		return
 	}
 
 	if req.methodCode == MethodCONNECT {
 		req.headResult, req.failReason = StatusNotImplemented, "http tunnel proxy is not implemented here"
-		s.serveAbnormal(req, resp)
+		s._serveAbnormal(req, resp)
 		return
 	}
 
@@ -211,12 +211,12 @@ func (s *server1Stream) execute() {
 
 	if webapp == nil {
 		req.headResult, req.failReason = StatusNotFound, "target webapp is not found in this server"
-		s.serveAbnormal(req, resp)
+		s._serveAbnormal(req, resp)
 		return
 	}
 	if !webapp.isDefault && !bytes.Equal(req.UnsafeColonport(), server.ColonportBytes()) {
 		req.headResult, req.failReason = StatusNotFound, "authoritative webapp is not found in this server"
-		s.serveAbnormal(req, resp)
+		s._serveAbnormal(req, resp)
 		return
 	}
 
@@ -237,7 +237,7 @@ func (s *server1Stream) execute() {
 			} else {
 				req.headResult, req.failReason = StatusContentTooLarge, "content size exceeds webapp's limit"
 			}
-			s.serveAbnormal(req, resp)
+			s._serveAbnormal(req, resp)
 			return
 		}
 
@@ -246,7 +246,7 @@ func (s *server1Stream) execute() {
 			resp.forbidContent = true
 		}
 
-		if req.expectContinue && !s.writeContinue() {
+		if req.expectContinue && !s._writeContinue() {
 			return
 		}
 		conn.usedStreams.Add(1)
@@ -260,7 +260,7 @@ func (s *server1Stream) execute() {
 			conn.persistent = false // i/o error
 		}
 	} else { // socket mode.
-		if req.expectContinue && !s.writeContinue() {
+		if req.expectContinue && !s._writeContinue() {
 			return
 		}
 
@@ -269,33 +269,7 @@ func (s *server1Stream) execute() {
 		conn.persistent = false // explicitly
 	}
 }
-
-func (s *server1Stream) writeContinue() bool { // 100 continue
-	// This is an interim response, write directly.
-	if s.setWriteDeadline() == nil {
-		if _, err := s.write(http1BytesContinue); err == nil {
-			return true
-		}
-	}
-	// i/o error
-	s.conn.persistent = false
-	return false
-}
-
-func (s *server1Stream) executeExchan(webapp *Webapp, req *server1Request, resp *server1Response) { // request & response
-	webapp.dispatchExchan(req, resp)
-
-	if !resp.isSent { // only happens on sized contents because for vague contents the response must be sent on echo()
-		resp.sendChain()
-	} else if resp.isVague() { // for vague contents, we end vague content and write trailers (if exist) here
-		resp.endVague()
-	}
-
-	if !req.contentReceived { // request content exists but was not used, we receive and drop it here
-		req._dropContent()
-	}
-}
-func (s *server1Stream) serveAbnormal(req *server1Request, resp *server1Response) { // 4xx & 5xx
+func (s *server1Stream) _serveAbnormal(req *server1Request, resp *server1Response) { // 4xx & 5xx
 	if DebugLevel() >= 2 {
 		Printf("server=%s gate=%d conn=%d headResult=%d\n", s.conn.gate.server.Name(), s.conn.gate.ID(), s.conn.id, s.request.headResult)
 	}
@@ -341,7 +315,31 @@ func (s *server1Stream) serveAbnormal(req *server1Request, resp *server1Response
 		s.writev(&resp.vector)
 	}
 }
+func (s *server1Stream) _writeContinue() bool { // 100 continue
+	// This is an interim response, write directly.
+	if s.setWriteDeadline() == nil {
+		if _, err := s.write(http1BytesContinue); err == nil {
+			return true
+		}
+	}
+	// i/o error
+	s.conn.persistent = false
+	return false
+}
 
+func (s *server1Stream) executeExchan(webapp *Webapp, req *server1Request, resp *server1Response) { // request & response
+	webapp.dispatchExchan(req, resp)
+
+	if !resp.isSent { // only happens on sized contents because for vague contents the response must be sent on echo()
+		resp.sendChain()
+	} else if resp.isVague() { // for vague contents, we end vague content and write trailers (if exist) here
+		resp.endVague()
+	}
+
+	if !req.contentReceived { // request content exists but was not used, we receive and drop it here
+		req._dropContent()
+	}
+}
 func (s *server1Stream) executeSocket() { // upgrade: websocket. See RFC 6455
 	// TODO(diogin): implementation.
 	// NOTICE: use idle timeout or clear read timeout otherwise?
@@ -1287,7 +1285,7 @@ type backend1Conn struct {
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	node       *http1Node // the node to which the connection belongs
-	expire     time.Time  // when the conn is considered expired
+	expireTime time.Time  // when the conn is considered expired
 	persistent bool       // keep the connection after current stream? true by default
 	// Conn states (zeros)
 }
@@ -1322,22 +1320,21 @@ func (c *backend1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawCon
 	c.http1Conn_.onGet(id, backend.Stage().ID(), node.IsUDS(), node.IsTLS(), netConn, rawConn, backend.ReadTimeout(), backend.WriteTimeout())
 
 	c.node = node
-	c.expire = time.Now().Add(node.backend.aliveTimeout)
+	c.expireTime = time.Now().Add(backend.idleTimeout)
 	c.persistent = true
 }
 func (c *backend1Conn) onPut() {
-	c.expire = time.Time{}
+	c.expireTime = time.Time{}
 	c.node = nil
 
 	c.http1Conn_.onPut()
 }
 
-func (c *backend1Conn) isAlive() bool { return time.Now().Before(c.expire) }
+func (c *backend1Conn) isAlive() bool { return time.Now().Before(c.expireTime) }
 
 func (c *backend1Conn) runOut() bool {
 	return c.usedStreams.Add(1) > c.node.backend.MaxStreamsPerConn()
 }
-
 func (c *backend1Conn) fetchStream() (*backend1Stream, error) {
 	stream := &c.stream
 	stream.onUse()

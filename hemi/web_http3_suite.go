@@ -281,8 +281,10 @@ func (s *server3Stream) execute() { // runner
 	// TODO ...
 	putServer3Stream(s)
 }
-
-func (s *server3Stream) writeContinue() bool { // 100 continue
+func (s *server3Stream) _serveAbnormal(req *server3Request, resp *server3Response) { // 4xx & 5xx
+	// TODO
+}
+func (s *server3Stream) _writeContinue() bool { // 100 continue
 	// TODO
 	return false
 }
@@ -291,10 +293,6 @@ func (s *server3Stream) executeExchan(webapp *Webapp, req *server3Request, resp 
 	// TODO
 	webapp.dispatchExchan(req, resp)
 }
-func (s *server3Stream) serveAbnormal(req *server3Request, resp *server3Response) { // 4xx & 5xx
-	// TODO
-}
-
 func (s *server3Stream) executeSocket() { // see RFC 9220
 	// TODO
 }
@@ -539,8 +537,8 @@ type backend3Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node   *http3Node
-	expire time.Time // when the conn is considered expired
+	node       *http3Node
+	expireTime time.Time // when the conn is considered expired
 	// Conn states (zeros)
 	_backend3Conn0 // all values in this struct must be zero by default!
 }
@@ -569,11 +567,11 @@ func (c *backend3Conn) onGet(id int64, node *http3Node, quicConn *quic.Conn) {
 	c.http3Conn_.onGet(id, backend.Stage().ID(), node.IsUDS(), node.IsTLS(), quicConn, backend.ReadTimeout(), backend.WriteTimeout())
 
 	c.node = node
-	c.expire = time.Now().Add(backend.aliveTimeout)
+	c.expireTime = time.Now().Add(backend.idleTimeout)
 }
 func (c *backend3Conn) onPut() {
 	c._backend3Conn0 = _backend3Conn0{}
-	c.expire = time.Time{}
+	c.expireTime = time.Time{}
 	c.node = nil
 
 	c.http3Conn_.onPut()
@@ -582,7 +580,6 @@ func (c *backend3Conn) onPut() {
 func (c *backend3Conn) runOut() bool {
 	return c.usedStreams.Add(1) > c.node.backend.MaxStreamsPerConn()
 }
-
 func (c *backend3Conn) fetchStream() (*backend3Stream, error) {
 	// Note: A backend3Conn can be used concurrently, limited by maxStreams.
 	// TODO: stream.onUse()

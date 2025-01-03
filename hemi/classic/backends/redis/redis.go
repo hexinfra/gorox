@@ -33,7 +33,8 @@ type RedisBackend struct {
 	// Parent
 	Backend_[*redisNode]
 	// States
-	aliveTimeout time.Duration // conn alive timeout
+	idleTimeout time.Duration // conn idle timeout
+	lifetime    time.Duration // conn's lifetime
 }
 
 func (b *RedisBackend) onCreate(name string, stage *Stage) {
@@ -43,13 +44,21 @@ func (b *RedisBackend) onCreate(name string, stage *Stage) {
 func (b *RedisBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
 
-	// aliveTimeout
-	b.ConfigureDuration("aliveTimeout", &b.aliveTimeout, func(value time.Duration) error {
+	// idleTimeout
+	b.ConfigureDuration("idleTimeout", &b.idleTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".aliveTimeout has an invalid value")
-	}, 5*time.Second)
+		return errors.New(".idleTimeout has an invalid value")
+	}, 3*time.Second)
+
+	// lifetime
+	b.ConfigureDuration("lifetime", &b.lifetime, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".lifetime has an invalid value")
+	}, 1*time.Minute)
 
 	// sub components
 	b.ConfigureNodes()
@@ -125,11 +134,11 @@ func (n *redisNode) closeConn(redisConn *RedisConn) {
 // RedisConn is a connection to redisNode.
 type RedisConn struct {
 	// Conn states (non-zeros)
-	id      int64 // the conn id
-	node    *redisNode
-	expire  time.Time // when the conn is considered expired
-	netConn net.Conn  // *net.TCPConn, *net.UnixConn
-	rawConn syscall.RawConn
+	id         int64 // the conn id
+	node       *redisNode
+	expireTime time.Time // when the conn is considered expired
+	netConn    net.Conn  // *net.TCPConn, *net.UnixConn
+	rawConn    syscall.RawConn
 	// Conn states (zeros)
 	counter   atomic.Int64 // can be used to generate a random number
 	lastWrite time.Time    // deadline of last write operation
@@ -156,14 +165,14 @@ func putRedisConn(redisConn *RedisConn) {
 func (c *RedisConn) onGet(id int64, node *redisNode, netConn net.Conn, rawConn syscall.RawConn) {
 	c.id = id
 	c.node = node
-	c.expire = time.Now().Add(node.backend.aliveTimeout)
+	c.expireTime = time.Now().Add(node.backend.idleTimeout)
 	c.netConn = netConn
 	c.rawConn = rawConn
 }
 func (c *RedisConn) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
-	c.expire = time.Time{}
+	c.expireTime = time.Time{}
 	c.node = nil
 	c.counter.Store(0)
 	c.lastWrite = time.Time{}

@@ -26,17 +26,15 @@ import (
 // server1Conn is the server-side HTTP/1.x connection.
 type server1Conn struct {
 	// Parent
-	webConn_
+	http1Conn_
 	// Assocs
 	stream server1Stream // an http/1.x connection has exactly one stream
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	gate       *httpxGate      // the gate to which the conn belongs
-	netConn    net.Conn        // *net.TCPConn, *tls.Conn, *net.UnixConn
-	rawConn    syscall.RawConn // for syscall, only usable when netConn is TCP/UDS
-	persistent bool            // keep the connection after current stream? true by default
-	closeSafe  bool            // if false, send a FIN first to avoid TCP's RST following immediate close(). true by default
+	gate       *httpxGate // the gate to which the conn belongs
+	persistent bool       // keep the connection after current stream? true by default
+	closeSafe  bool       // if false, send a FIN first to avoid TCP's RST following immediate close(). true by default
 	// Conn states (zeros)
 }
 
@@ -66,11 +64,10 @@ func putServer1Conn(serverConn *server1Conn) {
 }
 
 func (c *server1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.webConn_.onGet(id)
+	server := gate.server
+	c.http1Conn_.onGet(id, server.Stage().ID(), gate.IsUDS(), gate.IsTLS(), netConn, rawConn, server.ReadTimeout(), server.WriteTimeout())
 
 	c.gate = gate
-	c.netConn = netConn
-	c.rawConn = rawConn
 	c.persistent = true
 	c.closeSafe = true
 
@@ -87,18 +84,9 @@ func (c *server1Conn) onPut() {
 	}
 	req.inputNext, req.inputEdge = 0, 0
 
-	c.netConn = nil
-	c.rawConn = nil
 	c.gate = nil
 
-	c.webConn_.onPut()
-}
-
-func (c *server1Conn) IsUDS() bool { return c.gate.IsUDS() }
-func (c *server1Conn) IsTLS() bool { return c.gate.IsTLS() }
-
-func (c *server1Conn) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, int64(c.gate.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	c.http1Conn_.onPut()
 }
 
 func (c *server1Conn) serve() { // runner
@@ -148,12 +136,11 @@ func (c *server1Conn) serve() { // runner
 // server1Stream is the server-side HTTP/1.x stream.
 type server1Stream struct {
 	// Parent
-	webStream_
+	http1Stream_[*server1Conn]
 	// Assocs
-	conn     *server1Conn
-	request  server1Request  // the server-side http/1.x request.
-	response server1Response // the server-side http/1.x response.
-	socket   *server1Socket  // the server-side http/1.x webSocket.
+	request  server1Request  // the server-side http/1.x request
+	response server1Response // the server-side http/1.x response
+	socket   *server1Socket  // the server-side http/1.x webSocket
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -161,7 +148,8 @@ type server1Stream struct {
 }
 
 func (s *server1Stream) onUse() { // for non-zeros
-	s.webStream_.onUse()
+	s.http1Stream_.onUse()
+
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
 }
@@ -172,8 +160,11 @@ func (s *server1Stream) onEnd() { // for zeros
 		s.socket.onEnd()
 		s.socket = nil
 	}
-	s.webStream_.onEnd()
+
+	s.http1Stream_.onEnd()
 }
+
+func (s *server1Stream) Holder() webHolder { return s.conn.gate.server }
 
 func (s *server1Stream) execute() {
 	req, resp := &s.request, &s.response
@@ -356,44 +347,6 @@ func (s *server1Stream) executeSocket() { // upgrade: websocket. See RFC 6455
 	// NOTICE: use idle timeout or clear read timeout otherwise?
 	s.write([]byte("HTTP/1.1 501 Not Implemented\r\nConnection: close\r\n\r\n"))
 }
-
-func (s *server1Stream) Holder() webHolder    { return s.conn.gate.server }
-func (s *server1Stream) Conn() webConn        { return s.conn }
-func (s *server1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
-
-func (s *server1Stream) markBroken()    { s.conn.markBroken() }
-func (s *server1Stream) isBroken() bool { return s.conn.isBroken() }
-
-func (s *server1Stream) setReadDeadline() error {
-	deadline := time.Now().Add(s.conn.gate.server.ReadTimeout())
-	if deadline.Sub(s.conn.lastRead) >= time.Second {
-		if err := s.conn.netConn.SetReadDeadline(deadline); err != nil {
-			return err
-		}
-		s.conn.lastRead = deadline
-	}
-	return nil
-}
-func (s *server1Stream) setWriteDeadline() error {
-	deadline := time.Now().Add(s.conn.gate.server.WriteTimeout())
-	if deadline.Sub(s.conn.lastWrite) >= time.Second {
-		if err := s.conn.netConn.SetWriteDeadline(deadline); err != nil {
-			return err
-		}
-		s.conn.lastWrite = deadline
-	}
-	return nil
-}
-
-func (s *server1Stream) read(p []byte) (int, error)     { return s.conn.netConn.Read(p) }
-func (s *server1Stream) readFull(p []byte) (int, error) { return io.ReadFull(s.conn.netConn, p) }
-func (s *server1Stream) write(p []byte) (int, error)    { return s.conn.netConn.Write(p) }
-func (s *server1Stream) writev(vector *net.Buffers) (int64, error) {
-	return vector.WriteTo(s.conn.netConn)
-}
-
-func (s *server1Stream) buffer256() []byte          { return s.stockBuffer[:] }
-func (s *server1Stream) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 // server1Request is the server-side HTTP/1.x request.
 type server1Request struct { // incoming. needs parsing
@@ -1326,18 +1279,16 @@ func (n *http1Node) closeFree() int {
 // backend1Conn is the backend-side HTTP/1.x connection.
 type backend1Conn struct {
 	// Parent
-	webConn_
+	http1Conn_
 	// Assocs
 	next   *backend1Conn  // the linked-list
 	stream backend1Stream // an http/1.x connection has exactly one stream
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node       *http1Node
-	expire     time.Time       // when the conn is considered expired
-	netConn    net.Conn        // *net.TCPConn, *tls.Conn, *net.UnixConn
-	rawConn    syscall.RawConn // for syscall, only usable when netConn is TCP/UDS
-	persistent bool            // keep the connection after current stream? true by default
+	node       *http1Node // the node to which the connection belongs
+	expire     time.Time  // when the conn is considered expired
+	persistent bool       // keep the connection after current stream? true by default
 	// Conn states (zeros)
 }
 
@@ -1367,28 +1318,18 @@ func putBackend1Conn(backendConn *backend1Conn) {
 }
 
 func (c *backend1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.webConn_.onGet(id)
+	backend := node.backend
+	c.http1Conn_.onGet(id, backend.Stage().ID(), node.IsUDS(), node.IsTLS(), netConn, rawConn, backend.ReadTimeout(), backend.WriteTimeout())
 
 	c.node = node
 	c.expire = time.Now().Add(node.backend.aliveTimeout)
-	c.netConn = netConn
-	c.rawConn = rawConn
 	c.persistent = true
 }
 func (c *backend1Conn) onPut() {
-	c.netConn = nil
-	c.rawConn = nil
 	c.expire = time.Time{}
 	c.node = nil
 
-	c.webConn_.onPut()
-}
-
-func (c *backend1Conn) IsUDS() bool { return c.node.IsUDS() }
-func (c *backend1Conn) IsTLS() bool { return c.node.IsTLS() }
-
-func (c *backend1Conn) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	c.http1Conn_.onPut()
 }
 
 func (c *backend1Conn) isAlive() bool { return time.Now().Before(c.expire) }
@@ -1415,9 +1356,8 @@ func (c *backend1Conn) Close() error {
 // backend1Stream is the backend-side HTTP/1.x stream.
 type backend1Stream struct {
 	// Parent
-	webStream_
+	http1Stream_[*backend1Conn]
 	// Assocs
-	conn     *backend1Conn    // the backend-side http/1.x conn
 	request  backend1Request  // the backend-side http/1.x request
 	response backend1Response // the backend-side http/1.x response
 	socket   *backend1Socket  // the backend-side http/1.x webSocket
@@ -1428,7 +1368,8 @@ type backend1Stream struct {
 }
 
 func (s *backend1Stream) onUse() { // for non-zeros
-	s.webStream_.onUse()
+	s.http1Stream_.onUse()
+
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
 }
@@ -1439,50 +1380,15 @@ func (s *backend1Stream) onEnd() { // for zeros
 		s.socket.onEnd()
 		s.socket = nil
 	}
-	s.webStream_.onEnd()
+
+	s.http1Stream_.onEnd()
 }
+
+func (s *backend1Stream) Holder() webHolder { return s.conn.node.backend }
 
 func (s *backend1Stream) Request() request   { return &s.request }
 func (s *backend1Stream) Response() response { return &s.response }
 func (s *backend1Stream) Socket() socket     { return nil } // TODO. See RFC 6455
-
-func (s *backend1Stream) Holder() webHolder    { return s.conn.node.backend }
-func (s *backend1Stream) Conn() webConn        { return s.conn }
-func (s *backend1Stream) remoteAddr() net.Addr { return s.conn.netConn.RemoteAddr() }
-
-func (s *backend1Stream) markBroken()    { s.conn.markBroken() }
-func (s *backend1Stream) isBroken() bool { return s.conn.isBroken() }
-
-func (s *backend1Stream) setWriteDeadline() error {
-	deadline := time.Now().Add(s.conn.node.backend.WriteTimeout())
-	if deadline.Sub(s.conn.lastWrite) >= time.Second {
-		if err := s.conn.netConn.SetWriteDeadline(deadline); err != nil {
-			return err
-		}
-		s.conn.lastWrite = deadline
-	}
-	return nil
-}
-func (s *backend1Stream) setReadDeadline() error {
-	deadline := time.Now().Add(s.conn.node.backend.ReadTimeout())
-	if deadline.Sub(s.conn.lastRead) >= time.Second {
-		if err := s.conn.netConn.SetReadDeadline(deadline); err != nil {
-			return err
-		}
-		s.conn.lastRead = deadline
-	}
-	return nil
-}
-
-func (s *backend1Stream) write(p []byte) (int, error) { return s.conn.netConn.Write(p) }
-func (s *backend1Stream) writev(vector *net.Buffers) (int64, error) {
-	return vector.WriteTo(s.conn.netConn)
-}
-func (s *backend1Stream) read(p []byte) (int, error)     { return s.conn.netConn.Read(p) }
-func (s *backend1Stream) readFull(p []byte) (int, error) { return io.ReadFull(s.conn.netConn, p) }
-
-func (s *backend1Stream) buffer256() []byte          { return s.stockBuffer[:] }
-func (s *backend1Stream) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 // backend1Request is the backend-side HTTP/1.x request.
 type backend1Request struct { // outgoing. needs building
@@ -1799,6 +1705,113 @@ func (s *backend1Socket) onEnd() {
 }
 
 //////////////////////////////////////// HTTP/1.x in/out implementation ////////////////////////////////////////
+
+// http1Conn
+type http1Conn interface {
+	// Imports
+	webConn
+	// Methods
+	setReadDeadline() error
+	setWriteDeadline() error
+	read(p []byte) (int, error)
+	readFull(p []byte) (int, error)
+	write(p []byte) (int, error)
+	writev(vector *net.Buffers) (int64, error)
+}
+
+// http1Conn_
+type http1Conn_ struct {
+	// Parent
+	webConn_
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	netConn net.Conn        // *net.TCPConn, *tls.Conn, *net.UnixConn
+	rawConn syscall.RawConn // for syscall, only usable when netConn is TCP/UDS
+	// Conn states (zeros)
+}
+
+func (c *http1Conn_) onGet(id int64, stageID int32, udsMode bool, tlsMode bool, netConn net.Conn, rawConn syscall.RawConn, readTimeout time.Duration, writeTimeout time.Duration) {
+	c.webConn_.onGet(id, stageID, udsMode, tlsMode, readTimeout, writeTimeout)
+
+	c.netConn = netConn
+	c.rawConn = rawConn
+}
+func (c *http1Conn_) onPut() {
+	c.netConn = nil
+	c.rawConn = nil
+
+	c.webConn_.onPut()
+}
+
+func (c *http1Conn_) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
+
+func (c *http1Conn_) setReadDeadline() error {
+	deadline := time.Now().Add(c.readTimeout)
+	if deadline.Sub(c.lastRead) >= time.Second {
+		if err := c.netConn.SetReadDeadline(deadline); err != nil {
+			return err
+		}
+		c.lastRead = deadline
+	}
+	return nil
+}
+func (c *http1Conn_) setWriteDeadline() error {
+	deadline := time.Now().Add(c.writeTimeout)
+	if deadline.Sub(c.lastWrite) >= time.Second {
+		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
+			return err
+		}
+		c.lastWrite = deadline
+	}
+	return nil
+}
+
+func (c *http1Conn_) read(p []byte) (int, error)                { return c.netConn.Read(p) }
+func (c *http1Conn_) readFull(p []byte) (int, error)            { return io.ReadFull(c.netConn, p) }
+func (c *http1Conn_) write(p []byte) (int, error)               { return c.netConn.Write(p) }
+func (c *http1Conn_) writev(vector *net.Buffers) (int64, error) { return vector.WriteTo(c.netConn) }
+
+// http1Stream
+type http1Stream interface {
+	// Imports
+	webStream
+	// Methods
+}
+
+// http1Stream_
+type http1Stream_[C http1Conn] struct {
+	// Parent
+	webStream_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non zeros)
+	conn C // the http/1.x conn
+	// Stream states (zeros)
+}
+
+func (s *http1Stream_[C]) onUse() {
+	s.webStream_.onUse()
+}
+func (s *http1Stream_[C]) onEnd() {
+	s.webStream_.onEnd()
+}
+
+func (s *http1Stream_[C]) Conn() webConn        { return s.conn }
+func (s *http1Stream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }
+
+func (s *http1Stream_[C]) markBroken()    { s.conn.markBroken() }
+func (s *http1Stream_[C]) isBroken() bool { return s.conn.isBroken() }
+
+func (s *http1Stream_[C]) setReadDeadline() error  { return s.conn.setReadDeadline() }
+func (s *http1Stream_[C]) setWriteDeadline() error { return s.conn.setWriteDeadline() }
+
+func (s *http1Stream_[C]) read(p []byte) (int, error)     { return s.conn.read(p) }
+func (s *http1Stream_[C]) readFull(p []byte) (int, error) { return s.conn.readFull(p) }
+func (s *http1Stream_[C]) write(p []byte) (int, error)    { return s.conn.write(p) }
+func (s *http1Stream_[C]) writev(vector *net.Buffers) (int64, error) {
+	return s.conn.writev(vector)
+}
 
 // HTTP/1.x incoming
 

@@ -4083,12 +4083,20 @@ type webConn interface {
 	IsUDS() bool
 	IsTLS() bool
 	MakeTempName(to []byte, unixTime int64) int
+	remoteAddr() net.Addr
+	markBroken()
+	isBroken() bool
 }
 
-// webConn_ is the parent for *server[1-3]Conn and *backend[1-3]Conn.
+// webConn_ is the parent for *http[1-3]Conn_.
 type webConn_ struct {
 	// Conn states (non-zeros)
-	id int64 // the conn id
+	id           int64         // the conn id
+	stageID      int32         // current stage id, for convenience
+	udsMode      bool          // for convenience
+	tlsMode      bool          // for convenience
+	readTimeout  time.Duration // for convenience
+	writeTimeout time.Duration // for convenience
 	// Conn states (zeros)
 	usedStreams atomic.Int32 // accumulated num of streams served or fired
 	broken      atomic.Bool  // is conn broken?
@@ -4097,8 +4105,13 @@ type webConn_ struct {
 	lastRead    time.Time    // deadline of last read operation
 }
 
-func (c *webConn_) onGet(id int64) {
+func (c *webConn_) onGet(id int64, stageID int32, udsMode bool, tlsMode bool, readTimeout time.Duration, writeTimeout time.Duration) {
 	c.id = id
+	c.stageID = stageID
+	c.udsMode = udsMode
+	c.tlsMode = tlsMode
+	c.readTimeout = readTimeout
+	c.writeTimeout = writeTimeout
 }
 func (c *webConn_) onPut() {
 	c.usedStreams.Store(0)
@@ -4109,6 +4122,13 @@ func (c *webConn_) onPut() {
 }
 
 func (c *webConn_) ID() int64 { return c.id }
+
+func (c *webConn_) IsUDS() bool { return c.udsMode }
+func (c *webConn_) IsTLS() bool { return c.tlsMode }
+
+func (c *webConn_) MakeTempName(to []byte, unixTime int64) int {
+	return makeTempName(to, int64(c.stageID), c.id, unixTime, c.counter.Add(1))
+}
 
 func (c *webConn_) markBroken()    { c.broken.Store(true) }
 func (c *webConn_) isBroken() bool { return c.broken.Load() }
@@ -4147,6 +4167,9 @@ func (s *webStream_) onUse() {
 func (s *webStream_) onEnd() {
 	s.region.Free()
 }
+
+func (s *webStream_) buffer256() []byte          { return s.stockBuffer[:] }
+func (s *webStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 // webIn collects shared methods between *server[1-3]Request and *backend[1-3]Response.
 type webIn interface {

@@ -4127,7 +4127,7 @@ func (c *webConn_) IsUDS() bool { return c.udsMode }
 func (c *webConn_) IsTLS() bool { return c.tlsMode }
 
 func (c *webConn_) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, int64(c.stageID), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(to, c.stageID, c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *webConn_) markBroken()    { c.broken.Store(true) }
@@ -4151,7 +4151,7 @@ type webStream interface {
 	writev(vector *net.Buffers) (int64, error)
 }
 
-// webStream_ is the parent for *server[1-3]Stream and *backend[1-3]Stream.
+// webStream_ is the parent for *http[1-3]Stream_.
 type webStream_ struct {
 	// Stream states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into

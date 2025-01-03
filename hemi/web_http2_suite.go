@@ -1716,7 +1716,7 @@ type http2Stream_[C http2Conn] struct {
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	id   uint32
-	conn C
+	conn C // the http/2 connection
 	// Stream states (zeros)
 	_http2Stream0 // all values in this struct must be zero by default!
 }
@@ -1733,6 +1733,7 @@ func (s *http2Stream_[C]) onUse(id uint32, conn C) {
 func (s *http2Stream_[C]) onEnd() {
 	s._http2Stream0 = _http2Stream0{}
 
+	// s.conn = nil
 	s.webStream_.onEnd()
 }
 

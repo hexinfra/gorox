@@ -822,7 +822,7 @@ type http3Stream_[C http3Conn] struct {
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	id   int64
-	conn C
+	conn C // the http/3 connection
 	// Stream states (zeros)
 	_http3Stream0 // all values in this struct must be zero by default!
 }
@@ -838,6 +838,7 @@ func (s *http3Stream_[C]) onUse(id int64, conn C) {
 func (s *http3Stream_[C]) onEnd() {
 	s._http3Stream0 = _http3Stream0{}
 
+	// s.conn = nil
 	s.webStream_.onEnd()
 }
 

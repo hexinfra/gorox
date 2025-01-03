@@ -246,7 +246,7 @@ func (c *UDPXConn) onPut() {
 func (c *UDPXConn) IsUDS() bool { return c.gate.IsUDS() }
 
 func (c *UDPXConn) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, int64(c.gate.router.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(to, c.gate.router.Stage().ID(), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *UDPXConn) Close() error {
@@ -608,7 +608,7 @@ func (c *UConn) onPut() {
 func (c *UConn) IsUDS() bool { return c.node.IsUDS() }
 
 func (c *UConn) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(to, c.node.backend.Stage().ID(), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *UConn) markBroken()    { c.broken.Store(true) }

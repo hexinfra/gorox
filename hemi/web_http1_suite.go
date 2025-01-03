@@ -1786,7 +1786,7 @@ type http1Stream_[C http1Conn] struct {
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non zeros)
-	conn C // the http/1.x conn
+	conn C // the http/1.x connection
 	// Stream states (zeros)
 }
 

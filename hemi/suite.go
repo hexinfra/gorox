@@ -710,14 +710,14 @@ var ( // defined errors
 	errNodeBusy = errors.New("node is busy")
 )
 
-func makeTempName(p []byte, stageID int64, connID int64, unixTime int64, counter int64) int {
+func makeTempName(p []byte, stageID int32, connID int64, unixTime int64, counter int64) int {
 	// TODO: improvement
 	// stageID(8) | connID(16) | seconds(24) | counter(16)
 	stageID &= 0x7f
 	connID &= 0xffff
 	unixTime &= 0xffffff
 	counter &= 0xffff
-	return i64ToDec(stageID<<56|connID<<40|unixTime<<16|counter, p)
+	return i64ToDec(int64(stageID)<<56|connID<<40|unixTime<<16|counter, p)
 }
 
 func equalMatch(value []byte, patterns [][]byte) bool {

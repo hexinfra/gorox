@@ -538,7 +538,7 @@ func (c *fcgiConn) onPut() {
 func (c *fcgiConn) IsUDS() bool { return c.node.IsUDS() }
 
 func (c *fcgiConn) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(to, c.node.backend.Stage().ID(), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *fcgiConn) isAlive() bool { return time.Now().Before(c.expire) }

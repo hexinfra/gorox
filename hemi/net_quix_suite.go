@@ -248,7 +248,7 @@ func (c *QUIXConn) IsUDS() bool { return c.gate.IsUDS() }
 func (c *QUIXConn) IsTLS() bool { return c.gate.IsTLS() }
 
 func (c *QUIXConn) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, int64(c.gate.router.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(to, c.gate.router.Stage().ID(), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *QUIXConn) closeConn() error {
@@ -645,7 +645,7 @@ func (c *QConn) IsUDS() bool { return c.node.IsUDS() }
 func (c *QConn) IsTLS() bool { return c.node.IsTLS() }
 
 func (c *QConn) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, int64(c.node.backend.Stage().ID()), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(to, c.node.backend.Stage().ID(), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *QConn) runOut() bool { return c.usedStreams.Add(1) > c.maxStreams }

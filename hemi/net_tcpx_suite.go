@@ -212,14 +212,14 @@ func (g *tcpxGate) Open() error {
 }
 func (g *tcpxGate) Shut() error {
 	g.MarkShut()
-	return g.listener.Close() // breaks serve()
+	return g.listener.Close() // breaks serveXXX()
 }
 
 func (g *tcpxGate) serveUDS() { // runner
 	listener := g.listener.(*net.UnixListener)
 	connID := int64(0)
 	for {
-		unixConn, err := listener.AcceptUnix()
+		udsConn, err := listener.AcceptUnix()
 		if err != nil {
 			if g.IsShut() {
 				break
@@ -230,15 +230,15 @@ func (g *tcpxGate) serveUDS() { // runner
 		g.IncConn()
 		if actives := g.IncActives(); g.ReachLimit(actives) {
 			g.router.Logf("tcpxGate=%d: too many UDS connections!\n", g.id)
-			g.justClose(unixConn)
+			g.justClose(udsConn)
 			continue
 		}
-		rawConn, err := unixConn.SyscallConn()
+		rawConn, err := udsConn.SyscallConn()
 		if err != nil {
-			g.justClose(unixConn)
+			g.justClose(udsConn)
 			continue
 		}
-		conn := getTCPXConn(connID, g, unixConn, rawConn)
+		conn := getTCPXConn(connID, g, udsConn, rawConn)
 		go g.router.serveConn(conn) // conn is put to pool in serveConn()
 		connID++
 	}

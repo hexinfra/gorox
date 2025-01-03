@@ -101,7 +101,7 @@ func (g *http3Gate) Open() error {
 }
 func (g *http3Gate) Shut() error {
 	g.MarkShut()
-	return g.listener.Close() // breaks serve()
+	return g.listener.Close() // breaks serveXXX()
 }
 
 func (g *http3Gate) serveUDS() { // runner
@@ -124,7 +124,7 @@ func (g *http3Gate) serveTLS() { // runner
 			continue
 		}
 		server3Conn := getServer3Conn(connID, g, quicConn)
-		go server3Conn.serve() // server3Conn is put to pool in serve()
+		go server3Conn.manager() // server3Conn is put to pool in manager()
 		connID++
 	}
 	g.WaitConns() // TODO: max timeout?
@@ -143,7 +143,7 @@ func (g *http3Gate) justClose(quicConn *quic.Conn) {
 // server3Conn is the server-side HTTP/3 connection.
 type server3Conn struct {
 	// Parent
-	webConn_
+	http3Conn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -152,8 +152,7 @@ type server3Conn struct {
 	inBuffer *http3Buffer      // ...
 	table    http3DynamicTable // ...
 	// Conn states (zeros)
-	streams       [http3MaxActiveStreams]*server3Stream // active (open, remoteClosed, localClosed) streams
-	_server3Conn0                                       // all values in this struct must be zero by default!
+	_server3Conn0 // all values in this struct must be zero by default!
 }
 type _server3Conn0 struct { // for fast reset, entirely
 	inBufferEdge uint32 // incoming data ends at c.inBuffer.buf[c.inBufferEdge]
@@ -179,7 +178,7 @@ func putServer3Conn(serverConn *server3Conn) {
 }
 
 func (c *server3Conn) onGet(id int64, gate *http3Gate, quicConn *quic.Conn) {
-	c.webConn_.onGet(id)
+	c.http3Conn_.onGet(id)
 
 	c.gate = gate
 	c.quicConn = quicConn
@@ -192,11 +191,10 @@ func (c *server3Conn) onPut() {
 	c.quicConn = nil
 	// c.inBuffer is reserved
 	// c.table is reserved
-	c.streams = [http3MaxActiveStreams]*server3Stream{}
 	c._server3Conn0 = _server3Conn0{}
 	c.gate = nil
 
-	c.webConn_.onPut()
+	c.http3Conn_.onPut()
 }
 
 func (c *server3Conn) IsUDS() bool { return c.gate.IsUDS() }
@@ -206,7 +204,7 @@ func (c *server3Conn) MakeTempName(to []byte, unixTime int64) int {
 	return makeTempName(to, int64(c.gate.server.Stage().ID()), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *server3Conn) serve() { // runner
+func (c *server3Conn) manager() { // runner
 	// TODO
 	// use go c.receiver()?
 }
@@ -224,7 +222,7 @@ func (c *server3Conn) closeConn() {
 // server3Stream is the server-side HTTP/3 stream.
 type server3Stream struct {
 	// Parent
-	webStream_
+	http3Stream_
 	// Assocs
 	request  server3Request  // the http/3 request.
 	response server3Response // the http/3 response.
@@ -267,7 +265,8 @@ func putServer3Stream(stream *server3Stream) {
 }
 
 func (s *server3Stream) onUse(conn *server3Conn, quicStream *quic.Stream) { // for non-zeros
-	s.webStream_.onUse()
+	s.http3Stream_.onUse(123) // TODO
+
 	s.conn = conn
 	s.quicStream = quicStream
 	s.request.onUse(Version3)
@@ -283,7 +282,8 @@ func (s *server3Stream) onEnd() { // for zeros
 	s.conn = nil
 	s.quicStream = nil
 	s._server3Stream0 = _server3Stream0{}
-	s.webStream_.onEnd()
+
+	s.http3Stream_.onEnd()
 }
 
 func (s *server3Stream) execute() { // runner
@@ -580,7 +580,7 @@ func (n *http3Node) storeStream(stream *backend3Stream) {
 // backend3Conn
 type backend3Conn struct {
 	// Parent
-	webConn_
+	http3Conn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -588,9 +588,7 @@ type backend3Conn struct {
 	expire   time.Time  // when the conn is considered expired
 	quicConn *quic.Conn // the underlying quic connection
 	// Conn states (zeros)
-	nStreams       atomic.Int32                           // concurrent streams
-	streams        [http3MaxActiveStreams]*backend3Stream // active (open, remoteClosed, localClosed) streams
-	_backend3Conn0                                        // all values in this struct must be zero by default!
+	_backend3Conn0 // all values in this struct must be zero by default!
 }
 type _backend3Conn0 struct { // for fast reset, entirely
 }
@@ -613,7 +611,7 @@ func putBackend3Conn(backendConn *backend3Conn) {
 }
 
 func (c *backend3Conn) onGet(id int64, node *http3Node, quicConn *quic.Conn) {
-	c.webConn_.onGet(id)
+	c.http3Conn_.onGet(id)
 
 	c.node = node
 	c.expire = time.Now().Add(node.backend.aliveTimeout)
@@ -621,13 +619,11 @@ func (c *backend3Conn) onGet(id int64, node *http3Node, quicConn *quic.Conn) {
 }
 func (c *backend3Conn) onPut() {
 	c.quicConn = nil
-	c.nStreams.Store(0)
-	c.streams = [http3MaxActiveStreams]*backend3Stream{}
 	c._backend3Conn0 = _backend3Conn0{}
 	c.expire = time.Time{}
 	c.node = nil
 
-	c.webConn_.onPut()
+	c.http3Conn_.onPut()
 }
 
 func (c *backend3Conn) IsUDS() bool { return c.node.IsUDS() }
@@ -661,7 +657,7 @@ func (c *backend3Conn) Close() error {
 // backend3Stream
 type backend3Stream struct {
 	// Parent
-	webStream_
+	http3Stream_
 	// Assocs
 	request  backend3Request
 	response backend3Response
@@ -701,7 +697,8 @@ func putBackend3Stream(stream *backend3Stream) {
 }
 
 func (s *backend3Stream) onUse(conn *backend3Conn, quicStream *quic.Stream) { // for non-zeros
-	s.webStream_.onUse()
+	s.http3Stream_.onUse(123) // TODO
+
 	s.conn = conn
 	s.quicStream = quicStream
 	s.request.onUse(Version3)
@@ -717,13 +714,13 @@ func (s *backend3Stream) onEnd() { // for zeros
 	s.conn = nil
 	s.quicStream = nil
 	s._backend3Stream0 = _backend3Stream0{}
-	s.webStream_.onEnd()
+
+	s.http3Stream_.onEnd()
 }
 
 func (s *backend3Stream) Request() request   { return &s.request }
 func (s *backend3Stream) Response() response { return &s.response }
-
-func (s *backend3Stream) Socket() socket { return nil } // TODO. See RFC 9220
+func (s *backend3Stream) Socket() socket     { return nil } // TODO. See RFC 9220
 
 func (s *backend3Stream) Holder() webHolder    { return s.conn.node.backend }
 func (s *backend3Stream) Conn() webConn        { return s.conn }
@@ -859,6 +856,61 @@ func (s *backend3Socket) onEnd() {
 }
 
 //////////////////////////////////////// HTTP/3 in/out implementation ////////////////////////////////////////
+
+// http3Conn_
+type http3Conn_ struct {
+	// Parent
+	webConn_
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	// Conn states (zeros)
+	streams     [http3MaxActiveStreams]http3Stream // active (open, remoteClosed, localClosed) streams
+	_http3Conn0                                    // all values in this struct must be zero by default!
+}
+type _http3Conn0 struct { // for fast reset, entirely
+}
+
+func (c *http3Conn_) onGet(id int64) {
+	c.webConn_.onGet(id)
+}
+func (c *http3Conn_) onPut() {
+	c.streams = [http3MaxActiveStreams]http3Stream{}
+
+	c.webConn_.onPut()
+}
+
+// http3Stream
+type http3Stream interface {
+	// Imports
+	webStream
+	// Methods
+}
+
+// http3Stream_
+type http3Stream_ struct {
+	// Parent
+	webStream_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	id int64
+	// Stream states (zeros)
+	_http3Stream0 // all values in this struct must be zero by default!
+}
+type _http3Stream0 struct { // for fast reset, entirely
+}
+
+func (s *http3Stream_) onUse(id int64) {
+	s.webStream_.onUse()
+
+	s.id = id
+}
+func (s *http3Stream_) onEnd() {
+	s._http3Stream0 = _http3Stream0{}
+
+	s.webStream_.onEnd()
+}
 
 // http3InFrame is the server-side HTTP/3 incoming frame.
 type http3InFrame struct {

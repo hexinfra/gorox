@@ -1444,8 +1444,7 @@ func (s *backend1Stream) onEnd() { // for zeros
 
 func (s *backend1Stream) Request() request   { return &s.request }
 func (s *backend1Stream) Response() response { return &s.response }
-
-func (s *backend1Stream) Socket() socket { return nil } // TODO. See RFC 6455
+func (s *backend1Stream) Socket() socket     { return nil } // TODO. See RFC 6455
 
 func (s *backend1Stream) Holder() webHolder    { return s.conn.node.backend }
 func (s *backend1Stream) Conn() webConn        { return s.conn }

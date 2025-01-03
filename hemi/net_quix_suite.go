@@ -180,7 +180,7 @@ func (g *quixGate) Open() error {
 }
 func (g *quixGate) Shut() error {
 	g.MarkShut()
-	return g.listener.Close() // breaks serve()
+	return g.listener.Close() // breaks serveXXX()
 }
 
 func (g *quixGate) serveUDS() { // runner

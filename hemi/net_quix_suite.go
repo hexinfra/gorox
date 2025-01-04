@@ -604,18 +604,18 @@ type QConn struct {
 var poolQConn sync.Pool
 
 func getQConn(id int64, node *quixNode, quicConn *quic.Conn) *QConn {
-	var qConn *QConn
+	var conn *QConn
 	if x := poolQConn.Get(); x == nil {
-		qConn = new(QConn)
+		conn = new(QConn)
 	} else {
-		qConn = x.(*QConn)
+		conn = x.(*QConn)
 	}
-	qConn.onGet(id, node, quicConn)
-	return qConn
+	conn.onGet(id, node, quicConn)
+	return conn
 }
-func putQConn(qConn *QConn) {
-	qConn.onPut()
-	poolQConn.Put(qConn)
+func putQConn(conn *QConn) {
+	conn.onPut()
+	poolQConn.Put(conn)
 }
 
 func (c *QConn) onGet(id int64, node *quixNode, quicConn *quic.Conn) {

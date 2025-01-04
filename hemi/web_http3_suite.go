@@ -233,24 +233,24 @@ type _server3Stream0 struct { // for fast reset, entirely
 var poolServer3Stream sync.Pool
 
 func getServer3Stream(conn *server3Conn, quicStream *quic.Stream) *server3Stream {
-	var stream *server3Stream
+	var serverStream *server3Stream
 	if x := poolServer3Stream.Get(); x == nil {
-		stream = new(server3Stream)
-		req, resp := &stream.request, &stream.response
-		req.stream = stream
+		serverStream = new(server3Stream)
+		req, resp := &serverStream.request, &serverStream.response
+		req.stream = serverStream
 		req.inMessage = req
-		resp.stream = stream
+		resp.stream = serverStream
 		resp.outMessage = resp
 		resp.request = req
 	} else {
-		stream = x.(*server3Stream)
+		serverStream = x.(*server3Stream)
 	}
-	stream.onUse(conn, quicStream)
-	return stream
+	serverStream.onUse(conn, quicStream)
+	return serverStream
 }
-func putServer3Stream(stream *server3Stream) {
-	stream.onEnd()
-	poolServer3Stream.Put(stream)
+func putServer3Stream(serverStream *server3Stream) {
+	serverStream.onEnd()
+	poolServer3Stream.Put(serverStream)
 }
 
 func (s *server3Stream) onUse(conn *server3Conn, quicStream *quic.Stream) { // for non-zeros
@@ -609,24 +609,24 @@ type _backend3Stream0 struct { // for fast reset, entirely
 var poolBackend3Stream sync.Pool
 
 func getBackend3Stream(conn *backend3Conn, quicStream *quic.Stream) *backend3Stream {
-	var stream *backend3Stream
+	var backendStream *backend3Stream
 	if x := poolBackend3Stream.Get(); x == nil {
-		stream = new(backend3Stream)
-		req, resp := &stream.request, &stream.response
-		req.stream = stream
+		backendStream = new(backend3Stream)
+		req, resp := &backendStream.request, &backendStream.response
+		req.stream = backendStream
 		req.outMessage = req
 		req.response = resp
-		resp.stream = stream
+		resp.stream = backendStream
 		resp.inMessage = resp
 	} else {
-		stream = x.(*backend3Stream)
+		backendStream = x.(*backend3Stream)
 	}
-	stream.onUse(conn, quicStream)
-	return stream
+	backendStream.onUse(conn, quicStream)
+	return backendStream
 }
-func putBackend3Stream(stream *backend3Stream) {
-	stream.onEnd()
-	poolBackend3Stream.Put(stream)
+func putBackend3Stream(backendStream *backend3Stream) {
+	backendStream.onEnd()
+	poolBackend3Stream.Put(backendStream)
 }
 
 func (s *backend3Stream) onUse(conn *backend3Conn, quicStream *quic.Stream) { // for non-zeros

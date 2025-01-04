@@ -547,19 +547,19 @@ type UConn struct {
 
 var poolUConn sync.Pool
 
-func getUConn(id int64, node *udpxNode, netConn net.PacketConn, rawConn syscall.RawConn) *UConn {
-	var uConn *UConn
+func getUConn(id int64, node *udpxNode, pktConn net.PacketConn, rawConn syscall.RawConn) *UConn {
+	var conn *UConn
 	if x := poolUConn.Get(); x == nil {
-		uConn = new(UConn)
+		conn = new(UConn)
 	} else {
-		uConn = x.(*UConn)
+		conn = x.(*UConn)
 	}
-	uConn.onGet(id, node, netConn, rawConn)
-	return uConn
+	conn.onGet(id, node, pktConn, rawConn)
+	return conn
 }
-func putUConn(uConn *UConn) {
-	uConn.onPut()
-	poolUConn.Put(uConn)
+func putUConn(conn *UConn) {
+	conn.onPut()
+	poolUConn.Put(conn)
 }
 
 func (c *UConn) onGet(id int64, node *udpxNode, pktConn net.PacketConn, rawConn syscall.RawConn) {

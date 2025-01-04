@@ -675,24 +675,24 @@ type _server2Stream0 struct { // for fast reset, entirely
 var poolServer2Stream sync.Pool
 
 func getServer2Stream(conn *server2Conn, id uint32, outWindow int32) *server2Stream {
-	var stream *server2Stream
+	var serverStream *server2Stream
 	if x := poolServer2Stream.Get(); x == nil {
-		stream = new(server2Stream)
-		req, resp := &stream.request, &stream.response
-		req.stream = stream
+		serverStream = new(server2Stream)
+		req, resp := &serverStream.request, &serverStream.response
+		req.stream = serverStream
 		req.inMessage = req
-		resp.stream = stream
+		resp.stream = serverStream
 		resp.outMessage = resp
 		resp.request = req
 	} else {
-		stream = x.(*server2Stream)
+		serverStream = x.(*server2Stream)
 	}
-	stream.onUse(id, conn, outWindow)
-	return stream
+	serverStream.onUse(id, conn, outWindow)
+	return serverStream
 }
-func putServer2Stream(stream *server2Stream) {
-	stream.onEnd()
-	poolServer2Stream.Put(stream)
+func putServer2Stream(serverStream *server2Stream) {
+	serverStream.onEnd()
+	poolServer2Stream.Put(serverStream)
 }
 
 func (s *server2Stream) onUse(id uint32, conn *server2Conn, outWindow int32) { // for non-zeros
@@ -1131,24 +1131,24 @@ type _backend2Stream0 struct { // for fast reset, entirely
 var poolBackend2Stream sync.Pool
 
 func getBackend2Stream(conn *backend2Conn, id uint32) *backend2Stream {
-	var stream *backend2Stream
+	var backendStream *backend2Stream
 	if x := poolBackend2Stream.Get(); x == nil {
-		stream = new(backend2Stream)
-		req, resp := &stream.request, &stream.response
-		req.stream = stream
+		backendStream = new(backend2Stream)
+		req, resp := &backendStream.request, &backendStream.response
+		req.stream = backendStream
 		req.outMessage = req
 		req.response = resp
-		resp.stream = stream
+		resp.stream = backendStream
 		resp.inMessage = resp
 	} else {
-		stream = x.(*backend2Stream)
+		backendStream = x.(*backend2Stream)
 	}
-	stream.onUse(id, conn)
-	return stream
+	backendStream.onUse(id, conn)
+	return backendStream
 }
-func putBackend2Stream(stream *backend2Stream) {
-	stream.onEnd()
-	poolBackend2Stream.Put(stream)
+func putBackend2Stream(backendStream *backend2Stream) {
+	backendStream.onEnd()
+	poolBackend2Stream.Put(backendStream)
 }
 
 func (s *backend2Stream) onUse(id uint32, conn *backend2Conn) { // for non-zeros

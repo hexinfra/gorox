@@ -383,7 +383,6 @@ func (c *TCPXConn) _checkClose() {
 		c.Close()
 	}
 }
-
 func (c *TCPXConn) Close() {
 	c.gate.justClose(c.netConn)
 }
@@ -827,18 +826,18 @@ type TConn struct {
 var poolTConn sync.Pool
 
 func getTConn(id int64, node *tcpxNode, netConn net.Conn, rawConn syscall.RawConn) *TConn {
-	var tConn *TConn
+	var conn *TConn
 	if x := poolTConn.Get(); x == nil {
-		tConn = new(TConn)
+		conn = new(TConn)
 	} else {
-		tConn = x.(*TConn)
+		conn = x.(*TConn)
 	}
-	tConn.onGet(id, node, netConn, rawConn)
-	return tConn
+	conn.onGet(id, node, netConn, rawConn)
+	return conn
 }
-func putTConn(tConn *TConn) {
-	tConn.onPut()
-	poolTConn.Put(tConn)
+func putTConn(conn *TConn) {
+	conn.onPut()
+	poolTConn.Put(conn)
 }
 
 func (c *TConn) onGet(id int64, node *tcpxNode, netConn net.Conn, rawConn syscall.RawConn) {
@@ -871,7 +870,6 @@ func (c *TConn) _checkClose() {
 		c.Close()
 	}
 }
-
 func (c *TConn) Close() error {
 	c.node.DecSub() // conn
 	netConn := c.netConn

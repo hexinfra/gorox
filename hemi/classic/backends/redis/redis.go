@@ -148,18 +148,18 @@ type RedisConn struct {
 var poolRedisConn sync.Pool
 
 func getRedisConn(id int64, node *redisNode, netConn net.Conn, rawConn syscall.RawConn) *RedisConn {
-	var redisConn *RedisConn
+	var conn *RedisConn
 	if x := poolRedisConn.Get(); x == nil {
-		redisConn = new(RedisConn)
+		conn = new(RedisConn)
 	} else {
-		redisConn = x.(*RedisConn)
+		conn = x.(*RedisConn)
 	}
-	redisConn.onGet(id, node, netConn, rawConn)
-	return redisConn
+	conn.onGet(id, node, netConn, rawConn)
+	return conn
 }
-func putRedisConn(redisConn *RedisConn) {
-	redisConn.onPut()
-	poolRedisConn.Put(redisConn)
+func putRedisConn(conn *RedisConn) {
+	conn.onPut()
+	poolRedisConn.Put(conn)
 }
 
 func (c *RedisConn) onGet(id int64, node *redisNode, netConn net.Conn, rawConn syscall.RawConn) {

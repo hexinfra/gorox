@@ -201,54 +201,42 @@ func (g *quixGate) justClose(quicConn *quic.Conn) {
 
 // QUIXConn is a QUIX connection coming from QUIXRouter.
 type QUIXConn struct {
+	// Parent
+	quixConn_
 	// Conn states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id       int64
-	gate     *quixGate
-	quicConn *quic.Conn
+	gate *quixGate
 	// Conn states (zeros)
-	counter   atomic.Int64 // can be used to generate a random number
-	lastRead  time.Time    // deadline of last read operation
-	lastWrite time.Time    // deadline of last write operation
 }
 
 var poolQUIXConn sync.Pool
 
 func getQUIXConn(id int64, gate *quixGate, quicConn *quic.Conn) *QUIXConn {
-	var quixConn *QUIXConn
+	var conn *QUIXConn
 	if x := poolQUIXConn.Get(); x == nil {
-		quixConn = new(QUIXConn)
+		conn = new(QUIXConn)
 	} else {
-		quixConn = x.(*QUIXConn)
+		conn = x.(*QUIXConn)
 	}
-	quixConn.onGet(id, gate, quicConn)
-	return quixConn
+	conn.onGet(id, gate, quicConn)
+	return conn
 }
-func putQUIXConn(quixConn *QUIXConn) {
-	quixConn.onPut()
-	poolQUIXConn.Put(quixConn)
+func putQUIXConn(conn *QUIXConn) {
+	conn.onPut()
+	poolQUIXConn.Put(conn)
 }
 
 func (c *QUIXConn) onGet(id int64, gate *quixGate, quicConn *quic.Conn) {
-	c.id = id
+	router := gate.router
+	c.quixConn_.onGet(id, router.Stage().ID(), quicConn, gate.IsUDS(), gate.IsTLS(), 123) // TODO
+
 	c.gate = gate
-	c.quicConn = quicConn
 }
 func (c *QUIXConn) onPut() {
-	c.quicConn = nil
 	c.gate = nil
-	c.counter.Store(0)
-	c.lastRead = time.Time{}
-	c.lastWrite = time.Time{}
-}
 
-func (c *QUIXConn) IsUDS() bool { return c.gate.IsUDS() }
-func (c *QUIXConn) IsTLS() bool { return c.gate.IsTLS() }
-
-func (c *QUIXConn) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, c.gate.router.Stage().ID(), c.id, unixTime, c.counter.Add(1))
+	c.quixConn_.onPut()
 }
 
 func (c *QUIXConn) closeConn() error {
@@ -595,17 +583,11 @@ func (n *quixNode) storeStream(qStream *QStream) {
 
 // QConn is a backend-side quix connection to quixNode.
 type QConn struct {
+	// Parent
+	quixConn_
 	// Conn states (non-zeros)
-	id         int64 // the conn id
-	node       *quixNode
-	quicConn   *quic.Conn
-	maxStreams int32 // how many streams are allowed on this connection?
+	node *quixNode
 	// Conn states (zeros)
-	counter     atomic.Int64 // can be used to generate a random number
-	lastWrite   time.Time    // deadline of last write operation
-	lastRead    time.Time    // deadline of last read operation
-	usedStreams atomic.Int32 // how many streams have been used?
-	broken      atomic.Bool  // is connection broken?
 }
 
 var poolQConn sync.Pool
@@ -626,33 +608,20 @@ func putQConn(qConn *QConn) {
 }
 
 func (c *QConn) onGet(id int64, node *quixNode, quicConn *quic.Conn) {
-	c.id = id
+	backend := node.backend
+	c.quixConn_.onGet(id, backend.Stage().ID(), quicConn, node.IsUDS(), node.IsTLS(), backend.MaxStreamsPerConn())
+
 	c.node = node
-	c.quicConn = quicConn
-	c.maxStreams = node.backend.MaxStreamsPerConn()
 }
 func (c *QConn) onPut() {
-	c.quicConn = nil
-	c.usedStreams.Store(0)
-	c.broken.Store(false)
 	c.node = nil
-	c.counter.Store(0)
-	c.lastWrite = time.Time{}
-	c.lastRead = time.Time{}
+
+	c.quixConn_.onPut()
 }
 
-func (c *QConn) IsUDS() bool { return c.node.IsUDS() }
-func (c *QConn) IsTLS() bool { return c.node.IsTLS() }
-
-func (c *QConn) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, c.node.backend.Stage().ID(), c.id, unixTime, c.counter.Add(1))
+func (c *QConn) runOut() bool {
+	return c.usedStreams.Add(1) > c.maxStreams
 }
-
-func (c *QConn) runOut() bool { return c.usedStreams.Add(1) > c.maxStreams }
-
-func (c *QConn) markBroken()    { c.broken.Store(true) }
-func (c *QConn) isBroken() bool { return c.broken.Load() }
-
 func (c *QConn) FetchStream() (*QStream, error) {
 	// TODO
 	return nil, nil
@@ -712,4 +681,65 @@ func (s *QStream) Read(p []byte) (n int, err error) {
 func (s *QStream) Close() error {
 	// TODO
 	return nil
+}
+
+//////////////////////////////////////// QUIX in/out implementation ////////////////////////////////////////
+
+// quixConn
+type quixConn interface {
+}
+
+// quixConn_
+type quixConn_ struct {
+	// Conn states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id         int64
+	stageID    int32
+	quicConn   *quic.Conn
+	udsMode    bool
+	tlsMode    bool
+	maxStreams int32 // how many streams are allowed on this connection?
+	// Conn states (zeros)
+	counter     atomic.Int64 // can be used to generate a random number
+	lastRead    time.Time    // deadline of last read operation
+	lastWrite   time.Time    // deadline of last write operation
+	broken      atomic.Bool  // is connection broken?
+	usedStreams atomic.Int32 // how many streams have been used?
+}
+
+func (c *quixConn_) onGet(id int64, stageID int32, quicConn *quic.Conn, udsMode bool, tlsMode bool, maxStreams int32) {
+	c.id = id
+	c.stageID = stageID
+	c.quicConn = quicConn
+	c.udsMode = udsMode
+	c.tlsMode = tlsMode
+	c.maxStreams = maxStreams
+}
+func (c *quixConn_) onPut() {
+	c.quicConn = nil
+	c.counter.Store(0)
+	c.lastRead = time.Time{}
+	c.lastWrite = time.Time{}
+	c.broken.Store(false)
+	c.usedStreams.Store(0)
+}
+
+func (c *quixConn_) IsUDS() bool { return c.udsMode }
+func (c *quixConn_) IsTLS() bool { return c.tlsMode }
+
+func (c *quixConn_) MakeTempName(to []byte, unixTime int64) int {
+	return makeTempName(to, c.stageID, c.id, unixTime, c.counter.Add(1))
+}
+
+func (c *quixConn_) markBroken()    { c.broken.Store(true) }
+func (c *quixConn_) isBroken() bool { return c.broken.Load() }
+
+// quixStream
+type quixStream interface {
+}
+
+// quixStream_
+type quixStream_ struct {
 }

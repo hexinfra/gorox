@@ -197,70 +197,48 @@ func (g *udpxGate) justClose(pktConn net.PacketConn) {
 
 // UDPXConn
 type UDPXConn struct {
+	// Parent
+	udpxConn_
 	// Conn states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id      int64
-	gate    *udpxGate
-	pktConn net.PacketConn
-	rawConn syscall.RawConn // for syscall
+	gate *udpxGate
 	// Conn states (zeros)
-	counter   atomic.Int64 // can be used to generate a random number
-	lastRead  time.Time    // deadline of last read operation
-	lastWrite time.Time    // deadline of last write operation
 }
 
 var poolUDPXConn sync.Pool
 
 func getUDPXConn(id int64, gate *udpxGate, pktConn net.PacketConn, rawConn syscall.RawConn) *UDPXConn {
-	var udpxConn *UDPXConn
+	var conn *UDPXConn
 	if x := poolUDPXConn.Get(); x == nil {
-		udpxConn = new(UDPXConn)
+		conn = new(UDPXConn)
 	} else {
-		udpxConn = x.(*UDPXConn)
+		conn = x.(*UDPXConn)
 	}
-	udpxConn.onGet(id, gate, pktConn, rawConn)
-	return udpxConn
+	conn.onGet(id, gate, pktConn, rawConn)
+	return conn
 }
-func putUDPXConn(udpxConn *UDPXConn) {
-	udpxConn.onPut()
-	poolUDPXConn.Put(udpxConn)
+func putUDPXConn(conn *UDPXConn) {
+	conn.onPut()
+	poolUDPXConn.Put(conn)
 }
 
 func (c *UDPXConn) onGet(id int64, gate *udpxGate, pktConn net.PacketConn, rawConn syscall.RawConn) {
-	c.id = id
+	router := gate.router
+	c.udpxConn_.onGet(id, router.Stage().ID(), pktConn, rawConn, router.IsUDS())
+
 	c.gate = gate
-	c.pktConn = pktConn
-	c.rawConn = rawConn
 }
 func (c *UDPXConn) onPut() {
-	c.pktConn = nil
-	c.rawConn = nil
 	c.gate = nil
-	c.counter.Store(0)
-	c.lastRead = time.Time{}
-	c.lastWrite = time.Time{}
-}
 
-func (c *UDPXConn) IsUDS() bool { return c.gate.IsUDS() }
-
-func (c *UDPXConn) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, c.gate.router.Stage().ID(), c.id, unixTime, c.counter.Add(1))
+	c.udpxConn_.onPut()
 }
 
 func (c *UDPXConn) Close() error {
 	pktConn := c.pktConn
 	putUDPXConn(c)
 	return pktConn.Close()
-}
-
-func (c *UDPXConn) closeConn() {
-	// TODO: uds?
-	if c.gate.router.IsUDS() {
-	} else {
-	}
-	c.pktConn.Close()
 }
 
 func (c *UDPXConn) unsafeVariable(code int16, name string) (value []byte) {
@@ -560,16 +538,11 @@ func (n *udpxNode) dial() (*UConn, error) {
 
 // UConn
 type UConn struct {
+	// Parent
+	udpxConn_
 	// Conn states (non-zeros)
-	id      int64 // the conn id
-	node    *udpxNode
-	netConn net.PacketConn
-	rawConn syscall.RawConn // for syscall
+	node *udpxNode
 	// Conn states (zeros)
-	counter   atomic.Int64 // can be used to generate a random number
-	lastWrite time.Time    // deadline of last write operation
-	lastRead  time.Time    // deadline of last read operation
-	broken    atomic.Bool  // is conn broken?
 }
 
 var poolUConn sync.Pool
@@ -589,39 +562,77 @@ func putUConn(uConn *UConn) {
 	poolUConn.Put(uConn)
 }
 
-func (c *UConn) onGet(id int64, node *udpxNode, netConn net.PacketConn, rawConn syscall.RawConn) {
-	c.id = id
+func (c *UConn) onGet(id int64, node *udpxNode, pktConn net.PacketConn, rawConn syscall.RawConn) {
+	backend := node.backend
+	c.udpxConn_.onGet(id, backend.Stage().ID(), pktConn, rawConn, node.IsUDS())
+
 	c.node = node
-	c.netConn = netConn
-	c.rawConn = rawConn
 }
 func (c *UConn) onPut() {
-	c.netConn = nil
-	c.rawConn = nil
-	c.broken.Store(false)
 	c.node = nil
-	c.counter.Store(0)
-	c.lastWrite = time.Time{}
-	c.lastRead = time.Time{}
+
+	c.udpxConn_.onPut()
 }
-
-func (c *UConn) IsUDS() bool { return c.node.IsUDS() }
-
-func (c *UConn) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, c.node.backend.Stage().ID(), c.id, unixTime, c.counter.Add(1))
-}
-
-func (c *UConn) markBroken()    { c.broken.Store(true) }
-func (c *UConn) isBroken() bool { return c.broken.Load() }
-
-func (c *UConn) WriteTo(p []byte, addr net.Addr) (n int, err error) {
-	return c.netConn.WriteTo(p, addr)
-}
-func (c *UConn) ReadFrom(p []byte) (n int, addr net.Addr, err error) { return c.netConn.ReadFrom(p) }
 
 func (c *UConn) Close() error {
 	// TODO: c.node.DecSub()?
-	netConn := c.netConn
+	pktConn := c.pktConn
 	putUConn(c)
-	return netConn.Close()
+	return pktConn.Close()
+}
+
+//////////////////////////////////////// UDPX in/out implementation ////////////////////////////////////////
+
+// udpxConn
+type udpxConn interface {
+}
+
+// udpxConn_
+type udpxConn_ struct {
+	// Conn states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id      int64
+	stageID int32
+	udsMode bool
+	pktConn net.PacketConn
+	rawConn syscall.RawConn // for syscall
+	// Conn states (zeros)
+	counter   atomic.Int64 // can be used to generate a random number
+	lastRead  time.Time    // deadline of last read operation
+	lastWrite time.Time    // deadline of last write operation
+	broken    atomic.Bool
+}
+
+func (c *udpxConn_) onGet(id int64, stageID int32, pktConn net.PacketConn, rawConn syscall.RawConn, udsMode bool) {
+	c.id = id
+	c.stageID = stageID
+	c.pktConn = pktConn
+	c.rawConn = rawConn
+	c.udsMode = udsMode
+}
+func (c *udpxConn_) onPut() {
+	c.pktConn = nil
+	c.rawConn = nil
+	c.counter.Store(0)
+	c.lastRead = time.Time{}
+	c.lastWrite = time.Time{}
+	c.broken.Store(false)
+}
+
+func (c *udpxConn_) IsUDS() bool { return c.udsMode }
+
+func (c *udpxConn_) MakeTempName(to []byte, unixTime int64) int {
+	return makeTempName(to, c.stageID, c.id, unixTime, c.counter.Add(1))
+}
+
+func (c *udpxConn_) markBroken()    { c.broken.Store(true) }
+func (c *udpxConn_) isBroken() bool { return c.broken.Load() }
+
+func (c *udpxConn_) WriteTo(p []byte, addr net.Addr) (n int, err error) {
+	return c.pktConn.WriteTo(p, addr)
+}
+func (c *udpxConn_) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
+	return c.pktConn.ReadFrom(p)
 }

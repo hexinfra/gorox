@@ -496,7 +496,7 @@ type QUIXBackend struct {
 	// Parent
 	Backend_[*quixNode]
 	// States
-	maxStreamsPerConn int32 // max streams of one conn. 0 means infinite
+	maxStreamsPerConn int32 // max cumulative streams of one conn. 0 means infinite
 }
 
 func (b *QUIXBackend) onCreate(name string, stage *Stage) {

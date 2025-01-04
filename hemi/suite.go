@@ -38,8 +38,6 @@ type Server_[G Gate] struct {
 	stage *Stage // current stage
 	gates []G    // a server has many gates
 	// States
-	readTimeout       time.Duration // read() timeout
-	writeTimeout      time.Duration // write() timeout
 	address           string        // hostname:port, /path/to/unix.sock
 	colonport         string        // like: ":9876"
 	colonportBytes    []byte        // []byte(colonport)
@@ -48,8 +46,10 @@ type Server_[G Gate] struct {
 	udsColonportBytes []byte        // []byte(udsColonport)
 	tlsMode           bool          // use tls to secure the transport?
 	tlsConfig         *tls.Config   // set if tls mode is true
-	maxConnsPerGate   int32         // max concurrent connections allowed per gate
 	numGates          int32         // number of gates
+	maxConnsPerGate   int32         // max concurrent connections allowed per gate
+	readTimeout       time.Duration // read() timeout
+	writeTimeout      time.Duration // write() timeout
 }
 
 func (s *Server_[G]) OnCreate(name string, stage *Stage) {
@@ -64,22 +64,6 @@ func (s *Server_[G]) OnShutdown() {
 }
 
 func (s *Server_[G]) OnConfigure() {
-	// readTimeout
-	s.ConfigureDuration("readTimeout", &s.readTimeout, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".readTimeout has an invalid value")
-	}, 60*time.Second)
-
-	// writeTimeout
-	s.ConfigureDuration("writeTimeout", &s.writeTimeout, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".writeTimeout has an invalid value")
-	}, 60*time.Second)
-
 	// address
 	if v, ok := s.Find("address"); ok {
 		if address, ok := v.String(); ok && address != "" {
@@ -107,6 +91,14 @@ func (s *Server_[G]) OnConfigure() {
 		s.tlsConfig = new(tls.Config)
 	}
 
+	// numGates
+	s.ConfigureInt32("numGates", &s.numGates, func(value int32) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".numGates has an invalid value")
+	}, s.stage.NumCPU())
+
 	// maxConnsPerGate
 	s.ConfigureInt32("maxConnsPerGate", &s.maxConnsPerGate, func(value int32) error {
 		if value > 0 {
@@ -115,13 +107,21 @@ func (s *Server_[G]) OnConfigure() {
 		return errors.New(".maxConnsPerGate has an invalid value")
 	}, 10000)
 
-	// numGates
-	s.ConfigureInt32("numGates", &s.numGates, func(value int32) error {
+	// readTimeout
+	s.ConfigureDuration("readTimeout", &s.readTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".numGates has an invalid value")
-	}, s.stage.NumCPU())
+		return errors.New(".readTimeout has an invalid value")
+	}, 60*time.Second)
+
+	// writeTimeout
+	s.ConfigureDuration("writeTimeout", &s.writeTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".writeTimeout has an invalid value")
+	}, 60*time.Second)
 }
 func (s *Server_[G]) OnPrepare() {
 	if s.udsMode { // unix domain socket does not support reuseaddr/reuseport.
@@ -344,10 +344,10 @@ type Node_ struct {
 	// Parent
 	Component_
 	// States
+	address   string      // hostname:port, /path/to/unix.sock
 	udsMode   bool        // uds or not
 	tlsMode   bool        // tls or not
 	tlsConfig *tls.Config // TLS config if TLS is enabled
-	address   string      // hostname:port, /path/to/unix.sock
 	weight    int32       // 1, 22, 333, ...
 	down      atomic.Bool // TODO: false-sharing
 	health    any         // TODO
@@ -362,12 +362,6 @@ func (n *Node_) OnShutdown() {
 }
 
 func (n *Node_) OnConfigure() {
-	// tlsMode
-	n.ConfigureBool("tlsMode", &n.tlsMode, false)
-	if n.tlsMode {
-		n.tlsConfig = new(tls.Config)
-	}
-
 	// address
 	if v, ok := n.Find("address"); ok {
 		if address, ok := v.String(); ok && address != "" {
@@ -382,6 +376,12 @@ func (n *Node_) OnConfigure() {
 		}
 	} else {
 		UseExitln("address is required in node")
+	}
+
+	// tlsMode
+	n.ConfigureBool("tlsMode", &n.tlsMode, false)
+	if n.tlsMode {
+		n.tlsConfig = new(tls.Config)
 	}
 
 	// weight

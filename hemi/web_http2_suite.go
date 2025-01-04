@@ -668,8 +668,7 @@ type server2Stream struct {
 	_server2Stream0 // all values in this struct must be zero by default!
 }
 type _server2Stream0 struct { // for fast reset, entirely
-	state uint8 // http2StateOpen, http2StateRemoteClosed, ...
-	reset bool  // received a RST_STREAM?
+	reset bool // received a RST_STREAM?
 }
 
 var poolServer2Stream sync.Pool
@@ -1784,6 +1783,7 @@ type http2Stream_[C http2Conn] struct {
 }
 type _http2Stream0 struct { // for fast reset, entirely
 	index uint8
+	state uint8 // http2StateOpen, http2StateRemoteClosed, ...
 }
 
 func (s *http2Stream_[C]) onUse(id uint32, conn C) {

@@ -48,7 +48,7 @@ type webServer_[G Gate] struct {
 	suffixWebapps        []*hostnameTo[*Webapp] // like: ("*.example.com")
 	prefixWebapps        []*hostnameTo[*Webapp] // like: ("www.example.*")
 	maxMemoryContentSize int32                  // max content size that can be loaded into memory directly
-	maxStreamsPerConn    int32                  // max streams of one conn. 0 means infinite
+	maxStreamsPerConn    int32                  // max cumulative streams of one conn. 0 means infinite
 	forceScheme          int8                   // scheme (http/https) that must be used
 	alignScheme          bool                   // use https scheme for TLS and http scheme for others?
 }
@@ -3283,7 +3283,7 @@ type webBackend_[N Node] struct {
 	idleTimeout          time.Duration // conn idle timeout
 	lifetime             time.Duration // conn's lifetime
 	maxMemoryContentSize int32         // max content size that can be loaded into memory directly
-	maxStreamsPerConn    int32         // max streams of one conn. 0 means infinite
+	maxStreamsPerConn    int32         // max cumulative streams of one conn. 0 means infinite
 }
 
 func (b *webBackend_[N]) onCreate(name string, stage *Stage) {

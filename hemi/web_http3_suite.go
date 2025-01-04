@@ -11,7 +11,6 @@ package hemi
 
 import (
 	"crypto/tls"
-	"errors"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -498,14 +497,6 @@ func (n *http3Node) OnConfigure() {
 	if n.tlsMode {
 		n.tlsConfig.InsecureSkipVerify = true
 	}
-
-	// keepAliveConns
-	n.ConfigureInt32("keepAliveConns", &n.keepAliveConns, func(value int32) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New("bad keepAliveConns in node")
-	}, 10)
 }
 func (n *http3Node) OnPrepare() {
 	n.webNode_.OnPrepare()

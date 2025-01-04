@@ -64,10 +64,10 @@ OPTIONS
   -config <config>  # path to worker config file (default: conf/%s.conf)
   -single           # run server in single mode. only a process is started
   -daemon           # run server as daemon (default: false)
-  -base   <path>    # top directory of the program files
-  -logs   <path>    # log directory to use
-  -tmps   <path>    # tmp directory to use
-  -vars   <path>    # var directory to use
+  -topDir <path>    # top directory of the program files
+  -logDir <path>    # log directory to use
+  -tmpDir <path>    # tmp directory to use
+  -varDir <path>    # var directory to use
   -stdout <path>    # daemon's stdout file (default: %s.out in log directory)
   -stderr <path>    # daemon's stderr file (default: %s.err in log directory)
 
@@ -112,10 +112,10 @@ func Main(opts *Opts) {
 	flag.StringVar(&common.ConfigFile, "config", "", "")
 	flag.BoolVar(&common.SingleMode, "single", false, "")
 	flag.BoolVar(&common.DaemonMode, "daemon", false, "")
-	flag.StringVar(&common.TopDir, "base", "", "")
-	flag.StringVar(&common.LogDir, "logs", "", "")
-	flag.StringVar(&common.TmpDir, "tmps", "", "")
-	flag.StringVar(&common.VarDir, "vars", "", "")
+	flag.StringVar(&common.TopDir, "topDir", "", "")
+	flag.StringVar(&common.LogDir, "logDir", "", "")
+	flag.StringVar(&common.TmpDir, "tmpDir", "", "")
+	flag.StringVar(&common.VarDir, "varDir", "", "")
 	flag.StringVar(&common.Stdout, "stdout", "", "")
 	flag.StringVar(&common.Stderr, "stderr", "", "")
 	action := "serve"

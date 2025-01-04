@@ -1780,10 +1780,11 @@ type http1Stream interface {
 type http1Stream_[C http1Conn] struct {
 	// Parent
 	webStream_
+	// Assocs
+	conn C // the http/1.x connection
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non zeros)
-	conn C // the http/1.x connection
 	// Stream states (zeros)
 }
 

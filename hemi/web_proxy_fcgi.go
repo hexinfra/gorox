@@ -1052,7 +1052,6 @@ type fcgiResponse struct { // incoming. needs parsing
 	bodyResult     int16         // result of receiving response body. values are same as http status for convenience
 	// Exchan states (zeros)
 	failReason     string    // the reason of headResult or bodyResult
-	recvTime       time.Time // the time when receiving response
 	bodyTime       time.Time // the time when first body read operation is performed on this exchan
 	contentText    []byte    // if loadable, the received and loaded content of current response is at r.contentText[:r.receivedSize]
 	contentFile    *os.File  // used by r.proxyTakeContent(), if content is tempFile. will be closed on exchan ends
@@ -1136,7 +1135,6 @@ func (r *fcgiResponse) onEnd() {
 	}
 
 	r.failReason = ""
-	r.recvTime = time.Time{}
 	r.bodyTime = time.Time{}
 
 	if r.contentTextKind == httpContentTextPool {
@@ -1169,7 +1167,7 @@ func (r *fcgiResponse) BodyResult() int16 { return r.bodyResult }
 
 func (r *fcgiResponse) recvHead() {
 	// The entire response head must be received within one timeout
-	if err := r._beforeRead(); err != nil {
+	if err := r.exchan.setReadDeadline(); err != nil {
 		r.headResult = -1
 		return
 	}
@@ -1617,16 +1615,10 @@ func (r *fcgiResponse) _newTempFile() (tempFile, error) { // to save content to
 	filesDir := r.saveContentFilesDir()
 	filePath := r.exchan.unsafeMake(len(filesDir) + 19) // 19 bytes is enough for an int64
 	n := copy(filePath, filesDir)
-	n += r.exchan.conn.MakeTempName(filePath[n:], r.recvTime.Unix())
+	n += r.exchan.conn.MakeTempName(filePath[n:], time.Now().Unix())
 	return os.OpenFile(WeakString(filePath[:n]), os.O_RDWR|os.O_CREATE, 0644)
 }
 
-func (r *fcgiResponse) _beforeRead() error {
-	if r.recvTime.IsZero() {
-		r.recvTime = time.Now()
-	}
-	return r.exchan.setReadDeadline()
-}
 func (r *fcgiResponse) _isLongTime() bool {
 	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
 }

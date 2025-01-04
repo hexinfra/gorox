@@ -406,8 +406,8 @@ func (n *Node_) isDown() bool { return n.down.Load() }
 // contentSaver
 type contentSaver interface {
 	SaveContentFilesDir() string
-	SendTimeout() time.Duration // timeout to send the whole message. zero means no timeout
 	RecvTimeout() time.Duration // timeout to recv the whole message content. zero means no timeout
+	SendTimeout() time.Duration // timeout to send the whole message. zero means no timeout
 	MaxContentSize() int64
 }
 
@@ -415,12 +415,12 @@ type contentSaver interface {
 type _contentSaver_ struct {
 	// States
 	saveContentFilesDir string        // content files are placed here
-	sendTimeout         time.Duration // timeout to send the whole message. zero means no timeout
 	recvTimeout         time.Duration // timeout to recv the whole message content. zero means no timeout
+	sendTimeout         time.Duration // timeout to send the whole message. zero means no timeout
 	maxContentSize      int64         // max content size allowed to receive
 }
 
-func (s *_contentSaver_) onConfigure(component Component, defaultDir string, sendTimeout time.Duration, recvTimeout time.Duration) {
+func (s *_contentSaver_) onConfigure(component Component, defaultDir string, recvTimeout time.Duration, sendTimeout time.Duration) {
 	// saveContentFilesDir
 	component.ConfigureString("saveContentFilesDir", &s.saveContentFilesDir, func(value string) error {
 		if value != "" && len(value) <= 232 {
@@ -429,14 +429,6 @@ func (s *_contentSaver_) onConfigure(component Component, defaultDir string, sen
 		return errors.New(".saveContentFilesDir has an invalid value")
 	}, defaultDir)
 
-	// sendTimeout
-	component.ConfigureDuration("sendTimeout", &s.sendTimeout, func(value time.Duration) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".sendTimeout has an invalid value")
-	}, sendTimeout)
-
 	// recvTimeout
 	component.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) error {
 		if value >= 0 {
@@ -444,6 +436,14 @@ func (s *_contentSaver_) onConfigure(component Component, defaultDir string, sen
 		}
 		return errors.New(".recvTimeout has an invalid value")
 	}, recvTimeout)
+
+	// sendTimeout
+	component.ConfigureDuration("sendTimeout", &s.sendTimeout, func(value time.Duration) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".sendTimeout has an invalid value")
+	}, sendTimeout)
 
 	// maxContentSize
 	component.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
@@ -463,8 +463,8 @@ func (s *_contentSaver_) onPrepare(component Component, perm os.FileMode) {
 }
 
 func (s *_contentSaver_) SaveContentFilesDir() string { return s.saveContentFilesDir } // must ends with '/'
-func (s *_contentSaver_) SendTimeout() time.Duration  { return s.sendTimeout }
 func (s *_contentSaver_) RecvTimeout() time.Duration  { return s.recvTimeout }
+func (s *_contentSaver_) SendTimeout() time.Duration  { return s.sendTimeout }
 func (s *_contentSaver_) MaxContentSize() int64       { return s.maxContentSize }
 
 // LogConfig

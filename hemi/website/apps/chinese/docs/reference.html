@@ -317,8 +317,8 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		.maxStreamsPerConn = 1000
 		.saveContentFilesDir = %tmpDir + "/web/backends/h1b"
 		.maxContentSize = 1T
-		.sendTimeout = 0s
 		.recvTimeout = 0s
+		.sendTimeout = 0s
 		.balancer = "roundRobin"
 	}
 
@@ -395,16 +395,16 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					</code>
 				</li>
 				<li>
-					<p>.sendTimeout 发送整个 http 数据超时时间。0 意味着不限制时间</p>
-					<code>语法：.sendTimeout = Duration
-						默认值：60s
+					<p>.recvTimeout 接收整个 http 数据超时时间。0 意味着不限制时间</p>
+					<code>语法：.recvTimeout = Durations
+						默认值：0s
 						取值范围： [0s, 10m]
 					</code>
 				</li>
 				<li>
-					<p>.recvTimeout 接收整个 http 数据超时时间。0 意味着不限制时间</p>
-					<code>语法：.recvTimeout = Durations
-						默认值：0s
+					<p>.sendTimeout 发送整个 http 数据超时时间。0 意味着不限制时间</p>
+					<code>语法：.sendTimeout = Duration
+						默认值：60s
 						取值范围： [0s, 10m]
 					</code>
 				</li>
@@ -1424,7 +1424,6 @@ httpProxy {
 						取值范围： [0s, 10m]
 					</code>
 				</li>
-
 				<li>
 					<p>.sendTimeout 发送整个数据包的超时时间。0 意味着不限制时间</p>
 					<code>语法：.sendTimeout = Duration

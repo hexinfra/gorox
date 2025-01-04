@@ -8,8 +8,8 @@ http1Backend "h1b1" {
 	.maxStreamsPerConn = 1000
 	.saveContentFilesDir = %tmpDir + "/web/backends/h1b"
 	.maxContentSize = 1T
-	.sendTimeout = 0s
 	.recvTimeout = 0s
+	.sendTimeout = 0s
 	.balancer = "roundRobin"
 	node {
 		.address = "127.0.0.1:3080"

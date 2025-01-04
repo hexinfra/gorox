@@ -2051,7 +2051,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 							return
 						}
 						nameBuffer := r.stream.buffer256() // enough for tempName
-						m := r.stream.Conn().MakeTempName(nameBuffer, r.recvTime.Unix())
+						m := r.stream.Conn().MakeTempName(nameBuffer, time.Now().Unix())
 						if !r.arrayCopy(nameBuffer[:m]) { // add "391384576"
 							r.stream.markBroken()
 							return
@@ -4226,7 +4226,6 @@ type webIn_ struct { // incoming. needs parsing
 	// Stream states (zeros)
 	failReason  string    // the fail reason of headResult or bodyResult
 	bodyWindow  []byte    // a window used for receiving body. for HTTP/1.x, sizes must be same with r.input. [HTTP/1.x=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
-	recvTime    time.Time // the time when we begin receiving message
 	bodyTime    time.Time // the time when first body read operation is performed on this stream
 	contentText []byte    // if loadable, the received and loaded content of current message is at r.contentText[:r.receivedSize]. [<none>/r.input/4K/16K/64K1/(make)]
 	contentFile *os.File  // used by r.holdContent(), if content is tempFile. will be closed on stream ends
@@ -4334,7 +4333,6 @@ func (r *webIn_) onEnd() { // for zeros
 	}
 	r.bodyWindow = nil
 
-	r.recvTime = time.Time{}
 	r.bodyTime = time.Time{}
 
 	if r.contentTextKind == httpContentTextPool {
@@ -5531,19 +5529,13 @@ func (r *webIn_) _newTempFile(retain bool) (tempFile, error) { // to save conten
 		filesDir := r.saveContentFilesDir()
 		pathBuffer := r.UnsafeMake(len(filesDir) + 19) // 19 bytes is enough for an int64
 		n := copy(pathBuffer, filesDir)
-		n += r.stream.Conn().MakeTempName(pathBuffer[n:], r.recvTime.Unix())
+		n += r.stream.Conn().MakeTempName(pathBuffer[n:], time.Now().Unix())
 		return os.OpenFile(WeakString(pathBuffer[:n]), os.O_RDWR|os.O_CREATE, 0644)
 	} else { // since data is not used by upper caller, we don't need to actually write data to file.
 		return fakeFile, nil
 	}
 }
 
-func (r *webIn_) _beforeRead(toTime *time.Time) error {
-	if toTime.IsZero() {
-		*toTime = time.Now()
-	}
-	return r.stream.setReadDeadline()
-}
 func (r *webIn_) _isLongTime() bool { // reports whether the receiving of incoming content costs a long time
 	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
 }

@@ -94,7 +94,7 @@ func (r *UDPXRouter) hasCase(name string) bool {
 func (r *UDPXRouter) Serve() { // runner
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(udpxGate)
-		gate.init(id, r)
+		gate.onNew(id, r)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
@@ -159,8 +159,8 @@ type udpxGate struct {
 	// States
 }
 
-func (g *udpxGate) init(id int32, router *UDPXRouter) {
-	g.Gate_.Init(id)
+func (g *udpxGate) onNew(id int32, router *UDPXRouter) {
+	g.Gate_.OnNew(id)
 	g.router = router
 }
 

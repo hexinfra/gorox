@@ -176,7 +176,7 @@ type Gate_ struct {
 	subConns sync.WaitGroup // sub conns to wait for
 }
 
-func (g *Gate_) Init(id int32) {
+func (g *Gate_) OnNew(id int32) {
 	g.id = id
 	g.shut.Store(false)
 }

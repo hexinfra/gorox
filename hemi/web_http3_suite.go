@@ -51,7 +51,7 @@ func (s *http3Server) OnPrepare() {
 func (s *http3Server) Serve() { // runner
 	for id := int32(0); id < s.numGates; id++ {
 		gate := new(http3Gate)
-		gate.init(id, s)
+		gate.onNew(id, s)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
@@ -80,8 +80,8 @@ type http3Gate struct {
 	listener *quic.Listener // the real gate. set after open
 }
 
-func (g *http3Gate) init(id int32, server *http3Server) {
-	g.webGate_.init(id, server.MaxConnsPerGate())
+func (g *http3Gate) onNew(id int32, server *http3Server) {
+	g.webGate_.onNew(id, server.MaxConnsPerGate())
 	g.server = server
 }
 

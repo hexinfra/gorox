@@ -126,8 +126,8 @@ type hrpcGate struct {
 	// States
 }
 
-func (g *hrpcGate) init(id int32, server *hrpcServer) {
-	g.Gate_.Init(id)
+func (g *hrpcGate) onNew(id int32, server *hrpcServer) {
+	g.Gate_.OnNew(id)
 	g.server = server
 }
 

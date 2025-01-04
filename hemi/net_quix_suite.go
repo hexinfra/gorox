@@ -93,7 +93,7 @@ func (r *QUIXRouter) hasCase(name string) bool {
 func (r *QUIXRouter) Serve() { // runner
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(quixGate)
-		gate.init(id, r)
+		gate.onNew(id, r)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
@@ -157,8 +157,8 @@ type quixGate struct {
 	listener   *quic.Listener // the real gate. set after open
 }
 
-func (g *quixGate) init(id int32, router *QUIXRouter) {
-	g.Gate_.Init(id)
+func (g *quixGate) onNew(id int32, router *QUIXRouter) {
+	g.Gate_.OnNew(id)
 	g.maxActives = router.MaxConnsPerGate()
 	g.curActives.Store(0)
 	g.router = router
@@ -260,9 +260,20 @@ var quixConnVariables = [...]func(*QUIXConn) []byte{ // keep sync with varCodes
 // QUIXStream
 type QUIXStream struct {
 	// Parent
+	// Assocs
+	conn *QUIXConn
 	// Stream states (non-zeros)
 	quicStream *quic.Stream
 	// Stream states (zeros)
+}
+
+func (s *QUIXStream) onUse(conn *QUIXConn, quicStream *quic.Stream) {
+	s.conn = conn
+	s.quicStream = quicStream
+}
+func (s *QUIXStream) onEnd() {
+	s.conn = nil
+	s.quicStream = nil
 }
 
 func (s *QUIXStream) Write(p []byte) (n int, err error) {

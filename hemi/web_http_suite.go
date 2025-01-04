@@ -39,18 +39,17 @@ type webServer_[G Gate] struct {
 	// Parent
 	Server_[G]
 	// Mixins
+	_webHolder_
 	_contentSaver_ // so requests can save their large contents in local file system.
 	// Assocs
 	defaultWebapp *Webapp // default webapp if not found
 	// States
-	webapps              []string               // for what webapps
-	exactWebapps         []*hostnameTo[*Webapp] // like: ("example.com")
-	suffixWebapps        []*hostnameTo[*Webapp] // like: ("*.example.com")
-	prefixWebapps        []*hostnameTo[*Webapp] // like: ("www.example.*")
-	maxMemoryContentSize int32                  // max content size that can be loaded into memory directly
-	maxStreamsPerConn    int32                  // max cumulative streams of one conn. 0 means infinite
-	forceScheme          int8                   // scheme (http/https) that must be used
-	alignScheme          bool                   // use https scheme for TLS and http scheme for others?
+	webapps       []string               // for what webapps
+	exactWebapps  []*hostnameTo[*Webapp] // like: ("example.com")
+	suffixWebapps []*hostnameTo[*Webapp] // like: ("*.example.com")
+	prefixWebapps []*hostnameTo[*Webapp] // like: ("www.example.*")
+	forceScheme   int8                   // scheme (http/https) that must be used
+	alignScheme   bool                   // use https scheme for TLS and http scheme for others?
 }
 
 func (s *webServer_[G]) onCreate(name string, stage *Stage) {
@@ -61,26 +60,11 @@ func (s *webServer_[G]) onCreate(name string, stage *Stage) {
 
 func (s *webServer_[G]) onConfigure() {
 	s.Server_.OnConfigure()
+	s._webHolder_.onConfigure(s)
 	s._contentSaver_.onConfigure(s, TmpDir()+"/web/servers/"+s.name, 0, 0)
 
 	// webapps
 	s.ConfigureStringList("webapps", &s.webapps, nil, []string{})
-
-	// maxMemoryContentSize
-	s.ConfigureInt32("maxMemoryContentSize", &s.maxMemoryContentSize, func(value int32) error {
-		if value > 0 && value <= _1G { // DO NOT CHANGE THIS, otherwise integer overflow may occur
-			return nil
-		}
-		return errors.New(".maxMemoryContentSize has an invalid value")
-	}, _16M)
-
-	// maxStreamsPerConn
-	s.ConfigureInt32("maxStreamsPerConn", &s.maxStreamsPerConn, func(value int32) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".maxStreamsPerConn has an invalid value")
-	}, 1000)
 
 	// forceScheme
 	var scheme string
@@ -104,9 +88,6 @@ func (s *webServer_[G]) onPrepare() {
 	s.Server_.OnPrepare()
 	s._contentSaver_.onPrepare(s, 0755)
 }
-
-func (s *webServer_[G]) MaxMemoryContentSize() int32 { return s.maxMemoryContentSize }
-func (s *webServer_[G]) MaxStreamsPerConn() int32    { return s.maxStreamsPerConn }
 
 func (s *webServer_[G]) bindWebapps() {
 	for _, webappName := range s.webapps {
@@ -176,8 +157,8 @@ type webGate_ struct {
 	curActives atomic.Int32 // TODO: false sharing
 }
 
-func (g *webGate_) init(id int32, maxActives int32) {
-	g.Gate_.Init(id)
+func (g *webGate_) onNew(id int32, maxActives int32) {
+	g.Gate_.OnNew(id)
 	g.maxActives = maxActives
 	g.curActives.Store(0)
 }
@@ -3278,12 +3259,11 @@ type webBackend_[N Node] struct {
 	// Parent
 	Backend_[N]
 	// Mixins
+	_webHolder_
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
-	idleTimeout          time.Duration // conn idle timeout
-	maxLifetime          time.Duration // conn's max lifetime
-	maxMemoryContentSize int32         // max content size that can be loaded into memory directly
-	maxStreamsPerConn    int32         // max cumulative streams of one conn. 0 means infinite
+	idleTimeout time.Duration // conn idle timeout
+	maxLifetime time.Duration // conn's max lifetime
 }
 
 func (b *webBackend_[N]) onCreate(name string, stage *Stage) {
@@ -3292,6 +3272,7 @@ func (b *webBackend_[N]) onCreate(name string, stage *Stage) {
 
 func (b *webBackend_[N]) onConfigure() {
 	b.Backend_.OnConfigure()
+	b._webHolder_.onConfigure(b)
 	b._contentSaver_.onConfigure(b, TmpDir()+"/web/backends/"+b.name, 0, 0)
 
 	// idleTimeout
@@ -3309,30 +3290,11 @@ func (b *webBackend_[N]) onConfigure() {
 		}
 		return errors.New(".maxLifetime has an invalid value")
 	}, 1*time.Minute)
-
-	// maxMemoryContentSize
-	b.ConfigureInt32("maxMemoryContentSize", &b.maxMemoryContentSize, func(value int32) error {
-		if value > 0 && value <= _1G { // DO NOT CHANGE THIS, otherwise integer overflow may occur
-			return nil
-		}
-		return errors.New(".maxMemoryContentSize has an invalid value")
-	}, _16M)
-
-	// maxStreamsPerConn
-	b.ConfigureInt32("maxStreamsPerConn", &b.maxStreamsPerConn, func(value int32) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".maxStreamsPerConn has an invalid value")
-	}, 1000)
 }
 func (b *webBackend_[N]) onPrepare() {
 	b.Backend_.OnPrepare()
 	b._contentSaver_.onPrepare(b, 0755)
 }
-
-func (b *webBackend_[N]) MaxMemoryContentSize() int32 { return b.maxMemoryContentSize }
-func (b *webBackend_[N]) MaxStreamsPerConn() int32    { return b.maxStreamsPerConn }
 
 // webNode_ is the parent for http[1-3]Node.
 type webNode_ struct {
@@ -4084,7 +4046,36 @@ type webHolder interface {
 	contentSaver
 	// Methods
 	MaxMemoryContentSize() int32 // allowed to load into memory
+	MaxStreamsPerConn() int32
 }
+
+// _webHolder_
+type _webHolder_ struct {
+	// States
+	maxMemoryContentSize int32 // max content size that can be loaded into memory directly
+	maxStreamsPerConn    int32 // max cumulative streams of one conn. 0 means infinite
+}
+
+func (h *_webHolder_) onConfigure(component Component) {
+	// maxMemoryContentSize
+	component.ConfigureInt32("maxMemoryContentSize", &h.maxMemoryContentSize, func(value int32) error {
+		if value > 0 && value <= _1G { // DO NOT CHANGE THIS, otherwise integer overflow may occur
+			return nil
+		}
+		return errors.New(".maxMemoryContentSize has an invalid value")
+	}, _16M)
+
+	// maxStreamsPerConn
+	component.ConfigureInt32("maxStreamsPerConn", &h.maxStreamsPerConn, func(value int32) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".maxStreamsPerConn has an invalid value")
+	}, 1000)
+}
+
+func (h *_webHolder_) MaxMemoryContentSize() int32 { return h.maxMemoryContentSize }
+func (h *_webHolder_) MaxStreamsPerConn() int32    { return h.maxStreamsPerConn }
 
 // webConn collects shared methods between *server[1-3]Conn and *backend[1-3]Conn.
 type webConn interface {

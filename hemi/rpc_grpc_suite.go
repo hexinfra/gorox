@@ -123,8 +123,8 @@ type grpcGate struct {
 	// States
 }
 
-func (g *grpcGate) init(id int32, server *grpcServer) {
-	g.Gate_.Init(id)
+func (g *grpcGate) onNew(id int32, server *grpcServer) {
+	g.Gate_.OnNew(id)
 	g.server = server
 }
 

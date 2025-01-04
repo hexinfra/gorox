@@ -99,7 +99,7 @@ func (r *TCPXRouter) hasCase(name string) bool {
 func (r *TCPXRouter) Serve() { // runner
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(tcpxGate)
-		gate.init(id, r)
+		gate.onNew(id, r)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
@@ -169,8 +169,8 @@ type tcpxGate struct {
 	listener   net.Listener // the real gate. set after open
 }
 
-func (g *tcpxGate) init(id int32, router *TCPXRouter) {
-	g.Gate_.Init(id)
+func (g *tcpxGate) onNew(id int32, router *TCPXRouter) {
+	g.Gate_.OnNew(id)
 	g.router = router
 	g.maxActives = router.MaxConnsPerGate()
 	g.curActives.Store(0)

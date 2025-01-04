@@ -97,7 +97,7 @@ func (s *httpxServer) OnPrepare() {
 func (s *httpxServer) Serve() { // runner
 	for id := int32(0); id < s.numGates; id++ {
 		gate := new(httpxGate)
-		gate.init(id, s)
+		gate.onNew(id, s)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
@@ -128,8 +128,8 @@ type httpxGate struct {
 	listener net.Listener // the real gate. set after open
 }
 
-func (g *httpxGate) init(id int32, server *httpxServer) {
-	g.webGate_.init(id, server.MaxConnsPerGate())
+func (g *httpxGate) onNew(id int32, server *httpxServer) {
+	g.webGate_.onNew(id, server.MaxConnsPerGate())
 	g.server = server
 }
 

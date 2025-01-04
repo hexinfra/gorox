@@ -49,7 +49,7 @@ func (s *echoServer) OnPrepare() {
 func (s *echoServer) Serve() { // runner
 	for id := int32(0); id < s.NumGates(); id++ {
 		gate := new(echoGate)
-		gate.init(id, s)
+		gate.onNew(id, s)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
@@ -81,8 +81,8 @@ type echoGate struct {
 	listener *net.TCPListener
 }
 
-func (g *echoGate) init(id int32, server *echoServer) {
-	g.Gate_.Init(id)
+func (g *echoGate) onNew(id int32, server *echoServer) {
+	g.Gate_.OnNew(id)
 	g.server = server
 }
 

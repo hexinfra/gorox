@@ -50,7 +50,7 @@ func (s *socksServer) OnPrepare() {
 func (s *socksServer) Serve() { // runner
 	for id := int32(0); id < s.NumGates(); id++ {
 		gate := new(socksGate)
-		gate.init(id, s)
+		gate.onNew(id, s)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
@@ -86,8 +86,8 @@ type socksGate struct {
 	listener *net.TCPListener
 }
 
-func (g *socksGate) init(id int32, server *socksServer) {
-	g.Gate_.Init(id)
+func (g *socksGate) onNew(id int32, server *socksServer) {
+	g.Gate_.OnNew(id)
 	g.server = server
 }
 

@@ -1066,7 +1066,7 @@ func (b *HTTP1Backend) CreateNode(name string) Node {
 }
 
 func (b *HTTP1Backend) FetchStream() (stream, error) {
-	node := b.nodes[b.nextIndex()]
+	node := b.nodes[b.nodeIndexGet()]
 	return node.fetchStream()
 }
 func (b *HTTP1Backend) StoreStream(stream stream) {

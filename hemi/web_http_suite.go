@@ -5592,7 +5592,7 @@ type webOut_ struct { // outgoing. needs building
 	nHeaders    uint8         // 1+num of added headers, starts from 1 because edges[0] is not used
 	nTrailers   uint8         // 1+num of added trailers, starts from 1 because edges[0] is not used
 	// Stream states (zeros)
-	sendTime      time.Time   // the time when first send operation is performed
+	sendTime      time.Time   // the time when first write operation is performed
 	contentRanges []Range     // if outgoing content is ranged, this will be set
 	rangeType     string      // if outgoing content is ranged, this will be the content type for each range
 	vector        net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after stream

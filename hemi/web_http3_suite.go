@@ -470,7 +470,7 @@ func (b *HTTP3Backend) CreateNode(name string) Node {
 }
 
 func (b *HTTP3Backend) FetchStream() (stream, error) {
-	node := b.nodes[b.nextIndex()]
+	node := b.nodes[b.nodeIndexGet()]
 	return node.fetchStream()
 }
 func (b *HTTP3Backend) StoreStream(stream stream) {

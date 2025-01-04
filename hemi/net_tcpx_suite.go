@@ -753,7 +753,7 @@ func (b *TCPXBackend) CreateNode(name string) Node {
 }
 
 func (b *TCPXBackend) Dial() (*TConn, error) {
-	node := b.nodes[b.nextIndex()]
+	node := b.nodes[b.nodeIndexGet()]
 	return node.dial()
 }
 

@@ -289,7 +289,7 @@ func (b *fcgiBackend) CreateNode(name string) Node {
 }
 
 func (b *fcgiBackend) fetchExchan() (*fcgiExchan, error) {
-	node := b.nodes[b.nextIndex()]
+	node := b.nodes[b.nodeIndexGet()]
 	return node.fetchExchan()
 }
 func (b *fcgiBackend) storeExchan(exchan *fcgiExchan) {
@@ -650,7 +650,7 @@ type fcgiRequest struct { // outgoing. needs building
 	params      []byte        // place the payload of exactly one FCGI_PARAMS record. [<r.stockParams>/16K]
 	sendTimeout time.Duration // timeout to send the whole request. zero means no timeout
 	// Exchan states (zeros)
-	sendTime      time.Time   // the time when first send operation is performed
+	sendTime      time.Time   // the time when first write operation is performed
 	vector        net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after exchan
 	fixedVector   [7][]byte   // for sending request. reset after exchan. 120B
 	_fcgiRequest0             // all values in this struct must be zero by default!

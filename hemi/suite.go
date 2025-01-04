@@ -213,7 +213,7 @@ type Backend_[N Node] struct {
 	readTimeout  time.Duration // read() timeout
 	numNodes     int64         // num of nodes
 	balancer     string        // roundRobin, ipHash, random, ...
-	indexGet     func() int64  // ...
+	nodeIndexGet func() int64  // ...
 	connID       atomic.Int64  // next conn id
 	nodeIndex    atomic.Int64  // for roundRobin. won't overflow because it is so large!
 	healthCheck  any           // TODO
@@ -265,13 +265,13 @@ func (b *Backend_[N]) OnConfigure() {
 func (b *Backend_[N]) OnPrepare() {
 	switch b.balancer {
 	case "roundRobin":
-		b.indexGet = b._nextIndexByRoundRobin
+		b.nodeIndexGet = b._nextIndexByRoundRobin
 	case "random":
-		b.indexGet = b._nextIndexByRandom
+		b.nodeIndexGet = b._nextIndexByRandom
 	case "ipHash":
-		b.indexGet = b._nextIndexByIPHash
+		b.nodeIndexGet = b._nextIndexByIPHash
 	case "leastUsed":
-		b.indexGet = b._nextIndexByLeastUsed
+		b.nodeIndexGet = b._nextIndexByLeastUsed
 	default:
 		BugExitln("unknown balancer")
 	}
@@ -314,7 +314,6 @@ func (b *Backend_[N]) ReadTimeout() time.Duration  { return b.readTimeout }
 
 func (b *Backend_[N]) nextConnID() int64 { return b.connID.Add(1) }
 
-func (b *Backend_[N]) nextIndex() int64 { return b.indexGet() }
 func (b *Backend_[N]) _nextIndexByRoundRobin() int64 {
 	index := b.nodeIndex.Add(1)
 	return index % b.numNodes

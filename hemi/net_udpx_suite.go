@@ -516,7 +516,7 @@ func (b *UDPXBackend) CreateNode(name string) Node {
 }
 
 func (b *UDPXBackend) Dial() (*UConn, error) {
-	node := b.nodes[b.nextIndex()]
+	node := b.nodes[b.nodeIndexGet()]
 	return node.dial()
 }
 

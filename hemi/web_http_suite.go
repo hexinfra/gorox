@@ -6005,12 +6005,6 @@ func (r *webOut_) _growFields(size int) (from int, edge int, ok bool) { // used 
 	return
 }
 
-func (r *webOut_) _beforeWrite() error {
-	if r.sendTime.IsZero() {
-		r.sendTime = time.Now()
-	}
-	return r.stream.setWriteDeadline()
-}
 func (r *webOut_) _longTimeCheck(err error) error {
 	if err == nil && r._isLongTime() {
 		err = webOutLongTime

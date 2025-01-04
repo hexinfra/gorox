@@ -984,7 +984,10 @@ func (r *fcgiRequest) _writeBytes(p []byte) error {
 	if len(p) == 0 {
 		return nil
 	}
-	if err := r._beforeWrite(); err != nil {
+	if r.sendTime.IsZero() {
+		r.sendTime = time.Now()
+	}
+	if err := r.exchan.setWriteDeadline(); err != nil {
 		r.exchan.markBroken()
 		return err
 	}
@@ -998,18 +1001,15 @@ func (r *fcgiRequest) _writeVector() error {
 	if len(r.vector) == 1 && len(r.vector[0]) == 0 {
 		return nil
 	}
-	if err := r._beforeWrite(); err != nil {
+	if r.sendTime.IsZero() {
+		r.sendTime = time.Now()
+	}
+	if err := r.exchan.setWriteDeadline(); err != nil {
 		r.exchan.markBroken()
 		return err
 	}
 	_, err := r.exchan.writev(&r.vector)
 	return r._longTimeCheck(err)
-}
-func (r *fcgiRequest) _beforeWrite() error {
-	if r.sendTime.IsZero() {
-		r.sendTime = time.Now()
-	}
-	return r.exchan.setWriteDeadline()
 }
 func (r *fcgiRequest) _longTimeCheck(err error) error {
 	if err == nil && r._isLongTime() {

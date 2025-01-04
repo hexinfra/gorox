@@ -310,8 +310,7 @@ func (s *server1Stream) _serveAbnormal(req *server1Request, resp *server1Respons
 	resp.vector[0] = resp.control()
 	resp.vector[1] = resp.addedHeaders()
 	resp.vector[2] = resp.fixedHeaders()
-	// Ignore any error, as the connection will be closed anyway.
-	if s.setWriteDeadline() == nil {
+	if s.setWriteDeadline() == nil { // ignore any error, as the connection will be closed anyway.
 		s.writev(&resp.vector)
 	}
 }
@@ -2005,13 +2004,14 @@ func (r *webIn_) _readSizedContent1() (p []byte, err error) {
 		r.imme.zero()
 		return r.bodyWindow[0:immeSize], nil
 	}
-	r.bodyTime = time.Now()
-	if err = r.stream.setReadDeadline(); err != nil {
-		return nil, err
-	}
 	readSize := int64(cap(r.bodyWindow))
 	if sizeLeft := r.contentSize - r.receivedSize; sizeLeft < readSize {
 		readSize = sizeLeft
+	}
+	r.bodyTime = time.Now()
+	// TODO: maybe one timeout is not enough to read the whole body?
+	if err = r.stream.setReadDeadline(); err != nil {
+		return nil, err
 	}
 	size, err := r.stream.readFull(r.bodyWindow[:readSize])
 	if err == nil {
@@ -2660,7 +2660,10 @@ func (r *webOut_) _writeFilePiece1(piece *Piece, inChunked bool) error {
 			r.stream.markBroken()
 			return err
 		}
-		if err = r._beforeWrite(); err != nil {
+		if r.sendTime.IsZero() {
+			r.sendTime = time.Now()
+		}
+		if err = r.stream.setWriteDeadline(); err != nil {
 			r.stream.markBroken()
 			return err
 		}
@@ -2690,7 +2693,10 @@ func (r *webOut_) writeVector1() error {
 	if len(r.vector) == 1 && len(r.vector[0]) == 0 { // empty data
 		return nil
 	}
-	if err := r._beforeWrite(); err != nil {
+	if r.sendTime.IsZero() {
+		r.sendTime = time.Now()
+	}
+	if err := r.stream.setWriteDeadline(); err != nil {
 		r.stream.markBroken()
 		return err
 	}
@@ -2704,7 +2710,10 @@ func (r *webOut_) writeBytes1(p []byte) error {
 	if len(p) == 0 { // empty data
 		return nil
 	}
-	if err := r._beforeWrite(); err != nil {
+	if r.sendTime.IsZero() {
+		r.sendTime = time.Now()
+	}
+	if err := r.stream.setWriteDeadline(); err != nil {
 		r.stream.markBroken()
 		return err
 	}

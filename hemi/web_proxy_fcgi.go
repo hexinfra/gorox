@@ -1166,7 +1166,7 @@ func (r *fcgiResponse) HeadResult() int16 { return r.headResult }
 func (r *fcgiResponse) BodyResult() int16 { return r.bodyResult }
 
 func (r *fcgiResponse) recvHead() {
-	// The entire response head must be received within one timeout
+	// The entire response head must be received within one read timeout
 	if err := r.exchan.setReadDeadline(); err != nil {
 		r.headResult = -1
 		return
@@ -1717,8 +1717,17 @@ func (r *fcgiResponse) fcgiGrowRecords(size int) (int, error) { // r.records is 
 		r.fcgiMoveRecords(r.records)
 	}
 	// We now have enough space to grow.
+	if r.bodyTime.IsZero() {
+		r.bodyTime = time.Now()
+	}
+	if err := r.exchan.setReadDeadline(); err != nil {
+		return 0, err
+	}
 	n, err := r.exchan.readAtLeast(r.records[r.recordsEdge:], size)
-	if err != nil { // since we *HAVE* to grow, short read is considered as an error
+	if err == nil && r._isLongTime() {
+		err = fcgiReadLongTime
+	}
+	if err != nil { // since we *HAVE* to grow size, short read is considered as an error
 		return 0, err
 	}
 	r.recordsEdge += int32(n)
@@ -1734,6 +1743,7 @@ func (r *fcgiResponse) fcgiMoveRecords(records []byte) { // so we can get more s
 
 var ( // fcgi response errors
 	fcgiReadBadRecord = errors.New("fcgi: bad record")
+	fcgiReadLongTime  = errors.New("fcgi: read costs a long time")
 )
 
 //////////////////////////////////////// FCGI protocol elements ////////////////////////////////////////

@@ -356,7 +356,7 @@ type server1Request struct { // incoming. needs parsing
 }
 
 func (r *server1Request) recvHead() { // request-line + headers
-	// The entire request head must be received in one timeout
+	// The entire request head must be received in one read timeout
 	if err := r.stream.setReadDeadline(); err != nil {
 		r.headResult = -1
 		return
@@ -1536,7 +1536,7 @@ type backend1Response struct { // incoming. needs parsing
 }
 
 func (r *backend1Response) recvHead() { // status-line + headers
-	// The entire response head must be received within one timeout
+	// The entire response head must be received within one read timeout
 	if err := r.stream.setReadDeadline(); err != nil {
 		r.headResult = -1
 		return
@@ -2008,8 +2008,9 @@ func (r *webIn_) _readSizedContent1() (p []byte, err error) {
 	if sizeLeft := r.contentSize - r.receivedSize; sizeLeft < readSize {
 		readSize = sizeLeft
 	}
-	r.bodyTime = time.Now()
-	// TODO: maybe one timeout is not enough to read the whole body?
+	if r.bodyTime.IsZero() {
+		r.bodyTime = time.Now()
+	}
 	if err = r.stream.setReadDeadline(); err != nil {
 		return nil, err
 	}
@@ -2031,7 +2032,6 @@ func (r *webIn_) _readVagueContent1() (p []byte, err error) {
 		r.chunkEdge = int32(copy(r.bodyWindow, r.input[r.imme.from:r.imme.edge])) // r.input is not larger than r.bodyWindow
 		r.imme.zero()
 	}
-	r.bodyTime = time.Now()
 	if r.chunkEdge == 0 && !r.growChunked1() { // r.bodyWindow is empty. must fill
 		goto badRead
 	}
@@ -2310,6 +2310,9 @@ func (r *webIn_) growChunked1() bool { // HTTP/1.x is not a binary protocol, we 
 		r.chunkEdge -= r.chunkBack
 		r.chunkFore -= r.chunkBack
 		r.chunkBack = 0
+	}
+	if r.bodyTime.IsZero() {
+		r.bodyTime = time.Now()
 	}
 	err := r.stream.setReadDeadline()
 	if err == nil {

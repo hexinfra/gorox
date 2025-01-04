@@ -2014,11 +2014,11 @@ func (r *webIn_) _readSizedContent1() (p []byte, err error) {
 	}
 	size, err := r.stream.readFull(r.bodyWindow[:readSize])
 	if err == nil {
-		if !r._tooSlow() {
+		if !r._isLongTime() {
 			r.receivedSize += int64(size)
 			return r.bodyWindow[:size], nil
 		}
-		err = webInTooSlow
+		err = webInLongTime
 	}
 	return nil, err
 }
@@ -2314,10 +2314,10 @@ func (r *webIn_) growChunked1() bool { // HTTP/1.x is not a binary protocol, we 
 		n, e := r.stream.read(r.bodyWindow[r.chunkEdge:])
 		r.chunkEdge += int32(n)
 		if e == nil {
-			if !r._tooSlow() {
+			if !r._isLongTime() {
 				return true
 			}
-			e = webInTooSlow
+			e = webInLongTime
 		}
 		err = e // including io.EOF which is unexpected here
 	}
@@ -2676,7 +2676,7 @@ func (r *webOut_) _writeFilePiece1(piece *Piece, inChunked bool) error {
 		} else { // HTTP/1.0, or identity content
 			_, err = r.stream.write(buffer[0:n])
 		}
-		if err = r._slowCheck(err); err != nil {
+		if err = r._longTimeCheck(err); err != nil {
 			return err
 		}
 	}
@@ -2693,7 +2693,7 @@ func (r *webOut_) writeVector1() error {
 		return err
 	}
 	_, err := r.stream.writev(&r.vector)
-	return r._slowCheck(err)
+	return r._longTimeCheck(err)
 }
 func (r *webOut_) writeBytes1(p []byte) error {
 	if r.stream.isBroken() {
@@ -2707,7 +2707,7 @@ func (r *webOut_) writeBytes1(p []byte) error {
 		return err
 	}
 	_, err := r.stream.write(p)
-	return r._slowCheck(err)
+	return r._longTimeCheck(err)
 }
 
 // HTTP/1.x webSocket

@@ -211,11 +211,11 @@ type Backend_[N Node] struct {
 	dialTimeout  time.Duration // dial remote timeout
 	writeTimeout time.Duration // write() timeout
 	readTimeout  time.Duration // read() timeout
-	connID       atomic.Int64  // next conn id
+	numNodes     int64         // num of nodes
 	balancer     string        // roundRobin, ipHash, random, ...
 	indexGet     func() int64  // ...
+	connID       atomic.Int64  // next conn id
 	nodeIndex    atomic.Int64  // for roundRobin. won't overflow because it is so large!
-	numNodes     int64         // num of nodes
 	healthCheck  any           // TODO
 }
 
@@ -256,7 +256,7 @@ func (b *Backend_[N]) OnConfigure() {
 
 	// balancer
 	b.ConfigureString("balancer", &b.balancer, func(value string) error {
-		if value == "roundRobin" || value == "ipHash" || value == "random" || value == "leastLoad" {
+		if value == "roundRobin" || value == "ipHash" || value == "random" || value == "leastUsed" {
 			return nil
 		}
 		return errors.New(".balancer has an invalid value")
@@ -270,8 +270,8 @@ func (b *Backend_[N]) OnPrepare() {
 		b.indexGet = b._nextIndexByRandom
 	case "ipHash":
 		b.indexGet = b._nextIndexByIPHash
-	case "leastLoad":
-		b.indexGet = b._nextIndexByLeastLoad
+	case "leastUsed":
+		b.indexGet = b._nextIndexByLeastUsed
 	default:
 		BugExitln("unknown balancer")
 	}
@@ -326,7 +326,7 @@ func (b *Backend_[N]) _nextIndexByIPHash() int64 {
 	// TODO
 	return 0
 }
-func (b *Backend_[N]) _nextIndexByLeastLoad() int64 {
+func (b *Backend_[N]) _nextIndexByLeastUsed() int64 {
 	// TODO
 	return 0
 }
@@ -406,8 +406,8 @@ func (n *Node_) isDown() bool { return n.down.Load() }
 // contentSaver
 type contentSaver interface {
 	SaveContentFilesDir() string
-	RecvTimeout() time.Duration
-	SendTimeout() time.Duration
+	SendTimeout() time.Duration // timeout to send the whole message. zero means no timeout
+	RecvTimeout() time.Duration // timeout to recv the whole message content. zero means no timeout
 	MaxContentSize() int64
 }
 
@@ -463,8 +463,8 @@ func (s *_contentSaver_) onPrepare(component Component, perm os.FileMode) {
 }
 
 func (s *_contentSaver_) SaveContentFilesDir() string { return s.saveContentFilesDir } // must ends with '/'
-func (s *_contentSaver_) RecvTimeout() time.Duration  { return s.recvTimeout }
 func (s *_contentSaver_) SendTimeout() time.Duration  { return s.sendTimeout }
+func (s *_contentSaver_) RecvTimeout() time.Duration  { return s.recvTimeout }
 func (s *_contentSaver_) MaxContentSize() int64       { return s.maxContentSize }
 
 // LogConfig

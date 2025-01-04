@@ -34,7 +34,7 @@ type RedisBackend struct {
 	Backend_[*redisNode]
 	// States
 	idleTimeout time.Duration // conn idle timeout
-	lifetime    time.Duration // conn's lifetime
+	maxLifetime time.Duration // conn's max lifetime
 }
 
 func (b *RedisBackend) onCreate(name string, stage *Stage) {
@@ -50,14 +50,14 @@ func (b *RedisBackend) OnConfigure() {
 			return nil
 		}
 		return errors.New(".idleTimeout has an invalid value")
-	}, 3*time.Second)
+	}, 2*time.Second)
 
-	// lifetime
-	b.ConfigureDuration("lifetime", &b.lifetime, func(value time.Duration) error {
+	// maxLifetime
+	b.ConfigureDuration("maxLifetime", &b.maxLifetime, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".lifetime has an invalid value")
+		return errors.New(".maxLifetime has an invalid value")
 	}, 1*time.Minute)
 
 	// sub components

@@ -313,12 +313,12 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		.dialTimeout = 10s
 		.writeTimeout = 30s
 		.readTimeout = 30s
-		.idleTimeout = 3s
+		.idleTimeout = 2s
 		.maxStreamsPerConn = 1000
 		.saveContentFilesDir = %tmpDir + "/web/backends/h1b"
 		.maxContentSize = 1T
-		.sendTimeout = 60s
-		.recvTimeout = 60s
+		.sendTimeout = 0s
+		.recvTimeout = 0s
 		.balancer = "roundRobin"
 	}
 
@@ -369,7 +369,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 				<li>
 					<p>.idleTimeout 连接空闲时长，超过这个空闲时间就从连接池剔除此连接。</p>
 					<code>语法：.idleTimeout = Duration
-						默认值：3s
+						默认值：2s
 						取值范围：(1s, 10m]
 					</code>
 				</li>
@@ -404,7 +404,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 				<li>
 					<p>.recvTimeout 接收整个 http 数据超时时间。0 意味着不限制时间</p>
 					<code>语法：.recvTimeout = Durations
-						默认值：60s
+						默认值：0s
 						取值范围： [0s, 10m]
 					</code>
 				</li>
@@ -1354,8 +1354,8 @@ httpProxy {
 		.maxConnsPerGate = 10000
 		.webapps = ("example_com")
 		.maxContentSize = 1T
-		.recvTimeout = 120s
-		.sendTimeout = 120s
+		.recvTimeout = 0s
+		.sendTimeout = 0s
 		.forceScheme = ""
 		.alignScheme = true
 	}
@@ -1419,16 +1419,16 @@ httpProxy {
 				</li>
 				<li>
 					<p>.recvTimeout 接收整个数据包的超时时间。0 意味着不限制时间</p>
-					<code>语法：.recvTimeout = 120s
-						默认值：120s
+					<code>语法：.recvTimeout = Duration
+						默认值：0s
 						取值范围： [0s, 10m]
 					</code>
 				</li>
 
 				<li>
 					<p>.sendTimeout 发送整个数据包的超时时间。0 意味着不限制时间</p>
-					<code>语法：.sendTimeout = 120s
-						默认值：120s
+					<code>语法：.sendTimeout = Duration
+						默认值：0s
 						取值范围： [0s, 10m]
 					</code>
 				</li>

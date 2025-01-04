@@ -122,7 +122,7 @@ func (b *uwsgiBackend) onCreate(name string, stage *Stage) {
 
 func (b *uwsgiBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
-	b._contentSaver_.onConfigure(b, TmpDir()+"/web/backends/"+b.name, 60*time.Second, 60*time.Second)
+	b._contentSaver_.onConfigure(b, TmpDir()+"/web/backends/"+b.name, 0, 0)
 
 	// sub components
 	b.ConfigureNodes()

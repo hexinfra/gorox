@@ -234,6 +234,7 @@ func (g *httpxGate) serveTLS() { // runner
 			continue
 		}
 		tlsConn := tls.Server(tcpConn, g.server.TLSConfig())
+		// TODO: configure timeout
 		if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
 			g.justClose(tlsConn)
 			continue

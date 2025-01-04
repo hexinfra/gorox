@@ -228,7 +228,7 @@ type fcgiBackend struct {
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
 	idleTimeout       time.Duration // conn idle timeout
-	lifetime          time.Duration // conn's lifetime
+	maxLifetime       time.Duration // conn's max lifetime
 	keepConn          bool          // instructs FCGI server to keep conn?
 	maxExchansPerConn int32         // max exchans of one conn. 0 means infinite
 }
@@ -239,7 +239,7 @@ func (b *fcgiBackend) onCreate(name string, stage *Stage) {
 
 func (b *fcgiBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
-	b._contentSaver_.onConfigure(b, TmpDir()+"/web/backends/"+b.name, 60*time.Second, 60*time.Second)
+	b._contentSaver_.onConfigure(b, TmpDir()+"/web/backends/"+b.name, 0, 0)
 
 	// idleTimeout
 	b.ConfigureDuration("idleTimeout", &b.idleTimeout, func(value time.Duration) error {
@@ -247,14 +247,14 @@ func (b *fcgiBackend) OnConfigure() {
 			return nil
 		}
 		return errors.New(".idleTimeout has an invalid value")
-	}, 3*time.Second)
+	}, 2*time.Second)
 
-	// lifetime
-	b.ConfigureDuration("lifetime", &b.lifetime, func(value time.Duration) error {
+	// maxLifetime
+	b.ConfigureDuration("maxLifetime", &b.maxLifetime, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".lifetime has an invalid value")
+		return errors.New(".maxLifetime has an invalid value")
 	}, 1*time.Minute)
 
 	// keepConn
@@ -989,7 +989,7 @@ func (r *fcgiRequest) _writeBytes(p []byte) error {
 		return err
 	}
 	_, err := r.exchan.write(p)
-	return r._slowCheck(err)
+	return r._longTimeCheck(err)
 }
 func (r *fcgiRequest) _writeVector() error {
 	if r.exchan.isBroken() {
@@ -1003,7 +1003,7 @@ func (r *fcgiRequest) _writeVector() error {
 		return err
 	}
 	_, err := r.exchan.writev(&r.vector)
-	return r._slowCheck(err)
+	return r._longTimeCheck(err)
 }
 func (r *fcgiRequest) _beforeWrite() error {
 	if r.sendTime.IsZero() {
@@ -1011,22 +1011,22 @@ func (r *fcgiRequest) _beforeWrite() error {
 	}
 	return r.exchan.setWriteDeadline()
 }
-func (r *fcgiRequest) _slowCheck(err error) error {
-	if err == nil && r._tooSlow() {
-		err = fcgiWriteTooSlow
+func (r *fcgiRequest) _longTimeCheck(err error) error {
+	if err == nil && r._isLongTime() {
+		err = fcgiWriteLongTime
 	}
 	if err != nil {
 		r.exchan.markBroken()
 	}
 	return err
 }
-func (r *fcgiRequest) _tooSlow() bool {
+func (r *fcgiRequest) _isLongTime() bool {
 	return r.sendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.sendTimeout
 }
 
 var ( // fcgi request errors
-	fcgiWriteTooSlow = errors.New("fcgi: write too slow")
-	fcgiWriteBroken  = errors.New("fcgi: write broken")
+	fcgiWriteLongTime = errors.New("fcgi: write costs a long time")
+	fcgiWriteBroken   = errors.New("fcgi: write broken")
 )
 
 // fcgiResponse is the FCGI response in a FCGI exchange. It must implements the response interface.
@@ -1627,7 +1627,7 @@ func (r *fcgiResponse) _beforeRead() error {
 	}
 	return r.exchan.setReadDeadline()
 }
-func (r *fcgiResponse) _tooSlow() bool {
+func (r *fcgiResponse) _isLongTime() bool {
 	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
 }
 

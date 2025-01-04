@@ -267,6 +267,7 @@ func (g *tcpxGate) serveTLS() { // runner
 			continue
 		}
 		tlsConn := tls.Server(tcpConn, g.router.TLSConfig())
+		// TODO: configure timeout
 		if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
 			g.justClose(tlsConn)
 			continue

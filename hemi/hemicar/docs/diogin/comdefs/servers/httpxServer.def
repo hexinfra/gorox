@@ -7,8 +7,8 @@ httpxServer "hs1" {
 	.numGates            = runtime.NumCPU()
 	.maxConnsPerGate     = 10000
 	.maxContentSize      = 1T
-	.recvTimeout         = 120s
-	.sendTimeout         = 120s
+	.recvTimeout         = 0s
+	.sendTimeout         = 0s
 	.forceScheme         = ""
 	.alignScheme         = true
 	.saveContentFilesDir = %tmpDir + "/web/servers/hs1"

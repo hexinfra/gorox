@@ -61,7 +61,7 @@ func (s *webServer_[G]) onCreate(name string, stage *Stage) {
 
 func (s *webServer_[G]) onConfigure() {
 	s.Server_.OnConfigure()
-	s._contentSaver_.onConfigure(s, TmpDir()+"/web/servers/"+s.name, 120*time.Second, 120*time.Second)
+	s._contentSaver_.onConfigure(s, TmpDir()+"/web/servers/"+s.name, 0, 0)
 
 	// webapps
 	s.ConfigureStringList("webapps", &s.webapps, nil, []string{})
@@ -3281,7 +3281,7 @@ type webBackend_[N Node] struct {
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
 	idleTimeout          time.Duration // conn idle timeout
-	lifetime             time.Duration // conn's lifetime
+	maxLifetime          time.Duration // conn's max lifetime
 	maxMemoryContentSize int32         // max content size that can be loaded into memory directly
 	maxStreamsPerConn    int32         // max cumulative streams of one conn. 0 means infinite
 }
@@ -3292,7 +3292,7 @@ func (b *webBackend_[N]) onCreate(name string, stage *Stage) {
 
 func (b *webBackend_[N]) onConfigure() {
 	b.Backend_.OnConfigure()
-	b._contentSaver_.onConfigure(b, TmpDir()+"/web/backends/"+b.name, 60*time.Second, 60*time.Second)
+	b._contentSaver_.onConfigure(b, TmpDir()+"/web/backends/"+b.name, 0, 0)
 
 	// idleTimeout
 	b.ConfigureDuration("idleTimeout", &b.idleTimeout, func(value time.Duration) error {
@@ -3300,14 +3300,14 @@ func (b *webBackend_[N]) onConfigure() {
 			return nil
 		}
 		return errors.New(".idleTimeout has an invalid value")
-	}, 3*time.Second)
+	}, 2*time.Second)
 
-	// lifetime
-	b.ConfigureDuration("lifetime", &b.lifetime, func(value time.Duration) error {
+	// maxLifetime
+	b.ConfigureDuration("maxLifetime", &b.maxLifetime, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".lifetime has an invalid value")
+		return errors.New(".maxLifetime has an invalid value")
 	}, 1*time.Minute)
 
 	// maxMemoryContentSize
@@ -5544,13 +5544,13 @@ func (r *webIn_) _beforeRead(toTime *time.Time) error {
 	}
 	return r.stream.setReadDeadline()
 }
-func (r *webIn_) _tooSlow() bool { // reports whether the speed of incoming content is too slow
+func (r *webIn_) _isLongTime() bool { // reports whether the receiving of incoming content costs a long time
 	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
 }
 
 var ( // webIn_ errors
 	webInBadChunk = errors.New("bad incoming http chunk")
-	webInTooSlow  = errors.New("web incoming too slow")
+	webInLongTime = errors.New("web incoming costs a long time")
 )
 
 // webOut collects shared methods between *server[1-3]Response and *backend[1-3]Request.
@@ -6019,21 +6019,21 @@ func (r *webOut_) _beforeWrite() error {
 	}
 	return r.stream.setWriteDeadline()
 }
-func (r *webOut_) _slowCheck(err error) error {
-	if err == nil && r._tooSlow() {
-		err = webOutTooSlow
+func (r *webOut_) _longTimeCheck(err error) error {
+	if err == nil && r._isLongTime() {
+		err = webOutLongTime
 	}
 	if err != nil {
 		r.stream.markBroken()
 	}
 	return err
 }
-func (r *webOut_) _tooSlow() bool { // reports whether the speed of outgoing content is too slow
+func (r *webOut_) _isLongTime() bool { // reports whether the sending of outgoing content costs a long time
 	return r.sendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.sendTimeout
 }
 
 var ( // webOut_ errors
-	webOutTooSlow       = errors.New("web outgoing too slow")
+	webOutLongTime      = errors.New("web outgoing costs a long time")
 	webOutWriteBroken   = errors.New("write broken")
 	webOutUnknownStatus = errors.New("unknown status")
 	webOutAlreadySent   = errors.New("already sent")

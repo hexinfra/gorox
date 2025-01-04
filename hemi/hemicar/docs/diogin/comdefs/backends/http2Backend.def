@@ -3,13 +3,13 @@ http2Backend "h2b1" {
 	.dialTimeout = 10s
 	.writeTimeout = 30s
 	.readTimeout = 30s
-	.idleTimeout = 3s
-	.lifetime = 1m
+	.idleTimeout = 2s
+	.maxLifetime = 1m
 	.maxStreamsPerConn = 1000
 	.saveContentFilesDir = %tmpDir + "/web/backends/h2b"
 	.maxContentSize = 1T
-	.sendTimeout = 60s
-	.recvTimeout = 60s
+	.sendTimeout = 0s
+	.recvTimeout = 0s
 	.balancer = "roundRobin"
 	node {
 		.address = "127.0.0.1:3080"

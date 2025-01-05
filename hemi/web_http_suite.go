@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// HTTP server and backend implementation. See RFC 9110 and RFC 9111.
+// HTTP server and backend implementation. See RFC 9110.
 
 package hemi
 

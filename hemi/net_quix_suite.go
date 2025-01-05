@@ -109,9 +109,9 @@ func (r *QUIXRouter) Serve() { // runner
 
 	r.IncSubs(len(r.dealets) + len(r.cases))
 	for _, kase := range r.cases {
-		kase.OnShutdown()
+		go kase.OnShutdown()
 	}
-	r.dealets.walk(QUIXDealet.OnShutdown)
+	r.dealets.goWalk(QUIXDealet.OnShutdown)
 	r.WaitSubs() // dealets, cases
 
 	if r.logger != nil {

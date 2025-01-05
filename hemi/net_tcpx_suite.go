@@ -121,9 +121,9 @@ func (r *TCPXRouter) Serve() { // runner
 
 	r.IncSubs(len(r.dealets) + len(r.cases))
 	for _, kase := range r.cases {
-		kase.OnShutdown()
+		go kase.OnShutdown()
 	}
-	r.dealets.walk(TCPXDealet.OnShutdown)
+	r.dealets.goWalk(TCPXDealet.OnShutdown)
 	r.WaitSubs() // dealets, cases
 
 	if r.logger != nil {

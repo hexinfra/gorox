@@ -35,7 +35,7 @@ type WebServer interface { // for *http[x3]Server
 }
 
 // webServer_ is the parent for http[x3]Server.
-type webServer_[G Gate] struct {
+type webServer_[G webGate] struct {
 	// Parent
 	Server_[G]
 	// Mixins
@@ -144,6 +144,13 @@ func (s *webServer_[G]) findWebapp(hostname []byte) *Webapp {
 		}
 	}
 	return s.defaultWebapp // may be nil
+}
+
+// webGate
+type webGate interface {
+	// Imports
+	Gate
+	// Methods
 }
 
 // webGate_ is the parent for http[x3]Gate.

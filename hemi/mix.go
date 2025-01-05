@@ -22,7 +22,17 @@ import (
 	"time"
 )
 
-// _holder_
+// holder
+type holder interface {
+	// Methods
+	Address() string
+	IsUDS() bool
+	IsTLS() bool
+	ReadTimeout() time.Duration
+	WriteTimeout() time.Duration
+}
+
+// _holder_ is a mixin.
 type _holder_ struct {
 	// Assocs
 	stage *Stage
@@ -74,11 +84,9 @@ func (h *_holder_) WriteTimeout() time.Duration { return h.writeTimeout }
 type Server interface {
 	// Imports
 	Component
+	holder
 	// Methods
 	Serve() // runner
-	Address() string
-	IsUDS() bool
-	IsTLS() bool
 }
 
 // Server_ is the parent for all servers.
@@ -335,6 +343,7 @@ func (b *Backend_[N]) _nextIndexByLeastUsed() int64 {
 type Node interface {
 	// Imports
 	Component
+	holder
 	// Methods
 	Maintain() // runner
 }

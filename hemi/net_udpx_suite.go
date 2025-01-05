@@ -114,9 +114,9 @@ func (r *UDPXRouter) Serve() { // runner
 
 	r.IncSubs(len(r.dealets) + len(r.cases))
 	for _, kase := range r.cases {
-		kase.OnShutdown()
+		go kase.OnShutdown()
 	}
-	r.dealets.walk(UDPXDealet.OnShutdown)
+	r.dealets.goWalk(UDPXDealet.OnShutdown)
 	r.WaitSubs() // dealets, cases
 
 	if r.logger != nil {

@@ -33,14 +33,14 @@ import (
 // http2Conn
 type http2Conn interface {
 	// Imports
-	webConn
+	httpConn
 	// Methods
 }
 
 // http2Conn_
 type http2Conn_ struct {
 	// Parent
-	webConn_
+	httpConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	outFrame http2OutFrame // used by c.manager() to send special out frames. immediately reset after use
@@ -76,7 +76,7 @@ type _http2Conn0 struct { // for fast reset, entirely
 }
 
 func (c *http2Conn_) onGet(id int64, stageID int32, udsMode bool, tlsMode bool, netConn net.Conn, rawConn syscall.RawConn, readTimeout time.Duration, writeTimeout time.Duration) {
-	c.webConn_.onGet(id, stageID, udsMode, tlsMode, readTimeout, writeTimeout)
+	c.httpConn_.onGet(id, stageID, udsMode, tlsMode, readTimeout, writeTimeout)
 
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -110,7 +110,7 @@ func (c *http2Conn_) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
 
-	c.webConn_.onPut()
+	c.httpConn_.onPut()
 }
 
 func (c *http2Conn_) receiver() { // runner
@@ -514,7 +514,7 @@ func (c *http2Conn_) writev(vector *net.Buffers) (int64, error) {
 // http2Stream
 type http2Stream interface {
 	// Imports
-	webStream
+	httpStream
 	// Methods
 	getID() uint32
 	getIndex() uint8
@@ -524,7 +524,7 @@ type http2Stream interface {
 // http2Stream_
 type http2Stream_[C http2Conn] struct {
 	// Parent
-	webStream_
+	httpStream_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -539,7 +539,7 @@ type _http2Stream0 struct { // for fast reset, entirely
 }
 
 func (s *http2Stream_[C]) onUse(id uint32, conn C) {
-	s.webStream_.onUse()
+	s.httpStream_.onUse()
 
 	s.id = id
 	s.conn = conn
@@ -548,7 +548,7 @@ func (s *http2Stream_[C]) onEnd() {
 	s._http2Stream0 = _http2Stream0{}
 
 	// s.conn = nil
-	s.webStream_.onEnd()
+	s.httpStream_.onEnd()
 }
 
 func (s *http2Stream_[C]) getID() uint32 { return s.id }
@@ -556,7 +556,7 @@ func (s *http2Stream_[C]) getID() uint32 { return s.id }
 func (s *http2Stream_[C]) getIndex() uint8      { return s.index }
 func (s *http2Stream_[C]) setIndex(index uint8) { s.index = index }
 
-func (s *http2Stream_[C]) Conn() webConn        { return s.conn }
+func (s *http2Stream_[C]) Conn() httpConn       { return s.conn }
 func (s *http2Stream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }
 
 func (s *http2Stream_[C]) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
@@ -1827,7 +1827,7 @@ func (s *backend2Socket) onEnd() {
 
 //////////////////////////////////////// HTTP/2 incoming implementation ////////////////////////////////////////
 
-func (r *webIn_) _growHeaders2(size int32) bool {
+func (r *httpIn_) _growHeaders2(size int32) bool {
 	edge := r.inputEdge + size      // size is ensured to not overflow
 	if edge < int32(cap(r.input)) { // fast path
 		return true
@@ -1844,7 +1844,7 @@ func (r *webIn_) _growHeaders2(size int32) bool {
 	return true
 }
 
-func (r *webIn_) readContent2() (p []byte, err error) {
+func (r *httpIn_) readContent2() (p []byte, err error) {
 	// TODO
 	return
 }
@@ -2048,52 +2048,52 @@ func (b *http2InBuffer) decRef() {
 
 //////////////////////////////////////// HTTP/2 outgoing implementation ////////////////////////////////////////
 
-func (r *webOut_) addHeader2(name []byte, value []byte) bool {
+func (r *httpOut_) addHeader2(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *webOut_) header2(name []byte) (value []byte, ok bool) {
+func (r *httpOut_) header2(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *webOut_) hasHeader2(name []byte) bool {
+func (r *httpOut_) hasHeader2(name []byte) bool {
 	// TODO
 	return false
 }
-func (r *webOut_) delHeader2(name []byte) (deleted bool) {
+func (r *httpOut_) delHeader2(name []byte) (deleted bool) {
 	// TODO
 	return false
 }
-func (r *webOut_) delHeaderAt2(i uint8) {
+func (r *httpOut_) delHeaderAt2(i uint8) {
 	// TODO
 }
 
-func (r *webOut_) sendChain2() error {
+func (r *httpOut_) sendChain2() error {
 	// TODO
 	return nil
 }
 
-func (r *webOut_) echoChain2() error {
+func (r *httpOut_) echoChain2() error {
 	// TODO
 	return nil
 }
 
-func (r *webOut_) addTrailer2(name []byte, value []byte) bool {
+func (r *httpOut_) addTrailer2(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *webOut_) trailer2(name []byte) (value []byte, ok bool) {
+func (r *httpOut_) trailer2(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *webOut_) trailers2() []byte {
+func (r *httpOut_) trailers2() []byte {
 	// TODO
 	return nil
 }
 
-func (r *webOut_) proxyPassBytes2(p []byte) error { return r.writeBytes2(p) }
+func (r *httpOut_) proxyPassBytes2(p []byte) error { return r.writeBytes2(p) }
 
-func (r *webOut_) finalizeVague2() error {
+func (r *httpOut_) finalizeVague2() error {
 	// TODO
 	if r.nTrailers == 1 { // no trailers
 	} else { // with trailers
@@ -2101,19 +2101,19 @@ func (r *webOut_) finalizeVague2() error {
 	return nil
 }
 
-func (r *webOut_) writeHeaders2() error { // used by echo and pass
+func (r *httpOut_) writeHeaders2() error { // used by echo and pass
 	// TODO
 	r.fieldsEdge = 0 // now that headers are all sent, r.fields will be used by trailers (if any), so reset it.
 	return nil
 }
-func (r *webOut_) writePiece2(piece *Piece, vague bool) error {
+func (r *httpOut_) writePiece2(piece *Piece, vague bool) error {
 	// TODO
 	return nil
 }
-func (r *webOut_) writeVector2() error {
+func (r *httpOut_) writeVector2() error {
 	return nil
 }
-func (r *webOut_) writeBytes2(p []byte) error {
+func (r *httpOut_) writeBytes2(p []byte) error {
 	// TODO
 	return nil
 }

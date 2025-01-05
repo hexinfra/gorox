@@ -24,14 +24,14 @@ import (
 // http3Conn
 type http3Conn interface {
 	// Imports
-	webConn
+	httpConn
 	// Methods
 }
 
 // http3Conn_
 type http3Conn_ struct {
 	// Parent
-	webConn_
+	httpConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -49,7 +49,7 @@ type _http3Conn0 struct { // for fast reset, entirely
 }
 
 func (c *http3Conn_) onGet(id int64, stageID int32, udsMode bool, tlsMode bool, quicConn *quic.Conn, readTimeout time.Duration, writeTimeout time.Duration) {
-	c.webConn_.onGet(id, stageID, udsMode, tlsMode, readTimeout, writeTimeout)
+	c.httpConn_.onGet(id, stageID, udsMode, tlsMode, readTimeout, writeTimeout)
 
 	c.quicConn = quicConn
 	if c.inBuffer == nil {
@@ -63,7 +63,7 @@ func (c *http3Conn_) onPut() {
 	c.activeStreams = [http3MaxConcurrentStreams]http3Stream{}
 	c.quicConn = nil
 
-	c.webConn_.onPut()
+	c.httpConn_.onPut()
 }
 
 func (c *http3Conn_) remoteAddr() net.Addr { return nil } // TODO
@@ -71,14 +71,14 @@ func (c *http3Conn_) remoteAddr() net.Addr { return nil } // TODO
 // http3Stream
 type http3Stream interface {
 	// Imports
-	webStream
+	httpStream
 	// Methods
 }
 
 // http3Stream_
 type http3Stream_[C http3Conn] struct {
 	// Parent
-	webStream_
+	httpStream_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -91,7 +91,7 @@ type _http3Stream0 struct { // for fast reset, entirely
 }
 
 func (s *http3Stream_[C]) onUse(id int64, conn C) {
-	s.webStream_.onUse()
+	s.httpStream_.onUse()
 
 	s.id = id
 	s.conn = conn
@@ -100,10 +100,10 @@ func (s *http3Stream_[C]) onEnd() {
 	s._http3Stream0 = _http3Stream0{}
 
 	// s.conn = nil
-	s.webStream_.onEnd()
+	s.httpStream_.onEnd()
 }
 
-func (s *http3Stream_[C]) Conn() webConn        { return s.conn }
+func (s *http3Stream_[C]) Conn() httpConn       { return s.conn }
 func (s *http3Stream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }
 
 func (s *http3Stream_[C]) markBroken()    {}               // TODO
@@ -852,13 +852,13 @@ func (s *backend3Socket) onEnd() {
 
 //////////////////////////////////////// HTTP/3 incoming implementation ////////////////////////////////////////
 
-func (r *webIn_) _growHeaders3(size int32) bool {
+func (r *httpIn_) _growHeaders3(size int32) bool {
 	// TODO
 	// use r.input
 	return false
 }
 
-func (r *webIn_) readContent3() (p []byte, err error) {
+func (r *httpIn_) readContent3() (p []byte, err error) {
 	// TODO
 	return
 }
@@ -903,52 +903,52 @@ func (b *http3Buffer) decRef() {
 
 //////////////////////////////////////// HTTP/3 outgoing implementation ////////////////////////////////////////
 
-func (r *webOut_) addHeader3(name []byte, value []byte) bool {
+func (r *httpOut_) addHeader3(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *webOut_) header3(name []byte) (value []byte, ok bool) {
+func (r *httpOut_) header3(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *webOut_) hasHeader3(name []byte) bool {
+func (r *httpOut_) hasHeader3(name []byte) bool {
 	// TODO
 	return false
 }
-func (r *webOut_) delHeader3(name []byte) (deleted bool) {
+func (r *httpOut_) delHeader3(name []byte) (deleted bool) {
 	// TODO
 	return false
 }
-func (r *webOut_) delHeaderAt3(i uint8) {
+func (r *httpOut_) delHeaderAt3(i uint8) {
 	// TODO
 }
 
-func (r *webOut_) sendChain3() error {
+func (r *httpOut_) sendChain3() error {
 	// TODO
 	return nil
 }
 
-func (r *webOut_) echoChain3() error {
+func (r *httpOut_) echoChain3() error {
 	// TODO
 	return nil
 }
 
-func (r *webOut_) addTrailer3(name []byte, value []byte) bool {
+func (r *httpOut_) addTrailer3(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *webOut_) trailer3(name []byte) (value []byte, ok bool) {
+func (r *httpOut_) trailer3(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *webOut_) trailers3() []byte {
+func (r *httpOut_) trailers3() []byte {
 	// TODO
 	return nil
 }
 
-func (r *webOut_) proxyPassBytes3(p []byte) error { return r.writeBytes3(p) }
+func (r *httpOut_) proxyPassBytes3(p []byte) error { return r.writeBytes3(p) }
 
-func (r *webOut_) finalizeVague3() error {
+func (r *httpOut_) finalizeVague3() error {
 	// TODO
 	if r.nTrailers == 1 { // no trailers
 	} else { // with trailers
@@ -956,19 +956,19 @@ func (r *webOut_) finalizeVague3() error {
 	return nil
 }
 
-func (r *webOut_) writeHeaders3() error { // used by echo and pass
+func (r *httpOut_) writeHeaders3() error { // used by echo and pass
 	// TODO
 	r.fieldsEdge = 0 // now that headers are all sent, r.fields will be used by trailers (if any), so reset it.
 	return nil
 }
-func (r *webOut_) writePiece3(piece *Piece, vague bool) error {
+func (r *httpOut_) writePiece3(piece *Piece, vague bool) error {
 	// TODO
 	return nil
 }
-func (r *webOut_) writeVector3() error {
+func (r *httpOut_) writeVector3() error {
 	return nil
 }
-func (r *webOut_) writeBytes3(p []byte) error {
+func (r *httpOut_) writeBytes3(p []byte) error {
 	// TODO
 	return nil
 }

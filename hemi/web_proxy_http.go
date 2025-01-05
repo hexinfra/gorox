@@ -209,7 +209,7 @@ func WebExchanReverseProxy(foreReq Request, foreResp Response, cacher Cacher, ba
 		if backErr == nil && foreHasTrailers {
 			if !backReq.proxyCopyTrailers(foreReq, proxyConfig) {
 				backStream.markBroken()
-				backErr = webOutTrailerFailed
+				backErr = httpOutTrailerFailed
 			} else if backErr = backReq.endVague(); backErr != nil {
 				backStream.markBroken()
 			}

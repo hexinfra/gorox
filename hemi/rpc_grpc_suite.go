@@ -17,6 +17,20 @@ import (
 	"time"
 )
 
+//////////////////////////////////////// gRPC holder implementation ////////////////////////////////////////
+
+// _grpcHolder_
+type _grpcHolder_ struct {
+}
+
+// grpcConn_
+type grpcConn_ struct {
+}
+
+// grpcCall_
+type grpcCall_ struct {
+}
+
 //////////////////////////////////////// gRPC server implementation ////////////////////////////////////////
 
 func init() {
@@ -193,18 +207,4 @@ type gConn struct {
 
 // gCall
 type gCall struct {
-}
-
-//////////////////////////////////////// gRPC holder implementation ////////////////////////////////////////
-
-// _grpcHolder_
-type _grpcHolder_ struct {
-}
-
-// grpcConn_
-type grpcConn_ struct {
-}
-
-// grpcCall_
-type grpcCall_ struct {
 }

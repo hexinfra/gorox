@@ -17,6 +17,20 @@ import (
 	"time"
 )
 
+//////////////////////////////////////// HRPC holder implementation ////////////////////////////////////////
+
+// _hrpcHolder_
+type _hrpcHolder_ struct {
+}
+
+// hrpcConn_
+type hrpcConn_ struct {
+}
+
+// hrpcCall_
+type hrpcCall_ struct {
+}
+
 //////////////////////////////////////// HRPC server implementation ////////////////////////////////////////
 
 func init() {
@@ -193,18 +207,4 @@ type hConn struct {
 
 // hCall
 type hCall struct {
-}
-
-//////////////////////////////////////// HRPC holder implementation ////////////////////////////////////////
-
-// _hrpcHolder_
-type _hrpcHolder_ struct {
-}
-
-// hrpcConn_
-type hrpcConn_ struct {
-}
-
-// hrpcCall_
-type hrpcCall_ struct {
 }

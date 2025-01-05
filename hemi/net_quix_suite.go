@@ -17,6 +17,105 @@ import (
 	"github.com/hexinfra/gorox/hemi/library/quic"
 )
 
+//////////////////////////////////////// QUIX holder implementation ////////////////////////////////////////
+
+// quixHolder
+type quixHolder interface {
+}
+
+// _quixHolder_
+type _quixHolder_ struct {
+	// States
+	maxCumulativeStreamsPerConn int32 // max cumulative streams of one conn. 0 means infinite
+	maxConcurrentStreamsPerConn int32 // max concurrent streams of one conn
+}
+
+func (h *_quixHolder_) onConfigure(component Component) {
+	// maxCumulativeStreamsPerConn
+	component.ConfigureInt32("maxCumulativeStreamsPerConn", &h.maxCumulativeStreamsPerConn, func(value int32) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".maxCumulativeStreamsPerConn has an invalid value")
+	}, 1000)
+
+	// maxCumulativeStreamsPerConn
+	component.ConfigureInt32("maxConcurrentStreamsPerConn", &h.maxConcurrentStreamsPerConn, func(value int32) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".maxConcurrentStreamsPerConn has an invalid value")
+	}, 1000)
+}
+func (h *_quixHolder_) onPrepare(component Component) {
+}
+
+func (h *_quixHolder_) MaxCumulativeStreamsPerConn() int32 { return h.maxCumulativeStreamsPerConn }
+func (h *_quixHolder_) MaxConcurrentStreamsPerConn() int32 { return h.maxConcurrentStreamsPerConn }
+
+// quixConn
+type quixConn interface {
+}
+
+// quixConn_
+type quixConn_ struct {
+	// Conn states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id                   int64
+	stageID              int32
+	quicConn             *quic.Conn
+	udsMode              bool
+	tlsMode              bool
+	maxCumulativeStreams int32 // how many streams are allowed on this connection?
+	maxConcurrentStreams int32 // how many concurrent streams are allowed on this connection?
+	// Conn states (zeros)
+	counter           atomic.Int64 // can be used to generate a random number
+	lastRead          time.Time    // deadline of last read operation
+	lastWrite         time.Time    // deadline of last write operation
+	broken            atomic.Bool  // is connection broken?
+	cumulativeStreams atomic.Int32 // how many streams have been used?
+	concurrentStreams atomic.Int32 // how many concurrent streams?
+}
+
+func (c *quixConn_) onGet(id int64, stageID int32, quicConn *quic.Conn, udsMode bool, tlsMode bool, maxCumulativeStreams int32, maxConcurrentStreams int32) {
+	c.id = id
+	c.stageID = stageID
+	c.quicConn = quicConn
+	c.udsMode = udsMode
+	c.tlsMode = tlsMode
+	c.maxCumulativeStreams = maxCumulativeStreams
+	c.maxConcurrentStreams = maxConcurrentStreams
+}
+func (c *quixConn_) onPut() {
+	c.quicConn = nil
+	c.counter.Store(0)
+	c.lastRead = time.Time{}
+	c.lastWrite = time.Time{}
+	c.broken.Store(false)
+	c.cumulativeStreams.Store(0)
+	c.concurrentStreams.Store(0)
+}
+
+func (c *quixConn_) IsUDS() bool { return c.udsMode }
+func (c *quixConn_) IsTLS() bool { return c.tlsMode }
+
+func (c *quixConn_) MakeTempName(to []byte, unixTime int64) int {
+	return makeTempName(to, c.stageID, c.id, unixTime, c.counter.Add(1))
+}
+
+func (c *quixConn_) markBroken()    { c.broken.Store(true) }
+func (c *quixConn_) isBroken() bool { return c.broken.Load() }
+
+// quixStream
+type quixStream interface {
+}
+
+// quixStream_
+type quixStream_ struct {
+}
+
 //////////////////////////////////////// QUIX router implementation ////////////////////////////////////////
 
 // QUIXRouter
@@ -618,103 +717,4 @@ func (s *QStream) Read(p []byte) (n int, err error) {
 func (s *QStream) Close() error {
 	// TODO
 	return nil
-}
-
-//////////////////////////////////////// QUIX holder implementation ////////////////////////////////////////
-
-// quixHolder
-type quixHolder interface {
-}
-
-// _quixHolder_
-type _quixHolder_ struct {
-	// States
-	maxCumulativeStreamsPerConn int32 // max cumulative streams of one conn. 0 means infinite
-	maxConcurrentStreamsPerConn int32 // max concurrent streams of one conn
-}
-
-func (h *_quixHolder_) onConfigure(component Component) {
-	// maxCumulativeStreamsPerConn
-	component.ConfigureInt32("maxCumulativeStreamsPerConn", &h.maxCumulativeStreamsPerConn, func(value int32) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".maxCumulativeStreamsPerConn has an invalid value")
-	}, 1000)
-
-	// maxCumulativeStreamsPerConn
-	component.ConfigureInt32("maxConcurrentStreamsPerConn", &h.maxConcurrentStreamsPerConn, func(value int32) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".maxConcurrentStreamsPerConn has an invalid value")
-	}, 1000)
-}
-func (h *_quixHolder_) onPrepare(component Component) {
-}
-
-func (h *_quixHolder_) MaxCumulativeStreamsPerConn() int32 { return h.maxCumulativeStreamsPerConn }
-func (h *_quixHolder_) MaxConcurrentStreamsPerConn() int32 { return h.maxConcurrentStreamsPerConn }
-
-// quixConn
-type quixConn interface {
-}
-
-// quixConn_
-type quixConn_ struct {
-	// Conn states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id                   int64
-	stageID              int32
-	quicConn             *quic.Conn
-	udsMode              bool
-	tlsMode              bool
-	maxCumulativeStreams int32 // how many streams are allowed on this connection?
-	maxConcurrentStreams int32 // how many concurrent streams are allowed on this connection?
-	// Conn states (zeros)
-	counter           atomic.Int64 // can be used to generate a random number
-	lastRead          time.Time    // deadline of last read operation
-	lastWrite         time.Time    // deadline of last write operation
-	broken            atomic.Bool  // is connection broken?
-	cumulativeStreams atomic.Int32 // how many streams have been used?
-	concurrentStreams atomic.Int32 // how many concurrent streams?
-}
-
-func (c *quixConn_) onGet(id int64, stageID int32, quicConn *quic.Conn, udsMode bool, tlsMode bool, maxCumulativeStreams int32, maxConcurrentStreams int32) {
-	c.id = id
-	c.stageID = stageID
-	c.quicConn = quicConn
-	c.udsMode = udsMode
-	c.tlsMode = tlsMode
-	c.maxCumulativeStreams = maxCumulativeStreams
-	c.maxConcurrentStreams = maxConcurrentStreams
-}
-func (c *quixConn_) onPut() {
-	c.quicConn = nil
-	c.counter.Store(0)
-	c.lastRead = time.Time{}
-	c.lastWrite = time.Time{}
-	c.broken.Store(false)
-	c.cumulativeStreams.Store(0)
-	c.concurrentStreams.Store(0)
-}
-
-func (c *quixConn_) IsUDS() bool { return c.udsMode }
-func (c *quixConn_) IsTLS() bool { return c.tlsMode }
-
-func (c *quixConn_) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, c.stageID, c.id, unixTime, c.counter.Add(1))
-}
-
-func (c *quixConn_) markBroken()    { c.broken.Store(true) }
-func (c *quixConn_) isBroken() bool { return c.broken.Load() }
-
-// quixStream
-type quixStream interface {
-}
-
-// quixStream_
-type quixStream_ struct {
 }

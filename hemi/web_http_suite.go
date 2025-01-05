@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// General HTTP server and backend implementation. See RFC 9110 and RFC 9111.
+// HTTP server and backend implementation. See RFC 9110 and RFC 9111.
 
 package hemi
 
@@ -23,7 +23,147 @@ import (
 	"time"
 )
 
-//////////////////////////////////////// General HTTP server implementation ////////////////////////////////////////
+//////////////////////////////////////// HTTP holder implementation ////////////////////////////////////////
+
+// webHolder collects shared methods between *http[x3]Server and *http[1-3]Node.
+type webHolder interface {
+	// Imports
+	contentSaver
+	// Methods
+	MaxCumulativeStreamsPerConn() int32
+	MaxMemoryContentSize() int32 // allowed to load into memory
+}
+
+// _webHolder_ is a mixin for webServer_ and webNode_.
+type _webHolder_ struct {
+	// Mixins
+	_contentSaver_ // so responses can save their large contents in local file system.
+	// States
+	maxCumulativeStreamsPerConn int32 // max cumulative streams of one conn. 0 means infinite
+	maxMemoryContentSize        int32 // max content size that can be loaded into memory directly
+}
+
+func (h *_webHolder_) onConfigure(component Component, defaultDir string, recvTimeout time.Duration, sendTimeout time.Duration) {
+	h._contentSaver_.onConfigure(component, defaultDir, recvTimeout, sendTimeout)
+
+	// maxCumulativeStreamsPerConn
+	component.ConfigureInt32("maxCumulativeStreamsPerConn", &h.maxCumulativeStreamsPerConn, func(value int32) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".maxCumulativeStreamsPerConn has an invalid value")
+	}, 1000)
+
+	// maxMemoryContentSize
+	component.ConfigureInt32("maxMemoryContentSize", &h.maxMemoryContentSize, func(value int32) error {
+		if value > 0 && value <= _1G { // DO NOT CHANGE THIS, otherwise integer overflow may occur
+			return nil
+		}
+		return errors.New(".maxMemoryContentSize has an invalid value")
+	}, _16M)
+}
+func (h *_webHolder_) onPrepare(component Component, perm os.FileMode) {
+	h._contentSaver_.onPrepare(component, perm)
+}
+
+func (h *_webHolder_) MaxCumulativeStreamsPerConn() int32 { return h.maxCumulativeStreamsPerConn }
+func (h *_webHolder_) MaxMemoryContentSize() int32        { return h.maxMemoryContentSize }
+
+// webConn collects shared methods between *server[1-3]Conn and *backend[1-3]Conn.
+type webConn interface {
+	ID() int64
+	IsUDS() bool
+	IsTLS() bool
+	MakeTempName(to []byte, unixTime int64) int
+	remoteAddr() net.Addr
+	markBroken()
+	isBroken() bool
+}
+
+// webConn_ is the parent for *http[1-3]Conn_.
+type webConn_ struct {
+	// Conn states (non-zeros)
+	id           int64         // the conn id
+	stageID      int32         // current stage id, for convenience
+	udsMode      bool          // for convenience
+	tlsMode      bool          // for convenience
+	readTimeout  time.Duration // for convenience
+	writeTimeout time.Duration // for convenience
+	// Conn states (zeros)
+	cumulativeStreams atomic.Int32 // cumulative num of streams served or fired
+	broken            atomic.Bool  // is conn broken?
+	counter           atomic.Int64 // can be used to generate a random number
+	lastWrite         time.Time    // deadline of last write operation
+	lastRead          time.Time    // deadline of last read operation
+}
+
+func (c *webConn_) onGet(id int64, stageID int32, udsMode bool, tlsMode bool, readTimeout time.Duration, writeTimeout time.Duration) {
+	c.id = id
+	c.stageID = stageID
+	c.udsMode = udsMode
+	c.tlsMode = tlsMode
+	c.readTimeout = readTimeout
+	c.writeTimeout = writeTimeout
+}
+func (c *webConn_) onPut() {
+	c.cumulativeStreams.Store(0)
+	c.broken.Store(false)
+	c.counter.Store(0)
+	c.lastWrite = time.Time{}
+	c.lastRead = time.Time{}
+}
+
+func (c *webConn_) ID() int64 { return c.id }
+
+func (c *webConn_) IsUDS() bool { return c.udsMode }
+func (c *webConn_) IsTLS() bool { return c.tlsMode }
+
+func (c *webConn_) MakeTempName(to []byte, unixTime int64) int {
+	return makeTempName(to, c.stageID, c.id, unixTime, c.counter.Add(1))
+}
+
+func (c *webConn_) markBroken()    { c.broken.Store(true) }
+func (c *webConn_) isBroken() bool { return c.broken.Load() }
+
+// webStream collects shared methods between *server[1-3]Stream and *backend[1-3]Stream.
+type webStream interface {
+	Holder() webHolder
+	Conn() webConn
+
+	remoteAddr() net.Addr
+	buffer256() []byte
+	unsafeMake(size int) []byte
+	isBroken() bool // returns true if either side of the stream is broken
+	markBroken()    // mark stream as broken
+	setReadDeadline() error
+	setWriteDeadline() error
+	read(p []byte) (int, error)
+	readFull(p []byte) (int, error)
+	write(p []byte) (int, error)
+	writev(vector *net.Buffers) (int64, error)
+}
+
+// webStream_ is the parent for *http[1-3]Stream_.
+type webStream_ struct {
+	// Stream states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	region Region // a region-based memory pool
+	// Stream states (zeros)
+}
+
+func (s *webStream_) onUse() {
+	s.region.Init()
+}
+func (s *webStream_) onEnd() {
+	s.region.Free()
+}
+
+func (s *webStream_) buffer256() []byte          { return s.stockBuffer[:] }
+func (s *webStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
+
+//////////////////////////////////////// HTTP server implementation ////////////////////////////////////////
 
 // WebServer
 type WebServer interface { // for *http[x3]Server
@@ -2895,7 +3035,7 @@ func (s *serverSocket_) onEnd() {
 func (s *serverSocket_) serverTodo() {
 }
 
-//////////////////////////////////////// General HTTP backend implementation ////////////////////////////////////////
+//////////////////////////////////////// HTTP backend implementation ////////////////////////////////////////
 
 // WebBackend
 type WebBackend interface { // for *HTTP[1-3]Backend
@@ -3696,147 +3836,7 @@ func (s *backendSocket_) onEnd() {
 func (s *backendSocket_) backendTodo() {
 }
 
-//////////////////////////////////////// General HTTP holder implementation ////////////////////////////////////////
-
-// webHolder collects shared methods between *http[x3]Server and *http[1-3]Node.
-type webHolder interface {
-	// Imports
-	contentSaver
-	// Methods
-	MaxCumulativeStreamsPerConn() int32
-	MaxMemoryContentSize() int32 // allowed to load into memory
-}
-
-// _webHolder_ is a mixin for webServer_ and webNode_.
-type _webHolder_ struct {
-	// Mixins
-	_contentSaver_ // so responses can save their large contents in local file system.
-	// States
-	maxCumulativeStreamsPerConn int32 // max cumulative streams of one conn. 0 means infinite
-	maxMemoryContentSize        int32 // max content size that can be loaded into memory directly
-}
-
-func (h *_webHolder_) onConfigure(component Component, defaultDir string, recvTimeout time.Duration, sendTimeout time.Duration) {
-	h._contentSaver_.onConfigure(component, defaultDir, recvTimeout, sendTimeout)
-
-	// maxCumulativeStreamsPerConn
-	component.ConfigureInt32("maxCumulativeStreamsPerConn", &h.maxCumulativeStreamsPerConn, func(value int32) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".maxCumulativeStreamsPerConn has an invalid value")
-	}, 1000)
-
-	// maxMemoryContentSize
-	component.ConfigureInt32("maxMemoryContentSize", &h.maxMemoryContentSize, func(value int32) error {
-		if value > 0 && value <= _1G { // DO NOT CHANGE THIS, otherwise integer overflow may occur
-			return nil
-		}
-		return errors.New(".maxMemoryContentSize has an invalid value")
-	}, _16M)
-}
-func (h *_webHolder_) onPrepare(component Component, perm os.FileMode) {
-	h._contentSaver_.onPrepare(component, perm)
-}
-
-func (h *_webHolder_) MaxCumulativeStreamsPerConn() int32 { return h.maxCumulativeStreamsPerConn }
-func (h *_webHolder_) MaxMemoryContentSize() int32        { return h.maxMemoryContentSize }
-
-// webConn collects shared methods between *server[1-3]Conn and *backend[1-3]Conn.
-type webConn interface {
-	ID() int64
-	IsUDS() bool
-	IsTLS() bool
-	MakeTempName(to []byte, unixTime int64) int
-	remoteAddr() net.Addr
-	markBroken()
-	isBroken() bool
-}
-
-// webConn_ is the parent for *http[1-3]Conn_.
-type webConn_ struct {
-	// Conn states (non-zeros)
-	id           int64         // the conn id
-	stageID      int32         // current stage id, for convenience
-	udsMode      bool          // for convenience
-	tlsMode      bool          // for convenience
-	readTimeout  time.Duration // for convenience
-	writeTimeout time.Duration // for convenience
-	// Conn states (zeros)
-	cumulativeStreams atomic.Int32 // cumulative num of streams served or fired
-	broken            atomic.Bool  // is conn broken?
-	counter           atomic.Int64 // can be used to generate a random number
-	lastWrite         time.Time    // deadline of last write operation
-	lastRead          time.Time    // deadline of last read operation
-}
-
-func (c *webConn_) onGet(id int64, stageID int32, udsMode bool, tlsMode bool, readTimeout time.Duration, writeTimeout time.Duration) {
-	c.id = id
-	c.stageID = stageID
-	c.udsMode = udsMode
-	c.tlsMode = tlsMode
-	c.readTimeout = readTimeout
-	c.writeTimeout = writeTimeout
-}
-func (c *webConn_) onPut() {
-	c.cumulativeStreams.Store(0)
-	c.broken.Store(false)
-	c.counter.Store(0)
-	c.lastWrite = time.Time{}
-	c.lastRead = time.Time{}
-}
-
-func (c *webConn_) ID() int64 { return c.id }
-
-func (c *webConn_) IsUDS() bool { return c.udsMode }
-func (c *webConn_) IsTLS() bool { return c.tlsMode }
-
-func (c *webConn_) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, c.stageID, c.id, unixTime, c.counter.Add(1))
-}
-
-func (c *webConn_) markBroken()    { c.broken.Store(true) }
-func (c *webConn_) isBroken() bool { return c.broken.Load() }
-
-// webStream collects shared methods between *server[1-3]Stream and *backend[1-3]Stream.
-type webStream interface {
-	Holder() webHolder
-	Conn() webConn
-
-	remoteAddr() net.Addr
-	buffer256() []byte
-	unsafeMake(size int) []byte
-	isBroken() bool // returns true if either side of the stream is broken
-	markBroken()    // mark stream as broken
-	setReadDeadline() error
-	setWriteDeadline() error
-	read(p []byte) (int, error)
-	readFull(p []byte) (int, error)
-	write(p []byte) (int, error)
-	writev(vector *net.Buffers) (int64, error)
-}
-
-// webStream_ is the parent for *http[1-3]Stream_.
-type webStream_ struct {
-	// Stream states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	region Region // a region-based memory pool
-	// Stream states (zeros)
-}
-
-func (s *webStream_) onUse() {
-	s.region.Init()
-}
-func (s *webStream_) onEnd() {
-	s.region.Free()
-}
-
-func (s *webStream_) buffer256() []byte          { return s.stockBuffer[:] }
-func (s *webStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
-
-//////////////////////////////////////// General HTTP incoming implementation ////////////////////////////////////////
+//////////////////////////////////////// HTTP incoming implementation ////////////////////////////////////////
 
 // webIn collects shared methods between *server[1-3]Request and *backend[1-3]Response.
 type webIn interface {
@@ -5203,7 +5203,7 @@ var ( // webIn_ errors
 	webInLongTime = errors.New("web incoming costs a long time")
 )
 
-//////////////////////////////////////// General HTTP outgoing implementation ////////////////////////////////////////
+//////////////////////////////////////// HTTP outgoing implementation ////////////////////////////////////////
 
 // webOut collects shared methods between *server[1-3]Response and *backend[1-3]Request.
 type webOut interface {
@@ -5688,7 +5688,7 @@ var ( // webOut_ errors
 	webOutTrailerFailed = errors.New("add trailer failed")
 )
 
-//////////////////////////////////////// General HTTP webSocket implementation ////////////////////////////////////////
+//////////////////////////////////////// HTTP webSocket implementation ////////////////////////////////////////
 
 // webSocket
 type webSocket interface {
@@ -5726,7 +5726,7 @@ var ( // webSocket_ errors
 	httpSocketWriteBroken = errors.New("write broken")
 )
 
-//////////////////////////////////////// General HTTP protocol elements ////////////////////////////////////////
+//////////////////////////////////////// HTTP protocol elements ////////////////////////////////////////
 
 const ( // basic http constants
 	// version codes

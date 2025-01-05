@@ -19,6 +19,122 @@ import (
 	"github.com/hexinfra/gorox/hemi/library/quic"
 )
 
+//////////////////////////////////////// HTTP/3 holder implementation ////////////////////////////////////////
+
+// http3Conn
+type http3Conn interface {
+	// Imports
+	webConn
+	// Methods
+}
+
+// http3Conn_
+type http3Conn_ struct {
+	// Parent
+	webConn_
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	quicConn *quic.Conn        // the quic connection
+	inBuffer *http3Buffer      // ...
+	table    http3DynamicTable // ...
+	// Conn states (zeros)
+	activeStreams [http3MaxConcurrentStreams]http3Stream // active (open, remoteClosed, localClosed) streams
+	_http3Conn0                                          // all values in this struct must be zero by default!
+}
+type _http3Conn0 struct { // for fast reset, entirely
+	inBufferEdge uint32 // incoming data ends at c.inBuffer.buf[c.inBufferEdge]
+	partBack     uint32 // incoming frame part (header or payload) begins from c.inBuffer.buf[c.partBack]
+	partFore     uint32 // incoming frame part (header or payload) ends at c.inBuffer.buf[c.partFore]
+}
+
+func (c *http3Conn_) onGet(id int64, stageID int32, udsMode bool, tlsMode bool, quicConn *quic.Conn, readTimeout time.Duration, writeTimeout time.Duration) {
+	c.webConn_.onGet(id, stageID, udsMode, tlsMode, readTimeout, writeTimeout)
+
+	c.quicConn = quicConn
+	if c.inBuffer == nil {
+		c.inBuffer = getHTTP3Buffer()
+		c.inBuffer.incRef()
+	}
+}
+func (c *http3Conn_) onPut() {
+	// c.inBuffer is reserved
+	// c.table is reserved
+	c.activeStreams = [http3MaxConcurrentStreams]http3Stream{}
+	c.quicConn = nil
+
+	c.webConn_.onPut()
+}
+
+func (c *http3Conn_) remoteAddr() net.Addr { return nil } // TODO
+
+// http3Stream
+type http3Stream interface {
+	// Imports
+	webStream
+	// Methods
+}
+
+// http3Stream_
+type http3Stream_[C http3Conn] struct {
+	// Parent
+	webStream_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	id   int64
+	conn C // the http/3 connection
+	// Stream states (zeros)
+	_http3Stream0 // all values in this struct must be zero by default!
+}
+type _http3Stream0 struct { // for fast reset, entirely
+}
+
+func (s *http3Stream_[C]) onUse(id int64, conn C) {
+	s.webStream_.onUse()
+
+	s.id = id
+	s.conn = conn
+}
+func (s *http3Stream_[C]) onEnd() {
+	s._http3Stream0 = _http3Stream0{}
+
+	// s.conn = nil
+	s.webStream_.onEnd()
+}
+
+func (s *http3Stream_[C]) Conn() webConn        { return s.conn }
+func (s *http3Stream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }
+
+func (s *http3Stream_[C]) markBroken()    {}               // TODO
+func (s *http3Stream_[C]) isBroken() bool { return false } // TODO
+
+func (s *http3Stream_[C]) setReadDeadline() error { // for content i/o only
+	// TODO
+	return nil
+}
+func (s *http3Stream_[C]) setWriteDeadline() error { // for content i/o only
+	// TODO
+	return nil
+}
+
+func (s *http3Stream_[C]) read(p []byte) (int, error) { // for content i/o only
+	// TODO
+	return 0, nil
+}
+func (s *http3Stream_[C]) readFull(p []byte) (int, error) { // for content i/o only
+	// TODO
+	return 0, nil
+}
+func (s *http3Stream_[C]) write(p []byte) (int, error) { // for content i/o only
+	// TODO
+	return 0, nil
+}
+func (s *http3Stream_[C]) writev(vector *net.Buffers) (int64, error) { // for content i/o only
+	// TODO
+	return 0, nil
+}
+
 //////////////////////////////////////// HTTP/3 server implementation ////////////////////////////////////////
 
 func init() {
@@ -732,122 +848,6 @@ func (s *backend3Socket) onUse() {
 }
 func (s *backend3Socket) onEnd() {
 	s.backendSocket_.onEnd()
-}
-
-//////////////////////////////////////// HTTP/3 holder implementation ////////////////////////////////////////
-
-// http3Conn
-type http3Conn interface {
-	// Imports
-	webConn
-	// Methods
-}
-
-// http3Conn_
-type http3Conn_ struct {
-	// Parent
-	webConn_
-	// Conn states (stocks)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	quicConn *quic.Conn        // the quic connection
-	inBuffer *http3Buffer      // ...
-	table    http3DynamicTable // ...
-	// Conn states (zeros)
-	activeStreams [http3MaxConcurrentStreams]http3Stream // active (open, remoteClosed, localClosed) streams
-	_http3Conn0                                          // all values in this struct must be zero by default!
-}
-type _http3Conn0 struct { // for fast reset, entirely
-	inBufferEdge uint32 // incoming data ends at c.inBuffer.buf[c.inBufferEdge]
-	partBack     uint32 // incoming frame part (header or payload) begins from c.inBuffer.buf[c.partBack]
-	partFore     uint32 // incoming frame part (header or payload) ends at c.inBuffer.buf[c.partFore]
-}
-
-func (c *http3Conn_) onGet(id int64, stageID int32, udsMode bool, tlsMode bool, quicConn *quic.Conn, readTimeout time.Duration, writeTimeout time.Duration) {
-	c.webConn_.onGet(id, stageID, udsMode, tlsMode, readTimeout, writeTimeout)
-
-	c.quicConn = quicConn
-	if c.inBuffer == nil {
-		c.inBuffer = getHTTP3Buffer()
-		c.inBuffer.incRef()
-	}
-}
-func (c *http3Conn_) onPut() {
-	// c.inBuffer is reserved
-	// c.table is reserved
-	c.activeStreams = [http3MaxConcurrentStreams]http3Stream{}
-	c.quicConn = nil
-
-	c.webConn_.onPut()
-}
-
-func (c *http3Conn_) remoteAddr() net.Addr { return nil } // TODO
-
-// http3Stream
-type http3Stream interface {
-	// Imports
-	webStream
-	// Methods
-}
-
-// http3Stream_
-type http3Stream_[C http3Conn] struct {
-	// Parent
-	webStream_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	id   int64
-	conn C // the http/3 connection
-	// Stream states (zeros)
-	_http3Stream0 // all values in this struct must be zero by default!
-}
-type _http3Stream0 struct { // for fast reset, entirely
-}
-
-func (s *http3Stream_[C]) onUse(id int64, conn C) {
-	s.webStream_.onUse()
-
-	s.id = id
-	s.conn = conn
-}
-func (s *http3Stream_[C]) onEnd() {
-	s._http3Stream0 = _http3Stream0{}
-
-	// s.conn = nil
-	s.webStream_.onEnd()
-}
-
-func (s *http3Stream_[C]) Conn() webConn        { return s.conn }
-func (s *http3Stream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }
-
-func (s *http3Stream_[C]) markBroken()    {}               // TODO
-func (s *http3Stream_[C]) isBroken() bool { return false } // TODO
-
-func (s *http3Stream_[C]) setReadDeadline() error { // for content i/o only
-	// TODO
-	return nil
-}
-func (s *http3Stream_[C]) setWriteDeadline() error { // for content i/o only
-	// TODO
-	return nil
-}
-
-func (s *http3Stream_[C]) read(p []byte) (int, error) { // for content i/o only
-	// TODO
-	return 0, nil
-}
-func (s *http3Stream_[C]) readFull(p []byte) (int, error) { // for content i/o only
-	// TODO
-	return 0, nil
-}
-func (s *http3Stream_[C]) write(p []byte) (int, error) { // for content i/o only
-	// TODO
-	return 0, nil
-}
-func (s *http3Stream_[C]) writev(vector *net.Buffers) (int64, error) { // for content i/o only
-	// TODO
-	return 0, nil
 }
 
 //////////////////////////////////////// HTTP/3 incoming implementation ////////////////////////////////////////

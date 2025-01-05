@@ -21,6 +21,116 @@ import (
 	"github.com/hexinfra/gorox/hemi/library/system"
 )
 
+//////////////////////////////////////// TCPX holder implementation ////////////////////////////////////////
+
+// tcpxHolder
+type tcpxHolder interface {
+}
+
+// _tcpxHolder_
+type _tcpxHolder_ struct {
+	// States
+	// TCP_CORK, TCP_DEFER_ACCEPT, TCP_FASTOPEN, ...
+}
+
+func (h *_tcpxHolder_) onConfigure(component Component) {
+}
+func (h *_tcpxHolder_) onPrepare(component Component) {
+}
+
+// tcpxConn
+type tcpxConn interface {
+}
+
+// tcpxConn_
+type tcpxConn_ struct {
+	// Conn states (stocks)
+	stockInput  [8192]byte // for c.input
+	stockBuffer [256]byte  // a (fake) buffer to workaround Go's conservative escape analysis
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id           int64 // the conn id
+	stageID      int32
+	udsMode      bool
+	tlsMode      bool
+	readTimeout  time.Duration   // for convenience
+	writeTimeout time.Duration   // for convenience
+	netConn      net.Conn        // *net.TCPConn, *tls.Conn, *net.UnixConn
+	rawConn      syscall.RawConn // for syscall, only usable when netConn is TCP/UDS
+	input        []byte          // input buffer
+	region       Region          // a region-based memory pool
+	closeSema    atomic.Int32    // controls read/write close
+	// Conn states (zeros)
+	counter   atomic.Int64 // can be used to generate a random number
+	lastRead  time.Time    // deadline of last read operation
+	lastWrite time.Time    // deadline of last write operation
+}
+
+func (c *tcpxConn_) onGet(id int64, stageID int32, netConn net.Conn, rawConn syscall.RawConn, udsMode bool, tlsMode bool, readTimeout time.Duration, writeTimeout time.Duration) {
+	c.id = id
+	c.stageID = stageID
+	c.netConn = netConn
+	c.rawConn = rawConn
+	c.udsMode = udsMode
+	c.tlsMode = tlsMode
+	c.readTimeout = readTimeout
+	c.writeTimeout = writeTimeout
+	c.input = c.stockInput[:]
+	c.region.Init()
+	c.closeSema.Store(2)
+}
+func (c *tcpxConn_) onPut() {
+	c.region.Free()
+	if cap(c.input) != cap(c.stockInput) {
+		PutNK(c.input)
+	}
+	c.input = nil
+	c.netConn = nil
+	c.rawConn = nil
+
+	c.counter.Store(0)
+	c.lastRead = time.Time{}
+	c.lastWrite = time.Time{}
+}
+
+func (c *tcpxConn_) IsUDS() bool { return c.udsMode }
+func (c *tcpxConn_) IsTLS() bool { return c.tlsMode }
+
+func (c *tcpxConn_) MakeTempName(to []byte, unixTime int64) int {
+	return makeTempName(to, c.stageID, c.id, unixTime, c.counter.Add(1))
+}
+
+func (c *tcpxConn_) SetReadDeadline() error {
+	deadline := time.Now().Add(c.readTimeout)
+	if deadline.Sub(c.lastRead) >= time.Second {
+		if err := c.netConn.SetReadDeadline(deadline); err != nil {
+			return err
+		}
+		c.lastRead = deadline
+	}
+	return nil
+}
+func (c *tcpxConn_) SetWriteDeadline() error {
+	deadline := time.Now().Add(c.writeTimeout)
+	if deadline.Sub(c.lastWrite) >= time.Second {
+		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
+			return err
+		}
+		c.lastWrite = deadline
+	}
+	return nil
+}
+
+func (c *tcpxConn_) Recv() (p []byte, err error) {
+	n, err := c.netConn.Read(c.input)
+	p = c.input[:n]
+	return
+}
+func (c *tcpxConn_) Send(p []byte) (err error) {
+	_, err = c.netConn.Write(p)
+	return
+}
+
 //////////////////////////////////////// TCPX router implementation ////////////////////////////////////////
 
 // TCPXRouter
@@ -762,114 +872,4 @@ func (c *TConn) Close() error {
 	netConn := c.netConn
 	putTConn(c)
 	return netConn.Close()
-}
-
-//////////////////////////////////////// TCPX holder implementation ////////////////////////////////////////
-
-// tcpxHolder
-type tcpxHolder interface {
-}
-
-// _tcpxHolder_
-type _tcpxHolder_ struct {
-	// States
-	// TCP_CORK, TCP_DEFER_ACCEPT, TCP_FASTOPEN, ...
-}
-
-func (h *_tcpxHolder_) onConfigure(component Component) {
-}
-func (h *_tcpxHolder_) onPrepare(component Component) {
-}
-
-// tcpxConn
-type tcpxConn interface {
-}
-
-// tcpxConn_
-type tcpxConn_ struct {
-	// Conn states (stocks)
-	stockInput  [8192]byte // for c.input
-	stockBuffer [256]byte  // a (fake) buffer to workaround Go's conservative escape analysis
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id           int64 // the conn id
-	stageID      int32
-	udsMode      bool
-	tlsMode      bool
-	readTimeout  time.Duration   // for convenience
-	writeTimeout time.Duration   // for convenience
-	netConn      net.Conn        // *net.TCPConn, *tls.Conn, *net.UnixConn
-	rawConn      syscall.RawConn // for syscall, only usable when netConn is TCP/UDS
-	input        []byte          // input buffer
-	region       Region          // a region-based memory pool
-	closeSema    atomic.Int32    // controls read/write close
-	// Conn states (zeros)
-	counter   atomic.Int64 // can be used to generate a random number
-	lastRead  time.Time    // deadline of last read operation
-	lastWrite time.Time    // deadline of last write operation
-}
-
-func (c *tcpxConn_) onGet(id int64, stageID int32, netConn net.Conn, rawConn syscall.RawConn, udsMode bool, tlsMode bool, readTimeout time.Duration, writeTimeout time.Duration) {
-	c.id = id
-	c.stageID = stageID
-	c.netConn = netConn
-	c.rawConn = rawConn
-	c.udsMode = udsMode
-	c.tlsMode = tlsMode
-	c.readTimeout = readTimeout
-	c.writeTimeout = writeTimeout
-	c.input = c.stockInput[:]
-	c.region.Init()
-	c.closeSema.Store(2)
-}
-func (c *tcpxConn_) onPut() {
-	c.region.Free()
-	if cap(c.input) != cap(c.stockInput) {
-		PutNK(c.input)
-	}
-	c.input = nil
-	c.netConn = nil
-	c.rawConn = nil
-
-	c.counter.Store(0)
-	c.lastRead = time.Time{}
-	c.lastWrite = time.Time{}
-}
-
-func (c *tcpxConn_) IsUDS() bool { return c.udsMode }
-func (c *tcpxConn_) IsTLS() bool { return c.tlsMode }
-
-func (c *tcpxConn_) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, c.stageID, c.id, unixTime, c.counter.Add(1))
-}
-
-func (c *tcpxConn_) SetReadDeadline() error {
-	deadline := time.Now().Add(c.readTimeout)
-	if deadline.Sub(c.lastRead) >= time.Second {
-		if err := c.netConn.SetReadDeadline(deadline); err != nil {
-			return err
-		}
-		c.lastRead = deadline
-	}
-	return nil
-}
-func (c *tcpxConn_) SetWriteDeadline() error {
-	deadline := time.Now().Add(c.writeTimeout)
-	if deadline.Sub(c.lastWrite) >= time.Second {
-		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
-			return err
-		}
-		c.lastWrite = deadline
-	}
-	return nil
-}
-
-func (c *tcpxConn_) Recv() (p []byte, err error) {
-	n, err := c.netConn.Read(c.input)
-	p = c.input[:n]
-	return
-}
-func (c *tcpxConn_) Send(p []byte) (err error) {
-	_, err = c.netConn.Write(p)
-	return
 }

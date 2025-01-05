@@ -16,6 +16,77 @@ import (
 	"time"
 )
 
+//////////////////////////////////////// UDPX holder implementation ////////////////////////////////////////
+
+// udpxHolder
+type udpxHolder interface {
+}
+
+// _udpxHolder_
+type _udpxHolder_ struct {
+	// States
+	// UDP_CORK, UDP_GSO, ...
+}
+
+func (h *_udpxHolder_) onConfigure(component Component) {
+}
+func (h *_udpxHolder_) onPrepare(component Component) {
+}
+
+// udpxConn
+type udpxConn interface {
+}
+
+// udpxConn_
+type udpxConn_ struct {
+	// Conn states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	id      int64
+	stageID int32
+	udsMode bool
+	pktConn net.PacketConn
+	rawConn syscall.RawConn // for syscall
+	// Conn states (zeros)
+	counter   atomic.Int64 // can be used to generate a random number
+	lastRead  time.Time    // deadline of last read operation
+	lastWrite time.Time    // deadline of last write operation
+	broken    atomic.Bool
+}
+
+func (c *udpxConn_) onGet(id int64, stageID int32, pktConn net.PacketConn, rawConn syscall.RawConn, udsMode bool) {
+	c.id = id
+	c.stageID = stageID
+	c.pktConn = pktConn
+	c.rawConn = rawConn
+	c.udsMode = udsMode
+}
+func (c *udpxConn_) onPut() {
+	c.pktConn = nil
+	c.rawConn = nil
+	c.counter.Store(0)
+	c.lastRead = time.Time{}
+	c.lastWrite = time.Time{}
+	c.broken.Store(false)
+}
+
+func (c *udpxConn_) IsUDS() bool { return c.udsMode }
+
+func (c *udpxConn_) MakeTempName(to []byte, unixTime int64) int {
+	return makeTempName(to, c.stageID, c.id, unixTime, c.counter.Add(1))
+}
+
+func (c *udpxConn_) markBroken()    { c.broken.Store(true) }
+func (c *udpxConn_) isBroken() bool { return c.broken.Load() }
+
+func (c *udpxConn_) WriteTo(p []byte, addr net.Addr) (n int, err error) {
+	return c.pktConn.WriteTo(p, addr)
+}
+func (c *udpxConn_) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
+	return c.pktConn.ReadFrom(p)
+}
+
 //////////////////////////////////////// UDPX router implementation ////////////////////////////////////////
 
 // UDPXRouter
@@ -514,75 +585,4 @@ func (c *UConn) Close() error {
 	pktConn := c.pktConn
 	putUConn(c)
 	return pktConn.Close()
-}
-
-//////////////////////////////////////// UDPX holder implementation ////////////////////////////////////////
-
-// udpxHolder
-type udpxHolder interface {
-}
-
-// _udpxHolder_
-type _udpxHolder_ struct {
-	// States
-	// UDP_CORK, UDP_GSO, ...
-}
-
-func (h *_udpxHolder_) onConfigure(component Component) {
-}
-func (h *_udpxHolder_) onPrepare(component Component) {
-}
-
-// udpxConn
-type udpxConn interface {
-}
-
-// udpxConn_
-type udpxConn_ struct {
-	// Conn states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id      int64
-	stageID int32
-	udsMode bool
-	pktConn net.PacketConn
-	rawConn syscall.RawConn // for syscall
-	// Conn states (zeros)
-	counter   atomic.Int64 // can be used to generate a random number
-	lastRead  time.Time    // deadline of last read operation
-	lastWrite time.Time    // deadline of last write operation
-	broken    atomic.Bool
-}
-
-func (c *udpxConn_) onGet(id int64, stageID int32, pktConn net.PacketConn, rawConn syscall.RawConn, udsMode bool) {
-	c.id = id
-	c.stageID = stageID
-	c.pktConn = pktConn
-	c.rawConn = rawConn
-	c.udsMode = udsMode
-}
-func (c *udpxConn_) onPut() {
-	c.pktConn = nil
-	c.rawConn = nil
-	c.counter.Store(0)
-	c.lastRead = time.Time{}
-	c.lastWrite = time.Time{}
-	c.broken.Store(false)
-}
-
-func (c *udpxConn_) IsUDS() bool { return c.udsMode }
-
-func (c *udpxConn_) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, c.stageID, c.id, unixTime, c.counter.Add(1))
-}
-
-func (c *udpxConn_) markBroken()    { c.broken.Store(true) }
-func (c *udpxConn_) isBroken() bool { return c.broken.Load() }
-
-func (c *udpxConn_) WriteTo(p []byte, addr net.Addr) (n int, err error) {
-	return c.pktConn.WriteTo(p, addr)
-}
-func (c *udpxConn_) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
-	return c.pktConn.ReadFrom(p)
 }

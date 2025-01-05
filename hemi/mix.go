@@ -22,6 +22,54 @@ import (
 	"time"
 )
 
+// _holder_
+type _holder_ struct {
+	// Assocs
+	stage *Stage
+	// States
+	address      string        // hostname:port, /path/to/unix.sock
+	udsMode      bool          // is address a unix domain socket?
+	tlsMode      bool          // use tls to secure the transport?
+	tlsConfig    *tls.Config   // set if tls mode is true
+	readTimeout  time.Duration // read() timeout
+	writeTimeout time.Duration // write() timeout
+}
+
+func (h *_holder_) onConfigure(component Component, defaultRead time.Duration, defaultWrite time.Duration) {
+	// tlsMode
+	component.ConfigureBool("tlsMode", &h.tlsMode, false)
+	if h.tlsMode {
+		h.tlsConfig = new(tls.Config)
+	}
+
+	// readTimeout
+	component.ConfigureDuration("readTimeout", &h.readTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".readTimeout has an invalid value")
+	}, defaultRead)
+
+	// writeTimeout
+	component.ConfigureDuration("writeTimeout", &h.writeTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".writeTimeout has an invalid value")
+	}, defaultWrite)
+}
+func (h *_holder_) onPrepare(component Component) {
+}
+
+func (h *_holder_) Stage() *Stage { return h.stage }
+
+func (h *_holder_) Address() string             { return h.address }
+func (h *_holder_) IsUDS() bool                 { return h.udsMode }
+func (h *_holder_) IsTLS() bool                 { return h.tlsMode }
+func (h *_holder_) TLSConfig() *tls.Config      { return h.tlsConfig }
+func (h *_holder_) ReadTimeout() time.Duration  { return h.readTimeout }
+func (h *_holder_) WriteTimeout() time.Duration { return h.writeTimeout }
+
 // Server component. A Server has a group of Gates.
 type Server interface {
 	// Imports
@@ -37,22 +85,17 @@ type Server interface {
 type Server_[G Gate] struct {
 	// Parent
 	Component_
+	// Mixins
+	_holder_
 	// Assocs
-	stage *Stage // current stage
-	gates []G    // a server has many gates
+	gates []G // a server has many gates
 	// States
-	address           string        // hostname:port, /path/to/unix.sock
-	colonport         string        // like: ":9876"
-	colonportBytes    []byte        // []byte(colonport)
-	udsMode           bool          // is address a unix domain socket?
-	udsColonport      string        // uds doesn't have a port. use this as port if server is listening at uds
-	udsColonportBytes []byte        // []byte(udsColonport)
-	tlsMode           bool          // use tls to secure the transport?
-	tlsConfig         *tls.Config   // set if tls mode is true
-	numGates          int32         // number of gates
-	maxConnsPerGate   int32         // max concurrent connections allowed per gate
-	readTimeout       time.Duration // read() timeout
-	writeTimeout      time.Duration // write() timeout
+	colonport         string // like: ":9876"
+	colonportBytes    []byte // []byte(colonport)
+	udsColonport      string // uds doesn't have a port. use this as port if server is listening at uds
+	udsColonportBytes []byte // []byte(udsColonport)
+	numGates          int32  // number of gates
+	maxConnsPerGate   int32  // max concurrent connections allowed per gate
 }
 
 func (s *Server_[G]) OnCreate(name string, stage *Stage) {
@@ -67,6 +110,8 @@ func (s *Server_[G]) OnShutdown() {
 }
 
 func (s *Server_[G]) OnConfigure() {
+	s._holder_.onConfigure(s, 60*time.Second, 60*time.Second)
+
 	// address
 	if v, ok := s.Find("address"); ok {
 		if address, ok := v.String(); ok && address != "" {
@@ -88,12 +133,6 @@ func (s *Server_[G]) OnConfigure() {
 	s.ConfigureString("udsColonport", &s.udsColonport, nil, ":80")
 	s.udsColonportBytes = []byte(s.udsColonport)
 
-	// tlsMode
-	s.ConfigureBool("tlsMode", &s.tlsMode, false)
-	if s.tlsMode {
-		s.tlsConfig = new(tls.Config)
-	}
-
 	// numGates
 	s.ConfigureInt32("numGates", &s.numGates, func(value int32) error {
 		if value > 0 {
@@ -109,34 +148,18 @@ func (s *Server_[G]) OnConfigure() {
 		}
 		return errors.New(".maxConnsPerGate has an invalid value")
 	}, 10000)
-
-	// readTimeout
-	s.ConfigureDuration("readTimeout", &s.readTimeout, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".readTimeout has an invalid value")
-	}, 60*time.Second)
-
-	// writeTimeout
-	s.ConfigureDuration("writeTimeout", &s.writeTimeout, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".writeTimeout has an invalid value")
-	}, 60*time.Second)
 }
 func (s *Server_[G]) OnPrepare() {
+	s._holder_.onPrepare(s)
+
 	if s.udsMode { // unix domain socket does not support reuseaddr/reuseport.
 		s.numGates = 1
 	}
 }
 
-func (s *Server_[G]) AddGate(gate G)  { s.gates = append(s.gates, gate) }
-func (s *Server_[G]) NumGates() int32 { return s.numGates }
+func (s *Server_[G]) NumGates() int32        { return s.numGates }
+func (s *Server_[G]) MaxConnsPerGate() int32 { return s.maxConnsPerGate }
 
-func (s *Server_[G]) Stage() *Stage   { return s.stage }
-func (s *Server_[G]) Address() string { return s.address }
 func (s *Server_[G]) Colonport() string {
 	if s.udsMode {
 		return s.udsColonport
@@ -151,23 +174,16 @@ func (s *Server_[G]) ColonportBytes() []byte {
 		return s.colonportBytes
 	}
 }
-func (s *Server_[G]) IsUDS() bool                 { return s.udsMode }
-func (s *Server_[G]) IsTLS() bool                 { return s.tlsMode }
-func (s *Server_[G]) TLSConfig() *tls.Config      { return s.tlsConfig }
-func (s *Server_[G]) MaxConnsPerGate() int32      { return s.maxConnsPerGate }
-func (s *Server_[G]) ReadTimeout() time.Duration  { return s.readTimeout }
-func (s *Server_[G]) WriteTimeout() time.Duration { return s.writeTimeout }
+
+func (s *Server_[G]) AddGate(gate G) { s.gates = append(s.gates, gate) }
 
 // Gate is the interface for all gates. Gates are not components.
 type Gate interface {
 	// Methods
-	Server() Server
 	Address() string
 	IsUDS() bool
 	IsTLS() bool
-	ID() int32
 	IsShut() bool
-	Open() error
 	Shut() error
 }
 
@@ -187,16 +203,14 @@ func (g *Gate_[S]) OnNew(server S, id int32) {
 	g.shut.Store(false)
 }
 
-func (g *Gate_[S]) Server() Server { return g.server }
+func (g *Gate_[S]) Server() S { return g.server }
 
 func (g *Gate_[S]) Address() string { return g.server.Address() }
 func (g *Gate_[S]) IsUDS() bool     { return g.server.IsUDS() }
 func (g *Gate_[S]) IsTLS() bool     { return g.server.IsTLS() }
-
-func (g *Gate_[S]) ID() int32 { return g.id }
-
-func (g *Gate_[S]) IsShut() bool { return g.shut.Load() }
-func (g *Gate_[S]) MarkShut()    { g.shut.Store(true) }
+func (g *Gate_[S]) ID() int32       { return g.id }
+func (g *Gate_[S]) IsShut() bool    { return g.shut.Load() }
+func (g *Gate_[S]) MarkShut()       { g.shut.Store(true) }
 
 func (g *Gate_[S]) IncConn()   { g.subConns.Add(1) }
 func (g *Gate_[S]) WaitConns() { g.subConns.Wait() }
@@ -273,6 +287,8 @@ func (b *Backend_[N]) PrepareNodes() {
 	}
 }
 
+func (b *Backend_[N]) Stage() *Stage { return b.stage }
+
 func (b *Backend_[N]) Maintain() { // runner
 	for _, node := range b.nodes {
 		b.IncSub() // node
@@ -298,8 +314,6 @@ func (b *Backend_[N]) AddNode(node N) {
 	node.setShell(node)
 	b.nodes = append(b.nodes, node)
 }
-
-func (b *Backend_[N]) Stage() *Stage { return b.stage }
 
 func (b *Backend_[N]) _nextIndexByRoundRobin() int64 {
 	index := b.nodeIndex.Add(1)
@@ -329,24 +343,21 @@ type Node interface {
 type Node_[B Backend] struct {
 	// Parent
 	Component_
+	// Mixins
+	_holder_
 	// Assocs
 	backend B
 	// States
-	address      string        // hostname:port, /path/to/unix.sock
-	udsMode      bool          // uds or not
-	tlsMode      bool          // tls or not
-	tlsConfig    *tls.Config   // TLS config if TLS is enabled
-	dialTimeout  time.Duration // dial remote timeout
-	readTimeout  time.Duration // read() timeout
-	writeTimeout time.Duration // write() timeout
-	weight       int32         // 1, 22, 333, ...
-	connID       atomic.Int64  // next conn id
-	down         atomic.Bool   // TODO: false-sharing
-	health       any           // TODO
+	dialTimeout time.Duration // dial remote timeout
+	weight      int32         // 1, 22, 333, ...
+	connID      atomic.Int64  // next conn id
+	down        atomic.Bool   // TODO: false-sharing
+	health      any           // TODO
 }
 
-func (n *Node_[B]) OnCreate(name string, backend B) {
+func (n *Node_[B]) OnCreate(name string, stage *Stage, backend B) {
 	n.MakeComp(name)
+	n.stage = stage
 	n.backend = backend
 	n.health = nil // TODO
 }
@@ -355,6 +366,8 @@ func (n *Node_[B]) OnShutdown() {
 }
 
 func (n *Node_[B]) OnConfigure() {
+	n._holder_.onConfigure(n, 30*time.Second, 30*time.Second)
+
 	// address
 	if v, ok := n.Find("address"); ok {
 		if address, ok := v.String(); ok && address != "" {
@@ -371,12 +384,6 @@ func (n *Node_[B]) OnConfigure() {
 		UseExitln("address is required in node")
 	}
 
-	// tlsMode
-	n.ConfigureBool("tlsMode", &n.tlsMode, false)
-	if n.tlsMode {
-		n.tlsConfig = new(tls.Config)
-	}
-
 	// dialTimeout
 	n.ConfigureDuration("dialTimeout", &n.dialTimeout, func(value time.Duration) error {
 		if value >= time.Second {
@@ -384,22 +391,6 @@ func (n *Node_[B]) OnConfigure() {
 		}
 		return errors.New(".dialTimeout has an invalid value")
 	}, 10*time.Second)
-
-	// readTimeout
-	n.ConfigureDuration("readTimeout", &n.readTimeout, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".readTimeout has an invalid value")
-	}, 30*time.Second)
-
-	// writeTimeout
-	n.ConfigureDuration("writeTimeout", &n.writeTimeout, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".writeTimeout has an invalid value")
-	}, 30*time.Second)
 
 	// weight
 	n.ConfigureInt32("weight", &n.weight, func(value int32) error {
@@ -410,16 +401,12 @@ func (n *Node_[B]) OnConfigure() {
 	}, 1)
 }
 func (n *Node_[B]) OnPrepare() {
+	n._holder_.onPrepare(n)
 }
 
 func (n *Node_[B]) Backend() B { return n.backend }
 
-func (n *Node_[B]) IsUDS() bool                 { return n.udsMode }
-func (n *Node_[B]) IsTLS() bool                 { return n.tlsMode }
-func (n *Node_[B]) TLSConfig() *tls.Config      { return n.tlsConfig }
-func (n *Node_[B]) DialTimeout() time.Duration  { return n.dialTimeout }
-func (n *Node_[B]) ReadTimeout() time.Duration  { return n.readTimeout }
-func (n *Node_[B]) WriteTimeout() time.Duration { return n.writeTimeout }
+func (n *Node_[B]) DialTimeout() time.Duration { return n.dialTimeout }
 
 func (n *Node_[B]) nextConnID() int64 { return n.connID.Add(1) }
 
@@ -429,22 +416,22 @@ func (n *Node_[B]) isDown() bool { return n.down.Load() }
 
 // contentSaver
 type contentSaver interface {
-	SaveContentFilesDir() string
-	MaxContentSize() int64
-	RecvTimeout() time.Duration // timeout to recv the whole message content. zero means no timeout
-	SendTimeout() time.Duration // timeout to send the whole message. zero means no timeout
+	SaveContentFilesDir() string // the dir to save content temporarily
+	MaxContentSize() int64       // max content size allowed
+	RecvTimeout() time.Duration  // timeout to recv the whole message content. zero means no timeout
+	SendTimeout() time.Duration  // timeout to send the whole message. zero means no timeout
 }
 
 // _contentSaver_ is a mixin.
 type _contentSaver_ struct {
 	// States
-	saveContentFilesDir string        // content files are placed here
+	saveContentFilesDir string        // temp content files are placed here
 	maxContentSize      int64         // max content size allowed to receive
 	recvTimeout         time.Duration // timeout to recv the whole message content. zero means no timeout
 	sendTimeout         time.Duration // timeout to send the whole message. zero means no timeout
 }
 
-func (s *_contentSaver_) onConfigure(component Component, defaultDir string, recvTimeout time.Duration, sendTimeout time.Duration) {
+func (s *_contentSaver_) onConfigure(component Component, defaultDir string, defaultRecv time.Duration, defaultSend time.Duration) {
 	// saveContentFilesDir
 	component.ConfigureString("saveContentFilesDir", &s.saveContentFilesDir, func(value string) error {
 		if value != "" && len(value) <= 232 {
@@ -467,7 +454,7 @@ func (s *_contentSaver_) onConfigure(component Component, defaultDir string, rec
 			return nil
 		}
 		return errors.New(".recvTimeout has an invalid value")
-	}, recvTimeout)
+	}, defaultRecv)
 
 	// sendTimeout
 	component.ConfigureDuration("sendTimeout", &s.sendTimeout, func(value time.Duration) error {
@@ -475,7 +462,7 @@ func (s *_contentSaver_) onConfigure(component Component, defaultDir string, rec
 			return nil
 		}
 		return errors.New(".sendTimeout has an invalid value")
-	}, sendTimeout)
+	}, defaultSend)
 }
 func (s *_contentSaver_) onPrepare(component Component, perm os.FileMode) {
 	if err := os.MkdirAll(s.saveContentFilesDir, perm); err != nil {

@@ -685,7 +685,7 @@ func (b *TCPXBackend) OnPrepare() {
 
 func (b *TCPXBackend) CreateNode(name string) Node {
 	node := new(tcpxNode)
-	node.onCreate(name, b)
+	node.onCreate(name, b.stage, b)
 	b.AddNode(node)
 	return node
 }
@@ -702,8 +702,8 @@ type tcpxNode struct {
 	// States
 }
 
-func (n *tcpxNode) onCreate(name string, backend *TCPXBackend) {
-	n.Node_.OnCreate(name, backend)
+func (n *tcpxNode) onCreate(name string, stage *Stage, backend *TCPXBackend) {
+	n.Node_.OnCreate(name, stage, backend)
 }
 
 func (n *tcpxNode) OnConfigure() {
@@ -836,7 +836,7 @@ func putTConn(conn *TConn) {
 }
 
 func (c *TConn) onGet(id int64, node *tcpxNode, netConn net.Conn, rawConn syscall.RawConn) {
-	c.tcpxConn_.onGet(id, node.backend.Stage().ID(), netConn, rawConn, node.IsUDS(), node.IsTLS(), node.ReadTimeout(), node.WriteTimeout())
+	c.tcpxConn_.onGet(id, node.Stage().ID(), netConn, rawConn, node.IsUDS(), node.IsTLS(), node.ReadTimeout(), node.WriteTimeout())
 
 	c.node = node
 }

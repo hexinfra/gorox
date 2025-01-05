@@ -118,14 +118,14 @@ func (g *socksGate) serve() { // runner
 		g.IncConn()
 		socksConn := getSocksConn(connID, g, tcpConn)
 		_ = socksConn
-		//go g.server.serveConn(socksConn) // socksConn is put to pool in serve()
+		go g.Server().serveConn(socksConn) // socksConn is put to pool in serve()
 		connID++
 	}
 	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("socksGate=%d done\n", g.ID())
 	}
-	//g.server.DecSub() // gate
+	g.Server().DecSub() // gate
 }
 
 func (g *socksGate) justClose(tcpConn *net.TCPConn) {

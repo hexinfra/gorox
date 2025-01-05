@@ -456,7 +456,7 @@ func (b *HTTP3Backend) OnPrepare() {
 
 func (b *HTTP3Backend) CreateNode(name string) Node {
 	node := new(http3Node)
-	node.onCreate(name, b)
+	node.onCreate(name, b.stage, b)
 	b.AddNode(node)
 	return node
 }
@@ -477,8 +477,8 @@ type http3Node struct {
 	// States
 }
 
-func (n *http3Node) onCreate(name string, backend *HTTP3Backend) {
-	n.webNode_.OnCreate(name, backend)
+func (n *http3Node) onCreate(name string, stage *Stage, backend *HTTP3Backend) {
+	n.webNode_.OnCreate(name, stage, backend)
 }
 
 func (n *http3Node) OnConfigure() {
@@ -543,10 +543,10 @@ func putBackend3Conn(backendConn *backend3Conn) {
 }
 
 func (c *backend3Conn) onGet(id int64, node *http3Node, quicConn *quic.Conn) {
-	c.http3Conn_.onGet(id, node.backend.Stage().ID(), node.IsUDS(), node.IsTLS(), quicConn, node.ReadTimeout(), node.WriteTimeout())
+	c.http3Conn_.onGet(id, node.Stage().ID(), node.IsUDS(), node.IsTLS(), quicConn, node.ReadTimeout(), node.WriteTimeout())
 
 	c.node = node
-	c.expireTime = time.Now().Add(node.backend.idleTimeout)
+	c.expireTime = time.Now().Add(node.idleTimeout)
 }
 func (c *backend3Conn) onPut() {
 	c._backend3Conn0 = _backend3Conn0{}

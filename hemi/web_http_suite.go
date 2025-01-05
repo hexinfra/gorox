@@ -3256,8 +3256,6 @@ type webBackend_[N WebNode] struct {
 	// Parent
 	Backend_[N]
 	// States
-	idleTimeout time.Duration // conn idle timeout
-	maxLifetime time.Duration // conn's max lifetime
 }
 
 func (b *webBackend_[N]) onCreate(name string, stage *Stage) {
@@ -3266,22 +3264,6 @@ func (b *webBackend_[N]) onCreate(name string, stage *Stage) {
 
 func (b *webBackend_[N]) onConfigure() {
 	b.Backend_.OnConfigure()
-
-	// idleTimeout
-	b.ConfigureDuration("idleTimeout", &b.idleTimeout, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".idleTimeout has an invalid value")
-	}, 2*time.Second)
-
-	// maxLifetime
-	b.ConfigureDuration("maxLifetime", &b.maxLifetime, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".maxLifetime has an invalid value")
-	}, 1*time.Minute)
 }
 func (b *webBackend_[N]) onPrepare() {
 	b.Backend_.OnPrepare()
@@ -3302,11 +3284,13 @@ type webNode_[B WebBackend] struct {
 	// Mixins
 	_webHolder_
 	// States
-	keepAliveConns int32 // max conns to keep alive
+	keepAliveConns int32         // max conns to keep alive
+	idleTimeout    time.Duration // conn idle timeout
+	maxLifetime    time.Duration // conn's max lifetime
 }
 
-func (n *webNode_[B]) OnCreate(name string, backend B) {
-	n.Node_.OnCreate(name, backend)
+func (n *webNode_[B]) OnCreate(name string, stage *Stage, backend B) {
+	n.Node_.OnCreate(name, stage, backend)
 }
 
 func (n *webNode_[B]) OnConfigure() {
@@ -3320,6 +3304,22 @@ func (n *webNode_[B]) OnConfigure() {
 		}
 		return errors.New("bad keepAliveConns in node")
 	}, 10)
+
+	// idleTimeout
+	n.ConfigureDuration("idleTimeout", &n.idleTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".idleTimeout has an invalid value")
+	}, 2*time.Second)
+
+	// maxLifetime
+	n.ConfigureDuration("maxLifetime", &n.maxLifetime, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".maxLifetime has an invalid value")
+	}, 1*time.Minute)
 }
 func (n *webNode_[B]) OnPrepare() {
 	n.Node_.OnPrepare()

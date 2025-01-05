@@ -34,8 +34,8 @@ type mongoNode struct {
 	Node_[*MongoBackend]
 }
 
-func (n *mongoNode) onCreate(name string, backend *MongoBackend) {
-	n.Node_.OnCreate(name, backend)
+func (n *mongoNode) onCreate(name string, stage *Stage, backend *MongoBackend) {
+	n.Node_.OnCreate(name, stage, backend)
 }
 
 func (n *mongoNode) OnConfigure() {

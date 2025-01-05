@@ -47,7 +47,7 @@ func (b *PgsqlBackend) OnPrepare() {
 
 func (b *PgsqlBackend) CreateNode(name string) Node {
 	node := new(pgsqlNode)
-	node.onCreate(name, b)
+	node.onCreate(name, b.Stage(), b)
 	b.AddNode(node)
 	return node
 }
@@ -58,8 +58,8 @@ type pgsqlNode struct {
 	Node_[*PgsqlBackend]
 }
 
-func (n *pgsqlNode) onCreate(name string, backend *PgsqlBackend) {
-	n.Node_.OnCreate(name, backend)
+func (n *pgsqlNode) onCreate(name string, stage *Stage, backend *PgsqlBackend) {
+	n.Node_.OnCreate(name, stage, backend)
 }
 
 func (n *pgsqlNode) OnConfigure() {

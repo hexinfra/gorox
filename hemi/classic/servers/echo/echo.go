@@ -113,14 +113,14 @@ func (g *echoGate) serve() { // runner
 		g.IncConn()
 		echoConn := getEchoConn(connID, g, tcpConn)
 		_ = echoConn
-		//go g.server.serveConn(echoConn) // echoConn is put to pool in serve()
+		go g.Server().serveConn(echoConn) // echoConn is put to pool in serve()
 		connID++
 	}
 	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("echoGate=%d done\n", g.ID())
 	}
-	//g.server.DecSub() // gate
+	g.Server().DecSub() // gate
 }
 
 func (g *echoGate) justClose(tcpConn *net.TCPConn) {

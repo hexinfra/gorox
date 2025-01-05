@@ -486,7 +486,7 @@ func (b *UDPXBackend) OnPrepare() {
 
 func (b *UDPXBackend) CreateNode(name string) Node {
 	node := new(udpxNode)
-	node.onCreate(name, b)
+	node.onCreate(name, b.stage, b)
 	b.AddNode(node)
 	return node
 }
@@ -503,8 +503,8 @@ type udpxNode struct {
 	// States
 }
 
-func (n *udpxNode) onCreate(name string, backend *UDPXBackend) {
-	n.Node_.OnCreate(name, backend)
+func (n *udpxNode) onCreate(name string, stage *Stage, backend *UDPXBackend) {
+	n.Node_.OnCreate(name, stage, backend)
 }
 
 func (n *udpxNode) OnConfigure() {
@@ -558,8 +558,7 @@ func putUConn(conn *UConn) {
 }
 
 func (c *UConn) onGet(id int64, node *udpxNode, pktConn net.PacketConn, rawConn syscall.RawConn) {
-	backend := node.backend
-	c.udpxConn_.onGet(id, backend.Stage().ID(), pktConn, rawConn, node.IsUDS())
+	c.udpxConn_.onGet(id, node.Stage().ID(), pktConn, rawConn, node.IsUDS())
 
 	c.node = node
 }

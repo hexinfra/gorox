@@ -1060,7 +1060,7 @@ func (b *HTTP1Backend) OnPrepare() {
 
 func (b *HTTP1Backend) CreateNode(name string) Node {
 	node := new(http1Node)
-	node.onCreate(name, b)
+	node.onCreate(name, b.stage, b)
 	b.AddNode(node)
 	return node
 }
@@ -1087,8 +1087,8 @@ type http1Node struct {
 	}
 }
 
-func (n *http1Node) onCreate(name string, backend *HTTP1Backend) {
-	n.webNode_.OnCreate(name, backend)
+func (n *http1Node) onCreate(name string, stage *Stage, backend *HTTP1Backend) {
+	n.webNode_.OnCreate(name, stage, backend)
 }
 
 func (n *http1Node) OnConfigure() {
@@ -1312,10 +1312,10 @@ func putBackend1Conn(backendConn *backend1Conn) {
 }
 
 func (c *backend1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.http1Conn_.onGet(id, node.backend.Stage().ID(), node.IsUDS(), node.IsTLS(), netConn, rawConn, node.ReadTimeout(), node.WriteTimeout())
+	c.http1Conn_.onGet(id, node.Stage().ID(), node.IsUDS(), node.IsTLS(), netConn, rawConn, node.ReadTimeout(), node.WriteTimeout())
 
 	c.node = node
-	c.expireTime = time.Now().Add(node.backend.idleTimeout)
+	c.expireTime = time.Now().Add(node.idleTimeout)
 	c.persistent = true
 }
 func (c *backend1Conn) onPut() {

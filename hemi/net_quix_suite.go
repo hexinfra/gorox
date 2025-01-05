@@ -514,7 +514,7 @@ func (b *QUIXBackend) OnPrepare() {
 
 func (b *QUIXBackend) CreateNode(name string) Node {
 	node := new(quixNode)
-	node.onCreate(name, b)
+	node.onCreate(name, b.stage, b)
 	b.AddNode(node)
 	return node
 }
@@ -540,8 +540,8 @@ type quixNode struct {
 	maxStreamsPerConn int32 // max cumulative streams of one conn. 0 means infinite
 }
 
-func (n *quixNode) onCreate(name string, backend *QUIXBackend) {
-	n.Node_.OnCreate(name, backend)
+func (n *quixNode) onCreate(name string, stage *Stage, backend *QUIXBackend) {
+	n.Node_.OnCreate(name, stage, backend)
 }
 
 func (n *quixNode) OnConfigure() {
@@ -614,7 +614,7 @@ func putQConn(conn *QConn) {
 }
 
 func (c *QConn) onGet(id int64, node *quixNode, quicConn *quic.Conn) {
-	c.quixConn_.onGet(id, node.backend.Stage().ID(), quicConn, node.IsUDS(), node.IsTLS(), node.MaxStreamsPerConn())
+	c.quixConn_.onGet(id, node.Stage().ID(), quicConn, node.IsUDS(), node.IsTLS(), node.MaxStreamsPerConn())
 
 	c.node = node
 }

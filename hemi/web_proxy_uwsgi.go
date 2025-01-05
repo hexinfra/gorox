@@ -133,7 +133,7 @@ func (b *uwsgiBackend) OnPrepare() {
 
 func (b *uwsgiBackend) CreateNode(name string) Node {
 	node := new(uwsgiNode)
-	node.onCreate(name, b)
+	node.onCreate(name, b.stage, b)
 	b.AddNode(node)
 	return node
 }
@@ -147,8 +147,8 @@ type uwsgiNode struct {
 	// States
 }
 
-func (n *uwsgiNode) onCreate(name string, backend *uwsgiBackend) {
-	n.Node_.OnCreate(name, backend)
+func (n *uwsgiNode) onCreate(name string, stage *Stage, backend *uwsgiBackend) {
+	n.Node_.OnCreate(name, stage, backend)
 }
 
 func (n *uwsgiNode) OnConfigure() {

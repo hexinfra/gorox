@@ -914,7 +914,7 @@ func (b *HTTP2Backend) OnPrepare() {
 
 func (b *HTTP2Backend) CreateNode(name string) Node {
 	node := new(http2Node)
-	node.onCreate(name, b)
+	node.onCreate(name, b.stage, b)
 	b.AddNode(node)
 	return node
 }
@@ -935,8 +935,8 @@ type http2Node struct {
 	// States
 }
 
-func (n *http2Node) onCreate(name string, backend *HTTP2Backend) {
-	n.webNode_.OnCreate(name, backend)
+func (n *http2Node) onCreate(name string, stage *Stage, backend *HTTP2Backend) {
+	n.webNode_.OnCreate(name, stage, backend)
 }
 
 func (n *http2Node) OnConfigure() {
@@ -1004,10 +1004,10 @@ func putBackend2Conn(backendConn *backend2Conn) {
 }
 
 func (c *backend2Conn) onGet(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.http2Conn_.onGet(id, node.backend.Stage().ID(), node.IsUDS(), node.IsTLS(), netConn, rawConn, node.ReadTimeout(), node.WriteTimeout())
+	c.http2Conn_.onGet(id, node.Stage().ID(), node.IsUDS(), node.IsTLS(), netConn, rawConn, node.ReadTimeout(), node.WriteTimeout())
 
 	c.node = node
-	c.expireTime = time.Now().Add(node.backend.idleTimeout)
+	c.expireTime = time.Now().Add(node.idleTimeout)
 }
 func (c *backend2Conn) onPut() {
 	c._backend2Conn0 = _backend2Conn0{}

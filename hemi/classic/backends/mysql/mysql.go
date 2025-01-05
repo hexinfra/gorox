@@ -47,7 +47,7 @@ func (b *MysqlBackend) OnPrepare() {
 
 func (b *MysqlBackend) CreateNode(name string) Node {
 	node := new(mysqlNode)
-	node.onCreate(name, b)
+	node.onCreate(name, b.Stage(), b)
 	b.AddNode(node)
 	return node
 }
@@ -58,8 +58,8 @@ type mysqlNode struct {
 	Node_[*MysqlBackend]
 }
 
-func (n *mysqlNode) onCreate(name string, backend *MysqlBackend) {
-	n.Node_.OnCreate(name, backend)
+func (n *mysqlNode) onCreate(name string, stage *Stage, backend *MysqlBackend) {
+	n.Node_.OnCreate(name, stage, backend)
 }
 
 func (n *mysqlNode) OnConfigure() {

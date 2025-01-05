@@ -33,8 +33,6 @@ type RedisBackend struct {
 	// Parent
 	Backend_[*redisNode]
 	// States
-	idleTimeout time.Duration // conn idle timeout
-	maxLifetime time.Duration // conn's max lifetime
 }
 
 func (b *RedisBackend) onCreate(name string, stage *Stage) {
@@ -43,22 +41,6 @@ func (b *RedisBackend) onCreate(name string, stage *Stage) {
 
 func (b *RedisBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
-
-	// idleTimeout
-	b.ConfigureDuration("idleTimeout", &b.idleTimeout, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".idleTimeout has an invalid value")
-	}, 2*time.Second)
-
-	// maxLifetime
-	b.ConfigureDuration("maxLifetime", &b.maxLifetime, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".maxLifetime has an invalid value")
-	}, 1*time.Minute)
 
 	// sub components
 	b.ConfigureNodes()
@@ -72,7 +54,7 @@ func (b *RedisBackend) OnPrepare() {
 
 func (b *RedisBackend) CreateNode(name string) Node {
 	node := new(redisNode)
-	node.onCreate(name, b)
+	node.onCreate(name, b.Stage(), b)
 	b.AddNode(node)
 	return node
 }
@@ -94,14 +76,33 @@ func (b *RedisBackend) StoreConn(redisConn *RedisConn) {
 type redisNode struct {
 	// Parent
 	Node_[*RedisBackend]
+	// States
+	idleTimeout time.Duration // conn idle timeout
+	maxLifetime time.Duration // conn's max lifetime
 }
 
-func (n *redisNode) onCreate(name string, backend *RedisBackend) {
-	n.Node_.OnCreate(name, backend)
+func (n *redisNode) onCreate(name string, stage *Stage, backend *RedisBackend) {
+	n.Node_.OnCreate(name, stage, backend)
 }
 
 func (n *redisNode) OnConfigure() {
 	n.Node_.OnConfigure()
+
+	// idleTimeout
+	n.ConfigureDuration("idleTimeout", &n.idleTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".idleTimeout has an invalid value")
+	}, 2*time.Second)
+
+	// maxLifetime
+	n.ConfigureDuration("maxLifetime", &n.maxLifetime, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".maxLifetime has an invalid value")
+	}, 1*time.Minute)
 }
 func (n *redisNode) OnPrepare() {
 	n.Node_.OnPrepare()
@@ -162,7 +163,7 @@ func putRedisConn(conn *RedisConn) {
 func (c *RedisConn) onGet(id int64, node *redisNode, netConn net.Conn, rawConn syscall.RawConn) {
 	c.id = id
 	c.node = node
-	c.expireTime = time.Now().Add(node.Backend().idleTimeout)
+	c.expireTime = time.Now().Add(node.idleTimeout)
 	c.netConn = netConn
 	c.rawConn = rawConn
 }

@@ -225,9 +225,6 @@ type fcgiBackend struct {
 	// Parent
 	Backend_[*fcgiNode]
 	// States
-	idleTimeout time.Duration // conn idle timeout
-	maxLifetime time.Duration // conn's max lifetime
-	keepConn    bool          // instructs FCGI server to keep conn?
 }
 
 func (b *fcgiBackend) onCreate(name string, stage *Stage) {
@@ -236,25 +233,6 @@ func (b *fcgiBackend) onCreate(name string, stage *Stage) {
 
 func (b *fcgiBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
-
-	// idleTimeout
-	b.ConfigureDuration("idleTimeout", &b.idleTimeout, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".idleTimeout has an invalid value")
-	}, 2*time.Second)
-
-	// maxLifetime
-	b.ConfigureDuration("maxLifetime", &b.maxLifetime, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".maxLifetime has an invalid value")
-	}, 1*time.Minute)
-
-	// keepConn
-	b.ConfigureBool("keepConn", &b.keepConn, false)
 
 	// sub components
 	b.ConfigureNodes()
@@ -268,7 +246,7 @@ func (b *fcgiBackend) OnPrepare() {
 
 func (b *fcgiBackend) CreateNode(name string) Node {
 	node := new(fcgiNode)
-	node.onCreate(name, b)
+	node.onCreate(name, b.stage, b)
 	b.AddNode(node)
 	return node
 }
@@ -288,8 +266,11 @@ type fcgiNode struct {
 	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
-	maxExchansPerConn int32    // max exchans of one conn. 0 means infinite
-	connPool          struct { // free list of conns in this node
+	maxExchansPerConn int32         // max exchans of one conn. 0 means infinite
+	idleTimeout       time.Duration // conn idle timeout
+	maxLifetime       time.Duration // conn's max lifetime
+	keepConn          bool          // instructs FCGI server to keep conn?
+	connPool          struct {      // free list of conns in this node
 		sync.Mutex
 		head *fcgiConn
 		tail *fcgiConn
@@ -297,8 +278,8 @@ type fcgiNode struct {
 	}
 }
 
-func (n *fcgiNode) onCreate(name string, backend *fcgiBackend) {
-	n.Node_.OnCreate(name, backend)
+func (n *fcgiNode) onCreate(name string, stage *Stage, backend *fcgiBackend) {
+	n.Node_.OnCreate(name, stage, backend)
 }
 
 func (n *fcgiNode) OnConfigure() {
@@ -312,6 +293,25 @@ func (n *fcgiNode) OnConfigure() {
 		}
 		return errors.New(".maxExchansPerConn has an invalid value")
 	}, 1000)
+
+	// idleTimeout
+	n.ConfigureDuration("idleTimeout", &n.idleTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".idleTimeout has an invalid value")
+	}, 2*time.Second)
+
+	// maxLifetime
+	n.ConfigureDuration("maxLifetime", &n.maxLifetime, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".maxLifetime has an invalid value")
+	}, 1*time.Minute)
+
+	// keepConn
+	n.ConfigureBool("keepConn", &n.keepConn, false)
 }
 func (n *fcgiNode) OnPrepare() {
 	n.Node_.OnPrepare()
@@ -524,10 +524,10 @@ func putFCGIConn(conn *fcgiConn) {
 func (c *fcgiConn) onGet(id int64, node *fcgiNode, netConn net.Conn, rawConn syscall.RawConn) {
 	c.id = id
 	c.node = node
-	c.expireTime = time.Now().Add(node.backend.idleTimeout)
+	c.expireTime = time.Now().Add(node.idleTimeout)
 	c.netConn = netConn
 	c.rawConn = rawConn
-	c.persistent = node.backend.keepConn
+	c.persistent = node.keepConn
 }
 func (c *fcgiConn) onPut() {
 	c.usedExchans.Store(0)
@@ -544,7 +544,7 @@ func (c *fcgiConn) onPut() {
 func (c *fcgiConn) IsUDS() bool { return c.node.IsUDS() }
 
 func (c *fcgiConn) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, c.node.backend.Stage().ID(), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(to, c.node.Stage().ID(), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *fcgiConn) isAlive() bool { return time.Now().Before(c.expireTime) }
@@ -967,7 +967,7 @@ func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
 }
 
 func (r *fcgiRequest) _setBeginRequest(p *[]byte) {
-	if r.exchan.conn.node.backend.keepConn {
+	if r.exchan.conn.node.keepConn {
 		*p = fcgiBeginKeepConn
 	} else {
 		*p = fcgiBeginDontKeep

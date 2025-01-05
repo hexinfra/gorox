@@ -224,13 +224,10 @@ func init() {
 type fcgiBackend struct {
 	// Parent
 	Backend_[*fcgiNode]
-	// Mixins
-	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
-	idleTimeout       time.Duration // conn idle timeout
-	maxLifetime       time.Duration // conn's max lifetime
-	keepConn          bool          // instructs FCGI server to keep conn?
-	maxExchansPerConn int32         // max exchans of one conn. 0 means infinite
+	idleTimeout time.Duration // conn idle timeout
+	maxLifetime time.Duration // conn's max lifetime
+	keepConn    bool          // instructs FCGI server to keep conn?
 }
 
 func (b *fcgiBackend) onCreate(name string, stage *Stage) {
@@ -239,7 +236,6 @@ func (b *fcgiBackend) onCreate(name string, stage *Stage) {
 
 func (b *fcgiBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
-	b._contentSaver_.onConfigure(b, TmpDir()+"/web/backends/"+b.name, 0, 0)
 
 	// idleTimeout
 	b.ConfigureDuration("idleTimeout", &b.idleTimeout, func(value time.Duration) error {
@@ -260,26 +256,15 @@ func (b *fcgiBackend) OnConfigure() {
 	// keepConn
 	b.ConfigureBool("keepConn", &b.keepConn, false)
 
-	// maxExchansPerConn
-	b.ConfigureInt32("maxExchansPerConn", &b.maxExchansPerConn, func(value int32) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".maxExchansPerConn has an invalid value")
-	}, 1000)
-
 	// sub components
 	b.ConfigureNodes()
 }
 func (b *fcgiBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
-	b._contentSaver_.onPrepare(b, 0755)
 
 	// sub components
 	b.PrepareNodes()
 }
-
-func (b *fcgiBackend) MaxExchansPerConn() int32 { return b.maxExchansPerConn }
 
 func (b *fcgiBackend) CreateNode(name string) Node {
 	node := new(fcgiNode)
@@ -299,11 +284,12 @@ func (b *fcgiBackend) storeExchan(exchan *fcgiExchan) {
 // fcgiNode is a node in FCGI backend.
 type fcgiNode struct {
 	// Parent
-	Node_
-	// Assocs
-	backend *fcgiBackend
+	Node_[*fcgiBackend]
+	// Mixins
+	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
-	connPool struct { // free list of conns in this node
+	maxExchansPerConn int32    // max exchans of one conn. 0 means infinite
+	connPool          struct { // free list of conns in this node
 		sync.Mutex
 		head *fcgiConn
 		tail *fcgiConn
@@ -312,16 +298,27 @@ type fcgiNode struct {
 }
 
 func (n *fcgiNode) onCreate(name string, backend *fcgiBackend) {
-	n.Node_.OnCreate(name)
-	n.backend = backend
+	n.Node_.OnCreate(name, backend)
 }
 
 func (n *fcgiNode) OnConfigure() {
 	n.Node_.OnConfigure()
+	n._contentSaver_.onConfigure(n, TmpDir()+"/web/backends/"+n.backend.name+"/"+n.name, 0, 0)
+
+	// maxExchansPerConn
+	n.ConfigureInt32("maxExchansPerConn", &n.maxExchansPerConn, func(value int32) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".maxExchansPerConn has an invalid value")
+	}, 1000)
 }
 func (n *fcgiNode) OnPrepare() {
 	n.Node_.OnPrepare()
+	n._contentSaver_.onPrepare(n, 0755)
 }
+
+func (n *fcgiNode) MaxExchansPerConn() int32 { return n.maxExchansPerConn }
 
 func (n *fcgiNode) Maintain() { // runner
 	n.LoopRun(time.Second, func(now time.Time) {
@@ -396,7 +393,7 @@ func (n *fcgiNode) dial() (*fcgiConn, error) {
 }
 func (n *fcgiNode) _dialUDS() (*fcgiConn, error) {
 	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("unix", n.address, n.backend.DialTimeout())
+	netConn, err := net.DialTimeout("unix", n.address, n.DialTimeout())
 	if err != nil {
 		n.markDown()
 		return nil, err
@@ -404,7 +401,7 @@ func (n *fcgiNode) _dialUDS() (*fcgiConn, error) {
 	if DebugLevel() >= 2 {
 		Printf("fcgiNode=%s dial %s OK!\n", n.name, n.address)
 	}
-	connID := n.backend.nextConnID()
+	connID := n.nextConnID()
 	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
 	if err != nil {
 		netConn.Close()
@@ -414,7 +411,7 @@ func (n *fcgiNode) _dialUDS() (*fcgiConn, error) {
 }
 func (n *fcgiNode) _dialTCP() (*fcgiConn, error) {
 	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
+	netConn, err := net.DialTimeout("tcp", n.address, n.DialTimeout())
 	if err != nil {
 		// TODO: handle ephemeral port exhaustion
 		n.markDown()
@@ -423,7 +420,7 @@ func (n *fcgiNode) _dialTCP() (*fcgiConn, error) {
 	if DebugLevel() >= 2 {
 		Printf("fcgiNode=%s dial %s OK!\n", n.name, n.address)
 	}
-	connID := n.backend.nextConnID()
+	connID := n.nextConnID()
 	rawConn, err := netConn.(*net.TCPConn).SyscallConn()
 	if err != nil {
 		netConn.Close()
@@ -556,7 +553,7 @@ func (c *fcgiConn) markBroken()    { c.broken.Store(true) }
 func (c *fcgiConn) isBroken() bool { return c.broken.Load() }
 
 func (c *fcgiConn) runOut() bool {
-	return c.usedExchans.Add(1) > c.node.backend.maxExchansPerConn
+	return c.usedExchans.Add(1) > c.node.maxExchansPerConn
 }
 func (c *fcgiConn) fetchExchan() (*fcgiExchan, error) {
 	exchan := &c.exchan
@@ -603,7 +600,7 @@ func (x *fcgiExchan) isBroken() bool { return x.conn.isBroken() }
 
 func (x *fcgiExchan) setWriteDeadline() error {
 	conn := x.conn
-	deadline := time.Now().Add(conn.node.backend.WriteTimeout())
+	deadline := time.Now().Add(conn.node.WriteTimeout())
 	if deadline.Sub(conn.lastWrite) >= time.Second {
 		if err := conn.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
@@ -614,7 +611,7 @@ func (x *fcgiExchan) setWriteDeadline() error {
 }
 func (x *fcgiExchan) setReadDeadline() error {
 	conn := x.conn
-	deadline := time.Now().Add(conn.node.backend.ReadTimeout())
+	deadline := time.Now().Add(conn.node.ReadTimeout())
 	if deadline.Sub(conn.lastRead) >= time.Second {
 		if err := conn.netConn.SetReadDeadline(deadline); err != nil {
 			return err
@@ -665,7 +662,7 @@ func (r *fcgiRequest) onUse() {
 	copy(r.paramsHeader[:], fcgiEmptyParams) // payloadLen (r.paramsHeader[4:6]) needs modification on using
 	copy(r.stdinHeader[:], fcgiEmptyStdin)   // payloadLen (r.stdinHeader[4:6]) needs modification for every stdin record on using
 	r.params = r.stockParams[:]
-	r.sendTimeout = r.exchan.conn.node.backend.sendTimeout
+	r.sendTimeout = r.exchan.conn.node.sendTimeout
 }
 func (r *fcgiRequest) onEnd() {
 	if cap(r.params) != cap(r.stockParams) {
@@ -1110,8 +1107,8 @@ func (r *fcgiResponse) onUse() {
 	r.input = r.stockInput[:]
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of header indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
-	r.recvTimeout = r.exchan.conn.node.backend.recvTimeout
-	r.maxContentSize = r.exchan.conn.node.backend.maxContentSize
+	r.recvTimeout = r.exchan.conn.node.recvTimeout
+	r.maxContentSize = r.exchan.conn.node.maxContentSize
 	r.status = StatusOK
 	r.headResult = StatusOK
 	r.bodyResult = StatusOK
@@ -1608,7 +1605,7 @@ func (r *fcgiResponse) forTrailers(callback func(trailer *pair, name []byte, val
 }
 
 func (r *fcgiResponse) saveContentFilesDir() string {
-	return r.exchan.conn.node.backend.SaveContentFilesDir()
+	return r.exchan.conn.node.SaveContentFilesDir()
 }
 
 func (r *fcgiResponse) _newTempFile() (tempFile, error) { // to save content to

@@ -301,20 +301,6 @@ func (c *Component_) getParent() Component             { return c.parent }
 func (c *Component_) setInfo(info any)                 { c.info = info }
 func (c *Component_) setProp(name string, value Value) { c.props[name] = value }
 
-// compList
-type compList[T Component] []T
-
-func (l compList[T]) walk(method func(T)) {
-	for _, component := range l {
-		method(component)
-	}
-}
-func (l compList[T]) goWalk(method func(T)) {
-	for _, component := range l {
-		go method(component)
-	}
-}
-
 // compDict
 type compDict[T Component] map[string]T
 

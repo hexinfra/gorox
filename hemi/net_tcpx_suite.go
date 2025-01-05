@@ -29,7 +29,7 @@ type TCPXRouter struct {
 	Server_[*tcpxGate]
 	// Assocs
 	dealets compDict[TCPXDealet] // defined dealets. indexed by name
-	cases   compList[*tcpxCase]  // defined cases. the order must be kept, so we use list. TODO: use ordered map?
+	cases   []*tcpxCase          // defined cases. the order must be kept, so we use list. TODO: use ordered map?
 	// States
 	accessLog *LogConfig // ...
 	logger    *Logger    // router access logger
@@ -47,7 +47,9 @@ func (r *TCPXRouter) OnConfigure() {
 
 	// sub components
 	r.dealets.walk(TCPXDealet.OnConfigure)
-	r.cases.walk((*tcpxCase).OnConfigure)
+	for _, kase := range r.cases {
+		kase.OnConfigure()
+	}
 }
 func (r *TCPXRouter) OnPrepare() {
 	r.Server_.OnPrepare()
@@ -59,7 +61,9 @@ func (r *TCPXRouter) OnPrepare() {
 
 	// sub components
 	r.dealets.walk(TCPXDealet.OnPrepare)
-	r.cases.walk((*tcpxCase).OnPrepare)
+	for _, kase := range r.cases {
+		kase.OnPrepare()
+	}
 }
 
 func (r *TCPXRouter) createDealet(sign string, name string) TCPXDealet {
@@ -99,7 +103,7 @@ func (r *TCPXRouter) hasCase(name string) bool {
 func (r *TCPXRouter) Serve() { // runner
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(tcpxGate)
-		gate.onNew(id, r)
+		gate.onNew(r, id)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
@@ -116,7 +120,9 @@ func (r *TCPXRouter) Serve() { // runner
 	r.WaitSubs() // gates
 
 	r.IncSubs(len(r.dealets) + len(r.cases))
-	r.cases.walk((*tcpxCase).OnShutdown)
+	for _, kase := range r.cases {
+		kase.OnShutdown()
+	}
 	r.dealets.walk(TCPXDealet.OnShutdown)
 	r.WaitSubs() // dealets, cases
 
@@ -160,18 +166,15 @@ func (r *TCPXRouter) serveConn(conn *TCPXConn) { // runner
 // tcpxGate is an opening gate of TCPXRouter.
 type tcpxGate struct {
 	// Parent
-	Gate_
-	// Assocs
-	router *TCPXRouter
+	Gate_[*TCPXRouter]
 	// States
 	maxActives int32        // max concurrent conns allowed for this gate
 	curActives atomic.Int32 // TODO: false sharing
 	listener   net.Listener // the real gate. set after open
 }
 
-func (g *tcpxGate) onNew(id int32, router *TCPXRouter) {
-	g.Gate_.OnNew(id)
-	g.router = router
+func (g *tcpxGate) onNew(router *TCPXRouter, id int32) {
+	g.Gate_.OnNew(router, id)
 	g.maxActives = router.MaxConnsPerGate()
 	g.curActives.Store(0)
 }
@@ -179,11 +182,6 @@ func (g *tcpxGate) onNew(id int32, router *TCPXRouter) {
 func (g *tcpxGate) DecActives() int32             { return g.curActives.Add(-1) }
 func (g *tcpxGate) IncActives() int32             { return g.curActives.Add(1) }
 func (g *tcpxGate) ReachLimit(actives int32) bool { return actives > g.maxActives }
-
-func (g *tcpxGate) Server() Server  { return g.router }
-func (g *tcpxGate) Address() string { return g.router.Address() }
-func (g *tcpxGate) IsUDS() bool     { return g.router.IsUDS() }
-func (g *tcpxGate) IsTLS() bool     { return g.router.IsTLS() }
 
 func (g *tcpxGate) Open() error {
 	var (
@@ -229,7 +227,7 @@ func (g *tcpxGate) serveUDS() { // runner
 		}
 		g.IncConn()
 		if actives := g.IncActives(); g.ReachLimit(actives) {
-			g.router.Logf("tcpxGate=%d: too many UDS connections!\n", g.id)
+			g.server.Logf("tcpxGate=%d: too many UDS connections!\n", g.id)
 			g.justClose(udsConn)
 			continue
 		}
@@ -239,14 +237,14 @@ func (g *tcpxGate) serveUDS() { // runner
 			continue
 		}
 		conn := getTCPXConn(connID, g, udsConn, rawConn)
-		go g.router.serveConn(conn) // conn is put to pool in serveConn()
+		go g.server.serveConn(conn) // conn is put to pool in serveConn()
 		connID++
 	}
 	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TCP done\n", g.id)
 	}
-	g.router.DecSub() // gate
+	g.server.DecSub() // gate
 }
 func (g *tcpxGate) serveTLS() { // runner
 	listener := g.listener.(*net.TCPListener)
@@ -262,25 +260,25 @@ func (g *tcpxGate) serveTLS() { // runner
 		}
 		g.IncConn()
 		if actives := g.IncActives(); g.ReachLimit(actives) {
-			g.router.Logf("tcpxGate=%d: too many TLS connections!\n", g.id)
+			g.server.Logf("tcpxGate=%d: too many TLS connections!\n", g.id)
 			g.justClose(tcpConn)
 			continue
 		}
-		tlsConn := tls.Server(tcpConn, g.router.TLSConfig())
+		tlsConn := tls.Server(tcpConn, g.server.TLSConfig())
 		// TODO: configure timeout
 		if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
 			g.justClose(tlsConn)
 			continue
 		}
 		conn := getTCPXConn(connID, g, tlsConn, nil)
-		go g.router.serveConn(conn) // conn is put to pool in serveConn()
+		go g.server.serveConn(conn) // conn is put to pool in serveConn()
 		connID++
 	}
 	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TLS done\n", g.id)
 	}
-	g.router.DecSub() // gate
+	g.server.DecSub() // gate
 }
 func (g *tcpxGate) serveTCP() { // runner
 	listener := g.listener.(*net.TCPListener)
@@ -296,7 +294,7 @@ func (g *tcpxGate) serveTCP() { // runner
 		}
 		g.IncConn()
 		if actives := g.IncActives(); g.ReachLimit(actives) {
-			g.router.Logf("tcpxGate=%d: too many TCP connections!\n", g.id)
+			g.server.Logf("tcpxGate=%d: too many TCP connections!\n", g.id)
 			g.justClose(tcpConn)
 			continue
 		}
@@ -309,14 +307,14 @@ func (g *tcpxGate) serveTCP() { // runner
 		if DebugLevel() >= 2 {
 			Printf("%+v\n", conn)
 		}
-		go g.router.serveConn(conn) // conn is put to pool in serveConn()
+		go g.server.serveConn(conn) // conn is put to pool in serveConn()
 		connID++
 	}
 	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TCP done\n", g.id)
 	}
-	g.router.DecSub() // gate
+	g.server.DecSub() // gate
 }
 
 func (g *tcpxGate) justClose(netConn net.Conn) {
@@ -354,7 +352,7 @@ func putTCPXConn(conn *TCPXConn) {
 }
 
 func (c *TCPXConn) onGet(id int64, gate *tcpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	router := gate.router
+	router := gate.server
 	c.tcpxConn_.onGet(id, router.Stage().ID(), netConn, rawConn, gate.IsUDS(), gate.IsTLS(), router.ReadTimeout(), router.WriteTimeout())
 
 	c.gate = gate
@@ -700,15 +698,12 @@ func (b *TCPXBackend) Dial() (*TConn, error) {
 // tcpxNode is a node in TCPXBackend.
 type tcpxNode struct {
 	// Parent
-	Node_
-	// Assocs
-	backend *TCPXBackend
+	Node_[*TCPXBackend]
 	// States
 }
 
 func (n *tcpxNode) onCreate(name string, backend *TCPXBackend) {
-	n.Node_.OnCreate(name)
-	n.backend = backend
+	n.Node_.OnCreate(name, backend)
 }
 
 func (n *tcpxNode) OnConfigure() {
@@ -753,7 +748,7 @@ func (n *tcpxNode) dial() (*TConn, error) {
 }
 func (n *tcpxNode) _dialUDS() (*TConn, error) {
 	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("unix", n.address, n.backend.DialTimeout())
+	netConn, err := net.DialTimeout("unix", n.address, n.DialTimeout())
 	if err != nil {
 		n.markDown()
 		return nil, err
@@ -761,7 +756,7 @@ func (n *tcpxNode) _dialUDS() (*TConn, error) {
 	if DebugLevel() >= 2 {
 		Printf("tcpxNode=%s dial %s OK!\n", n.name, n.address)
 	}
-	connID := n.backend.nextConnID()
+	connID := n.nextConnID()
 	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
 	if err != nil {
 		netConn.Close()
@@ -771,7 +766,7 @@ func (n *tcpxNode) _dialUDS() (*TConn, error) {
 }
 func (n *tcpxNode) _dialTLS() (*TConn, error) {
 	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
+	netConn, err := net.DialTimeout("tcp", n.address, n.DialTimeout())
 	if err != nil {
 		// TODO: handle ephemeral port exhaustion
 		n.markDown()
@@ -780,7 +775,7 @@ func (n *tcpxNode) _dialTLS() (*TConn, error) {
 	if DebugLevel() >= 2 {
 		Printf("tcpxNode=%s dial %s OK!\n", n.name, n.address)
 	}
-	connID := n.backend.nextConnID()
+	connID := n.nextConnID()
 	tlsConn := tls.Client(netConn, n.tlsConfig)
 	if err := tlsConn.SetDeadline(time.Now().Add(10 * time.Second)); err != nil {
 		tlsConn.Close()
@@ -794,7 +789,7 @@ func (n *tcpxNode) _dialTLS() (*TConn, error) {
 }
 func (n *tcpxNode) _dialTCP() (*TConn, error) {
 	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
+	netConn, err := net.DialTimeout("tcp", n.address, n.DialTimeout())
 	if err != nil {
 		// TODO: handle ephemeral port exhaustion
 		n.markDown()
@@ -803,7 +798,7 @@ func (n *tcpxNode) _dialTCP() (*TConn, error) {
 	if DebugLevel() >= 2 {
 		Printf("tcpxNode=%s dial %s OK!\n", n.name, n.address)
 	}
-	connID := n.backend.nextConnID()
+	connID := n.nextConnID()
 	rawConn, err := netConn.(*net.TCPConn).SyscallConn()
 	if err != nil {
 		netConn.Close()
@@ -841,8 +836,7 @@ func putTConn(conn *TConn) {
 }
 
 func (c *TConn) onGet(id int64, node *tcpxNode, netConn net.Conn, rawConn syscall.RawConn) {
-	backend := node.backend
-	c.tcpxConn_.onGet(id, backend.Stage().ID(), netConn, rawConn, node.IsUDS(), node.IsTLS(), backend.ReadTimeout(), backend.WriteTimeout())
+	c.tcpxConn_.onGet(id, node.backend.Stage().ID(), netConn, rawConn, node.IsUDS(), node.IsTLS(), node.ReadTimeout(), node.WriteTimeout())
 
 	c.node = node
 }

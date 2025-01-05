@@ -1,15 +1,17 @@
 udpxBackend "ub1" {
-	.tlsMode = false
-	.dialTimeout = 10s
-	.writeTimeout = 30s
-	.readTimeout = 30s
 	.balancer = "random"
 	node {
 		.address = "127.0.0.1:3080"
+		.dialTimeout = 10s
+		.readTimeout = 30s
+		.writeTimeout = 30s
 		.weight = 9
 	}
 	node {
 		.address = "127.0.0.1:3081"
+		.dialTimeout = 10s
+		.readTimeout = 30s
+		.writeTimeout = 30s
 		.weight = 8
 	}
 }

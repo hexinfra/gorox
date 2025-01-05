@@ -1,8 +1,4 @@
 http3Backend "h3b1" {
-	.tlsMode = false
-	.dialTimeout = 10s
-	.writeTimeout = 30s
-	.readTimeout = 30s
 	.idleTimeout = 2s
 	.maxLifetime = 1m
 	.maxStreamsPerConn = 1000
@@ -12,12 +8,20 @@ http3Backend "h3b1" {
 	.sendTimeout = 0s
 	.balancer = "ipHash"
 	node {
+		.tlsMode = true
 		.address = "127.0.0.1:3080"
+		.dialTimeout = 10s
+		.readTimeout = 30s
+		.writeTimeout = 30s
 		.weight = 9
 		.keepAliveConns = 2
 	}
 	node {
+		.tlsMode = true
 		.address = "127.0.0.1:3081"
+		.dialTimeout = 10s
+		.readTimeout = 30s
+		.writeTimeout = 30s
 		.weight = 8
 		.keepAliveConns = 3
 	}

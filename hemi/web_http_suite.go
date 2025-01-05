@@ -29,7 +29,7 @@ import (
 type WebServer interface { // for *http[x3]Server
 	// Imports
 	Server
-	contentSaver
+	webHolder
 	// Methods
 	bindWebapps()
 }
@@ -40,7 +40,6 @@ type webServer_[G Gate] struct {
 	Server_[G]
 	// Mixins
 	_webHolder_
-	_contentSaver_ // so requests can save their large contents in local file system.
 	// Assocs
 	defaultWebapp *Webapp // default webapp if not found
 	// States
@@ -60,8 +59,7 @@ func (s *webServer_[G]) onCreate(name string, stage *Stage) {
 
 func (s *webServer_[G]) onConfigure() {
 	s.Server_.OnConfigure()
-	s._webHolder_.onConfigure(s)
-	s._contentSaver_.onConfigure(s, TmpDir()+"/web/servers/"+s.name, 0, 0)
+	s._webHolder_.onConfigure(s, TmpDir()+"/web/servers/"+s.name, 0, 0)
 
 	// webapps
 	s.ConfigureStringList("webapps", &s.webapps, nil, []string{})
@@ -86,7 +84,7 @@ func (s *webServer_[G]) onConfigure() {
 }
 func (s *webServer_[G]) onPrepare() {
 	s.Server_.OnPrepare()
-	s._contentSaver_.onPrepare(s, 0755)
+	s._webHolder_.onPrepare(s, 0755)
 }
 
 func (s *webServer_[G]) bindWebapps() {
@@ -149,23 +147,23 @@ func (s *webServer_[G]) findWebapp(hostname []byte) *Webapp {
 }
 
 // webGate_ is the parent for http[x3]Gate.
-type webGate_ struct {
+type webGate_[S WebServer] struct {
 	// Parent
-	Gate_
+	Gate_[S]
 	// States
 	maxActives int32        // max concurrent conns allowed for this gate
 	curActives atomic.Int32 // TODO: false sharing
 }
 
-func (g *webGate_) onNew(id int32, maxActives int32) {
-	g.Gate_.OnNew(id)
+func (g *webGate_[S]) onNew(server S, id int32, maxActives int32) {
+	g.Gate_.OnNew(server, id)
 	g.maxActives = maxActives
 	g.curActives.Store(0)
 }
 
-func (g *webGate_) DecActives() int32             { return g.curActives.Add(-1) }
-func (g *webGate_) IncActives() int32             { return g.curActives.Add(1) }
-func (g *webGate_) ReachLimit(actives int32) bool { return actives > g.maxActives }
+func (g *webGate_[S]) DecActives() int32             { return g.curActives.Add(-1) }
+func (g *webGate_[S]) IncActives() int32             { return g.curActives.Add(1) }
+func (g *webGate_[S]) ReachLimit(actives int32) bool { return actives > g.maxActives }
 
 // Request is the server-side http request.
 type Request interface { // for *server[1-3]Request
@@ -3248,19 +3246,15 @@ func WebSocketReverseProxy(req Request, sock Socket, backend WebBackend, proxyCo
 type WebBackend interface { // for *HTTP[1-3]Backend
 	// Imports
 	Backend
-	contentSaver
 	// Methods
 	FetchStream() (stream, error)
 	StoreStream(stream stream)
 }
 
 // webBackend_ is the parent for http[1-3]Backend.
-type webBackend_[N Node] struct {
+type webBackend_[N WebNode] struct {
 	// Parent
 	Backend_[N]
-	// Mixins
-	_webHolder_
-	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
 	idleTimeout time.Duration // conn idle timeout
 	maxLifetime time.Duration // conn's max lifetime
@@ -3272,8 +3266,6 @@ func (b *webBackend_[N]) onCreate(name string, stage *Stage) {
 
 func (b *webBackend_[N]) onConfigure() {
 	b.Backend_.OnConfigure()
-	b._webHolder_.onConfigure(b)
-	b._contentSaver_.onConfigure(b, TmpDir()+"/web/backends/"+b.name, 0, 0)
 
 	// idleTimeout
 	b.ConfigureDuration("idleTimeout", &b.idleTimeout, func(value time.Duration) error {
@@ -3293,23 +3285,33 @@ func (b *webBackend_[N]) onConfigure() {
 }
 func (b *webBackend_[N]) onPrepare() {
 	b.Backend_.OnPrepare()
-	b._contentSaver_.onPrepare(b, 0755)
+}
+
+// WebNode
+type WebNode interface {
+	// Imports
+	Node
+	webHolder
+	// Methods
 }
 
 // webNode_ is the parent for http[1-3]Node.
-type webNode_ struct {
+type webNode_[B WebBackend] struct {
 	// Parent
-	Node_
+	Node_[B]
+	// Mixins
+	_webHolder_
 	// States
 	keepAliveConns int32 // max conns to keep alive
 }
 
-func (n *webNode_) OnCreate(name string) {
-	n.Node_.OnCreate(name)
+func (n *webNode_[B]) OnCreate(name string, backend B) {
+	n.Node_.OnCreate(name, backend)
 }
 
-func (n *webNode_) OnConfigure() {
+func (n *webNode_[B]) OnConfigure() {
 	n.Node_.OnConfigure()
+	n._webHolder_.onConfigure(n, TmpDir()+"/web/backends/"+n.backend.Name()+"/"+n.name, 0, 0)
 
 	// keepAliveConns
 	n.ConfigureInt32("keepAliveConns", &n.keepAliveConns, func(value int32) error {
@@ -3319,8 +3321,9 @@ func (n *webNode_) OnConfigure() {
 		return errors.New("bad keepAliveConns in node")
 	}, 10)
 }
-func (n *webNode_) OnPrepare() {
+func (n *webNode_[B]) OnPrepare() {
 	n.Node_.OnPrepare()
+	n._webHolder_.onPrepare(n, 0755)
 }
 
 // stream is the backend-side http stream.
@@ -4040,7 +4043,7 @@ func (s *backendSocket_) backendTodo() {
 
 //////////////////////////////////////// General HTTP in/out implementation ////////////////////////////////////////
 
-// webHolder collects shared methods between *http[x3]Server and *http[1-3]Backend.
+// webHolder collects shared methods between *http[x3]Server and *http[1-3]Node.
 type webHolder interface {
 	// Imports
 	contentSaver
@@ -4051,12 +4054,16 @@ type webHolder interface {
 
 // _webHolder_
 type _webHolder_ struct {
+	// Mixins
+	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
 	maxMemoryContentSize int32 // max content size that can be loaded into memory directly
 	maxStreamsPerConn    int32 // max cumulative streams of one conn. 0 means infinite
 }
 
-func (h *_webHolder_) onConfigure(component Component) {
+func (h *_webHolder_) onConfigure(component Component, defaultDir string, recvTimeout time.Duration, sendTimeout time.Duration) {
+	h._contentSaver_.onConfigure(component, defaultDir, recvTimeout, sendTimeout)
+
 	// maxMemoryContentSize
 	component.ConfigureInt32("maxMemoryContentSize", &h.maxMemoryContentSize, func(value int32) error {
 		if value > 0 && value <= _1G { // DO NOT CHANGE THIS, otherwise integer overflow may occur
@@ -4072,6 +4079,9 @@ func (h *_webHolder_) onConfigure(component Component) {
 		}
 		return errors.New(".maxStreamsPerConn has an invalid value")
 	}, 1000)
+}
+func (h *_webHolder_) onPrepare(component Component, perm os.FileMode) {
+	h._contentSaver_.onPrepare(component, perm)
 }
 
 func (h *_webHolder_) MaxMemoryContentSize() int32 { return h.maxMemoryContentSize }

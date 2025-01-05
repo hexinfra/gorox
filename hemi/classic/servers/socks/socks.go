@@ -50,7 +50,7 @@ func (s *socksServer) OnPrepare() {
 func (s *socksServer) Serve() { // runner
 	for id := int32(0); id < s.NumGates(); id++ {
 		gate := new(socksGate)
-		gate.onNew(id, s)
+		gate.onNew(s, id)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
@@ -79,22 +79,14 @@ func (s *socksServer) serveConn(conn *socksConn) { // runner
 // socksGate
 type socksGate struct {
 	// Parent
-	Gate_
-	// Assocs
-	server *socksServer
+	Gate_[*socksServer]
 	// States
 	listener *net.TCPListener
 }
 
-func (g *socksGate) onNew(id int32, server *socksServer) {
-	g.Gate_.OnNew(id)
-	g.server = server
+func (g *socksGate) onNew(server *socksServer, id int32) {
+	g.Gate_.OnNew(server, id)
 }
-
-func (g *socksGate) Server() Server  { return g.server }
-func (g *socksGate) Address() string { return g.server.Address() }
-func (g *socksGate) IsUDS() bool     { return g.server.IsUDS() }
-func (g *socksGate) IsTLS() bool     { return g.server.IsTLS() }
 
 func (g *socksGate) Open() error {
 	listenConfig := new(net.ListenConfig)
@@ -125,14 +117,15 @@ func (g *socksGate) serve() { // runner
 		}
 		g.IncConn()
 		socksConn := getSocksConn(connID, g, tcpConn)
-		go g.server.serveConn(socksConn) // socksConn is put to pool in serve()
+		_ = socksConn
+		//go g.server.serveConn(socksConn) // socksConn is put to pool in serve()
 		connID++
 	}
 	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("socksGate=%d done\n", g.ID())
 	}
-	g.server.DecSub() // gate
+	//g.server.DecSub() // gate
 }
 
 func (g *socksGate) justClose(tcpConn *net.TCPConn) {

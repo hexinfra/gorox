@@ -27,17 +27,10 @@ func (s *tunnelServer) Serve() { // runner
 // tunnelGate
 type tunnelGate struct {
 	// Parent
-	Gate_
-	// Assocs
-	server *tunnelServer
+	Gate_[*tunnelServer]
 	// States
 	listener *net.TCPListener
 }
-
-func (g *tunnelGate) Server() Server  { return g.server }
-func (g *tunnelGate) Address() string { return g.server.Address() }
-func (g *tunnelGate) IsUDS() bool     { return g.server.IsUDS() }
-func (g *tunnelGate) IsTLS() bool     { return g.server.IsTLS() }
 
 func (g *tunnelGate) Open() error {
 	return nil

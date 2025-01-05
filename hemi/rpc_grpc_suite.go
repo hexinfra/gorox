@@ -117,21 +117,13 @@ func (s *grpcServer) Serve() { // runner
 // grpcGate is a gate of grpcServer.
 type grpcGate struct {
 	// Parent
-	Gate_
-	// Assocs
-	server *grpcServer
+	Gate_[*grpcServer]
 	// States
 }
 
-func (g *grpcGate) onNew(id int32, server *grpcServer) {
-	g.Gate_.OnNew(id)
-	g.server = server
+func (g *grpcGate) onNew(server *grpcServer, id int32) {
+	g.Gate_.OnNew(server, id)
 }
-
-func (g *grpcGate) Server() Server  { return g.server }
-func (g *grpcGate) Address() string { return g.server.Address() }
-func (g *grpcGate) IsUDS() bool     { return g.server.IsUDS() }
-func (g *grpcGate) IsTLS() bool     { return g.server.IsTLS() }
 
 func (g *grpcGate) Open() error {
 	// TODO

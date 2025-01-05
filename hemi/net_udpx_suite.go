@@ -24,7 +24,7 @@ type UDPXRouter struct {
 	Server_[*udpxGate]
 	// Assocs
 	dealets compDict[UDPXDealet] // defined dealets. indexed by name
-	cases   compList[*udpxCase]  // defined cases. the order must be kept, so we use list. TODO: use ordered map?
+	cases   []*udpxCase          // defined cases. the order must be kept, so we use list. TODO: use ordered map?
 	// States
 	accessLog *LogConfig // ...
 	logger    *Logger    // router access logger
@@ -42,7 +42,9 @@ func (r *UDPXRouter) OnConfigure() {
 
 	// sub components
 	r.dealets.walk(UDPXDealet.OnConfigure)
-	r.cases.walk((*udpxCase).OnConfigure)
+	for _, kase := range r.cases {
+		kase.OnConfigure()
+	}
 }
 func (r *UDPXRouter) OnPrepare() {
 	r.Server_.OnPrepare()
@@ -54,7 +56,9 @@ func (r *UDPXRouter) OnPrepare() {
 
 	// sub components
 	r.dealets.walk(UDPXDealet.OnPrepare)
-	r.cases.walk((*udpxCase).OnPrepare)
+	for _, kase := range r.cases {
+		kase.OnPrepare()
+	}
 }
 
 func (r *UDPXRouter) createDealet(sign string, name string) UDPXDealet {
@@ -94,7 +98,7 @@ func (r *UDPXRouter) hasCase(name string) bool {
 func (r *UDPXRouter) Serve() { // runner
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(udpxGate)
-		gate.onNew(id, r)
+		gate.onNew(r, id)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
@@ -109,7 +113,9 @@ func (r *UDPXRouter) Serve() { // runner
 	r.WaitSubs() // gates
 
 	r.IncSubs(len(r.dealets) + len(r.cases))
-	r.cases.walk((*udpxCase).OnShutdown)
+	for _, kase := range r.cases {
+		kase.OnShutdown()
+	}
 	r.dealets.walk(UDPXDealet.OnShutdown)
 	r.WaitSubs() // dealets, cases
 
@@ -153,21 +159,13 @@ func (r *UDPXRouter) serveConn(conn *UDPXConn) { // runner
 // udpxGate is an opening gate of UDPXRouter.
 type udpxGate struct {
 	// Parent
-	Gate_
-	// Assocs
-	router *UDPXRouter
+	Gate_[*UDPXRouter]
 	// States
 }
 
-func (g *udpxGate) onNew(id int32, router *UDPXRouter) {
-	g.Gate_.OnNew(id)
-	g.router = router
+func (g *udpxGate) onNew(router *UDPXRouter, id int32) {
+	g.Gate_.OnNew(router, id)
 }
-
-func (g *udpxGate) Server() Server  { return g.router }
-func (g *udpxGate) Address() string { return g.router.Address() }
-func (g *udpxGate) IsUDS() bool     { return g.router.IsUDS() }
-func (g *udpxGate) IsTLS() bool     { return false } // is DTLS useful?
 
 func (g *udpxGate) Open() error {
 	// TODO
@@ -187,7 +185,7 @@ func (g *udpxGate) serveUDP() { // runner
 	for !g.shut.Load() {
 		time.Sleep(time.Second)
 	}
-	g.router.DecSub() // gate
+	g.server.DecSub() // gate
 }
 
 func (g *udpxGate) justClose(pktConn net.PacketConn) {
@@ -224,7 +222,7 @@ func putUDPXConn(conn *UDPXConn) {
 }
 
 func (c *UDPXConn) onGet(id int64, gate *udpxGate, pktConn net.PacketConn, rawConn syscall.RawConn) {
-	router := gate.router
+	router := gate.server
 	c.udpxConn_.onGet(id, router.Stage().ID(), pktConn, rawConn, router.IsUDS())
 
 	c.gate = gate
@@ -501,15 +499,12 @@ func (b *UDPXBackend) Dial() (*UConn, error) {
 // udpxNode is a node in UDPXBackend.
 type udpxNode struct {
 	// Parent
-	Node_
-	// Assocs
-	backend *UDPXBackend
+	Node_[*UDPXBackend]
 	// States
 }
 
 func (n *udpxNode) onCreate(name string, backend *UDPXBackend) {
-	n.Node_.OnCreate(name)
-	n.backend = backend
+	n.Node_.OnCreate(name, backend)
 }
 
 func (n *udpxNode) OnConfigure() {

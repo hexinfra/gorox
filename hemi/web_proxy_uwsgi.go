@@ -111,8 +111,6 @@ func init() {
 type uwsgiBackend struct {
 	// Parent
 	Backend_[*uwsgiNode]
-	// Mixins
-	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
 }
 
@@ -122,14 +120,12 @@ func (b *uwsgiBackend) onCreate(name string, stage *Stage) {
 
 func (b *uwsgiBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
-	b._contentSaver_.onConfigure(b, TmpDir()+"/web/backends/"+b.name, 0, 0)
 
 	// sub components
 	b.ConfigureNodes()
 }
 func (b *uwsgiBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
-	b._contentSaver_.onPrepare(b, 0755)
 
 	// sub components
 	b.PrepareNodes()
@@ -145,22 +141,23 @@ func (b *uwsgiBackend) CreateNode(name string) Node {
 // uwsgiNode
 type uwsgiNode struct {
 	// Parent
-	Node_
-	// Assocs
-	backend *uwsgiBackend
+	Node_[*uwsgiBackend]
+	// Mixins
+	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
 }
 
 func (n *uwsgiNode) onCreate(name string, backend *uwsgiBackend) {
-	n.Node_.OnCreate(name)
-	n.backend = backend
+	n.Node_.OnCreate(name, backend)
 }
 
 func (n *uwsgiNode) OnConfigure() {
 	n.Node_.OnConfigure()
+	n._contentSaver_.onConfigure(n, TmpDir()+"/web/backends/"+n.backend.name+"/"+n.name, 0, 0)
 }
 func (n *uwsgiNode) OnPrepare() {
 	n.Node_.OnPrepare()
+	n._contentSaver_.onPrepare(n, 0755)
 }
 
 func (n *uwsgiNode) Maintain() { // runner
@@ -195,7 +192,7 @@ func (n *uwsgiNode) dial() (*uwsgiConn, error) {
 }
 func (n *uwsgiNode) _dialUDS() (*uwsgiConn, error) {
 	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("unix", n.address, n.backend.DialTimeout())
+	netConn, err := net.DialTimeout("unix", n.address, n.DialTimeout())
 	if err != nil {
 		n.markDown()
 		return nil, err
@@ -203,7 +200,7 @@ func (n *uwsgiNode) _dialUDS() (*uwsgiConn, error) {
 	if DebugLevel() >= 2 {
 		Printf("uwsgiNode=%s dial %s OK!\n", n.name, n.address)
 	}
-	connID := n.backend.nextConnID()
+	connID := n.nextConnID()
 	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
 	if err != nil {
 		netConn.Close()
@@ -215,7 +212,7 @@ func (n *uwsgiNode) _dialUDS() (*uwsgiConn, error) {
 }
 func (n *uwsgiNode) _dialTCP() (*uwsgiConn, error) {
 	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
+	netConn, err := net.DialTimeout("tcp", n.address, n.DialTimeout())
 	if err != nil {
 		// TODO: handle ephemeral port exhaustion
 		n.markDown()
@@ -224,7 +221,7 @@ func (n *uwsgiNode) _dialTCP() (*uwsgiConn, error) {
 	if DebugLevel() >= 2 {
 		Printf("uwsgiNode=%s dial %s OK!\n", n.name, n.address)
 	}
-	connID := n.backend.nextConnID()
+	connID := n.nextConnID()
 	rawConn, err := netConn.(*net.TCPConn).SyscallConn()
 	if err != nil {
 		netConn.Close()

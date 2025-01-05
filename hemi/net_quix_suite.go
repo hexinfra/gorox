@@ -25,7 +25,7 @@ type QUIXRouter struct {
 	Server_[*quixGate]
 	// Assocs
 	dealets compDict[QUIXDealet] // defined dealets. indexed by name
-	cases   compList[*quixCase]  // defined cases. the order must be kept, so we use list. TODO: use ordered map?
+	cases   []*quixCase          // defined cases. the order must be kept, so we use list. TODO: use ordered map?
 	// States
 	accessLog *LogConfig // ...
 	logger    *Logger    // router access logger
@@ -41,7 +41,9 @@ func (r *QUIXRouter) OnConfigure() {
 
 	// sub components
 	r.dealets.walk(QUIXDealet.OnConfigure)
-	r.cases.walk((*quixCase).OnConfigure)
+	for _, kase := range r.cases {
+		kase.OnConfigure()
+	}
 }
 func (r *QUIXRouter) OnPrepare() {
 	r.Server_.OnPrepare()
@@ -53,7 +55,9 @@ func (r *QUIXRouter) OnPrepare() {
 
 	// sub components
 	r.dealets.walk(QUIXDealet.OnPrepare)
-	r.cases.walk((*quixCase).OnPrepare)
+	for _, kase := range r.cases {
+		kase.OnPrepare()
+	}
 }
 
 func (r *QUIXRouter) createDealet(sign string, name string) QUIXDealet {
@@ -93,7 +97,7 @@ func (r *QUIXRouter) hasCase(name string) bool {
 func (r *QUIXRouter) Serve() { // runner
 	for id := int32(0); id < r.numGates; id++ {
 		gate := new(quixGate)
-		gate.onNew(id, r)
+		gate.onNew(r, id)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
@@ -104,7 +108,9 @@ func (r *QUIXRouter) Serve() { // runner
 	r.WaitSubs() // gates
 
 	r.IncSubs(len(r.dealets) + len(r.cases))
-	r.cases.walk((*quixCase).OnShutdown)
+	for _, kase := range r.cases {
+		kase.OnShutdown()
+	}
 	r.dealets.walk(QUIXDealet.OnShutdown)
 	r.WaitSubs() // dealets, cases
 
@@ -148,30 +154,22 @@ func (r *QUIXRouter) serveConn(conn *QUIXConn) { // runner
 // quixGate is an opening gate of QUIXRouter.
 type quixGate struct {
 	// Parent
-	Gate_
-	// Assocs
-	router *QUIXRouter
+	Gate_[*QUIXRouter]
 	// States
 	maxActives int32          // max concurrent conns allowed for this gate
 	curActives atomic.Int32   // TODO: false sharing
 	listener   *quic.Listener // the real gate. set after open
 }
 
-func (g *quixGate) onNew(id int32, router *QUIXRouter) {
-	g.Gate_.OnNew(id)
+func (g *quixGate) onNew(router *QUIXRouter, id int32) {
+	g.Gate_.OnNew(router, id)
 	g.maxActives = router.MaxConnsPerGate()
 	g.curActives.Store(0)
-	g.router = router
 }
 
 func (g *quixGate) DecActives() int32             { return g.curActives.Add(-1) }
 func (g *quixGate) IncActives() int32             { return g.curActives.Add(1) }
 func (g *quixGate) ReachLimit(actives int32) bool { return actives > g.maxActives }
-
-func (g *quixGate) Server() Server  { return g.router }
-func (g *quixGate) Address() string { return g.router.Address() }
-func (g *quixGate) IsUDS() bool     { return g.router.IsUDS() }
-func (g *quixGate) IsTLS() bool     { return g.router.IsTLS() }
 
 func (g *quixGate) Open() error {
 	// TODO
@@ -191,7 +189,7 @@ func (g *quixGate) serveTLS() { // runner
 	for !g.IsShut() {
 		time.Sleep(time.Second)
 	}
-	g.router.DecSub() // gate
+	g.server.DecSub() // gate
 }
 
 func (g *quixGate) justClose(quicConn *quic.Conn) {
@@ -228,7 +226,7 @@ func putQUIXConn(conn *QUIXConn) {
 }
 
 func (c *QUIXConn) onGet(id int64, gate *quixGate, quicConn *quic.Conn) {
-	router := gate.router
+	router := gate.server
 	c.quixConn_.onGet(id, router.Stage().ID(), quicConn, gate.IsUDS(), gate.IsTLS(), 123) // TODO
 
 	c.gate = gate
@@ -495,7 +493,6 @@ type QUIXBackend struct {
 	// Parent
 	Backend_[*quixNode]
 	// States
-	maxStreamsPerConn int32 // max cumulative streams of one conn. 0 means infinite
 }
 
 func (b *QUIXBackend) onCreate(name string, stage *Stage) {
@@ -504,14 +501,6 @@ func (b *QUIXBackend) onCreate(name string, stage *Stage) {
 
 func (b *QUIXBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
-
-	// maxStreamsPerConn
-	b.ConfigureInt32("maxStreamsPerConn", &b.maxStreamsPerConn, func(value int32) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".maxStreamsPerConn has an invalid value")
-	}, 1000)
 
 	// sub components
 	b.ConfigureNodes()
@@ -522,8 +511,6 @@ func (b *QUIXBackend) OnPrepare() {
 	// sub components
 	b.PrepareNodes()
 }
-
-func (b *QUIXBackend) MaxStreamsPerConn() int32 { return b.maxStreamsPerConn }
 
 func (b *QUIXBackend) CreateNode(name string) Node {
 	node := new(quixNode)
@@ -548,23 +535,31 @@ func (b *QUIXBackend) StoreStream(qStream *QStream) {
 // quixNode is a node in QUIXBackend.
 type quixNode struct {
 	// Parent
-	Node_
-	// Assocs
-	backend *QUIXBackend
+	Node_[*QUIXBackend]
 	// States
+	maxStreamsPerConn int32 // max cumulative streams of one conn. 0 means infinite
 }
 
 func (n *quixNode) onCreate(name string, backend *QUIXBackend) {
-	n.Node_.OnCreate(name)
-	n.backend = backend
+	n.Node_.OnCreate(name, backend)
 }
 
 func (n *quixNode) OnConfigure() {
 	n.Node_.OnConfigure()
+
+	// maxStreamsPerConn
+	n.ConfigureInt32("maxStreamsPerConn", &n.maxStreamsPerConn, func(value int32) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".maxStreamsPerConn has an invalid value")
+	}, 1000)
 }
 func (n *quixNode) OnPrepare() {
 	n.Node_.OnPrepare()
 }
+
+func (n *quixNode) MaxStreamsPerConn() int32 { return n.maxStreamsPerConn }
 
 func (n *quixNode) Maintain() { // runner
 	n.LoopRun(time.Second, func(now time.Time) {
@@ -619,8 +614,7 @@ func putQConn(conn *QConn) {
 }
 
 func (c *QConn) onGet(id int64, node *quixNode, quicConn *quic.Conn) {
-	backend := node.backend
-	c.quixConn_.onGet(id, backend.Stage().ID(), quicConn, node.IsUDS(), node.IsTLS(), backend.MaxStreamsPerConn())
+	c.quixConn_.onGet(id, node.backend.Stage().ID(), quicConn, node.IsUDS(), node.IsTLS(), node.MaxStreamsPerConn())
 
 	c.node = node
 }

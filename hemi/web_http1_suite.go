@@ -1077,9 +1077,7 @@ func (b *HTTP1Backend) StoreStream(stream stream) {
 // http1Node is a node in HTTP1Backend.
 type http1Node struct {
 	// Parent
-	webNode_
-	// Assocs
-	backend *HTTP1Backend
+	webNode_[*HTTP1Backend]
 	// States
 	connPool struct {
 		sync.Mutex
@@ -1090,8 +1088,7 @@ type http1Node struct {
 }
 
 func (n *http1Node) onCreate(name string, backend *HTTP1Backend) {
-	n.webNode_.OnCreate(name)
-	n.backend = backend
+	n.webNode_.OnCreate(name, backend)
 }
 
 func (n *http1Node) OnConfigure() {
@@ -1167,7 +1164,7 @@ func (n *http1Node) storeStream(stream *backend1Stream) {
 
 func (n *http1Node) _dialUDS() (*backend1Conn, error) {
 	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("unix", n.address, n.backend.DialTimeout())
+	netConn, err := net.DialTimeout("unix", n.address, n.DialTimeout())
 	if err != nil {
 		n.markDown()
 		return nil, err
@@ -1175,7 +1172,7 @@ func (n *http1Node) _dialUDS() (*backend1Conn, error) {
 	if DebugLevel() >= 2 {
 		Printf("http1Node=%s dial %s OK!\n", n.name, n.address)
 	}
-	connID := n.backend.nextConnID()
+	connID := n.nextConnID()
 	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
 	if err != nil {
 		netConn.Close()
@@ -1185,7 +1182,7 @@ func (n *http1Node) _dialUDS() (*backend1Conn, error) {
 }
 func (n *http1Node) _dialTLS() (*backend1Conn, error) {
 	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
+	netConn, err := net.DialTimeout("tcp", n.address, n.DialTimeout())
 	if err != nil {
 		// TODO: handle ephemeral port exhaustion
 		n.markDown()
@@ -1194,7 +1191,7 @@ func (n *http1Node) _dialTLS() (*backend1Conn, error) {
 	if DebugLevel() >= 2 {
 		Printf("http1Node=%s dial %s OK!\n", n.name, n.address)
 	}
-	connID := n.backend.nextConnID()
+	connID := n.nextConnID()
 	tlsConn := tls.Client(netConn, n.tlsConfig)
 	if err := tlsConn.SetDeadline(time.Now().Add(10 * time.Second)); err != nil {
 		tlsConn.Close()
@@ -1208,7 +1205,7 @@ func (n *http1Node) _dialTLS() (*backend1Conn, error) {
 }
 func (n *http1Node) _dialTCP() (*backend1Conn, error) {
 	// TODO: dynamic address names?
-	netConn, err := net.DialTimeout("tcp", n.address, n.backend.DialTimeout())
+	netConn, err := net.DialTimeout("tcp", n.address, n.DialTimeout())
 	if err != nil {
 		// TODO: handle ephemeral port exhaustion
 		n.markDown()
@@ -1217,7 +1214,7 @@ func (n *http1Node) _dialTCP() (*backend1Conn, error) {
 	if DebugLevel() >= 2 {
 		Printf("http1Node=%s dial %s OK!\n", n.name, n.address)
 	}
-	connID := n.backend.nextConnID()
+	connID := n.nextConnID()
 	rawConn, err := netConn.(*net.TCPConn).SyscallConn()
 	if err != nil {
 		netConn.Close()
@@ -1315,11 +1312,10 @@ func putBackend1Conn(backendConn *backend1Conn) {
 }
 
 func (c *backend1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
-	backend := node.backend
-	c.http1Conn_.onGet(id, backend.Stage().ID(), node.IsUDS(), node.IsTLS(), netConn, rawConn, backend.ReadTimeout(), backend.WriteTimeout())
+	c.http1Conn_.onGet(id, node.backend.Stage().ID(), node.IsUDS(), node.IsTLS(), netConn, rawConn, node.ReadTimeout(), node.WriteTimeout())
 
 	c.node = node
-	c.expireTime = time.Now().Add(backend.idleTimeout)
+	c.expireTime = time.Now().Add(node.backend.idleTimeout)
 	c.persistent = true
 }
 func (c *backend1Conn) onPut() {
@@ -1332,7 +1328,7 @@ func (c *backend1Conn) onPut() {
 func (c *backend1Conn) isAlive() bool { return time.Now().Before(c.expireTime) }
 
 func (c *backend1Conn) runOut() bool {
-	return c.usedStreams.Add(1) > c.node.backend.MaxStreamsPerConn()
+	return c.usedStreams.Add(1) > c.node.MaxStreamsPerConn()
 }
 func (c *backend1Conn) fetchStream() (*backend1Stream, error) {
 	stream := &c.stream
@@ -1380,7 +1376,7 @@ func (s *backend1Stream) onEnd() { // for zeros
 	s.http1Stream_.onEnd()
 }
 
-func (s *backend1Stream) Holder() webHolder { return s.conn.node.backend }
+func (s *backend1Stream) Holder() webHolder { return s.conn.node }
 
 func (s *backend1Stream) Request() request   { return &s.request }
 func (s *backend1Stream) Response() response { return &s.response }

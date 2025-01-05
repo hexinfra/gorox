@@ -55,14 +55,11 @@ func (b *PgsqlBackend) CreateNode(name string) Node {
 // pgsqlNode is a node in PgsqlBackend.
 type pgsqlNode struct {
 	// Parent
-	Node_
-	// Assocs
-	backend *PgsqlBackend
+	Node_[*PgsqlBackend]
 }
 
 func (n *pgsqlNode) onCreate(name string, backend *PgsqlBackend) {
-	n.Node_.OnCreate(name)
-	n.backend = backend
+	n.Node_.OnCreate(name, backend)
 }
 
 func (n *pgsqlNode) OnConfigure() {

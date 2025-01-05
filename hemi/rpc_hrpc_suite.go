@@ -120,21 +120,13 @@ func (s *hrpcServer) Serve() { // runner
 // hrpcGate is a gate of hrpcServer.
 type hrpcGate struct {
 	// Parent
-	Gate_
-	// Assocs
-	server *hrpcServer
+	Gate_[*hrpcServer]
 	// States
 }
 
-func (g *hrpcGate) onNew(id int32, server *hrpcServer) {
-	g.Gate_.OnNew(id)
-	g.server = server
+func (g *hrpcGate) onNew(server *hrpcServer, id int32) {
+	g.Gate_.OnNew(server, id)
 }
-
-func (g *hrpcGate) Server() Server  { return g.server }
-func (g *hrpcGate) Address() string { return g.server.Address() }
-func (g *hrpcGate) IsUDS() bool     { return g.server.IsUDS() }
-func (g *hrpcGate) IsTLS() bool     { return g.server.IsTLS() }
 
 func (g *hrpcGate) Open() error {
 	// TODO

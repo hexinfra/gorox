@@ -97,7 +97,7 @@ func (s *httpxServer) OnPrepare() {
 func (s *httpxServer) Serve() { // runner
 	for id := int32(0); id < s.numGates; id++ {
 		gate := new(httpxGate)
-		gate.onNew(id, s)
+		gate.onNew(s, id)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
@@ -121,22 +121,14 @@ func (s *httpxServer) Serve() { // runner
 // httpxGate is a gate of httpxServer.
 type httpxGate struct {
 	// Parent
-	webGate_
-	// Assocs
-	server *httpxServer
+	webGate_[*httpxServer]
 	// States
 	listener net.Listener // the real gate. set after open
 }
 
-func (g *httpxGate) onNew(id int32, server *httpxServer) {
-	g.webGate_.onNew(id, server.MaxConnsPerGate())
-	g.server = server
+func (g *httpxGate) onNew(server *httpxServer, id int32) {
+	g.webGate_.onNew(server, id, server.MaxConnsPerGate())
 }
-
-func (g *httpxGate) Server() Server  { return g.server }
-func (g *httpxGate) Address() string { return g.server.Address() }
-func (g *httpxGate) IsUDS() bool     { return g.server.IsUDS() }
-func (g *httpxGate) IsTLS() bool     { return g.server.IsTLS() }
 
 func (g *httpxGate) Open() error {
 	var (
@@ -939,15 +931,12 @@ func (b *HTTP2Backend) StoreStream(stream stream) {
 // http2Node
 type http2Node struct {
 	// Parent
-	webNode_
-	// Assocs
-	backend *HTTP2Backend
+	webNode_[*HTTP2Backend]
 	// States
 }
 
 func (n *http2Node) onCreate(name string, backend *HTTP2Backend) {
-	n.webNode_.OnCreate(name)
-	n.backend = backend
+	n.webNode_.OnCreate(name, backend)
 }
 
 func (n *http2Node) OnConfigure() {
@@ -1015,11 +1004,10 @@ func putBackend2Conn(backendConn *backend2Conn) {
 }
 
 func (c *backend2Conn) onGet(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
-	backend := node.backend
-	c.http2Conn_.onGet(id, backend.Stage().ID(), node.IsUDS(), node.IsTLS(), netConn, rawConn, backend.ReadTimeout(), backend.WriteTimeout())
+	c.http2Conn_.onGet(id, node.backend.Stage().ID(), node.IsUDS(), node.IsTLS(), netConn, rawConn, node.ReadTimeout(), node.WriteTimeout())
 
 	c.node = node
-	c.expireTime = time.Now().Add(backend.idleTimeout)
+	c.expireTime = time.Now().Add(node.backend.idleTimeout)
 }
 func (c *backend2Conn) onPut() {
 	c._backend2Conn0 = _backend2Conn0{}
@@ -1030,7 +1018,7 @@ func (c *backend2Conn) onPut() {
 }
 
 func (c *backend2Conn) runOut() bool {
-	return c.usedStreams.Add(1) > c.node.backend.MaxStreamsPerConn()
+	return c.usedStreams.Add(1) > c.node.MaxStreamsPerConn()
 }
 func (c *backend2Conn) fetchStream() (*backend2Stream, error) {
 	// Note: A backend2Conn can be used concurrently, limited by maxStreams.
@@ -1170,7 +1158,7 @@ func (s *backend2Stream) onEnd() { // for zeros
 	s.conn = nil // we can't do this in http2Stream_.onEnd() due to Go's limit, so put here
 }
 
-func (s *backend2Stream) Holder() webHolder { return s.conn.node.backend }
+func (s *backend2Stream) Holder() webHolder { return s.conn.node }
 
 func (s *backend2Stream) Request() request   { return &s.request }
 func (s *backend2Stream) Response() response { return &s.response }

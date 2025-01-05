@@ -49,7 +49,7 @@ func (s *echoServer) OnPrepare() {
 func (s *echoServer) Serve() { // runner
 	for id := int32(0); id < s.NumGates(); id++ {
 		gate := new(echoGate)
-		gate.onNew(id, s)
+		gate.onNew(s, id)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
@@ -74,22 +74,14 @@ func (s *echoServer) serveConn(conn *echoConn) { // runner
 // echoGate
 type echoGate struct {
 	// Parent
-	Gate_
-	// Assocs
-	server *echoServer
+	Gate_[*echoServer]
 	// States
 	listener *net.TCPListener
 }
 
-func (g *echoGate) onNew(id int32, server *echoServer) {
-	g.Gate_.OnNew(id)
-	g.server = server
+func (g *echoGate) onNew(server *echoServer, id int32) {
+	g.Gate_.OnNew(server, id)
 }
-
-func (g *echoGate) Server() Server  { return g.server }
-func (g *echoGate) Address() string { return g.server.Address() }
-func (g *echoGate) IsUDS() bool     { return g.server.IsUDS() }
-func (g *echoGate) IsTLS() bool     { return g.server.IsTLS() }
 
 func (g *echoGate) Open() error {
 	listenConfig := new(net.ListenConfig)
@@ -120,14 +112,15 @@ func (g *echoGate) serve() { // runner
 		}
 		g.IncConn()
 		echoConn := getEchoConn(connID, g, tcpConn)
-		go g.server.serveConn(echoConn) // echoConn is put to pool in serve()
+		_ = echoConn
+		//go g.server.serveConn(echoConn) // echoConn is put to pool in serve()
 		connID++
 	}
 	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("echoGate=%d done\n", g.ID())
 	}
-	g.server.DecSub() // gate
+	//g.server.DecSub() // gate
 }
 
 func (g *echoGate) justClose(tcpConn *net.TCPConn) {

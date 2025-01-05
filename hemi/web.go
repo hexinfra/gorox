@@ -68,7 +68,7 @@ type Webapp struct {
 	handlets compDict[Handlet] // defined handlets. indexed by name
 	revisers compDict[Reviser] // defined revisers. indexed by name
 	socklets compDict[Socklet] // defined socklets. indexed by name
-	rules    compList[*Rule]   // defined rules. the order must be kept, so we use list. TODO: use ordered map?
+	rules    []*Rule           // defined rules. the order must be kept, so we use list. TODO: use ordered map?
 	// States
 	hostnames        [][]byte          // like: ("www.example.com", "1.2.3.4", "fff8::1")
 	webRoot          string            // root dir for the web
@@ -207,7 +207,9 @@ func (a *Webapp) OnConfigure() {
 	a.handlets.walk(Handlet.OnConfigure)
 	a.revisers.walk(Reviser.OnConfigure)
 	a.socklets.walk(Socklet.OnConfigure)
-	a.rules.walk((*Rule).OnConfigure)
+	for _, rule := range a.rules {
+		rule.OnConfigure()
+	}
 }
 func (a *Webapp) OnPrepare() {
 	if a.accessLog != nil {
@@ -223,7 +225,9 @@ func (a *Webapp) OnPrepare() {
 	a.handlets.walk(Handlet.OnPrepare)
 	a.revisers.walk(Reviser.OnPrepare)
 	a.socklets.walk(Socklet.OnPrepare)
-	a.rules.walk((*Rule).OnPrepare)
+	for _, rule := range a.rules {
+		rule.OnPrepare()
+	}
 
 	initsLock.RLock()
 	webappInit := webappInits[a.name]
@@ -245,7 +249,9 @@ func (a *Webapp) maintain() { // runner
 	})
 
 	a.IncSubs(len(a.handlets) + len(a.revisers) + len(a.socklets) + len(a.rules))
-	a.rules.goWalk((*Rule).OnShutdown)
+	for _, rule := range a.rules {
+		go rule.OnShutdown()
+	}
 	a.socklets.goWalk(Socklet.OnShutdown)
 	a.revisers.goWalk(Reviser.OnShutdown)
 	a.handlets.goWalk(Handlet.OnShutdown)

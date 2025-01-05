@@ -28,6 +28,9 @@ type Server interface {
 	Component
 	// Methods
 	Serve() // runner
+	Address() string
+	IsUDS() bool
+	IsTLS() bool
 }
 
 // Server_ is the parent for all servers.
@@ -132,10 +135,8 @@ func (s *Server_[G]) OnPrepare() {
 func (s *Server_[G]) AddGate(gate G)  { s.gates = append(s.gates, gate) }
 func (s *Server_[G]) NumGates() int32 { return s.numGates }
 
-func (s *Server_[G]) Stage() *Stage               { return s.stage }
-func (s *Server_[G]) ReadTimeout() time.Duration  { return s.readTimeout }
-func (s *Server_[G]) WriteTimeout() time.Duration { return s.writeTimeout }
-func (s *Server_[G]) Address() string             { return s.address }
+func (s *Server_[G]) Stage() *Stage   { return s.stage }
+func (s *Server_[G]) Address() string { return s.address }
 func (s *Server_[G]) Colonport() string {
 	if s.udsMode {
 		return s.udsColonport
@@ -150,45 +151,56 @@ func (s *Server_[G]) ColonportBytes() []byte {
 		return s.colonportBytes
 	}
 }
-func (s *Server_[G]) IsUDS() bool            { return s.udsMode }
-func (s *Server_[G]) IsTLS() bool            { return s.tlsMode }
-func (s *Server_[G]) TLSConfig() *tls.Config { return s.tlsConfig }
-func (s *Server_[G]) MaxConnsPerGate() int32 { return s.maxConnsPerGate }
+func (s *Server_[G]) IsUDS() bool                 { return s.udsMode }
+func (s *Server_[G]) IsTLS() bool                 { return s.tlsMode }
+func (s *Server_[G]) TLSConfig() *tls.Config      { return s.tlsConfig }
+func (s *Server_[G]) MaxConnsPerGate() int32      { return s.maxConnsPerGate }
+func (s *Server_[G]) ReadTimeout() time.Duration  { return s.readTimeout }
+func (s *Server_[G]) WriteTimeout() time.Duration { return s.writeTimeout }
 
 // Gate is the interface for all gates. Gates are not components.
 type Gate interface {
 	// Methods
 	Server() Server
 	Address() string
-	ID() int32
 	IsUDS() bool
 	IsTLS() bool
+	ID() int32
+	IsShut() bool
 	Open() error
 	Shut() error
-	IsShut() bool
 }
 
 // Gate_ is the parent for all gates.
-type Gate_ struct {
+type Gate_[S Server] struct {
+	// Assocs
+	server S
 	// States
 	id       int32          // gate id
 	shut     atomic.Bool    // is gate shut?
 	subConns sync.WaitGroup // sub conns to wait for
 }
 
-func (g *Gate_) OnNew(id int32) {
+func (g *Gate_[S]) OnNew(server S, id int32) {
+	g.server = server
 	g.id = id
 	g.shut.Store(false)
 }
 
-func (g *Gate_) ID() int32 { return g.id }
+func (g *Gate_[S]) Server() Server { return g.server }
 
-func (g *Gate_) IsShut() bool { return g.shut.Load() }
-func (g *Gate_) MarkShut()    { g.shut.Store(true) }
+func (g *Gate_[S]) Address() string { return g.server.Address() }
+func (g *Gate_[S]) IsUDS() bool     { return g.server.IsUDS() }
+func (g *Gate_[S]) IsTLS() bool     { return g.server.IsTLS() }
 
-func (g *Gate_) IncConn()   { g.subConns.Add(1) }
-func (g *Gate_) WaitConns() { g.subConns.Wait() }
-func (g *Gate_) DecConn()   { g.subConns.Done() }
+func (g *Gate_[S]) ID() int32 { return g.id }
+
+func (g *Gate_[S]) IsShut() bool { return g.shut.Load() }
+func (g *Gate_[S]) MarkShut()    { g.shut.Store(true) }
+
+func (g *Gate_[S]) IncConn()   { g.subConns.Add(1) }
+func (g *Gate_[S]) WaitConns() { g.subConns.Wait() }
+func (g *Gate_[S]) DecConn()   { g.subConns.Done() }
 
 // Backend component. A Backend is a group of nodes.
 type Backend interface {
@@ -205,18 +217,14 @@ type Backend_[N Node] struct {
 	// Parent
 	Component_
 	// Assocs
-	stage *Stage      // current stage
-	nodes compList[N] // nodes of this backend
+	stage *Stage // current stage
+	nodes []N    // nodes of this backend
 	// States
-	dialTimeout  time.Duration // dial remote timeout
-	writeTimeout time.Duration // write() timeout
-	readTimeout  time.Duration // read() timeout
-	numNodes     int64         // num of nodes
-	balancer     string        // roundRobin, ipHash, random, ...
-	nodeIndexGet func() int64  // ...
-	connID       atomic.Int64  // next conn id
-	nodeIndex    atomic.Int64  // for roundRobin. won't overflow because it is so large!
-	healthCheck  any           // TODO
+	balancer     string       // roundRobin, ipHash, random, ...
+	numNodes     int64        // num of nodes
+	nodeIndexGet func() int64 // ...
+	nodeIndex    atomic.Int64 // for roundRobin. won't overflow because it is so large!
+	healthCheck  any          // TODO
 }
 
 func (b *Backend_[N]) OnCreate(name string, stage *Stage) {
@@ -230,30 +238,6 @@ func (b *Backend_[N]) OnShutdown() {
 }
 
 func (b *Backend_[N]) OnConfigure() {
-	// dialTimeout
-	b.ConfigureDuration("dialTimeout", &b.dialTimeout, func(value time.Duration) error {
-		if value >= time.Second {
-			return nil
-		}
-		return errors.New(".dialTimeout has an invalid value")
-	}, 10*time.Second)
-
-	// writeTimeout
-	b.ConfigureDuration("writeTimeout", &b.writeTimeout, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".writeTimeout has an invalid value")
-	}, 30*time.Second)
-
-	// readTimeout
-	b.ConfigureDuration("readTimeout", &b.readTimeout, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".readTimeout has an invalid value")
-	}, 30*time.Second)
-
 	// balancer
 	b.ConfigureString("balancer", &b.balancer, func(value string) error {
 		if value == "roundRobin" || value == "ipHash" || value == "random" || value == "leastUsed" {
@@ -278,8 +262,16 @@ func (b *Backend_[N]) OnPrepare() {
 	b.numNodes = int64(len(b.nodes))
 }
 
-func (b *Backend_[N]) ConfigureNodes() { b.nodes.walk(N.OnConfigure) }
-func (b *Backend_[N]) PrepareNodes()   { b.nodes.walk(N.OnPrepare) }
+func (b *Backend_[N]) ConfigureNodes() {
+	for _, node := range b.nodes {
+		node.OnConfigure()
+	}
+}
+func (b *Backend_[N]) PrepareNodes() {
+	for _, node := range b.nodes {
+		node.OnPrepare()
+	}
+}
 
 func (b *Backend_[N]) Maintain() { // runner
 	for _, node := range b.nodes {
@@ -307,12 +299,7 @@ func (b *Backend_[N]) AddNode(node N) {
 	b.nodes = append(b.nodes, node)
 }
 
-func (b *Backend_[N]) Stage() *Stage               { return b.stage }
-func (b *Backend_[N]) DialTimeout() time.Duration  { return b.dialTimeout }
-func (b *Backend_[N]) WriteTimeout() time.Duration { return b.writeTimeout }
-func (b *Backend_[N]) ReadTimeout() time.Duration  { return b.readTimeout }
-
-func (b *Backend_[N]) nextConnID() int64 { return b.connID.Add(1) }
+func (b *Backend_[N]) Stage() *Stage { return b.stage }
 
 func (b *Backend_[N]) _nextIndexByRoundRobin() int64 {
 	index := b.nodeIndex.Add(1)
@@ -339,28 +326,35 @@ type Node interface {
 }
 
 // Node_ is the parent for all backend nodes.
-type Node_ struct {
+type Node_[B Backend] struct {
 	// Parent
 	Component_
+	// Assocs
+	backend B
 	// States
-	address   string      // hostname:port, /path/to/unix.sock
-	udsMode   bool        // uds or not
-	tlsMode   bool        // tls or not
-	tlsConfig *tls.Config // TLS config if TLS is enabled
-	weight    int32       // 1, 22, 333, ...
-	down      atomic.Bool // TODO: false-sharing
-	health    any         // TODO
+	address      string        // hostname:port, /path/to/unix.sock
+	udsMode      bool          // uds or not
+	tlsMode      bool          // tls or not
+	tlsConfig    *tls.Config   // TLS config if TLS is enabled
+	dialTimeout  time.Duration // dial remote timeout
+	readTimeout  time.Duration // read() timeout
+	writeTimeout time.Duration // write() timeout
+	weight       int32         // 1, 22, 333, ...
+	connID       atomic.Int64  // next conn id
+	down         atomic.Bool   // TODO: false-sharing
+	health       any           // TODO
 }
 
-func (n *Node_) OnCreate(name string) {
+func (n *Node_[B]) OnCreate(name string, backend B) {
 	n.MakeComp(name)
+	n.backend = backend
 	n.health = nil // TODO
 }
-func (n *Node_) OnShutdown() {
+func (n *Node_[B]) OnShutdown() {
 	close(n.ShutChan) // notifies Maintain() which will close conns
 }
 
-func (n *Node_) OnConfigure() {
+func (n *Node_[B]) OnConfigure() {
 	// address
 	if v, ok := n.Find("address"); ok {
 		if address, ok := v.String(); ok && address != "" {
@@ -383,6 +377,30 @@ func (n *Node_) OnConfigure() {
 		n.tlsConfig = new(tls.Config)
 	}
 
+	// dialTimeout
+	n.ConfigureDuration("dialTimeout", &n.dialTimeout, func(value time.Duration) error {
+		if value >= time.Second {
+			return nil
+		}
+		return errors.New(".dialTimeout has an invalid value")
+	}, 10*time.Second)
+
+	// readTimeout
+	n.ConfigureDuration("readTimeout", &n.readTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".readTimeout has an invalid value")
+	}, 30*time.Second)
+
+	// writeTimeout
+	n.ConfigureDuration("writeTimeout", &n.writeTimeout, func(value time.Duration) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".writeTimeout has an invalid value")
+	}, 30*time.Second)
+
 	// weight
 	n.ConfigureInt32("weight", &n.weight, func(value int32) error {
 		if value > 0 {
@@ -391,32 +409,39 @@ func (n *Node_) OnConfigure() {
 		return errors.New("bad node weight")
 	}, 1)
 }
-func (n *Node_) OnPrepare() {
+func (n *Node_[B]) OnPrepare() {
 }
 
-func (n *Node_) IsUDS() bool            { return n.udsMode }
-func (n *Node_) IsTLS() bool            { return n.tlsMode }
-func (n *Node_) TLSConfig() *tls.Config { return n.tlsConfig }
+func (n *Node_[B]) Backend() B { return n.backend }
 
-func (n *Node_) markDown()    { n.down.Store(true) }
-func (n *Node_) markUp()      { n.down.Store(false) }
-func (n *Node_) isDown() bool { return n.down.Load() }
+func (n *Node_[B]) IsUDS() bool                 { return n.udsMode }
+func (n *Node_[B]) IsTLS() bool                 { return n.tlsMode }
+func (n *Node_[B]) TLSConfig() *tls.Config      { return n.tlsConfig }
+func (n *Node_[B]) DialTimeout() time.Duration  { return n.dialTimeout }
+func (n *Node_[B]) ReadTimeout() time.Duration  { return n.readTimeout }
+func (n *Node_[B]) WriteTimeout() time.Duration { return n.writeTimeout }
+
+func (n *Node_[B]) nextConnID() int64 { return n.connID.Add(1) }
+
+func (n *Node_[B]) markDown()    { n.down.Store(true) }
+func (n *Node_[B]) markUp()      { n.down.Store(false) }
+func (n *Node_[B]) isDown() bool { return n.down.Load() }
 
 // contentSaver
 type contentSaver interface {
 	SaveContentFilesDir() string
+	MaxContentSize() int64
 	RecvTimeout() time.Duration // timeout to recv the whole message content. zero means no timeout
 	SendTimeout() time.Duration // timeout to send the whole message. zero means no timeout
-	MaxContentSize() int64
 }
 
 // _contentSaver_ is a mixin.
 type _contentSaver_ struct {
 	// States
 	saveContentFilesDir string        // content files are placed here
+	maxContentSize      int64         // max content size allowed to receive
 	recvTimeout         time.Duration // timeout to recv the whole message content. zero means no timeout
 	sendTimeout         time.Duration // timeout to send the whole message. zero means no timeout
-	maxContentSize      int64         // max content size allowed to receive
 }
 
 func (s *_contentSaver_) onConfigure(component Component, defaultDir string, recvTimeout time.Duration, sendTimeout time.Duration) {
@@ -427,6 +452,14 @@ func (s *_contentSaver_) onConfigure(component Component, defaultDir string, rec
 		}
 		return errors.New(".saveContentFilesDir has an invalid value")
 	}, defaultDir)
+
+	// maxContentSize
+	component.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".maxContentSize has an invalid value")
+	}, _1T)
 
 	// recvTimeout
 	component.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) error {
@@ -443,14 +476,6 @@ func (s *_contentSaver_) onConfigure(component Component, defaultDir string, rec
 		}
 		return errors.New(".sendTimeout has an invalid value")
 	}, sendTimeout)
-
-	// maxContentSize
-	component.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".maxContentSize has an invalid value")
-	}, _1T)
 }
 func (s *_contentSaver_) onPrepare(component Component, perm os.FileMode) {
 	if err := os.MkdirAll(s.saveContentFilesDir, perm); err != nil {
@@ -462,9 +487,9 @@ func (s *_contentSaver_) onPrepare(component Component, perm os.FileMode) {
 }
 
 func (s *_contentSaver_) SaveContentFilesDir() string { return s.saveContentFilesDir } // must ends with '/'
+func (s *_contentSaver_) MaxContentSize() int64       { return s.maxContentSize }
 func (s *_contentSaver_) RecvTimeout() time.Duration  { return s.recvTimeout }
 func (s *_contentSaver_) SendTimeout() time.Duration  { return s.sendTimeout }
-func (s *_contentSaver_) MaxContentSize() int64       { return s.maxContentSize }
 
 // LogConfig
 type LogConfig struct {

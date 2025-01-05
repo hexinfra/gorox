@@ -19,17 +19,23 @@ type MongoBackend struct {
 	Backend_[*mongoNode]
 }
 
+func (b *MongoBackend) OnConfigure() {
+}
+func (b *MongoBackend) OnPrepare() {
+}
+
+func (b *MongoBackend) CreateNode(name string) Node {
+	return nil
+}
+
 // mongoNode is a node in MongoBackend.
 type mongoNode struct {
 	// Parent
-	Node_
-	// Assocs
-	backend *MongoBackend
+	Node_[*MongoBackend]
 }
 
 func (n *mongoNode) onCreate(name string, backend *MongoBackend) {
-	n.Node_.OnCreate(name)
-	n.backend = backend
+	n.Node_.OnCreate(name, backend)
 }
 
 func (n *mongoNode) OnConfigure() {

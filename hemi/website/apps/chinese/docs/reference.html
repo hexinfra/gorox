@@ -311,8 +311,8 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 	http1Backend "h1b" {
 		.tlsMode = false
 		.dialTimeout = 10s
-		.writeTimeout = 30s
 		.readTimeout = 30s
+		.writeTimeout = 30s
 		.idleTimeout = 2s
 		.maxStreamsPerConn = 1000
 		.saveContentFilesDir = %tmpDir + "/web/backends/h1b"
@@ -353,15 +353,15 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					</code>
 				</li>
 				<li>
-					<p>.writeTimeout 本次写数据超时时间，超过时间则连接关闭。</p>
-					<code>语法：.writeTimeout = Duration
+					<p>.readTimeout 本次读数据超时时间，超过时间则连接关闭。</p>
+					<code>语法：.readTimeout = Duration
 						默认值：30s
 						取值范围： (1s, 10m]
 					</code>
 				</li>
 				<li>
-					<p>.readTimeout 本次读数据超时时间，超过时间则连接关闭。</p>
-					<code>语法：.readTimeout = Duration
+					<p>.writeTimeout 本次写数据超时时间，超过时间则连接关闭。</p>
+					<code>语法：.writeTimeout = Duration
 						默认值：30s
 						取值范围： (1s, 10m]
 					</code>

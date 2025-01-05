@@ -51,7 +51,7 @@ func (s *http3Server) OnPrepare() {
 func (s *http3Server) Serve() { // runner
 	for id := int32(0); id < s.numGates; id++ {
 		gate := new(http3Gate)
-		gate.onNew(id, s)
+		gate.onNew(s, id)
 		if err := gate.Open(); err != nil {
 			EnvExitln(err.Error())
 		}
@@ -73,22 +73,14 @@ func (s *http3Server) Serve() { // runner
 // http3Gate is a gate of http3Server.
 type http3Gate struct {
 	// Parent
-	webGate_
-	// Assocs
-	server *http3Server
+	webGate_[*http3Server]
 	// States
 	listener *quic.Listener // the real gate. set after open
 }
 
-func (g *http3Gate) onNew(id int32, server *http3Server) {
-	g.webGate_.onNew(id, server.MaxConnsPerGate())
-	g.server = server
+func (g *http3Gate) onNew(server *http3Server, id int32) {
+	g.webGate_.onNew(server, id, server.MaxConnsPerGate())
 }
-
-func (g *http3Gate) Server() Server  { return g.server }
-func (g *http3Gate) Address() string { return g.server.Address() }
-func (g *http3Gate) IsUDS() bool     { return g.server.IsUDS() }
-func (g *http3Gate) IsTLS() bool     { return g.server.IsTLS() }
 
 func (g *http3Gate) Open() error {
 	listener := quic.NewListener(g.Address())
@@ -481,15 +473,12 @@ func (b *HTTP3Backend) StoreStream(stream stream) {
 // http3Node
 type http3Node struct {
 	// Parent
-	webNode_
-	// Assocs
-	backend *HTTP3Backend
+	webNode_[*HTTP3Backend]
 	// States
 }
 
 func (n *http3Node) onCreate(name string, backend *HTTP3Backend) {
-	n.webNode_.OnCreate(name)
-	n.backend = backend
+	n.webNode_.OnCreate(name, backend)
 }
 
 func (n *http3Node) OnConfigure() {
@@ -554,11 +543,10 @@ func putBackend3Conn(backendConn *backend3Conn) {
 }
 
 func (c *backend3Conn) onGet(id int64, node *http3Node, quicConn *quic.Conn) {
-	backend := node.backend
-	c.http3Conn_.onGet(id, backend.Stage().ID(), node.IsUDS(), node.IsTLS(), quicConn, backend.ReadTimeout(), backend.WriteTimeout())
+	c.http3Conn_.onGet(id, node.backend.Stage().ID(), node.IsUDS(), node.IsTLS(), quicConn, node.ReadTimeout(), node.WriteTimeout())
 
 	c.node = node
-	c.expireTime = time.Now().Add(backend.idleTimeout)
+	c.expireTime = time.Now().Add(node.backend.idleTimeout)
 }
 func (c *backend3Conn) onPut() {
 	c._backend3Conn0 = _backend3Conn0{}
@@ -569,7 +557,7 @@ func (c *backend3Conn) onPut() {
 }
 
 func (c *backend3Conn) runOut() bool {
-	return c.usedStreams.Add(1) > c.node.backend.MaxStreamsPerConn()
+	return c.usedStreams.Add(1) > c.node.MaxStreamsPerConn()
 }
 func (c *backend3Conn) fetchStream() (*backend3Stream, error) {
 	// Note: A backend3Conn can be used concurrently, limited by maxStreams.
@@ -650,7 +638,7 @@ func (s *backend3Stream) onEnd() { // for zeros
 	s.conn = nil // we can't do this in http3Stream_.onEnd() due to Go's limit, so put here
 }
 
-func (s *backend3Stream) Holder() webHolder { return s.conn.node.backend }
+func (s *backend3Stream) Holder() webHolder { return s.conn.node }
 
 func (s *backend3Stream) Request() request   { return &s.request }
 func (s *backend3Stream) Response() response { return &s.response }

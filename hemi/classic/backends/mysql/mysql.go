@@ -55,14 +55,11 @@ func (b *MysqlBackend) CreateNode(name string) Node {
 // mysqlNode is a node in MysqlBackend.
 type mysqlNode struct {
 	// Parent
-	Node_
-	// Assocs
-	backend *MysqlBackend
+	Node_[*MysqlBackend]
 }
 
 func (n *mysqlNode) onCreate(name string, backend *MysqlBackend) {
-	n.Node_.OnCreate(name)
-	n.backend = backend
+	n.Node_.OnCreate(name, backend)
 }
 
 func (n *mysqlNode) OnConfigure() {

@@ -142,6 +142,7 @@ func (g *grpcGate) serve() { // runner
 // grpcConn
 type grpcConn struct {
 	// Parent
+	// States
 	id      int64
 	gate    *grpcGate
 	counter atomic.Int64 // can be used to generate a random number

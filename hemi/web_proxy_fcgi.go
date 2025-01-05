@@ -549,9 +549,6 @@ func (c *fcgiConn) MakeTempName(to []byte, unixTime int64) int {
 
 func (c *fcgiConn) isAlive() bool { return time.Now().Before(c.expireTime) }
 
-func (c *fcgiConn) markBroken()    { c.broken.Store(true) }
-func (c *fcgiConn) isBroken() bool { return c.broken.Load() }
-
 func (c *fcgiConn) runOut() bool {
 	return c.usedExchans.Add(1) > c.node.maxExchansPerConn
 }
@@ -562,6 +559,37 @@ func (c *fcgiConn) fetchExchan() (*fcgiExchan, error) {
 }
 func (c *fcgiConn) storeExchan(exchan *fcgiExchan) {
 	exchan.onEnd()
+}
+
+func (c *fcgiConn) markBroken()    { c.broken.Store(true) }
+func (c *fcgiConn) isBroken() bool { return c.broken.Load() }
+
+func (c *fcgiConn) setWriteDeadline() error {
+	deadline := time.Now().Add(c.node.writeTimeout)
+	if deadline.Sub(c.lastWrite) >= time.Second {
+		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
+			return err
+		}
+		c.lastWrite = deadline
+	}
+	return nil
+}
+func (c *fcgiConn) setReadDeadline() error {
+	deadline := time.Now().Add(c.node.readTimeout)
+	if deadline.Sub(c.lastRead) >= time.Second {
+		if err := c.netConn.SetReadDeadline(deadline); err != nil {
+			return err
+		}
+		c.lastRead = deadline
+	}
+	return nil
+}
+
+func (c *fcgiConn) write(p []byte) (int, error)               { return c.netConn.Write(p) }
+func (c *fcgiConn) writev(vector *net.Buffers) (int64, error) { return vector.WriteTo(c.netConn) }
+func (c *fcgiConn) read(p []byte) (int, error)                { return c.netConn.Read(p) }
+func (c *fcgiConn) readAtLeast(p []byte, min int) (int, error) {
+	return io.ReadAtLeast(c.netConn, p, min)
 }
 
 func (c *fcgiConn) Close() error {
@@ -598,37 +626,13 @@ func (x *fcgiExchan) onEnd() { // for zeros
 func (x *fcgiExchan) markBroken()    { x.conn.markBroken() }
 func (x *fcgiExchan) isBroken() bool { return x.conn.isBroken() }
 
-func (x *fcgiExchan) setWriteDeadline() error {
-	conn := x.conn
-	deadline := time.Now().Add(conn.node.WriteTimeout())
-	if deadline.Sub(conn.lastWrite) >= time.Second {
-		if err := conn.netConn.SetWriteDeadline(deadline); err != nil {
-			return err
-		}
-		conn.lastWrite = deadline
-	}
-	return nil
-}
-func (x *fcgiExchan) setReadDeadline() error {
-	conn := x.conn
-	deadline := time.Now().Add(conn.node.ReadTimeout())
-	if deadline.Sub(conn.lastRead) >= time.Second {
-		if err := conn.netConn.SetReadDeadline(deadline); err != nil {
-			return err
-		}
-		conn.lastRead = deadline
-	}
-	return nil
-}
+func (x *fcgiExchan) setWriteDeadline() error { return x.conn.setWriteDeadline() }
+func (x *fcgiExchan) setReadDeadline() error  { return x.conn.setReadDeadline() }
 
-func (x *fcgiExchan) write(p []byte) (int, error) { return x.conn.netConn.Write(p) }
-func (x *fcgiExchan) writev(vector *net.Buffers) (int64, error) {
-	return vector.WriteTo(x.conn.netConn)
-}
-func (x *fcgiExchan) read(p []byte) (int, error) { return x.conn.netConn.Read(p) }
-func (x *fcgiExchan) readAtLeast(p []byte, min int) (int, error) {
-	return io.ReadAtLeast(x.conn.netConn, p, min)
-}
+func (x *fcgiExchan) write(p []byte) (int, error)                { return x.conn.write(p) }
+func (x *fcgiExchan) writev(vector *net.Buffers) (int64, error)  { return x.conn.writev(vector) }
+func (x *fcgiExchan) read(p []byte) (int, error)                 { return x.conn.read(p) }
+func (x *fcgiExchan) readAtLeast(p []byte, min int) (int, error) { return x.conn.readAtLeast(p, min) }
 
 func (x *fcgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
 func (x *fcgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }

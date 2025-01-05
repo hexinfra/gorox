@@ -27,6 +27,8 @@ import (
 type TCPXRouter struct {
 	// Parent
 	Server_[*tcpxGate]
+	// Mixins
+	_tcpxHolder_
 	// Assocs
 	dealets compDict[TCPXDealet] // defined dealets. indexed by name
 	cases   []*tcpxCase          // defined cases. the order must be kept, so we use list. TODO: use ordered map?
@@ -42,6 +44,7 @@ func (r *TCPXRouter) onCreate(name string, stage *Stage) {
 
 func (r *TCPXRouter) OnConfigure() {
 	r.Server_.OnConfigure()
+	r._tcpxHolder_.onConfigure(r)
 
 	// accessLog, TODO
 
@@ -53,6 +56,7 @@ func (r *TCPXRouter) OnConfigure() {
 }
 func (r *TCPXRouter) OnPrepare() {
 	r.Server_.OnPrepare()
+	r._tcpxHolder_.onPrepare(r)
 
 	// accessLog, TODO
 	if r.accessLog != nil {
@@ -699,6 +703,8 @@ func (b *TCPXBackend) Dial() (*TConn, error) {
 type tcpxNode struct {
 	// Parent
 	Node_[*TCPXBackend]
+	// Mixins
+	_tcpxHolder_
 	// States
 }
 
@@ -708,9 +714,11 @@ func (n *tcpxNode) onCreate(name string, stage *Stage, backend *TCPXBackend) {
 
 func (n *tcpxNode) OnConfigure() {
 	n.Node_.OnConfigure()
+	n._tcpxHolder_.onConfigure(n)
 }
 func (n *tcpxNode) OnPrepare() {
 	n.Node_.OnPrepare()
+	n._tcpxHolder_.onPrepare(n)
 }
 
 func (n *tcpxNode) Maintain() { // runner
@@ -872,6 +880,21 @@ func (c *TConn) Close() error {
 }
 
 //////////////////////////////////////// TCPX in/out implementation ////////////////////////////////////////
+
+// tcpxHolder
+type tcpxHolder interface {
+}
+
+// _tcpxHolder_
+type _tcpxHolder_ struct {
+	// States
+	// TCP_CORK, TCP_DEFER_ACCEPT, TCP_FASTOPEN, ...
+}
+
+func (h *_tcpxHolder_) onConfigure(component Component) {
+}
+func (h *_tcpxHolder_) onPrepare(component Component) {
+}
 
 // tcpxConn
 type tcpxConn interface {

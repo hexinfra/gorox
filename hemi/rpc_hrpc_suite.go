@@ -145,6 +145,7 @@ func (g *hrpcGate) serve() { // runner
 // hrpcConn
 type hrpcConn struct {
 	// Parent
+	// States
 	id      int64
 	gate    *hrpcGate
 	counter atomic.Int64 // can be used to generate a random number

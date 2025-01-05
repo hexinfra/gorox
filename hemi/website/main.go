@@ -11,6 +11,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/procmgr"
 
 	_ "github.com/hexinfra/gorox/hemi/website/apps"
+	_ "github.com/hexinfra/gorox/hemi/website/exts"
 )
 
 func main() {

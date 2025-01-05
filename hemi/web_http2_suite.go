@@ -1739,8 +1739,8 @@ func (c *http2Conn_) setWriteDeadline() error {
 	return nil
 }
 
-func (c *http2Conn_) readAtLeast(p []byte, n int) (int, error) {
-	return io.ReadAtLeast(c.netConn, p, n)
+func (c *http2Conn_) readAtLeast(p []byte, min int) (int, error) {
+	return io.ReadAtLeast(c.netConn, p, min)
 }
 func (c *http2Conn_) write(p []byte) (int, error) { return c.netConn.Write(p) }
 func (c *http2Conn_) writev(vector *net.Buffers) (int64, error) {

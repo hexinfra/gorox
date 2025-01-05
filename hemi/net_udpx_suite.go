@@ -22,6 +22,8 @@ import (
 type UDPXRouter struct {
 	// Parent
 	Server_[*udpxGate]
+	// Mixins
+	_udpxHolder_
 	// Assocs
 	dealets compDict[UDPXDealet] // defined dealets. indexed by name
 	cases   []*udpxCase          // defined cases. the order must be kept, so we use list. TODO: use ordered map?
@@ -37,6 +39,7 @@ func (r *UDPXRouter) onCreate(name string, stage *Stage) {
 
 func (r *UDPXRouter) OnConfigure() {
 	r.Server_.OnConfigure()
+	r._udpxHolder_.onConfigure(r)
 
 	// accessLog, TODO
 
@@ -48,6 +51,7 @@ func (r *UDPXRouter) OnConfigure() {
 }
 func (r *UDPXRouter) OnPrepare() {
 	r.Server_.OnPrepare()
+	r._udpxHolder_.onPrepare(r)
 
 	// accessLog, TODO
 	if r.accessLog != nil {
@@ -500,6 +504,8 @@ func (b *UDPXBackend) Dial() (*UConn, error) {
 type udpxNode struct {
 	// Parent
 	Node_[*UDPXBackend]
+	// Mixins
+	_udpxHolder_
 	// States
 }
 
@@ -509,9 +515,11 @@ func (n *udpxNode) onCreate(name string, stage *Stage, backend *UDPXBackend) {
 
 func (n *udpxNode) OnConfigure() {
 	n.Node_.OnConfigure()
+	n._udpxHolder_.onConfigure(n)
 }
 func (n *udpxNode) OnPrepare() {
 	n.Node_.OnPrepare()
+	n._udpxHolder_.onPrepare(n)
 }
 
 func (n *udpxNode) Maintain() { // runner
@@ -576,6 +584,21 @@ func (c *UConn) Close() error {
 }
 
 //////////////////////////////////////// UDPX in/out implementation ////////////////////////////////////////
+
+// udpxHolder
+type udpxHolder interface {
+}
+
+// _udpxHolder_
+type _udpxHolder_ struct {
+	// States
+	// UDP_CORK, UDP_GSO, ...
+}
+
+func (h *_udpxHolder_) onConfigure(component Component) {
+}
+func (h *_udpxHolder_) onPrepare(component Component) {
+}
 
 // udpxConn
 type udpxConn interface {

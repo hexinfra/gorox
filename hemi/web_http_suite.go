@@ -5723,7 +5723,7 @@ func (s *webSocket_) todo() {
 }
 
 var ( // webSocket_ errors
-	httpSocketWriteBroken = errors.New("write broken")
+	webSocketWriteBroken = errors.New("write broken")
 )
 
 //////////////////////////////////////// HTTP protocol elements ////////////////////////////////////////

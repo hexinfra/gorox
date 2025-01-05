@@ -1,7 +1,27 @@
 Hemi
 ====
 
-Hemi is the engine of Gorox. It is a Go module that can be used independently.
+Hemi is the engine of Gorox. It's a Go module that only depends on Go's standard
+library and can be used independently.
+
+
+How to use
+==========
+
+To use the Hemi Engine, add a "require" line to your "go.mod" file:
+
+  require github.com/hexinfra/gorox vx.y.z
+
+Here, x.y.z is the version of Gorox. Then import it to your "main.go":
+
+  import . "github.com/hexinfra/gorox/hemi"
+
+If you would like to use the standard components, import them with:
+
+  import _ "github.com/hexinfra/gorox/hemi/classic"
+
+For examples showing how to use the Hemi Engine in your programs, please see our
+examples repository at: https://github.com/hexinfra/examples.
 
 
 Layout
@@ -17,13 +37,6 @@ the Hemi Engine, we also have these sub directories that supplement Hemi:
   * procmgr/  - A process manager for programs using Hemi,
   * toolkit/  - Place useful commands,
   * website/  - A program that hosts the Gorox official website.
-
-
-How to use
-==========
-
-For examples showing how to use the Hemi Engine in your programs, please see our
-examples at https://github.com/hexinfra/examples.
 
 
 Architecture

@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// FCGI (gateway) proxy and backend implementation. See: https://fastcgi-archives.github.io/FastCGI_Specification.html
+// FCGI reverse proxy (a.k.a. gateway) and backend implementation. See: https://fastcgi-archives.github.io/FastCGI_Specification.html
 
 // FCGI is mainly used by PHP applications. It supports persistent connections and HTTP chunking, but not HTTP trailers.
 // We don't use backend-side chunking due to the limitation of CGI/1.1 even though FCGI can do that through its framing protocol.
@@ -27,7 +27,7 @@ import (
 	"time"
 )
 
-//////////////////////////////////////// FCGI proxy implementation ////////////////////////////////////////
+//////////////////////////////////////// FCGI reverse proxy implementation ////////////////////////////////////////
 
 func init() {
 	RegisterHandlet("fcgiProxy", func(name string, stage *Stage, webapp *Webapp) Handlet {
@@ -339,7 +339,7 @@ func (n *fcgiNode) fetchExchan() (*fcgiExchan, error) {
 	conn := n.pullConn()
 	down := n.isDown()
 	if conn != nil {
-		if conn.isAlive() && !conn.runOut() && !down {
+		if conn.isAlive() && !conn.ranOut() && !down {
 			return conn.fetchExchan()
 		}
 		conn.Close()
@@ -549,7 +549,7 @@ func (c *fcgiConn) MakeTempName(to []byte, unixTime int64) int {
 
 func (c *fcgiConn) isAlive() bool { return time.Now().Before(c.expireTime) }
 
-func (c *fcgiConn) runOut() bool {
+func (c *fcgiConn) ranOut() bool {
 	return c.usedExchans.Add(1) > c.node.maxExchansPerConn
 }
 func (c *fcgiConn) fetchExchan() (*fcgiExchan, error) {

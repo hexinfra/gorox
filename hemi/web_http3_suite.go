@@ -556,7 +556,7 @@ func (c *backend3Conn) onPut() {
 	c.http3Conn_.onPut()
 }
 
-func (c *backend3Conn) runOut() bool {
+func (c *backend3Conn) ranOut() bool {
 	return c.usedStreams.Add(1) > c.node.MaxStreamsPerConn()
 }
 func (c *backend3Conn) fetchStream() (*backend3Stream, error) {
@@ -745,7 +745,7 @@ func (s *backend3Socket) onEnd() {
 	s.backendSocket_.onEnd()
 }
 
-//////////////////////////////////////// HTTP/3 in/out implementation ////////////////////////////////////////
+//////////////////////////////////////// HTTP/3 holder implementation ////////////////////////////////////////
 
 // http3Conn
 type http3Conn interface {
@@ -850,6 +850,19 @@ func (s *http3Stream_[C]) writev(vector *net.Buffers) (int64, error) { // for co
 	return 0, nil
 }
 
+//////////////////////////////////////// HTTP/3 incoming implementation ////////////////////////////////////////
+
+func (r *webIn_) _growHeaders3(size int32) bool {
+	// TODO
+	// use r.input
+	return false
+}
+
+func (r *webIn_) readContent3() (p []byte, err error) {
+	// TODO
+	return
+}
+
 // http3InFrame is the server-side HTTP/3 incoming frame.
 type http3InFrame struct {
 	// TODO
@@ -888,27 +901,7 @@ func (b *http3Buffer) decRef() {
 	}
 }
 
-// HTTP/3 incoming
-
-func (r *webIn_) _growHeaders3(size int32) bool {
-	// TODO
-	// use r.input
-	return false
-}
-
-func (r *webIn_) readContent3() (p []byte, err error) {
-	// TODO
-	return
-}
-
-// http3OutFrame is the server-side HTTP/3 outgoing frame.
-type http3OutFrame struct {
-	// TODO
-}
-
-func (f *http3OutFrame) zero() { *f = http3OutFrame{} }
-
-// HTTP/3 outgoing
+//////////////////////////////////////// HTTP/3 outgoing implementation ////////////////////////////////////////
 
 func (r *webOut_) addHeader3(name []byte, value []byte) bool {
 	// TODO
@@ -980,7 +973,14 @@ func (r *webOut_) writeBytes3(p []byte) error {
 	return nil
 }
 
-// HTTP/3 webSocket
+// http3OutFrame is the server-side HTTP/3 outgoing frame.
+type http3OutFrame struct {
+	// TODO
+}
+
+func (f *http3OutFrame) zero() { *f = http3OutFrame{} }
+
+//////////////////////////////////////// HTTP/3 webSocket implementation ////////////////////////////////////////
 
 func (s *webSocket_) todo3() {
 }

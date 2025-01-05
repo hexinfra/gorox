@@ -621,7 +621,7 @@ func (c *QConn) onPut() {
 	c.quixConn_.onPut()
 }
 
-func (c *QConn) runOut() bool {
+func (c *QConn) ranOut() bool {
 	return c.usedStreams.Add(1) > c.maxStreams
 }
 func (c *QConn) FetchStream() (*QStream, error) {
@@ -685,7 +685,7 @@ func (s *QStream) Close() error {
 	return nil
 }
 
-//////////////////////////////////////// QUIX in/out implementation ////////////////////////////////////////
+//////////////////////////////////////// QUIX holder implementation ////////////////////////////////////////
 
 // quixHolder
 type quixHolder interface {

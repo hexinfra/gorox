@@ -1017,7 +1017,7 @@ func (c *backend2Conn) onPut() {
 	c.http2Conn_.onPut()
 }
 
-func (c *backend2Conn) runOut() bool {
+func (c *backend2Conn) ranOut() bool {
 	return c.usedStreams.Add(1) > c.node.MaxStreamsPerConn()
 }
 func (c *backend2Conn) fetchStream() (*backend2Stream, error) {
@@ -1265,7 +1265,7 @@ func (s *backend2Socket) onEnd() {
 	s.backendSocket_.onEnd()
 }
 
-//////////////////////////////////////// HTTP/2 in/out implementation ////////////////////////////////////////
+//////////////////////////////////////// HTTP/2 holder implementation ////////////////////////////////////////
 
 // http2Conn
 type http2Conn interface {
@@ -1825,6 +1825,30 @@ func (s *http2Stream_[C]) writev(vector *net.Buffers) (int64, error) { // for co
 	return 0, nil
 }
 
+//////////////////////////////////////// HTTP/2 incoming implementation ////////////////////////////////////////
+
+func (r *webIn_) _growHeaders2(size int32) bool {
+	edge := r.inputEdge + size      // size is ensured to not overflow
+	if edge < int32(cap(r.input)) { // fast path
+		return true
+	}
+	if edge > _16K { // exceeds the max headers limit
+		return false
+	}
+	input := GetNK(int64(edge)) // 4K/16K
+	copy(input, r.input[0:r.inputEdge])
+	if cap(r.input) != cap(r.stockInput) {
+		PutNK(r.input)
+	}
+	r.input = input
+	return true
+}
+
+func (r *webIn_) readContent2() (p []byte, err error) {
+	// TODO
+	return
+}
+
 // http2InFrame is the HTTP/2 incoming frame.
 type http2InFrame struct { // 32 bytes
 	inBuffer   *http2InBuffer // the inBuffer that holds payload
@@ -2022,83 +2046,7 @@ func (b *http2InBuffer) decRef() {
 	}
 }
 
-// HTTP/2 incoming
-
-func (r *webIn_) _growHeaders2(size int32) bool {
-	edge := r.inputEdge + size      // size is ensured to not overflow
-	if edge < int32(cap(r.input)) { // fast path
-		return true
-	}
-	if edge > _16K { // exceeds the max headers limit
-		return false
-	}
-	input := GetNK(int64(edge)) // 4K/16K
-	copy(input, r.input[0:r.inputEdge])
-	if cap(r.input) != cap(r.stockInput) {
-		PutNK(r.input)
-	}
-	r.input = input
-	return true
-}
-
-func (r *webIn_) readContent2() (p []byte, err error) {
-	// TODO
-	return
-}
-
-// http2OutFrame is the HTTP/2 outgoing frame.
-type http2OutFrame struct { // 64 bytes
-	length     uint32   // length of payload. the real type is uint24
-	streamID   uint32   // the real type is uint31
-	kind       uint8    // see http2FrameXXX. WARNING: http2FramePushPromise and http2FrameContinuation are NOT allowed!
-	endHeaders bool     // is END_HEADERS flag set?
-	endStream  bool     // is END_STREAM flag set?
-	ack        bool     // is ACK flag set?
-	padded     bool     // is PADDED flag set?
-	priority   bool     // is PRIORITY flag set?
-	_          bool     // padding
-	header     [9]byte  // header of the frame is encoded here
-	outBuffer  [16]byte // small payload of the frame is placed here temporarily
-	payload    []byte   // refers to the payload
-}
-
-func (f *http2OutFrame) zero() { *f = http2OutFrame{} }
-
-func (f *http2OutFrame) encodeHeader() (frameHeader []byte) { // caller must ensure the frame is legal.
-	if f.length > http2MaxFrameSize {
-		BugExitln("frame length too large")
-	}
-	if f.streamID > 0x7fffffff {
-		BugExitln("stream id too large")
-	}
-	if f.kind == http2FramePushPromise || f.kind == http2FrameContinuation {
-		BugExitln("push promise and continuation are not allowed as out frame")
-	}
-	frameHeader = f.header[:]
-	frameHeader[0], frameHeader[1], frameHeader[2] = byte(f.length>>16), byte(f.length>>8), byte(f.length)
-	frameHeader[3] = f.kind
-	flags := uint8(0x00)
-	if f.endHeaders && f.kind == http2FrameHeaders {
-		flags |= 0x04
-	}
-	if f.endStream && (f.kind == http2FrameData || f.kind == http2FrameHeaders) {
-		flags |= 0x01
-	}
-	if f.ack && (f.kind == http2FrameSettings || f.kind == http2FramePing) {
-		flags |= 0x01
-	}
-	if f.padded && (f.kind == http2FrameData || f.kind == http2FrameHeaders) {
-		flags |= 0x08
-	}
-	if f.priority && f.kind == http2FrameHeaders {
-		flags |= 0x20
-	}
-	frameHeader[4] = flags
-	binary.BigEndian.PutUint32(frameHeader[5:9], f.streamID)
-	return
-}
-
-// HTTP/2 outgoing
+//////////////////////////////////////// HTTP/2 outgoing implementation ////////////////////////////////////////
 
 func (r *webOut_) addHeader2(name []byte, value []byte) bool {
 	// TODO
@@ -2170,7 +2118,59 @@ func (r *webOut_) writeBytes2(p []byte) error {
 	return nil
 }
 
-// HTTP/2 webSocket
+// http2OutFrame is the HTTP/2 outgoing frame.
+type http2OutFrame struct { // 64 bytes
+	length     uint32   // length of payload. the real type is uint24
+	streamID   uint32   // the real type is uint31
+	kind       uint8    // see http2FrameXXX. WARNING: http2FramePushPromise and http2FrameContinuation are NOT allowed!
+	endHeaders bool     // is END_HEADERS flag set?
+	endStream  bool     // is END_STREAM flag set?
+	ack        bool     // is ACK flag set?
+	padded     bool     // is PADDED flag set?
+	priority   bool     // is PRIORITY flag set?
+	_          bool     // padding
+	header     [9]byte  // header of the frame is encoded here
+	outBuffer  [16]byte // small payload of the frame is placed here temporarily
+	payload    []byte   // refers to the payload
+}
+
+func (f *http2OutFrame) zero() { *f = http2OutFrame{} }
+
+func (f *http2OutFrame) encodeHeader() (frameHeader []byte) { // caller must ensure the frame is legal.
+	if f.length > http2MaxFrameSize {
+		BugExitln("frame length too large")
+	}
+	if f.streamID > 0x7fffffff {
+		BugExitln("stream id too large")
+	}
+	if f.kind == http2FramePushPromise || f.kind == http2FrameContinuation {
+		BugExitln("push promise and continuation are not allowed as out frame")
+	}
+	frameHeader = f.header[:]
+	frameHeader[0], frameHeader[1], frameHeader[2] = byte(f.length>>16), byte(f.length>>8), byte(f.length)
+	frameHeader[3] = f.kind
+	flags := uint8(0x00)
+	if f.endHeaders && f.kind == http2FrameHeaders {
+		flags |= 0x04
+	}
+	if f.endStream && (f.kind == http2FrameData || f.kind == http2FrameHeaders) {
+		flags |= 0x01
+	}
+	if f.ack && (f.kind == http2FrameSettings || f.kind == http2FramePing) {
+		flags |= 0x01
+	}
+	if f.padded && (f.kind == http2FrameData || f.kind == http2FrameHeaders) {
+		flags |= 0x08
+	}
+	if f.priority && f.kind == http2FrameHeaders {
+		flags |= 0x20
+	}
+	frameHeader[4] = flags
+	binary.BigEndian.PutUint32(frameHeader[5:9], f.streamID)
+	return
+}
+
+//////////////////////////////////////// HTTP/2 webSocket implementation ////////////////////////////////////////
 
 func (s *webSocket_) todo2() {
 }

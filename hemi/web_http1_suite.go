@@ -1121,7 +1121,7 @@ func (n *http1Node) fetchStream() (*backend1Stream, error) {
 	conn := n.pullConn()
 	down := n.isDown()
 	if conn != nil {
-		if conn.isAlive() && !conn.runOut() && !down {
+		if conn.isAlive() && !conn.ranOut() && !down {
 			return conn.fetchStream()
 		}
 		conn.Close()
@@ -1327,7 +1327,7 @@ func (c *backend1Conn) onPut() {
 
 func (c *backend1Conn) isAlive() bool { return time.Now().Before(c.expireTime) }
 
-func (c *backend1Conn) runOut() bool {
+func (c *backend1Conn) ranOut() bool {
 	return c.usedStreams.Add(1) > c.node.MaxStreamsPerConn()
 }
 func (c *backend1Conn) fetchStream() (*backend1Stream, error) {
@@ -1696,7 +1696,7 @@ func (s *backend1Socket) onEnd() {
 	s.backendSocket_.onEnd()
 }
 
-//////////////////////////////////////// HTTP/1.x in/out implementation ////////////////////////////////////////
+//////////////////////////////////////// HTTP/1.x holder implementation ////////////////////////////////////////
 
 // http1Conn
 type http1Conn interface {
@@ -1806,7 +1806,7 @@ func (s *http1Stream_[C]) writev(vector *net.Buffers) (int64, error) {
 	return s.conn.writev(vector)
 }
 
-// HTTP/1.x incoming
+//////////////////////////////////////// HTTP/1.x incoming implementation ////////////////////////////////////////
 
 func (r *webIn_) growHead1() bool { // HTTP/1.x is not a binary protocol, we don't know how many bytes to grow, so just grow.
 	// Is r.input full?
@@ -2326,7 +2326,7 @@ func (r *webIn_) growChunked1() bool { // HTTP/1.x is not a binary protocol, we 
 	return false
 }
 
-// HTTP/1.x outgoing
+//////////////////////////////////////// HTTP/1.x outgoing implementation ////////////////////////////////////////
 
 func (r *webOut_) addHeader1(name []byte, value []byte) bool {
 	if len(name) == 0 {
@@ -2720,7 +2720,7 @@ func (r *webOut_) writeBytes1(p []byte) error {
 	return r._longTimeCheck(err)
 }
 
-// HTTP/1.x webSocket
+//////////////////////////////////////// HTTP/1.x webSocket implementation ////////////////////////////////////////
 
 func (s *webSocket_) todo1() {
 	// TODO

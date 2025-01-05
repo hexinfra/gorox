@@ -2893,7 +2893,7 @@ func (s *serverSocket_) onEnd() {
 func (s *serverSocket_) serverTodo() {
 }
 
-//////////////////////////////////////// HTTP reverse proxy implementation ////////////////////////////////////////
+//////////////////////////////////////// General HTTP reverse proxy implementation ////////////////////////////////////////
 
 func init() {
 	RegisterHandlet("httpProxy", func(name string, stage *Stage, webapp *Webapp) Handlet {
@@ -4048,7 +4048,7 @@ func (s *backendSocket_) onEnd() {
 func (s *backendSocket_) backendTodo() {
 }
 
-//////////////////////////////////////// General HTTP in/out implementation ////////////////////////////////////////
+//////////////////////////////////////// General HTTP holder implementation ////////////////////////////////////////
 
 // webHolder collects shared methods between *http[x3]Server and *http[1-3]Node.
 type webHolder interface {
@@ -4187,6 +4187,8 @@ func (s *webStream_) onEnd() {
 
 func (s *webStream_) buffer256() []byte          { return s.stockBuffer[:] }
 func (s *webStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
+
+//////////////////////////////////////// General HTTP incoming implementation ////////////////////////////////////////
 
 // webIn collects shared methods between *server[1-3]Request and *backend[1-3]Response.
 type webIn interface {
@@ -5553,6 +5555,8 @@ var ( // webIn_ errors
 	webInLongTime = errors.New("web incoming costs a long time")
 )
 
+//////////////////////////////////////// General HTTP outgoing implementation ////////////////////////////////////////
+
 // webOut collects shared methods between *server[1-3]Response and *backend[1-3]Request.
 type webOut interface {
 	control() []byte
@@ -6035,6 +6039,8 @@ var ( // webOut_ errors
 	webOutMixedContent  = errors.New("mixed content mode")
 	webOutTrailerFailed = errors.New("add trailer failed")
 )
+
+//////////////////////////////////////// General HTTP webSocket implementation ////////////////////////////////////////
 
 // webSocket
 type webSocket interface {

@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// uwsgi proxy and backend implementation. See: https://uwsgi-docs.readthedocs.io/en/latest/Protocol.html
+// uwsgi (gateway) proxy and backend implementation. See: https://uwsgi-docs.readthedocs.io/en/latest/Protocol.html
 
 // uwsgi is mainly used by Python applications. Not sure if it supports HTTP trailers and persistent connections.
 // uwsgi 1.9.13 seems to support vague content: https://uwsgi-docs.readthedocs.io/en/latest/Chunked.html

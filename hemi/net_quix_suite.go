@@ -23,6 +23,8 @@ import (
 type QUIXRouter struct {
 	// Parent
 	Server_[*quixGate]
+	// Mixins
+	_quixHolder_
 	// Assocs
 	dealets compDict[QUIXDealet] // defined dealets. indexed by name
 	cases   []*quixCase          // defined cases. the order must be kept, so we use list. TODO: use ordered map?
@@ -38,6 +40,7 @@ func (r *QUIXRouter) onCreate(name string, stage *Stage) {
 
 func (r *QUIXRouter) OnConfigure() {
 	r.Server_.OnConfigure()
+	r._quixHolder_.onConfigure(r)
 
 	// sub components
 	r.dealets.walk(QUIXDealet.OnConfigure)
@@ -47,6 +50,7 @@ func (r *QUIXRouter) OnConfigure() {
 }
 func (r *QUIXRouter) OnPrepare() {
 	r.Server_.OnPrepare()
+	r._quixHolder_.onPrepare(r)
 
 	// accessLog, TODO
 	if r.accessLog != nil {
@@ -536,8 +540,9 @@ func (b *QUIXBackend) StoreStream(qStream *QStream) {
 type quixNode struct {
 	// Parent
 	Node_[*QUIXBackend]
+	// Mixins
+	_quixHolder_
 	// States
-	maxStreamsPerConn int32 // max cumulative streams of one conn. 0 means infinite
 }
 
 func (n *quixNode) onCreate(name string, stage *Stage, backend *QUIXBackend) {
@@ -546,20 +551,12 @@ func (n *quixNode) onCreate(name string, stage *Stage, backend *QUIXBackend) {
 
 func (n *quixNode) OnConfigure() {
 	n.Node_.OnConfigure()
-
-	// maxStreamsPerConn
-	n.ConfigureInt32("maxStreamsPerConn", &n.maxStreamsPerConn, func(value int32) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".maxStreamsPerConn has an invalid value")
-	}, 1000)
+	n._quixHolder_.onConfigure(n)
 }
 func (n *quixNode) OnPrepare() {
 	n.Node_.OnPrepare()
+	n._quixHolder_.onPrepare(n)
 }
-
-func (n *quixNode) MaxStreamsPerConn() int32 { return n.maxStreamsPerConn }
 
 func (n *quixNode) Maintain() { // runner
 	n.LoopRun(time.Second, func(now time.Time) {
@@ -689,6 +686,30 @@ func (s *QStream) Close() error {
 }
 
 //////////////////////////////////////// QUIX in/out implementation ////////////////////////////////////////
+
+// quixHolder
+type quixHolder interface {
+}
+
+// _quixHolder_
+type _quixHolder_ struct {
+	// States
+	maxStreamsPerConn int32 // max cumulative streams of one conn. 0 means infinite
+}
+
+func (h *_quixHolder_) onConfigure(component Component) {
+	// maxStreamsPerConn
+	component.ConfigureInt32("maxStreamsPerConn", &h.maxStreamsPerConn, func(value int32) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".maxStreamsPerConn has an invalid value")
+	}, 1000)
+}
+func (h *_quixHolder_) onPrepare(component Component) {
+}
+
+func (h *_quixHolder_) MaxStreamsPerConn() int32 { return h.maxStreamsPerConn }
 
 // quixConn
 type quixConn interface {

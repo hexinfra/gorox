@@ -158,9 +158,6 @@ type Component interface {
 	MakeComp(name string)
 	Name() string
 
-	OnShutdown()
-	DecSub() // called by sub components or objects of this component
-
 	OnConfigure()
 	Find(name string) (value Value, ok bool)
 	Prop(name string) (value Value, ok bool)
@@ -178,6 +175,9 @@ type Component interface {
 	ConfigureStringDict(name string, prop *map[string]string, check func(value map[string]string) error, defaultValue map[string]string)
 
 	OnPrepare()
+
+	OnShutdown()
+	DecSub() // called by sub components or objects of this component
 
 	setName(name string)
 	setShell(shell Component)

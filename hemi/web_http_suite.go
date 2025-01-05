@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// General HTTP server, reverse proxy, and backend implementation. See RFC 9110 and RFC 9111.
+// HTTP server, reverse proxy, and backend implementation. See RFC 9110 and RFC 9111.
 
 package hemi
 
@@ -2893,7 +2893,7 @@ func (s *serverSocket_) onEnd() {
 func (s *serverSocket_) serverTodo() {
 }
 
-//////////////////////////////////////// General HTTP reverse proxy implementation ////////////////////////////////////////
+//////////////////////////////////////// HTTP reverse proxy implementation ////////////////////////////////////////
 
 func init() {
 	RegisterHandlet("httpProxy", func(name string, stage *Stage, webapp *Webapp) Handlet {
@@ -4059,7 +4059,7 @@ type webHolder interface {
 	MaxStreamsPerConn() int32
 }
 
-// _webHolder_
+// _webHolder_ is a mixin for webServer_ and webNode_.
 type _webHolder_ struct {
 	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.

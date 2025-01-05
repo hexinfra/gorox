@@ -13,19 +13,43 @@ import (
 	_ "github.com/hexinfra/gorox/hemi/library/drivers/mongo"
 )
 
+func init() {
+	RegisterBackend("mongoBackend", func(name string, stage *Stage) Backend {
+		b := new(MongoBackend)
+		b.onCreate(name, stage)
+		return b
+	})
+}
+
 // MongoBackend is a group of mongo nodes.
 type MongoBackend struct {
 	// Parent
 	Backend_[*mongoNode]
+	// States
+}
+
+func (b *MongoBackend) onCreate(name string, stage *Stage) {
+	b.Backend_.OnCreate(name, stage)
 }
 
 func (b *MongoBackend) OnConfigure() {
+	b.Backend_.OnConfigure()
+
+	// sub components
+	b.ConfigureNodes()
 }
 func (b *MongoBackend) OnPrepare() {
+	b.Backend_.OnPrepare()
+
+	// sub components
+	b.PrepareNodes()
 }
 
 func (b *MongoBackend) CreateNode(name string) Node {
-	return nil
+	node := new(mongoNode)
+	node.onCreate(name, b.Stage(), b)
+	b.AddNode(node)
+	return node
 }
 
 // mongoNode is a node in MongoBackend.

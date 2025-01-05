@@ -138,16 +138,11 @@ type server3Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	gate     *http3Gate
-	inBuffer *http3Buffer      // ...
-	table    http3DynamicTable // ...
+	gate *http3Gate
 	// Conn states (zeros)
 	_server3Conn0 // all values in this struct must be zero by default!
 }
 type _server3Conn0 struct { // for fast reset, entirely
-	inBufferEdge uint32 // incoming data ends at c.inBuffer.buf[c.inBufferEdge]
-	partBack     uint32 // incoming frame part (header or payload) begins from c.inBuffer.buf[c.partBack]
-	partFore     uint32 // incoming frame part (header or payload) ends at c.inBuffer.buf[c.partFore]
 }
 
 var poolServer3Conn sync.Pool
@@ -172,14 +167,8 @@ func (c *server3Conn) onGet(id int64, gate *http3Gate, quicConn *quic.Conn) {
 	c.http3Conn_.onGet(id, server.Stage().ID(), gate.IsUDS(), gate.IsTLS(), quicConn, server.ReadTimeout(), server.WriteTimeout())
 
 	c.gate = gate
-	if c.inBuffer == nil {
-		c.inBuffer = getHTTP3Buffer()
-		c.inBuffer.incRef()
-	}
 }
 func (c *server3Conn) onPut() {
-	// c.inBuffer is reserved
-	// c.table is reserved
 	c._server3Conn0 = _server3Conn0{}
 	c.gate = nil
 
@@ -761,21 +750,32 @@ type http3Conn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	quicConn *quic.Conn // the quic connection
+	quicConn *quic.Conn        // the quic connection
+	inBuffer *http3Buffer      // ...
+	table    http3DynamicTable // ...
 	// Conn states (zeros)
-	streams     [http3MaxConcurrentStreams]http3Stream // active (open, remoteClosed, localClosed) streams
-	_http3Conn0                                        // all values in this struct must be zero by default!
+	activeStreams [http3MaxConcurrentStreams]http3Stream // active (open, remoteClosed, localClosed) streams
+	_http3Conn0                                          // all values in this struct must be zero by default!
 }
 type _http3Conn0 struct { // for fast reset, entirely
+	inBufferEdge uint32 // incoming data ends at c.inBuffer.buf[c.inBufferEdge]
+	partBack     uint32 // incoming frame part (header or payload) begins from c.inBuffer.buf[c.partBack]
+	partFore     uint32 // incoming frame part (header or payload) ends at c.inBuffer.buf[c.partFore]
 }
 
 func (c *http3Conn_) onGet(id int64, stageID int32, udsMode bool, tlsMode bool, quicConn *quic.Conn, readTimeout time.Duration, writeTimeout time.Duration) {
 	c.webConn_.onGet(id, stageID, udsMode, tlsMode, readTimeout, writeTimeout)
 
 	c.quicConn = quicConn
+	if c.inBuffer == nil {
+		c.inBuffer = getHTTP3Buffer()
+		c.inBuffer.incRef()
+	}
 }
 func (c *http3Conn_) onPut() {
-	c.streams = [http3MaxConcurrentStreams]http3Stream{}
+	// c.inBuffer is reserved
+	// c.table is reserved
+	c.activeStreams = [http3MaxConcurrentStreams]http3Stream{}
 	c.quicConn = nil
 
 	c.webConn_.onPut()

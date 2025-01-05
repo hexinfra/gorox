@@ -11,6 +11,41 @@ import (
 	"strings"
 )
 
+// Cacher component is the interface to storages of HTTP caching.
+type Cacher interface {
+	// Imports
+	Component
+	// Methods
+	Maintain() // runner
+	Set(key []byte, hobject *Hobject)
+	Get(key []byte) (hobject *Hobject)
+	Del(key []byte) bool
+}
+
+// Cacher_ is the parent for all cachers.
+type Cacher_ struct {
+	// Parent
+	Component_
+	// Assocs
+	// States
+}
+
+func (c *Cacher_) todo() {
+}
+
+// Hobject represents an HTTP object in Cacher.
+type Hobject struct {
+	// TODO
+	uri      []byte
+	headers  any
+	content  any
+	trailers any
+}
+
+func (o *Hobject) todo() {
+	// TODO
+}
+
 func init() {
 	RegisterHandlet("httpProxy", func(name string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(httpProxy)
@@ -260,41 +295,6 @@ func WebExchanReverseProxy(foreReq Request, foreResp Response, cacher Cacher, ba
 		backStream.markBroken()
 		return
 	}
-}
-
-// Cacher component is the interface to storages of HTTP caching.
-type Cacher interface {
-	// Imports
-	Component
-	// Methods
-	Maintain() // runner
-	Set(key []byte, hobject *Hobject)
-	Get(key []byte) (hobject *Hobject)
-	Del(key []byte) bool
-}
-
-// Cacher_ is the parent for all cachers.
-type Cacher_ struct {
-	// Parent
-	Component_
-	// Assocs
-	// States
-}
-
-func (c *Cacher_) todo() {
-}
-
-// Hobject represents an HTTP object in Cacher.
-type Hobject struct {
-	// TODO
-	uri      []byte
-	headers  any
-	content  any
-	trailers any
-}
-
-func (o *Hobject) todo() {
-	// TODO
 }
 
 func init() {

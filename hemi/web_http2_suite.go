@@ -127,7 +127,7 @@ type httpxGate struct {
 }
 
 func (g *httpxGate) onNew(server *httpxServer, id int32) {
-	g.webGate_.onNew(server, id, server.MaxConnsPerGate())
+	g.webGate_.onNew(server, id, server.MaxConcurrentConnsPerGate())
 }
 
 func (g *httpxGate) Open() error {
@@ -181,8 +181,8 @@ func (g *httpxGate) serveUDS() { // runner
 				continue
 			}
 		}
-		g.IncConn()
-		if actives := g.IncActives(); g.ReachLimit(actives) {
+		g.IncSub() // conn
+		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
 			g.justClose(udsConn)
 			continue
 		}
@@ -201,7 +201,7 @@ func (g *httpxGate) serveUDS() { // runner
 		}
 		connID++
 	}
-	g.WaitConns() // TODO: max timeout?
+	g.WaitSubs() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("httpxGate=%d TCP done\n", g.id)
 	}
@@ -220,8 +220,8 @@ func (g *httpxGate) serveTLS() { // runner
 				continue
 			}
 		}
-		g.IncConn()
-		if actives := g.IncActives(); g.ReachLimit(actives) {
+		g.IncSub() // conn
+		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
 			g.justClose(tcpConn)
 			continue
 		}
@@ -240,7 +240,7 @@ func (g *httpxGate) serveTLS() { // runner
 		}
 		connID++
 	}
-	g.WaitConns() // TODO: max timeout?
+	g.WaitSubs() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("httpxGate=%d TLS done\n", g.id)
 	}
@@ -259,8 +259,8 @@ func (g *httpxGate) serveTCP() { // runner
 				continue
 			}
 		}
-		g.IncConn()
-		if actives := g.IncActives(); g.ReachLimit(actives) {
+		g.IncSub() // conn
+		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
 			g.justClose(tcpConn)
 			continue
 		}
@@ -279,7 +279,7 @@ func (g *httpxGate) serveTCP() { // runner
 		}
 		connID++
 	}
-	g.WaitConns() // TODO: max timeout?
+	g.WaitSubs() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("httpxGate=%d TCP done\n", g.id)
 	}
@@ -288,8 +288,8 @@ func (g *httpxGate) serveTCP() { // runner
 
 func (g *httpxGate) justClose(netConn net.Conn) {
 	netConn.Close()
-	g.DecActives()
-	g.DecConn()
+	g.DecConcurrentConns()
+	g.DecSub() // conn
 }
 
 // server2Conn is the server-side HTTP/2 connection.
@@ -386,7 +386,7 @@ serve:
 			Printf("%+v\n", outFrame)
 			if outFrame.endStream { // a stream has ended
 				c.quitStream(outFrame.streamID)
-				c.nStreams--
+				c.concurrentStreams--
 			}
 			if err := c.sendOutFrame(outFrame); err != nil {
 				// send side is broken.
@@ -397,10 +397,10 @@ serve:
 		}
 	}
 	Printf("conn=%d waiting for active streams to end\n", c.id)
-	for c.nStreams > 0 {
+	for c.concurrentStreams > 0 {
 		if outFrame := <-c.outgoingChan; outFrame.endStream {
 			c.quitStream(outFrame.streamID)
-			c.nStreams--
+			c.concurrentStreams--
 		}
 	}
 	if c.waitReceive {
@@ -496,11 +496,11 @@ func (c *server2Conn) processHeadersInFrame(headersInFrame *http2InFrame) error 
 	)
 	streamID := headersInFrame.streamID
 	if streamID > c.lastStreamID { // new stream
-		if c.nStreams == http2MaxActiveStreams {
+		if c.concurrentStreams == http2MaxConcurrentStreams {
 			return http2ErrorProtocol
 		}
 		c.lastStreamID = streamID
-		c.usedStreams.Add(1)
+		c.cumulativeStreams.Add(1)
 		stream = getServer2Stream(c, streamID, c.peerSettings.initialWindowSize)
 		req = &stream.request
 		if !c._decodeFields(headersInFrame.effective(), req.joinHeaders) {
@@ -513,7 +513,7 @@ func (c *server2Conn) processHeadersInFrame(headersInFrame *http2InFrame) error 
 			stream.state = http2StateOpen
 		}
 		c.joinStream(stream)
-		c.nStreams++
+		c.concurrentStreams++
 		go stream.execute()
 	} else { // old stream
 		s := c.findStream(streamID)
@@ -640,8 +640,8 @@ func (c *server2Conn) closeConn() {
 		Printf("conn=%d connClosed by manager()\n", c.id)
 	}
 	c.netConn.Close()
-	c.gate.DecActives()
-	c.gate.DecConn()
+	c.gate.DecConcurrentConns()
+	c.gate.DecSub()
 }
 
 // server2Stream is the server-side HTTP/2 stream.
@@ -962,12 +962,12 @@ func (n *http2Node) Maintain() { // runner
 }
 
 func (n *http2Node) fetchStream() (*backend2Stream, error) {
-	// Note: A backend2Conn can be used concurrently, limited by maxStreams.
+	// Note: A backend2Conn can be used concurrently, limited by maxConcurrentStreams.
 	// TODO
 	return nil, nil
 }
 func (n *http2Node) storeStream(stream *backend2Stream) {
-	// Note: A backend2Conn can be used concurrently, limited by maxStreams.
+	// Note: A backend2Conn can be used concurrently, limited by maxConcurrentStreams.
 	// TODO
 }
 
@@ -1018,15 +1018,15 @@ func (c *backend2Conn) onPut() {
 }
 
 func (c *backend2Conn) ranOut() bool {
-	return c.usedStreams.Add(1) > c.node.MaxStreamsPerConn()
+	return c.cumulativeStreams.Add(1) > c.node.MaxCumulativeStreamsPerConn()
 }
 func (c *backend2Conn) fetchStream() (*backend2Stream, error) {
-	// Note: A backend2Conn can be used concurrently, limited by maxStreams.
+	// Note: A backend2Conn can be used concurrently, limited by maxConcurrentStreams.
 	// TODO: incRef, stream.onUse()
 	return nil, nil
 }
 func (c *backend2Conn) storeStream(stream *backend2Stream) {
-	// Note: A backend2Conn can be used concurrently, limited by maxStreams.
+	// Note: A backend2Conn can be used concurrently, limited by maxConcurrentStreams.
 	// TODO
 	//stream.onEnd()
 }
@@ -1292,24 +1292,24 @@ type http2Conn_ struct {
 	outWindow    int32               // connection-level window size for outgoing DATA frames
 	outgoingChan chan *http2OutFrame // frames generated by streams and waiting for c.manager() to send
 	// Conn states (zeros)
-	inFrame0    http2InFrame                       // incoming frame 0
-	inFrame1    http2InFrame                       // incoming frame 1
-	inFrame     *http2InFrame                      // current incoming frame. refers to inFrame0 or inFrame1 in turn
-	streams     [http2MaxActiveStreams]http2Stream // active (open, remoteClosed, localClosed) streams
-	vector      net.Buffers                        // used by writev in c.manager()
-	fixedVector [2][]byte                          // used by writev in c.manager()
-	_http2Conn0                                    // all values in this struct must be zero by default!
+	inFrame0    http2InFrame                           // incoming frame 0
+	inFrame1    http2InFrame                           // incoming frame 1
+	inFrame     *http2InFrame                          // current incoming frame. refers to inFrame0 or inFrame1 in turn
+	streams     [http2MaxConcurrentStreams]http2Stream // active (open, remoteClosed, localClosed) streams
+	vector      net.Buffers                            // used by writev in c.manager()
+	fixedVector [2][]byte                              // used by writev in c.manager()
+	_http2Conn0                                        // all values in this struct must be zero by default!
 }
 type _http2Conn0 struct { // for fast reset, entirely
-	streamIDs    [http2MaxActiveStreams + 1]uint32 // ids of c.streams. the extra 1 id is used for fast linear searching
-	nInFrames    int64                             // num of incoming frames
-	nStreams     uint8                             // num of active streams
-	acknowledged bool                              // server settings acknowledged by client?
-	inBufferEdge uint32                            // incoming data ends at c.inBuffer.buf[c.inBufferEdge]
-	partBack     uint32                            // incoming frame part (header or payload) begins from c.inBuffer.buf[c.partBack]
-	partFore     uint32                            // incoming frame part (header or payload) ends at c.inBuffer.buf[c.partFore]
-	contBack     uint32                            // incoming continuation part (header or payload) begins from c.inBuffer.buf[c.contBack]
-	contFore     uint32                            // incoming continuation part (header or payload) ends at c.inBuffer.buf[c.contFore]
+	streamIDs         [http2MaxConcurrentStreams + 1]uint32 // ids of c.streams. the extra 1 id is used for fast linear searching
+	nInFrames         int64                                 // num of incoming frames
+	concurrentStreams uint8                                 // num of active streams
+	acknowledged      bool                                  // server settings acknowledged by client?
+	inBufferEdge      uint32                                // incoming data ends at c.inBuffer.buf[c.inBufferEdge]
+	partBack          uint32                                // incoming frame part (header or payload) begins from c.inBuffer.buf[c.partBack]
+	partFore          uint32                                // incoming frame part (header or payload) ends at c.inBuffer.buf[c.partFore]
+	contBack          uint32                                // incoming continuation part (header or payload) begins from c.inBuffer.buf[c.contBack]
+	contFore          uint32                                // incoming continuation part (header or payload) ends at c.inBuffer.buf[c.contFore]
 }
 
 func (c *http2Conn_) onGet(id int64, stageID int32, udsMode bool, tlsMode bool, netConn net.Conn, rawConn syscall.RawConn, readTimeout time.Duration, writeTimeout time.Duration) {
@@ -1340,7 +1340,7 @@ func (c *http2Conn_) onPut() {
 	c.inFrame0.zero()
 	c.inFrame1.zero()
 	c.inFrame = nil
-	c.streams = [http2MaxActiveStreams]http2Stream{}
+	c.streams = [http2MaxConcurrentStreams]http2Stream{}
 	c.vector = nil
 	c.fixedVector = [2][]byte{}
 	c._http2Conn0 = _http2Conn0{}
@@ -1670,12 +1670,12 @@ func (c *http2Conn_) _decodeString(src []byte, req *server2Request) (int, bool) 
 */
 
 func (c *http2Conn_) findStream(streamID uint32) http2Stream {
-	c.streamIDs[http2MaxActiveStreams] = streamID // the stream id to search for
+	c.streamIDs[http2MaxConcurrentStreams] = streamID // the stream id to search for
 	index := uint8(0)
 	for c.streamIDs[index] != streamID { // searching for stream id
 		index++
 	}
-	if index != http2MaxActiveStreams { // found
+	if index != http2MaxConcurrentStreams { // found
 		if DebugLevel() >= 2 {
 			Printf("conn=%d findStream=%d at %d\n", c.id, streamID, index)
 		}
@@ -1685,12 +1685,12 @@ func (c *http2Conn_) findStream(streamID uint32) http2Stream {
 	}
 }
 func (c *http2Conn_) joinStream(stream http2Stream) {
-	c.streamIDs[http2MaxActiveStreams] = 0
+	c.streamIDs[http2MaxConcurrentStreams] = 0
 	index := uint8(0)
 	for c.streamIDs[index] != 0 { // searching a free slot
 		index++
 	}
-	if index != http2MaxActiveStreams {
+	if index != http2MaxConcurrentStreams {
 		if DebugLevel() >= 2 {
 			Printf("conn=%d joinStream=%d at %d\n", c.id, stream.getID(), index)
 		}
@@ -2178,9 +2178,9 @@ func (s *webSocket_) todo2() {
 //////////////////////////////////////// HTTP/2 protocol elements ////////////////////////////////////////
 
 const ( // HTTP/2 sizes and limits for both of our HTTP/2 server and HTTP/2 backend
-	http2MaxFrameSize     = _16K
-	http2MaxTableSize     = _4K
-	http2MaxActiveStreams = 127
+	http2MaxFrameSize         = _16K
+	http2MaxTableSize         = _4K
+	http2MaxConcurrentStreams = 127
 )
 
 const ( // HTTP/2 frame kinds

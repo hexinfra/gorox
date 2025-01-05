@@ -172,20 +172,22 @@ type tcpxGate struct {
 	// Parent
 	Gate_[*TCPXRouter]
 	// States
-	maxActives int32        // max concurrent conns allowed for this gate
-	curActives atomic.Int32 // TODO: false sharing
-	listener   net.Listener // the real gate. set after open
+	maxConcurrentConns int32        // max concurrent conns allowed for this gate
+	concurrentConns    atomic.Int32 // TODO: false sharing
+	listener           net.Listener // the real gate. set after open
 }
 
 func (g *tcpxGate) onNew(router *TCPXRouter, id int32) {
 	g.Gate_.OnNew(router, id)
-	g.maxActives = router.MaxConnsPerGate()
-	g.curActives.Store(0)
+	g.maxConcurrentConns = router.MaxConcurrentConnsPerGate()
+	g.concurrentConns.Store(0)
 }
 
-func (g *tcpxGate) DecActives() int32             { return g.curActives.Add(-1) }
-func (g *tcpxGate) IncActives() int32             { return g.curActives.Add(1) }
-func (g *tcpxGate) ReachLimit(actives int32) bool { return actives > g.maxActives }
+func (g *tcpxGate) DecConcurrentConns() int32 { return g.concurrentConns.Add(-1) }
+func (g *tcpxGate) IncConcurrentConns() int32 { return g.concurrentConns.Add(1) }
+func (g *tcpxGate) ReachLimit(concurrentConns int32) bool {
+	return concurrentConns > g.maxConcurrentConns
+}
 
 func (g *tcpxGate) Open() error {
 	var (
@@ -229,8 +231,8 @@ func (g *tcpxGate) serveUDS() { // runner
 				continue
 			}
 		}
-		g.IncConn()
-		if actives := g.IncActives(); g.ReachLimit(actives) {
+		g.IncSub() // conn
+		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
 			g.server.Logf("tcpxGate=%d: too many UDS connections!\n", g.id)
 			g.justClose(udsConn)
 			continue
@@ -244,7 +246,7 @@ func (g *tcpxGate) serveUDS() { // runner
 		go g.server.serveConn(conn) // conn is put to pool in serveConn()
 		connID++
 	}
-	g.WaitConns() // TODO: max timeout?
+	g.WaitSubs() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TCP done\n", g.id)
 	}
@@ -262,8 +264,8 @@ func (g *tcpxGate) serveTLS() { // runner
 				continue
 			}
 		}
-		g.IncConn()
-		if actives := g.IncActives(); g.ReachLimit(actives) {
+		g.IncSub() // conn
+		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
 			g.server.Logf("tcpxGate=%d: too many TLS connections!\n", g.id)
 			g.justClose(tcpConn)
 			continue
@@ -278,7 +280,7 @@ func (g *tcpxGate) serveTLS() { // runner
 		go g.server.serveConn(conn) // conn is put to pool in serveConn()
 		connID++
 	}
-	g.WaitConns() // TODO: max timeout?
+	g.WaitSubs() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TLS done\n", g.id)
 	}
@@ -296,8 +298,8 @@ func (g *tcpxGate) serveTCP() { // runner
 				continue
 			}
 		}
-		g.IncConn()
-		if actives := g.IncActives(); g.ReachLimit(actives) {
+		g.IncSub() // conn
+		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
 			g.server.Logf("tcpxGate=%d: too many TCP connections!\n", g.id)
 			g.justClose(tcpConn)
 			continue
@@ -314,7 +316,7 @@ func (g *tcpxGate) serveTCP() { // runner
 		go g.server.serveConn(conn) // conn is put to pool in serveConn()
 		connID++
 	}
-	g.WaitConns() // TODO: max timeout?
+	g.WaitSubs() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TCP done\n", g.id)
 	}
@@ -323,8 +325,8 @@ func (g *tcpxGate) serveTCP() { // runner
 
 func (g *tcpxGate) justClose(netConn net.Conn) {
 	netConn.Close()
-	g.DecActives()
-	g.DecConn()
+	g.DecConcurrentConns()
+	g.DecSub() // conn
 }
 
 // TCPXConn is a TCPX connection coming from TCPXRouter.

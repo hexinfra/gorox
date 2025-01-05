@@ -110,13 +110,12 @@ func (g *echoGate) serve() { // runner
 				continue
 			}
 		}
-		g.IncConn()
+		g.IncSub() // conn
 		echoConn := getEchoConn(connID, g, tcpConn)
-		_ = echoConn
 		go g.Server().serveConn(echoConn) // echoConn is put to pool in serve()
 		connID++
 	}
-	g.WaitConns() // TODO: max timeout?
+	g.WaitSubs() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("echoGate=%d done\n", g.ID())
 	}
@@ -125,7 +124,7 @@ func (g *echoGate) serve() { // runner
 
 func (g *echoGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()
-	g.DecConn()
+	g.DecSub() // conn
 }
 
 // echoConn
@@ -172,5 +171,5 @@ func (c *echoConn) IsTLS() bool { return c.gate.IsTLS() }
 
 func (c *echoConn) closeConn() {
 	c.tcpConn.Close()
-	c.gate.DecConn()
+	c.gate.DecSub()
 }

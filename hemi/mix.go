@@ -24,19 +24,19 @@ import (
 
 // contentSaver
 type contentSaver interface {
-	SaveContentFilesDir() string // the dir to save content temporarily
-	MaxContentSize() int64       // max content size allowed
-	RecvTimeout() time.Duration  // timeout to recv the whole message content. zero means no timeout
-	SendTimeout() time.Duration  // timeout to send the whole message. zero means no timeout
+	SaveContentFilesDir() string  // the dir to save content temporarily
+	MaxContentSizeAllowed() int64 // max content size allowed
+	RecvTimeout() time.Duration   // timeout to recv the whole message content. zero means no timeout
+	SendTimeout() time.Duration   // timeout to send the whole message. zero means no timeout
 }
 
 // _contentSaver_ is a mixin.
 type _contentSaver_ struct {
 	// States
-	saveContentFilesDir string        // temp content files are placed here
-	maxContentSize      int64         // max content size allowed to receive
-	recvTimeout         time.Duration // timeout to recv the whole message content. zero means no timeout
-	sendTimeout         time.Duration // timeout to send the whole message. zero means no timeout
+	saveContentFilesDir   string        // temp content files are placed here
+	maxContentSizeAllowed int64         // max content size allowed to receive
+	recvTimeout           time.Duration // timeout to recv the whole message content. zero means no timeout
+	sendTimeout           time.Duration // timeout to send the whole message. zero means no timeout
 }
 
 func (s *_contentSaver_) onConfigure(component Component, defaultDir string, defaultRecv time.Duration, defaultSend time.Duration) {
@@ -48,12 +48,12 @@ func (s *_contentSaver_) onConfigure(component Component, defaultDir string, def
 		return errors.New(".saveContentFilesDir has an invalid value")
 	}, defaultDir)
 
-	// maxContentSize
-	component.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
+	// maxContentSizeAllowed
+	component.ConfigureInt64("maxContentSizeAllowed", &s.maxContentSizeAllowed, func(value int64) error {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".maxContentSize has an invalid value")
+		return errors.New(".maxContentSizeAllowed has an invalid value")
 	}, _1T)
 
 	// recvTimeout
@@ -81,10 +81,10 @@ func (s *_contentSaver_) onPrepare(component Component, perm os.FileMode) {
 	}
 }
 
-func (s *_contentSaver_) SaveContentFilesDir() string { return s.saveContentFilesDir } // must ends with '/'
-func (s *_contentSaver_) MaxContentSize() int64       { return s.maxContentSize }
-func (s *_contentSaver_) RecvTimeout() time.Duration  { return s.recvTimeout }
-func (s *_contentSaver_) SendTimeout() time.Duration  { return s.sendTimeout }
+func (s *_contentSaver_) SaveContentFilesDir() string  { return s.saveContentFilesDir } // must ends with '/'
+func (s *_contentSaver_) MaxContentSizeAllowed() int64 { return s.maxContentSizeAllowed }
+func (s *_contentSaver_) RecvTimeout() time.Duration   { return s.recvTimeout }
+func (s *_contentSaver_) SendTimeout() time.Duration   { return s.sendTimeout }
 
 // holder
 type holder interface {
@@ -163,12 +163,12 @@ type Server_[G Gate] struct {
 	// Assocs
 	gates []G // a server has many gates
 	// States
-	colonport         string // like: ":9876"
-	colonportBytes    []byte // []byte(colonport)
-	udsColonport      string // uds doesn't have a port. use this as port if server is listening at uds
-	udsColonportBytes []byte // []byte(udsColonport)
-	numGates          int32  // number of gates
-	maxConnsPerGate   int32  // max concurrent connections allowed per gate
+	colonport                 string // like: ":9876"
+	colonportBytes            []byte // []byte(colonport)
+	udsColonport              string // uds doesn't have a port. use this as port if server is listening at uds
+	udsColonportBytes         []byte // []byte(udsColonport)
+	numGates                  int32  // number of gates
+	maxConcurrentConnsPerGate int32  // max concurrent connections allowed per gate
 }
 
 func (s *Server_[G]) OnCreate(name string, stage *Stage) {
@@ -214,12 +214,12 @@ func (s *Server_[G]) OnConfigure() {
 		return errors.New(".numGates has an invalid value")
 	}, s.stage.NumCPU())
 
-	// maxConnsPerGate
-	s.ConfigureInt32("maxConnsPerGate", &s.maxConnsPerGate, func(value int32) error {
+	// maxConcurrentConnsPerGate
+	s.ConfigureInt32("maxConcurrentConnsPerGate", &s.maxConcurrentConnsPerGate, func(value int32) error {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".maxConnsPerGate has an invalid value")
+		return errors.New(".maxConcurrentConnsPerGate has an invalid value")
 	}, 10000)
 }
 func (s *Server_[G]) OnPrepare() {
@@ -230,8 +230,8 @@ func (s *Server_[G]) OnPrepare() {
 	}
 }
 
-func (s *Server_[G]) NumGates() int32        { return s.numGates }
-func (s *Server_[G]) MaxConnsPerGate() int32 { return s.maxConnsPerGate }
+func (s *Server_[G]) NumGates() int32                  { return s.numGates }
+func (s *Server_[G]) MaxConcurrentConnsPerGate() int32 { return s.maxConcurrentConnsPerGate }
 
 func (s *Server_[G]) Colonport() string {
 	if s.udsMode {
@@ -285,9 +285,9 @@ func (g *Gate_[S]) ID() int32       { return g.id }
 func (g *Gate_[S]) IsShut() bool    { return g.shut.Load() }
 func (g *Gate_[S]) MarkShut()       { g.shut.Store(true) }
 
-func (g *Gate_[S]) IncConn()   { g.subConns.Add(1) }
-func (g *Gate_[S]) WaitConns() { g.subConns.Wait() }
-func (g *Gate_[S]) DecConn()   { g.subConns.Done() }
+func (g *Gate_[S]) IncSub()   { g.subConns.Add(1) }
+func (g *Gate_[S]) WaitSubs() { g.subConns.Wait() }
+func (g *Gate_[S]) DecSub()   { g.subConns.Done() }
 
 // Backend component. A Backend is a group of nodes.
 type Backend interface {

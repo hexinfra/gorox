@@ -128,8 +128,8 @@ func (c *server1Conn) serve() { // runner
 	}
 	netConn.Close()
 
-	c.gate.DecActives()
-	c.gate.DecConn()
+	c.gate.DecConcurrentConns()
+	c.gate.DecSub()
 	putServer1Conn(c)
 }
 
@@ -225,13 +225,13 @@ func (s *server1Stream) execute() {
 
 	if !req.upgradeSocket { // exchan mode
 		if req.formKind != httpFormNotForm { // content is an html form
-			if req.formKind == httpFormMultipart { // we allow a larger content size for uploading through multipart/form-data (large files are written to disk).
-				req.maxContentSize = webapp.maxMultiformSize
-			} else { // application/x-www-form-urlencoded is limited in a smaller size.
-				req.maxContentSize = int64(req.maxMemoryContentSize)
+			if req.formKind == httpFormMultipart { // we allow a larger content size for uploading through multipart/form-data (because large files are written to disk).
+				req.maxContentSizeAllowed = webapp.maxMultiformSize
+			} else { // application/x-www-form-urlencoded is limited in a smaller size because it will be loaded into memory
+				req.maxContentSizeAllowed = int64(req.maxMemoryContentSize)
 			}
 		}
-		if req.contentSize > req.maxContentSize {
+		if req.contentSize > req.maxContentSizeAllowed {
 			if req.expectContinue {
 				req.headResult = StatusExpectationFailed
 			} else {
@@ -249,8 +249,8 @@ func (s *server1Stream) execute() {
 		if req.expectContinue && !s._writeContinue() {
 			return
 		}
-		conn.usedStreams.Add(1)
-		if maxStreams := server.MaxStreamsPerConn(); (maxStreams > 0 && conn.usedStreams.Load() == maxStreams) || req.keepAlive == 0 || conn.gate.IsShut() {
+		conn.cumulativeStreams.Add(1)
+		if maxCumulativeStreams := server.MaxCumulativeStreamsPerConn(); (maxCumulativeStreams > 0 && conn.cumulativeStreams.Load() == maxCumulativeStreams) || req.keepAlive == 0 || conn.gate.IsShut() {
 			conn.persistent = false // reaches limit, or client told us to close, or gate was shut
 		}
 
@@ -1328,7 +1328,7 @@ func (c *backend1Conn) onPut() {
 func (c *backend1Conn) isAlive() bool { return time.Now().Before(c.expireTime) }
 
 func (c *backend1Conn) ranOut() bool {
-	return c.usedStreams.Add(1) > c.node.MaxStreamsPerConn()
+	return c.cumulativeStreams.Add(1) > c.node.MaxCumulativeStreamsPerConn()
 }
 func (c *backend1Conn) fetchStream() (*backend1Stream, error) {
 	stream := &c.stream
@@ -2088,7 +2088,7 @@ func (r *webIn_) _readVagueContent1() (p []byte, err error) {
 			goto badRead
 		}
 		// Check target size
-		if targetSize := r.receivedSize + chunkSize; targetSize >= 0 && targetSize <= r.maxContentSize {
+		if targetSize := r.receivedSize + chunkSize; targetSize >= 0 && targetSize <= r.maxContentSizeAllowed {
 			r.chunkSize = chunkSize
 		} else { // invalid target size.
 			// TODO: log error?

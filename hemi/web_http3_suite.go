@@ -79,7 +79,7 @@ type http3Gate struct {
 }
 
 func (g *http3Gate) onNew(server *http3Server, id int32) {
-	g.webGate_.onNew(server, id, server.MaxConnsPerGate())
+	g.webGate_.onNew(server, id, server.MaxConcurrentConnsPerGate())
 }
 
 func (g *http3Gate) Open() error {
@@ -109,8 +109,8 @@ func (g *http3Gate) serveTLS() { // runner
 				continue
 			}
 		}
-		g.IncConn()
-		if actives := g.IncActives(); g.ReachLimit(actives) {
+		g.IncSub() // conn
+		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
 			g.justClose(quicConn)
 			continue
 		}
@@ -118,7 +118,7 @@ func (g *http3Gate) serveTLS() { // runner
 		go server3Conn.manager() // server3Conn is put to pool in manager()
 		connID++
 	}
-	g.WaitConns() // TODO: max timeout?
+	g.WaitSubs() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("http3Gate=%d done\n", g.id)
 	}
@@ -127,8 +127,8 @@ func (g *http3Gate) serveTLS() { // runner
 
 func (g *http3Gate) justClose(quicConn *quic.Conn) {
 	quicConn.Close()
-	g.DecActives()
-	g.DecConn()
+	g.DecConcurrentConns()
+	g.DecSub() // conn
 }
 
 // server3Conn is the server-side HTTP/3 connection.
@@ -197,8 +197,8 @@ func (c *server3Conn) receiver() { // runner
 
 func (c *server3Conn) closeConn() {
 	c.quicConn.Close()
-	c.gate.DecActives()
-	c.gate.DecConn()
+	c.gate.DecConcurrentConns()
+	c.gate.DecSub()
 }
 
 // server3Stream is the server-side HTTP/3 stream.
@@ -557,15 +557,15 @@ func (c *backend3Conn) onPut() {
 }
 
 func (c *backend3Conn) ranOut() bool {
-	return c.usedStreams.Add(1) > c.node.MaxStreamsPerConn()
+	return c.cumulativeStreams.Add(1) > c.node.MaxCumulativeStreamsPerConn()
 }
 func (c *backend3Conn) fetchStream() (*backend3Stream, error) {
-	// Note: A backend3Conn can be used concurrently, limited by maxStreams.
+	// Note: A backend3Conn can be used concurrently, limited by maxConcurrentStreams.
 	// TODO: stream.onUse()
 	return nil, nil
 }
 func (c *backend3Conn) storeStream(stream *backend3Stream) {
-	// Note: A backend3Conn can be used concurrently, limited by maxStreams.
+	// Note: A backend3Conn can be used concurrently, limited by maxConcurrentStreams.
 	// TODO
 	//stream.onEnd()
 }
@@ -763,8 +763,8 @@ type http3Conn_ struct {
 	// Conn states (non-zeros)
 	quicConn *quic.Conn // the quic connection
 	// Conn states (zeros)
-	streams     [http3MaxActiveStreams]http3Stream // active (open, remoteClosed, localClosed) streams
-	_http3Conn0                                    // all values in this struct must be zero by default!
+	streams     [http3MaxConcurrentStreams]http3Stream // active (open, remoteClosed, localClosed) streams
+	_http3Conn0                                        // all values in this struct must be zero by default!
 }
 type _http3Conn0 struct { // for fast reset, entirely
 }
@@ -775,7 +775,7 @@ func (c *http3Conn_) onGet(id int64, stageID int32, udsMode bool, tlsMode bool, 
 	c.quicConn = quicConn
 }
 func (c *http3Conn_) onPut() {
-	c.streams = [http3MaxActiveStreams]http3Stream{}
+	c.streams = [http3MaxConcurrentStreams]http3Stream{}
 	c.quicConn = nil
 
 	c.webConn_.onPut()
@@ -988,8 +988,8 @@ func (s *webSocket_) todo3() {
 //////////////////////////////////////// HTTP/3 protocol elements ////////////////////////////////////////
 
 const ( // HTTP/3 sizes and limits for both of our HTTP/3 server and HTTP/3 backend
-	http3MaxActiveStreams = 127
-	http3MaxTableSize     = _4K
+	http3MaxConcurrentStreams = 127
+	http3MaxTableSize         = _4K
 )
 
 // http3StaticTable

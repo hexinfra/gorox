@@ -1042,15 +1042,15 @@ type fcgiResponse struct { // incoming. needs parsing
 	// Exchan states (controlled)
 	header pair // to overcome the limitation of Go's escape analysis when receiving headers
 	// Exchan states (non-zeros)
-	records        []byte        // bytes of incoming fcgi records. [<r.stockRecords>/fcgiMaxRecords]
-	input          []byte        // bytes of incoming response headers. [<r.stockInput>/4K/16K]
-	primes         []pair        // prime fcgi response headers
-	extras         []pair        // extra fcgi response headers
-	recvTimeout    time.Duration // timeout to recv the whole response content. zero means no timeout
-	maxContentSize int64         // max content size allowed for current response
-	status         int16         // 200, 302, 404, ...
-	headResult     int16         // result of receiving response head. values are same as http status for convenience
-	bodyResult     int16         // result of receiving response body. values are same as http status for convenience
+	records               []byte        // bytes of incoming fcgi records. [<r.stockRecords>/fcgiMaxRecords]
+	input                 []byte        // bytes of incoming response headers. [<r.stockInput>/4K/16K]
+	primes                []pair        // prime fcgi response headers
+	extras                []pair        // extra fcgi response headers
+	recvTimeout           time.Duration // timeout to recv the whole response content. zero means no timeout
+	maxContentSizeAllowed int64         // max content size allowed for current response
+	status                int16         // 200, 302, 404, ...
+	headResult            int16         // result of receiving response head. values are same as http status for convenience
+	bodyResult            int16         // result of receiving response body. values are same as http status for convenience
 	// Exchan states (zeros)
 	failReason     string    // the reason of headResult or bodyResult
 	bodyTime       time.Time // the time when first body read operation is performed on this exchan
@@ -1112,7 +1112,7 @@ func (r *fcgiResponse) onUse() {
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of header indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
 	r.recvTimeout = r.exchan.conn.node.recvTimeout
-	r.maxContentSize = r.exchan.conn.node.maxContentSize
+	r.maxContentSizeAllowed = r.exchan.conn.node.maxContentSizeAllowed
 	r.status = StatusOK
 	r.headResult = StatusOK
 	r.bodyResult = StatusOK
@@ -1529,7 +1529,7 @@ func (r *fcgiResponse) HasContent() bool {
 }
 func (r *fcgiResponse) proxyTakeContent() any { // to tempFile since we don't know the size of vague content
 	switch content := r._recvContent().(type) {
-	case tempFile: // [0, r.maxContentSize]
+	case tempFile: // [0, r.maxContentSizeAllowed]
 		r.contentFile = content.(*os.File)
 		return r.contentFile
 	case error: // i/o error or unexpected EOF

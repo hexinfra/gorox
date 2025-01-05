@@ -314,9 +314,9 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		.readTimeout = 30s
 		.writeTimeout = 30s
 		.idleTimeout = 2s
-		.maxStreamsPerConn = 1000
+		.maxCumulativeStreamsPerConn = 1000
 		.saveContentFilesDir = %tmpDir + "/web/backends/h1b"
-		.maxContentSize = 1T
+		.maxContentSizeAllowed = 1T
 		.recvTimeout = 0s
 		.sendTimeout = 0s
 		.balancer = "roundRobin"
@@ -374,8 +374,8 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					</code>
 				</li>
 				<li>
-					<p>.maxStreamsPerConn 同一个连接最大使用次数，0表示不受限制。</p>
-					<code>语法：.maxStreamsPerConn = Integer
+					<p>.maxCumulativeStreamsPerConn 同一个连接最大使用次数，0表示不受限制。</p>
+					<code>语法：.maxCumulativeStreamsPerConn = Integer
 						默认值：1000
 						取值范围：[0, maxInt32)
 					</code>
@@ -388,8 +388,8 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					</code>
 				</li>
 				<li>
-					<p>.maxContentSize http 内容的最大限制。</p>
-					<code>语法：.maxContentSize = Size
+					<p>.maxContentSizeAllowed http 内容的最大限制。</p>
+					<code>语法：.maxContentSizeAllowed = Size
 						默认值：1T
 						取值范围： (0, maxInt64)
 					</code>
@@ -1351,9 +1351,9 @@ httpProxy {
 		.readTimeout = 60s
 		.writeTimeout = 60s
 		// .numGates = runtime.NumCPU() ; 默认为cpu的核心数
-		.maxConnsPerGate = 10000
+		.maxConcurrentConnsPerGate = 10000
 		.webapps = ("example_com")
-		.maxContentSize = 1T
+		.maxContentSizeAllowed = 1T
 		.recvTimeout = 0s
 		.sendTimeout = 0s
 		.forceScheme = ""
@@ -1398,8 +1398,8 @@ httpProxy {
 					</code>
 				</li>
 				<li>
-					<p>.maxConnsPerGate 每个 Gate 允许的最大并发连接数。</p>
-					<code>语法：.maxConnsPerGate = 10000
+					<p>.maxConcurrentConnsPerGate 每个 Gate 允许的最大并发连接数。</p>
+					<code>语法：.maxConcurrentConnsPerGate = 10000
 						默认值：10000
 						取值范围： (0, MaxInt32]
 					</code>
@@ -1411,8 +1411,8 @@ httpProxy {
 					</code>
 				</li>
 				<li>
-					<p>.maxContentSize 数据包最大限制。</p>
-					<code>语法：.maxContentSize = Size
+					<p>.maxContentSizeAllowed 数据包最大限制。</p>
+					<code>语法：.maxContentSizeAllowed = Size
 						默认值：1T
 						取值范围： (0s, 内存最大值)
 					</code>
@@ -1470,7 +1470,7 @@ httpProxy {
 		.readTimeout = 60s
 		.writeTimeout = 60s
 		.numGates = NumCPU()
-		.maxConnsPerGate = 1000
+		.maxConcurrentConnsPerGate = 1000
 	}
 }
 </code>
@@ -1503,8 +1503,8 @@ httpProxy {
 					</code>
 				</li>
 				<li>
-					<p>.maxConnsPerGate 每个 Gate 允许的最大并发连接数。</p>
-					<code>语法：.maxConnsPerGate = 10000
+					<p>.maxConcurrentConnsPerGate 每个 Gate 允许的最大并发连接数。</p>
+					<code>语法：.maxConcurrentConnsPerGate = 10000
 						默认值：10000
 						取值范围： (0, MaxInt32]
 					</code>

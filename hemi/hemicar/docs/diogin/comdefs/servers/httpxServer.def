@@ -5,8 +5,8 @@ httpxServer "hs1" {
 	.readTimeout         = 60s
 	.writeTimeout        = 60s
 	.numGates            = runtime.NumCPU()
-	.maxConnsPerGate     = 10000
-	.maxContentSize      = 1T
+	.maxConcurrentConnsPerGate     = 10000
+	.maxContentSizeAllowed      = 1T
 	.recvTimeout         = 0s
 	.sendTimeout         = 0s
 	.forceScheme         = ""

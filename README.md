@@ -42,8 +42,8 @@ Other platforms are currently not tested and probably don't work.
 Quickstart
 ==========
 
-Using Gorox as a (Web/L7/L4) Network Proxy
-------------------------------------------
+Using Gorox as a Network Proxy
+------------------------------
 
 If you would like to use Gorox as a Network Proxy, you can download the official
 binary distribution and read the "Start and stop Gorox" section below. But if

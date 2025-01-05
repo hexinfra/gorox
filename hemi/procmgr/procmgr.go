@@ -15,6 +15,7 @@ import (
 
 	"github.com/hexinfra/gorox/hemi"
 	"github.com/hexinfra/gorox/hemi/library/system"
+
 	"github.com/hexinfra/gorox/hemi/procmgr/client"
 	"github.com/hexinfra/gorox/hemi/procmgr/common"
 	"github.com/hexinfra/gorox/hemi/procmgr/leader"
@@ -134,9 +135,9 @@ func Main(opts *Opts) {
 	case "advise":
 		system.Advise()
 	case "serve", "check":
-		if common.TopDir == "" {
+		if common.TopDir == "" { // topDir is not specified
 			common.TopDir = system.ExeDir
-		} else { // topDir is specified.
+		} else { // topDir is specified
 			dir, err := filepath.Abs(common.TopDir)
 			if err != nil {
 				common.Crash(err.Error())
@@ -174,7 +175,7 @@ func Main(opts *Opts) {
 			} else {
 				fmt.Fprintln(os.Stderr, err.Error())
 			}
-		} else if token, ok := os.LookupEnv("_DAEMON_"); ok { // run process as daemon
+		} else if token, ok := os.LookupEnv("_GOROX_DAEMON_"); ok { // run leader or worker as a daemon
 			if token == "leader" { // leader daemon
 				system.DaemonInit()
 				leader.Main()
@@ -207,7 +208,7 @@ func Main(opts *Opts) {
 				common.Crash(err.Error())
 			}
 			if process, err := os.StartProcess(system.ExePath, common.ProgramArgs, &os.ProcAttr{
-				Env:   []string{"_DAEMON_=leader", "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
+				Env:   []string{"_GOROX_DAEMON_=leader", "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
 				Files: []*os.File{devNull, stdout, stderr},
 				Sys:   system.DaemonSysAttr(),
 			}); err == nil { // leader process started

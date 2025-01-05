@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// Leader process runs CmdUI server, WebUI server, Myrox client, and manages its worker process.
+// Leader process runs CmdUI server, WebUI server, Myrox client, and manages the worker process.
 
 package leader
 
@@ -26,7 +26,7 @@ func Main() {
 	if hemi.DebugLevel() >= 1 {
 		hemi.Printf("[leader] check worker configBase=%s configFile=%s\n", configBase, configFile)
 	}
-	if _, err := hemi.StageFromFile(configBase, configFile); err != nil { // the returned stage is ignored and not used
+	if _, err := hemi.StageFromFile(configBase, configFile); err != nil { // the returned worker stage is ignored and not used
 		common.Crash("leader: " + err.Error())
 	}
 
@@ -150,7 +150,7 @@ func (w *worker) start(configBase string, configFile string, dieChan chan int) {
 
 	// Create worker process
 	process, err := os.StartProcess(system.ExePath, common.ProgramArgs, &os.ProcAttr{
-		Env:   []string{"_DAEMON_=" + admGate.Addr().String() + "|" + w.connKey, "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
+		Env:   []string{"_GOROX_DAEMON_=" + admGate.Addr().String() + "|" + w.connKey, "SYSTEMROOT=" + os.Getenv("SYSTEMROOT")},
 		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr}, // inherit standard files from leader
 		Sys:   system.DaemonSysAttr(),
 	})

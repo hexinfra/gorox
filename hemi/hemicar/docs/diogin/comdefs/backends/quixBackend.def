@@ -8,6 +8,7 @@ quixBackend "qb1" {
 		.writeTimeout = 30s
 		.weight = 9
 		.maxCumulativeStreamsPerConn = 1000
+		.maxConcurrentStreamsPerConn = 1000
 	}
 	node {
 		.tlsMode = true
@@ -17,5 +18,6 @@ quixBackend "qb1" {
 		.writeTimeout = 30s
 		.weight = 8
 		.maxCumulativeStreamsPerConn = 1000
+		.maxConcurrentStreamsPerConn = 1000
 	}
 }

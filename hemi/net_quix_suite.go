@@ -233,7 +233,7 @@ func putQUIXConn(conn *QUIXConn) {
 
 func (c *QUIXConn) onGet(id int64, gate *quixGate, quicConn *quic.Conn) {
 	router := gate.server
-	c.quixConn_.onGet(id, router.Stage().ID(), quicConn, gate.IsUDS(), gate.IsTLS(), 123) // TODO
+	c.quixConn_.onGet(id, router.Stage().ID(), quicConn, gate.IsUDS(), gate.IsTLS(), router.MaxCumulativeStreamsPerConn(), router.MaxConcurrentStreamsPerConn())
 
 	c.gate = gate
 }
@@ -613,7 +613,7 @@ func putQConn(conn *QConn) {
 }
 
 func (c *QConn) onGet(id int64, node *quixNode, quicConn *quic.Conn) {
-	c.quixConn_.onGet(id, node.Stage().ID(), quicConn, node.IsUDS(), node.IsTLS(), node.MaxCumulativeStreamsPerConn())
+	c.quixConn_.onGet(id, node.Stage().ID(), quicConn, node.IsUDS(), node.IsTLS(), node.MaxCumulativeStreamsPerConn(), node.MaxConcurrentStreamsPerConn())
 
 	c.node = node
 }
@@ -697,6 +697,7 @@ type quixHolder interface {
 type _quixHolder_ struct {
 	// States
 	maxCumulativeStreamsPerConn int32 // max cumulative streams of one conn. 0 means infinite
+	maxConcurrentStreamsPerConn int32 // max concurrent streams of one conn
 }
 
 func (h *_quixHolder_) onConfigure(component Component) {
@@ -707,11 +708,20 @@ func (h *_quixHolder_) onConfigure(component Component) {
 		}
 		return errors.New(".maxCumulativeStreamsPerConn has an invalid value")
 	}, 1000)
+
+	// maxCumulativeStreamsPerConn
+	component.ConfigureInt32("maxConcurrentStreamsPerConn", &h.maxConcurrentStreamsPerConn, func(value int32) error {
+		if value >= 0 {
+			return nil
+		}
+		return errors.New(".maxConcurrentStreamsPerConn has an invalid value")
+	}, 1000)
 }
 func (h *_quixHolder_) onPrepare(component Component) {
 }
 
 func (h *_quixHolder_) MaxCumulativeStreamsPerConn() int32 { return h.maxCumulativeStreamsPerConn }
+func (h *_quixHolder_) MaxConcurrentStreamsPerConn() int32 { return h.maxConcurrentStreamsPerConn }
 
 // quixConn
 type quixConn interface {
@@ -729,21 +739,24 @@ type quixConn_ struct {
 	udsMode              bool
 	tlsMode              bool
 	maxCumulativeStreams int32 // how many streams are allowed on this connection?
+	maxConcurrentStreams int32 // how many concurrent streams are allowed on this connection?
 	// Conn states (zeros)
 	counter           atomic.Int64 // can be used to generate a random number
 	lastRead          time.Time    // deadline of last read operation
 	lastWrite         time.Time    // deadline of last write operation
 	broken            atomic.Bool  // is connection broken?
 	cumulativeStreams atomic.Int32 // how many streams have been used?
+	concurrentStreams atomic.Int32 // how many concurrent streams?
 }
 
-func (c *quixConn_) onGet(id int64, stageID int32, quicConn *quic.Conn, udsMode bool, tlsMode bool, maxCumulativeStreams int32) {
+func (c *quixConn_) onGet(id int64, stageID int32, quicConn *quic.Conn, udsMode bool, tlsMode bool, maxCumulativeStreams int32, maxConcurrentStreams int32) {
 	c.id = id
 	c.stageID = stageID
 	c.quicConn = quicConn
 	c.udsMode = udsMode
 	c.tlsMode = tlsMode
 	c.maxCumulativeStreams = maxCumulativeStreams
+	c.maxConcurrentStreams = maxConcurrentStreams
 }
 func (c *quixConn_) onPut() {
 	c.quicConn = nil
@@ -752,6 +765,7 @@ func (c *quixConn_) onPut() {
 	c.lastWrite = time.Time{}
 	c.broken.Store(false)
 	c.cumulativeStreams.Store(0)
+	c.concurrentStreams.Store(0)
 }
 
 func (c *quixConn_) IsUDS() bool { return c.udsMode }

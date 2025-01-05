@@ -2180,7 +2180,7 @@ func (s *webSocket_) todo2() {
 const ( // HTTP/2 sizes and limits for both of our HTTP/2 server and HTTP/2 backend
 	http2MaxFrameSize         = _16K
 	http2MaxTableSize         = _4K
-	http2MaxConcurrentStreams = 127
+	http2MaxConcurrentStreams = 127 // currently hardcoded
 )
 
 const ( // HTTP/2 frame kinds

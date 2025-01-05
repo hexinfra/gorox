@@ -4057,8 +4057,8 @@ type webHolder interface {
 	// Imports
 	contentSaver
 	// Methods
-	MaxMemoryContentSize() int32 // allowed to load into memory
 	MaxCumulativeStreamsPerConn() int32
+	MaxMemoryContentSize() int32 // allowed to load into memory
 }
 
 // _webHolder_ is a mixin for webServer_ and webNode_.
@@ -4066,20 +4066,12 @@ type _webHolder_ struct {
 	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
-	maxMemoryContentSize        int32 // max content size that can be loaded into memory directly
 	maxCumulativeStreamsPerConn int32 // max cumulative streams of one conn. 0 means infinite
+	maxMemoryContentSize        int32 // max content size that can be loaded into memory directly
 }
 
 func (h *_webHolder_) onConfigure(component Component, defaultDir string, recvTimeout time.Duration, sendTimeout time.Duration) {
 	h._contentSaver_.onConfigure(component, defaultDir, recvTimeout, sendTimeout)
-
-	// maxMemoryContentSize
-	component.ConfigureInt32("maxMemoryContentSize", &h.maxMemoryContentSize, func(value int32) error {
-		if value > 0 && value <= _1G { // DO NOT CHANGE THIS, otherwise integer overflow may occur
-			return nil
-		}
-		return errors.New(".maxMemoryContentSize has an invalid value")
-	}, _16M)
 
 	// maxCumulativeStreamsPerConn
 	component.ConfigureInt32("maxCumulativeStreamsPerConn", &h.maxCumulativeStreamsPerConn, func(value int32) error {
@@ -4088,13 +4080,21 @@ func (h *_webHolder_) onConfigure(component Component, defaultDir string, recvTi
 		}
 		return errors.New(".maxCumulativeStreamsPerConn has an invalid value")
 	}, 1000)
+
+	// maxMemoryContentSize
+	component.ConfigureInt32("maxMemoryContentSize", &h.maxMemoryContentSize, func(value int32) error {
+		if value > 0 && value <= _1G { // DO NOT CHANGE THIS, otherwise integer overflow may occur
+			return nil
+		}
+		return errors.New(".maxMemoryContentSize has an invalid value")
+	}, _16M)
 }
 func (h *_webHolder_) onPrepare(component Component, perm os.FileMode) {
 	h._contentSaver_.onPrepare(component, perm)
 }
 
-func (h *_webHolder_) MaxMemoryContentSize() int32        { return h.maxMemoryContentSize }
 func (h *_webHolder_) MaxCumulativeStreamsPerConn() int32 { return h.maxCumulativeStreamsPerConn }
+func (h *_webHolder_) MaxMemoryContentSize() int32        { return h.maxMemoryContentSize }
 
 // webConn collects shared methods between *server[1-3]Conn and *backend[1-3]Conn.
 type webConn interface {

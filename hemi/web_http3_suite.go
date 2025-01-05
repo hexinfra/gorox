@@ -988,8 +988,8 @@ func (s *webSocket_) todo3() {
 //////////////////////////////////////// HTTP/3 protocol elements ////////////////////////////////////////
 
 const ( // HTTP/3 sizes and limits for both of our HTTP/3 server and HTTP/3 backend
-	http3MaxConcurrentStreams = 127
 	http3MaxTableSize         = _4K
+	http3MaxConcurrentStreams = 127 // currently hardcoded
 )
 
 // http3StaticTable

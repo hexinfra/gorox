@@ -59,10 +59,10 @@ type httpProxy struct {
 	// Parent
 	Handlet_
 	// Assocs
-	stage   *Stage     // current stage
-	webapp  *Webapp    // the webapp to which the proxy belongs
-	backend WebBackend // the *HTTP[1-3]Backend to pass to
-	cacher  Cacher     // the cacher which is used by this proxy
+	stage   *Stage      // current stage
+	webapp  *Webapp     // the webapp to which the proxy belongs
+	backend HTTPBackend // the *HTTP[1-3]Backend to pass to
+	cacher  Cacher      // the cacher which is used by this proxy
 	// States
 	WebExchanProxyConfig // embeded
 }
@@ -83,7 +83,7 @@ func (h *httpProxy) OnConfigure() {
 			if backend := h.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
 			} else {
-				h.backend = backend.(WebBackend)
+				h.backend = backend.(HTTPBackend)
 			}
 		} else {
 			UseExitln("invalid toBackend")
@@ -176,7 +176,7 @@ type WebExchanProxyConfig struct {
 }
 
 // WebExchanReverseProxy
-func WebExchanReverseProxy(foreReq Request, foreResp Response, cacher Cacher, backend WebBackend, proxyConfig *WebExchanProxyConfig) {
+func WebExchanReverseProxy(foreReq Request, foreResp Response, cacher Cacher, backend HTTPBackend, proxyConfig *WebExchanProxyConfig) {
 	var foreContent any // nil, []byte, tempFile
 	foreHasContent := foreReq.HasContent()
 	if foreHasContent && proxyConfig.BufferClientContent { // including size 0
@@ -310,9 +310,9 @@ type sockProxy struct {
 	// Parent
 	Socklet_
 	// Assocs
-	stage   *Stage     // current stage
-	webapp  *Webapp    // the webapp to which the proxy belongs
-	backend WebBackend // the *HTTP[1-3]Backend to pass to
+	stage   *Stage      // current stage
+	webapp  *Webapp     // the webapp to which the proxy belongs
+	backend HTTPBackend // the *HTTP[1-3]Backend to pass to
 	// States
 	WebSocketProxyConfig // embeded
 }
@@ -333,7 +333,7 @@ func (s *sockProxy) OnConfigure() {
 			if backend := s.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
 			} else {
-				s.backend = backend.(WebBackend)
+				s.backend = backend.(HTTPBackend)
 			}
 		} else {
 			UseExitln("invalid toBackend")
@@ -358,7 +358,7 @@ type WebSocketProxyConfig struct {
 }
 
 // WebSocketReverseProxy
-func WebSocketReverseProxy(req Request, sock Socket, backend WebBackend, proxyConfig *WebSocketProxyConfig) {
+func WebSocketReverseProxy(req Request, sock Socket, backend HTTPBackend, proxyConfig *WebSocketProxyConfig) {
 	// TODO
 	sock.Close()
 }

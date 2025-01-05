@@ -601,19 +601,19 @@ func init() {
 // httpxServer is the HTTP/1.x and HTTP/2 server. An httpxServer has many httpxGates.
 type httpxServer struct {
 	// Parent
-	webServer_[*httpxGate]
+	httpServer_[*httpxGate]
 	// States
 	httpMode int8 // 0: adaptive, 1: http/1.x, 2: http/2
 }
 
 func (s *httpxServer) onCreate(name string, stage *Stage) {
-	s.webServer_.onCreate(name, stage)
+	s.httpServer_.onCreate(name, stage)
 
 	s.httpMode = 1 // http/1.x by default. change to adaptive mode after http/2 server has been fully implemented
 }
 
 func (s *httpxServer) OnConfigure() {
-	s.webServer_.onConfigure()
+	s.httpServer_.onConfigure()
 
 	if DebugLevel() >= 2 { // remove this condition after http/2 server has been fully implemented
 		// httpMode
@@ -638,7 +638,7 @@ func (s *httpxServer) OnConfigure() {
 	}
 }
 func (s *httpxServer) OnPrepare() {
-	s.webServer_.onPrepare()
+	s.httpServer_.onPrepare()
 
 	if s.IsTLS() {
 		var nextProtos []string
@@ -681,13 +681,13 @@ func (s *httpxServer) Serve() { // runner
 // httpxGate is a gate of httpxServer.
 type httpxGate struct {
 	// Parent
-	webGate_[*httpxServer]
+	httpGate_[*httpxServer]
 	// States
 	listener net.Listener // the real gate. set after open
 }
 
 func (g *httpxGate) onNew(server *httpxServer, id int32) {
-	g.webGate_.onNew(server, id, server.MaxConcurrentConnsPerGate())
+	g.httpGate_.onNew(server, id, server.MaxConcurrentConnsPerGate())
 }
 
 func (g *httpxGate) Open() error {
@@ -1268,7 +1268,7 @@ func (s *server2Stream) onEnd() { // for zeros
 	s.conn = nil // we can't do this in http2Stream_.onEnd() due to Go's limit, so put here
 }
 
-func (s *server2Stream) Holder() webHolder { return s.conn.gate.server }
+func (s *server2Stream) Holder() httpHolder { return s.conn.gate.server }
 
 func (s *server2Stream) execute() { // runner
 	defer putServer2Stream(s)
@@ -1451,22 +1451,22 @@ func init() {
 // HTTP2Backend
 type HTTP2Backend struct {
 	// Parent
-	webBackend_[*http2Node]
+	httpBackend_[*http2Node]
 	// States
 }
 
 func (b *HTTP2Backend) onCreate(name string, stage *Stage) {
-	b.webBackend_.OnCreate(name, stage)
+	b.httpBackend_.OnCreate(name, stage)
 }
 
 func (b *HTTP2Backend) OnConfigure() {
-	b.webBackend_.OnConfigure()
+	b.httpBackend_.OnConfigure()
 
 	// sub components
 	b.ConfigureNodes()
 }
 func (b *HTTP2Backend) OnPrepare() {
-	b.webBackend_.OnPrepare()
+	b.httpBackend_.OnPrepare()
 
 	// sub components
 	b.PrepareNodes()
@@ -1491,23 +1491,23 @@ func (b *HTTP2Backend) StoreStream(stream stream) {
 // http2Node
 type http2Node struct {
 	// Parent
-	webNode_[*HTTP2Backend]
+	httpNode_[*HTTP2Backend]
 	// States
 }
 
 func (n *http2Node) onCreate(name string, stage *Stage, backend *HTTP2Backend) {
-	n.webNode_.OnCreate(name, stage, backend)
+	n.httpNode_.OnCreate(name, stage, backend)
 }
 
 func (n *http2Node) OnConfigure() {
-	n.webNode_.OnConfigure()
+	n.httpNode_.OnConfigure()
 	if n.tlsMode {
 		n.tlsConfig.InsecureSkipVerify = true
 		n.tlsConfig.NextProtos = []string{"h2"}
 	}
 }
 func (n *http2Node) OnPrepare() {
-	n.webNode_.OnPrepare()
+	n.httpNode_.OnPrepare()
 }
 
 func (n *http2Node) Maintain() { // runner
@@ -1718,7 +1718,7 @@ func (s *backend2Stream) onEnd() { // for zeros
 	s.conn = nil // we can't do this in http2Stream_.onEnd() due to Go's limit, so put here
 }
 
-func (s *backend2Stream) Holder() webHolder { return s.conn.node }
+func (s *backend2Stream) Holder() httpHolder { return s.conn.node }
 
 func (s *backend2Stream) Request() request   { return &s.request }
 func (s *backend2Stream) Response() response { return &s.response }

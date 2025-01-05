@@ -274,7 +274,7 @@ func (s *server1Stream) onEnd() { // for zeros
 	s.http1Stream_.onEnd()
 }
 
-func (s *server1Stream) Holder() webHolder { return s.conn.gate.server }
+func (s *server1Stream) Holder() httpHolder { return s.conn.gate.server }
 
 func (s *server1Stream) execute() {
 	req, resp := &s.request, &s.response
@@ -839,7 +839,7 @@ beforeVersion: // r.elemFore is at ' '.
 		r.httpVersion = Version1_1
 	} else if bytes.Equal(version, bytesHTTP1_0) {
 		r.httpVersion = Version1_0
-	} else { // i don't believe there will be a HTTP/1.2 in the future.
+	} else { // i don't believe there will be an HTTP/1.2 in the future.
 		r.headResult = StatusHTTPVersionNotSupported
 		return false
 	}
@@ -1147,22 +1147,22 @@ func init() {
 // HTTP1Backend
 type HTTP1Backend struct {
 	// Parent
-	webBackend_[*http1Node]
+	httpBackend_[*http1Node]
 	// States
 }
 
 func (b *HTTP1Backend) onCreate(name string, stage *Stage) {
-	b.webBackend_.OnCreate(name, stage)
+	b.httpBackend_.OnCreate(name, stage)
 }
 
 func (b *HTTP1Backend) OnConfigure() {
-	b.webBackend_.OnConfigure()
+	b.httpBackend_.OnConfigure()
 
 	// sub components
 	b.ConfigureNodes()
 }
 func (b *HTTP1Backend) OnPrepare() {
-	b.webBackend_.OnPrepare()
+	b.httpBackend_.OnPrepare()
 
 	// sub components
 	b.PrepareNodes()
@@ -1187,7 +1187,7 @@ func (b *HTTP1Backend) StoreStream(stream stream) {
 // http1Node is a node in HTTP1Backend.
 type http1Node struct {
 	// Parent
-	webNode_[*HTTP1Backend]
+	httpNode_[*HTTP1Backend]
 	// States
 	connPool struct {
 		sync.Mutex
@@ -1198,18 +1198,18 @@ type http1Node struct {
 }
 
 func (n *http1Node) onCreate(name string, stage *Stage, backend *HTTP1Backend) {
-	n.webNode_.OnCreate(name, stage, backend)
+	n.httpNode_.OnCreate(name, stage, backend)
 }
 
 func (n *http1Node) OnConfigure() {
-	n.webNode_.OnConfigure()
+	n.httpNode_.OnConfigure()
 	if n.tlsMode {
 		n.tlsConfig.InsecureSkipVerify = true
 		n.tlsConfig.NextProtos = []string{"http/1.1"}
 	}
 }
 func (n *http1Node) OnPrepare() {
-	n.webNode_.OnPrepare()
+	n.httpNode_.OnPrepare()
 }
 
 func (n *http1Node) Maintain() { // runner
@@ -1486,7 +1486,7 @@ func (s *backend1Stream) onEnd() { // for zeros
 	s.http1Stream_.onEnd()
 }
 
-func (s *backend1Stream) Holder() webHolder { return s.conn.node }
+func (s *backend1Stream) Holder() httpHolder { return s.conn.node }
 
 func (s *backend1Stream) Request() request   { return &s.request }
 func (s *backend1Stream) Response() response { return &s.response }

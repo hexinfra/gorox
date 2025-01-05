@@ -148,20 +148,20 @@ func init() {
 // http3Server is the HTTP/3 server. An http3Server has many http3Gates.
 type http3Server struct {
 	// Parent
-	webServer_[*http3Gate]
+	httpServer_[*http3Gate]
 	// States
 }
 
 func (s *http3Server) onCreate(name string, stage *Stage) {
-	s.webServer_.onCreate(name, stage)
+	s.httpServer_.onCreate(name, stage)
 	s.tlsConfig = new(tls.Config) // currently tls mode is always enabled in http/3
 }
 
 func (s *http3Server) OnConfigure() {
-	s.webServer_.onConfigure()
+	s.httpServer_.onConfigure()
 }
 func (s *http3Server) OnPrepare() {
-	s.webServer_.onPrepare()
+	s.httpServer_.onPrepare()
 }
 
 func (s *http3Server) Serve() { // runner
@@ -189,13 +189,13 @@ func (s *http3Server) Serve() { // runner
 // http3Gate is a gate of http3Server.
 type http3Gate struct {
 	// Parent
-	webGate_[*http3Server]
+	httpGate_[*http3Server]
 	// States
 	listener *quic.Listener // the real gate. set after open
 }
 
 func (g *http3Gate) onNew(server *http3Server, id int32) {
-	g.webGate_.onNew(server, id, server.MaxConcurrentConnsPerGate())
+	g.httpGate_.onNew(server, id, server.MaxConcurrentConnsPerGate())
 }
 
 func (g *http3Gate) Open() error {
@@ -371,7 +371,7 @@ func (s *server3Stream) onEnd() { // for zeros
 	s.conn = nil // we can't do this in http3Stream_.onEnd() due to Go's limit, so put here
 }
 
-func (s *server3Stream) Holder() webHolder { return s.conn.gate.server }
+func (s *server3Stream) Holder() httpHolder { return s.conn.gate.server }
 
 func (s *server3Stream) execute() { // runner
 	// TODO ...
@@ -538,22 +538,22 @@ func init() {
 // HTTP3Backend
 type HTTP3Backend struct {
 	// Parent
-	webBackend_[*http3Node]
+	httpBackend_[*http3Node]
 	// States
 }
 
 func (b *HTTP3Backend) onCreate(name string, stage *Stage) {
-	b.webBackend_.OnCreate(name, stage)
+	b.httpBackend_.OnCreate(name, stage)
 }
 
 func (b *HTTP3Backend) OnConfigure() {
-	b.webBackend_.OnConfigure()
+	b.httpBackend_.OnConfigure()
 
 	// sub components
 	b.ConfigureNodes()
 }
 func (b *HTTP3Backend) OnPrepare() {
-	b.webBackend_.OnPrepare()
+	b.httpBackend_.OnPrepare()
 
 	// sub components
 	b.PrepareNodes()
@@ -578,22 +578,22 @@ func (b *HTTP3Backend) StoreStream(stream stream) {
 // http3Node
 type http3Node struct {
 	// Parent
-	webNode_[*HTTP3Backend]
+	httpNode_[*HTTP3Backend]
 	// States
 }
 
 func (n *http3Node) onCreate(name string, stage *Stage, backend *HTTP3Backend) {
-	n.webNode_.OnCreate(name, stage, backend)
+	n.httpNode_.OnCreate(name, stage, backend)
 }
 
 func (n *http3Node) OnConfigure() {
-	n.webNode_.OnConfigure()
+	n.httpNode_.OnConfigure()
 	if n.tlsMode {
 		n.tlsConfig.InsecureSkipVerify = true
 	}
 }
 func (n *http3Node) OnPrepare() {
-	n.webNode_.OnPrepare()
+	n.httpNode_.OnPrepare()
 }
 
 func (n *http3Node) Maintain() { // runner
@@ -743,7 +743,7 @@ func (s *backend3Stream) onEnd() { // for zeros
 	s.conn = nil // we can't do this in http3Stream_.onEnd() due to Go's limit, so put here
 }
 
-func (s *backend3Stream) Holder() webHolder { return s.conn.node }
+func (s *backend3Stream) Holder() httpHolder { return s.conn.node }
 
 func (s *backend3Stream) Request() request   { return &s.request }
 func (s *backend3Stream) Response() response { return &s.response }

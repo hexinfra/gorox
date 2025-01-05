@@ -25,8 +25,8 @@ import (
 
 //////////////////////////////////////// HTTP holder implementation ////////////////////////////////////////
 
-// webHolder collects shared methods between *http[x3]Server and *http[1-3]Node.
-type webHolder interface {
+// httpHolder collects shared methods between *http[x3]Server and *http[1-3]Node.
+type httpHolder interface {
 	// Imports
 	contentSaver
 	// Methods
@@ -34,8 +34,8 @@ type webHolder interface {
 	MaxMemoryContentSize() int32 // allowed to load into memory
 }
 
-// _webHolder_ is a mixin for webServer_ and webNode_.
-type _webHolder_ struct {
+// _httpHolder_ is a mixin for httpServer_ and httpNode_.
+type _httpHolder_ struct {
 	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
@@ -43,7 +43,7 @@ type _webHolder_ struct {
 	maxMemoryContentSize        int32 // max content size that can be loaded into memory directly
 }
 
-func (h *_webHolder_) onConfigure(component Component, defaultDir string, recvTimeout time.Duration, sendTimeout time.Duration) {
+func (h *_httpHolder_) onConfigure(component Component, defaultDir string, recvTimeout time.Duration, sendTimeout time.Duration) {
 	h._contentSaver_.onConfigure(component, defaultDir, recvTimeout, sendTimeout)
 
 	// maxCumulativeStreamsPerConn
@@ -62,12 +62,12 @@ func (h *_webHolder_) onConfigure(component Component, defaultDir string, recvTi
 		return errors.New(".maxMemoryContentSize has an invalid value")
 	}, _16M)
 }
-func (h *_webHolder_) onPrepare(component Component, perm os.FileMode) {
+func (h *_httpHolder_) onPrepare(component Component, perm os.FileMode) {
 	h._contentSaver_.onPrepare(component, perm)
 }
 
-func (h *_webHolder_) MaxCumulativeStreamsPerConn() int32 { return h.maxCumulativeStreamsPerConn }
-func (h *_webHolder_) MaxMemoryContentSize() int32        { return h.maxMemoryContentSize }
+func (h *_httpHolder_) MaxCumulativeStreamsPerConn() int32 { return h.maxCumulativeStreamsPerConn }
+func (h *_httpHolder_) MaxMemoryContentSize() int32        { return h.maxMemoryContentSize }
 
 // httpConn collects shared methods between *server[1-3]Conn and *backend[1-3]Conn.
 type httpConn interface {
@@ -127,7 +127,7 @@ func (c *httpConn_) isBroken() bool { return c.broken.Load() }
 
 // httpStream collects shared methods between *server[1-3]Stream and *backend[1-3]Stream.
 type httpStream interface {
-	Holder() webHolder
+	Holder() httpHolder
 	Conn() httpConn
 
 	remoteAddr() net.Addr
@@ -165,21 +165,21 @@ func (s *httpStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 //////////////////////////////////////// HTTP server implementation ////////////////////////////////////////
 
-// WebServer
-type WebServer interface { // for *http[x3]Server
+// HTTPServer
+type HTTPServer interface { // for *http[x3]Server
 	// Imports
 	Server
-	webHolder
+	httpHolder
 	// Methods
 	bindWebapps()
 }
 
-// webServer_ is the parent for http[x3]Server.
-type webServer_[G webGate] struct {
+// httpServer_ is the parent for http[x3]Server.
+type httpServer_[G httpGate] struct {
 	// Parent
 	Server_[G]
 	// Mixins
-	_webHolder_
+	_httpHolder_
 	// Assocs
 	defaultWebapp *Webapp // default webapp if not found
 	// States
@@ -191,15 +191,15 @@ type webServer_[G webGate] struct {
 	alignScheme   bool                   // use https scheme for TLS and http scheme for others?
 }
 
-func (s *webServer_[G]) onCreate(name string, stage *Stage) {
+func (s *httpServer_[G]) onCreate(name string, stage *Stage) {
 	s.Server_.OnCreate(name, stage)
 
 	s.forceScheme = -1 // not forced
 }
 
-func (s *webServer_[G]) onConfigure() {
+func (s *httpServer_[G]) onConfigure() {
 	s.Server_.OnConfigure()
-	s._webHolder_.onConfigure(s, TmpDir()+"/web/servers/"+s.name, 0, 0)
+	s._httpHolder_.onConfigure(s, TmpDir()+"/web/servers/"+s.name, 0, 0)
 
 	// webapps
 	s.ConfigureStringList("webapps", &s.webapps, nil, []string{})
@@ -222,12 +222,12 @@ func (s *webServer_[G]) onConfigure() {
 	// alignScheme
 	s.ConfigureBool("alignScheme", &s.alignScheme, true)
 }
-func (s *webServer_[G]) onPrepare() {
+func (s *httpServer_[G]) onPrepare() {
 	s.Server_.OnPrepare()
-	s._webHolder_.onPrepare(s, 0755)
+	s._httpHolder_.onPrepare(s, 0755)
 }
 
-func (s *webServer_[G]) bindWebapps() {
+func (s *httpServer_[G]) bindWebapps() {
 	for _, webappName := range s.webapps {
 		webapp := s.stage.Webapp(webappName)
 		if webapp == nil {
@@ -246,7 +246,7 @@ func (s *webServer_[G]) bindWebapps() {
 			}
 			s.tlsConfig.Certificates = append(s.tlsConfig.Certificates, certificate)
 		}
-		webapp.bindServer(s.shell.(WebServer))
+		webapp.bindServer(s.shell.(HTTPServer))
 		if webapp.isDefault {
 			s.defaultWebapp = webapp
 		}
@@ -264,7 +264,7 @@ func (s *webServer_[G]) bindWebapps() {
 		}
 	}
 }
-func (s *webServer_[G]) findWebapp(hostname []byte) *Webapp {
+func (s *httpServer_[G]) findWebapp(hostname []byte) *Webapp {
 	// TODO: use hash table?
 	for _, exactMap := range s.exactWebapps {
 		if bytes.Equal(hostname, exactMap.hostname) {
@@ -286,15 +286,15 @@ func (s *webServer_[G]) findWebapp(hostname []byte) *Webapp {
 	return s.defaultWebapp // may be nil
 }
 
-// webGate
-type webGate interface {
+// httpGate
+type httpGate interface {
 	// Imports
 	Gate
 	// Methods
 }
 
-// webGate_ is the parent for http[x3]Gate.
-type webGate_[S WebServer] struct {
+// httpGate_ is the parent for http[x3]Gate.
+type httpGate_[S HTTPServer] struct {
 	// Parent
 	Gate_[S]
 	// States
@@ -302,15 +302,15 @@ type webGate_[S WebServer] struct {
 	concurrentConns    atomic.Int32 // TODO: false sharing
 }
 
-func (g *webGate_[S]) onNew(server S, id int32, maxConcurrentConns int32) {
+func (g *httpGate_[S]) onNew(server S, id int32, maxConcurrentConns int32) {
 	g.Gate_.OnNew(server, id)
 	g.maxConcurrentConns = maxConcurrentConns
 	g.concurrentConns.Store(0)
 }
 
-func (g *webGate_[S]) DecConcurrentConns() int32 { return g.concurrentConns.Add(-1) }
-func (g *webGate_[S]) IncConcurrentConns() int32 { return g.concurrentConns.Add(1) }
-func (g *webGate_[S]) ReachLimit(concurrentConns int32) bool {
+func (g *httpGate_[S]) DecConcurrentConns() int32 { return g.concurrentConns.Add(-1) }
+func (g *httpGate_[S]) IncConcurrentConns() int32 { return g.concurrentConns.Add(1) }
+func (g *httpGate_[S]) ReachLimit(concurrentConns int32) bool {
 	return concurrentConns > g.maxConcurrentConns
 }
 
@@ -3037,8 +3037,8 @@ func (s *serverSocket_) serverTodo() {
 
 //////////////////////////////////////// HTTP backend implementation ////////////////////////////////////////
 
-// WebBackend
-type WebBackend interface { // for *HTTP[1-3]Backend
+// HTTPBackend
+type HTTPBackend interface { // for *HTTP[1-3]Backend
 	// Imports
 	Backend
 	// Methods
@@ -3046,51 +3046,51 @@ type WebBackend interface { // for *HTTP[1-3]Backend
 	StoreStream(stream stream)
 }
 
-// webBackend_ is the parent for http[1-3]Backend.
-type webBackend_[N WebNode] struct {
+// httpBackend_ is the parent for http[1-3]Backend.
+type httpBackend_[N HTTPNode] struct {
 	// Parent
 	Backend_[N]
 	// States
 }
 
-func (b *webBackend_[N]) onCreate(name string, stage *Stage) {
+func (b *httpBackend_[N]) onCreate(name string, stage *Stage) {
 	b.Backend_.OnCreate(name, stage)
 }
 
-func (b *webBackend_[N]) onConfigure() {
+func (b *httpBackend_[N]) onConfigure() {
 	b.Backend_.OnConfigure()
 }
-func (b *webBackend_[N]) onPrepare() {
+func (b *httpBackend_[N]) onPrepare() {
 	b.Backend_.OnPrepare()
 }
 
-// WebNode
-type WebNode interface {
+// HTTPNode
+type HTTPNode interface {
 	// Imports
 	Node
-	webHolder
+	httpHolder
 	// Methods
 }
 
-// webNode_ is the parent for http[1-3]Node.
-type webNode_[B WebBackend] struct {
+// httpNode_ is the parent for http[1-3]Node.
+type httpNode_[B HTTPBackend] struct {
 	// Parent
 	Node_[B]
 	// Mixins
-	_webHolder_
+	_httpHolder_
 	// States
 	keepAliveConns int32         // max conns to keep alive
 	idleTimeout    time.Duration // conn idle timeout
 	maxLifetime    time.Duration // conn's max lifetime
 }
 
-func (n *webNode_[B]) OnCreate(name string, stage *Stage, backend B) {
+func (n *httpNode_[B]) OnCreate(name string, stage *Stage, backend B) {
 	n.Node_.OnCreate(name, stage, backend)
 }
 
-func (n *webNode_[B]) OnConfigure() {
+func (n *httpNode_[B]) OnConfigure() {
 	n.Node_.OnConfigure()
-	n._webHolder_.onConfigure(n, TmpDir()+"/web/backends/"+n.backend.Name()+"/"+n.name, 0, 0)
+	n._httpHolder_.onConfigure(n, TmpDir()+"/web/backends/"+n.backend.Name()+"/"+n.name, 0, 0)
 
 	// keepAliveConns
 	n.ConfigureInt32("keepAliveConns", &n.keepAliveConns, func(value int32) error {
@@ -3116,9 +3116,9 @@ func (n *webNode_[B]) OnConfigure() {
 		return errors.New(".maxLifetime has an invalid value")
 	}, 1*time.Minute)
 }
-func (n *webNode_[B]) OnPrepare() {
+func (n *httpNode_[B]) OnPrepare() {
 	n.Node_.OnPrepare()
-	n._webHolder_.onPrepare(n, 0755)
+	n._httpHolder_.onPrepare(n, 0755)
 }
 
 // stream is the backend-side http stream.

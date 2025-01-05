@@ -732,11 +732,11 @@ func (s *Stage) bindServerServices() {
 }
 func (s *Stage) bindServerWebapps() {
 	if DebugLevel() >= 1 {
-		Println("bind webapps to web servers")
+		Println("bind webapps to http servers")
 	}
 	for _, server := range s.servers {
-		if webServer, ok := server.(WebServer); ok {
-			webServer.bindWebapps()
+		if httpServer, ok := server.(HTTPServer); ok {
+			httpServer.bindWebapps()
 		}
 	}
 }

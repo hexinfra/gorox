@@ -64,7 +64,7 @@ type Webapp struct {
 	// Assocs
 	stage    *Stage            // current stage
 	stater   Stater            // the stater which is used by this webapp
-	servers  []WebServer       // bound web servers. may be empty
+	servers  []HTTPServer      // bound http servers. may be empty
 	handlets compDict[Handlet] // defined handlets. indexed by name
 	revisers compDict[Reviser] // defined revisers. indexed by name
 	socklets compDict[Socklet] // defined socklets. indexed by name
@@ -81,7 +81,7 @@ type Webapp struct {
 	maxMultiformSize int64             // max content size when content type is multipart/form-data
 	settings         map[string]string // webapp settings defined and used by users
 	settingsLock     sync.RWMutex      // protects settings
-	isDefault        bool              // is this webapp the default webapp of its belonging web servers?
+	isDefault        bool              // is this webapp the default webapp of its belonging http servers?
 	exactHostnames   [][]byte          // like: ("example.com")
 	suffixHostnames  [][]byte          // like: ("*.example.com")
 	prefixHostnames  [][]byte          // like: ("www.example.*")
@@ -328,7 +328,7 @@ func (a *Webapp) createRule(name string) *Rule {
 	return rule
 }
 
-func (a *Webapp) bindServer(server WebServer) { a.servers = append(a.servers, server) }
+func (a *Webapp) bindServer(server HTTPServer) { a.servers = append(a.servers, server) }
 
 func (a *Webapp) Handlet(name string) Handlet { return a.handlets[name] }
 func (a *Webapp) Reviser(name string) Reviser { return a.revisers[name] }

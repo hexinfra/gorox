@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// QUIX (QUIC over UDP/UDS) router, reverse proxy, and backend implementation. See RFC 8999, RFC 9000, RFC 9001, and RFC 9002.
+// QUIX (QUIC over UDP/UDS) router and backend implementation. See RFC 8999, RFC 9000, RFC 9001, and RFC 9002.
 
 package hemi
 
@@ -415,73 +415,6 @@ type QUIXDealet_ struct {
 	// Parent
 	Component_
 	// States
-}
-
-//////////////////////////////////////// QUIX reverse proxy implementation ////////////////////////////////////////
-
-func init() {
-	RegisterQUIXDealet("quixProxy", func(name string, stage *Stage, router *QUIXRouter) QUIXDealet {
-		d := new(quixProxy)
-		d.onCreate(name, stage, router)
-		return d
-	})
-}
-
-// quixProxy dealet passes QUIX connections to QUIX backends.
-type quixProxy struct {
-	// Parent
-	QUIXDealet_
-	// Assocs
-	stage   *Stage       // current stage
-	router  *QUIXRouter  // the router to which the dealet belongs
-	backend *QUIXBackend // the backend to pass to
-	// States
-	QUIXProxyConfig // embeded
-}
-
-func (d *quixProxy) onCreate(name string, stage *Stage, router *QUIXRouter) {
-	d.MakeComp(name)
-	d.stage = stage
-	d.router = router
-}
-func (d *quixProxy) OnShutdown() {
-	d.router.DecSub() // dealet
-}
-
-func (d *quixProxy) OnConfigure() {
-	// toBackend
-	if v, ok := d.Find("toBackend"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if backend := d.stage.Backend(name); backend == nil {
-				UseExitf("unknown backend: '%s'\n", name)
-			} else if quixBackend, ok := backend.(*QUIXBackend); ok {
-				d.backend = quixBackend
-			} else {
-				UseExitf("incorrect backend '%s' for quixProxy\n", name)
-			}
-		} else {
-			UseExitln("invalid toBackend")
-		}
-	} else {
-		UseExitln("toBackend is required for quixProxy")
-	}
-}
-func (d *quixProxy) OnPrepare() {
-}
-
-func (d *quixProxy) Deal(conn *QUIXConn, stream *QUIXStream) (dealt bool) {
-	QUIXReverseProxy(conn, stream, d.backend, &d.QUIXProxyConfig)
-	return true
-}
-
-// QUIXProxyConfig
-type QUIXProxyConfig struct {
-	// TODO
-}
-
-// QUIXReverseProxy
-func QUIXReverseProxy(conn *QUIXConn, stream *QUIXStream, backend *QUIXBackend, proxyConfig *QUIXProxyConfig) {
-	// TODO
 }
 
 //////////////////////////////////////// QUIX backend implementation ////////////////////////////////////////

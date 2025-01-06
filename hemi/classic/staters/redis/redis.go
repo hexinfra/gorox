@@ -11,8 +11,6 @@ import (
 	"time"
 
 	. "github.com/hexinfra/gorox/hemi"
-
-	_ "github.com/hexinfra/gorox/hemi/classic/backends/redis"
 )
 
 func init() {

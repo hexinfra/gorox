@@ -8,10 +8,6 @@
 package classic
 
 import ( // preload all
-	_ "github.com/hexinfra/gorox/hemi/classic/backends/mongo"
-	_ "github.com/hexinfra/gorox/hemi/classic/backends/mysql"
-	_ "github.com/hexinfra/gorox/hemi/classic/backends/pgsql"
-	_ "github.com/hexinfra/gorox/hemi/classic/backends/redis"
 	_ "github.com/hexinfra/gorox/hemi/classic/cachers/local"
 	_ "github.com/hexinfra/gorox/hemi/classic/cachers/mem"
 	_ "github.com/hexinfra/gorox/hemi/classic/cachers/redis"

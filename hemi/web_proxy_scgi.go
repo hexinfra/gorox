@@ -3,14 +3,14 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// uwsgi reverse proxy (a.k.a. gateway) and backend implementation. See: https://uwsgi-docs.readthedocs.io/en/latest/Protocol.html
+// SCGI reverse proxy (a.k.a. gateway) and backend implementation. See: https://python.ca/scgi/protocol.txt
 
-// HTTP trailers: unknown
-// Persistent connection: unknown
-// Vague request content: maybe? see: https://uwsgi-docs.readthedocs.io/en/latest/Chunked.html
-// Vague response content: maybe? see: https://uwsgi-docs.readthedocs.io/en/latest/Chunked.html
+// HTTP trailers: not supported
+// Persistent connection: not supported
+// Vague request content: not supported, proxy MUST send a sized request
+// Vague response content: supported
 
-// uwsgi is now in maintenance mode, see: https://uwsgi-docs.readthedocs.io/en/latest/
+// SCGI protocol doesn't define the format of its response. Seems it follows the format of CGI response.
 
 package hemi
 
@@ -21,54 +21,54 @@ import (
 	"time"
 )
 
-//////////////////////////////////////// uwsgi reverse proxy implementation ////////////////////////////////////////
+//////////////////////////////////////// SCGI reverse proxy implementation ////////////////////////////////////////
 
 func init() {
-	RegisterHandlet("uwsgiProxy", func(name string, stage *Stage, webapp *Webapp) Handlet {
-		h := new(uwsgiProxy)
+	RegisterHandlet("scgiProxy", func(name string, stage *Stage, webapp *Webapp) Handlet {
+		h := new(scgiProxy)
 		h.onCreate(name, stage, webapp)
 		return h
 	})
 }
 
-// uwsgiProxy handlet passes http requests to uWSGI backends and caches responses.
-type uwsgiProxy struct {
+// scgiProxy handlet passes http requests to SCGI backends and caches responses.
+type scgiProxy struct {
 	// Parent
 	Handlet_
 	// Assocs
-	stage   *Stage        // current stage
-	webapp  *Webapp       // the webapp to which the proxy belongs
-	backend *uwsgiBackend // the backend to pass to
-	cacher  Cacher        // the cacher which is used by this proxy
+	stage   *Stage       // current stage
+	webapp  *Webapp      // the webapp to which the proxy belongs
+	backend *scgiBackend // the backend to pass to
+	cacher  Cacher       // the cacher which is used by this proxy
 	// States
 	WebExchanProxyConfig // embeded
 }
 
-func (h *uwsgiProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
+func (h *scgiProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
 	h.MakeComp(name)
 	h.stage = stage
 	h.webapp = webapp
 }
-func (h *uwsgiProxy) OnShutdown() {
+func (h *scgiProxy) OnShutdown() {
 	h.webapp.DecSub() // handlet
 }
 
-func (h *uwsgiProxy) OnConfigure() {
+func (h *scgiProxy) OnConfigure() {
 	// toBackend
 	if v, ok := h.Find("toBackend"); ok {
 		if name, ok := v.String(); ok && name != "" {
 			if backend := h.stage.Backend(name); backend == nil {
 				UseExitf("unknown backend: '%s'\n", name)
-			} else if uwsgiBackend, ok := backend.(*uwsgiBackend); ok {
-				h.backend = uwsgiBackend
+			} else if scgiBackend, ok := backend.(*scgiBackend); ok {
+				h.backend = scgiBackend
 			} else {
-				UseExitf("incorrect backend '%s' for uwsgiProxy, must be uwsgiBackend\n", name)
+				UseExitf("incorrect backend '%s' for scgiProxy, must be scgiBackend\n", name)
 			}
 		} else {
 			UseExitln("invalid toBackend")
 		}
 	} else {
-		UseExitln("toBackend is required for uwsgiProxy")
+		UseExitln("toBackend is required for scgiProxy")
 	}
 
 	// withCacher
@@ -89,98 +89,98 @@ func (h *uwsgiProxy) OnConfigure() {
 	// bufferServerContent
 	h.ConfigureBool("bufferServerContent", &h.BufferServerContent, true)
 }
-func (h *uwsgiProxy) OnPrepare() {
+func (h *scgiProxy) OnPrepare() {
 }
 
-func (h *uwsgiProxy) IsProxy() bool { return true }
-func (h *uwsgiProxy) IsCache() bool { return h.cacher != nil }
+func (h *scgiProxy) IsProxy() bool { return true }
+func (h *scgiProxy) IsCache() bool { return h.cacher != nil }
 
-func (h *uwsgiProxy) Handle(httpReq Request, httpResp Response) (handled bool) {
+func (h *scgiProxy) Handle(httpReq Request, httpResp Response) (handled bool) {
 	// TODO: implementation
-	httpResp.Send("uwsgi")
+	httpResp.Send("SCGI")
 	return true
 }
 
-//////////////////////////////////////// uwsgi backend implementation ////////////////////////////////////////
+//////////////////////////////////////// SCGI backend implementation ////////////////////////////////////////
 
 func init() {
-	RegisterBackend("uwsgiBackend", func(name string, stage *Stage) Backend {
-		b := new(uwsgiBackend)
+	RegisterBackend("scgiBackend", func(name string, stage *Stage) Backend {
+		b := new(scgiBackend)
 		b.onCreate(name, stage)
 		return b
 	})
 }
 
-// uwsgiBackend
-type uwsgiBackend struct {
+// scgiBackend
+type scgiBackend struct {
 	// Parent
-	Backend_[*uwsgiNode]
+	Backend_[*scgiNode]
 	// States
 }
 
-func (b *uwsgiBackend) onCreate(name string, stage *Stage) {
+func (b *scgiBackend) onCreate(name string, stage *Stage) {
 	b.Backend_.OnCreate(name, stage)
 }
 
-func (b *uwsgiBackend) OnConfigure() {
+func (b *scgiBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
 
 	// sub components
 	b.ConfigureNodes()
 }
-func (b *uwsgiBackend) OnPrepare() {
+func (b *scgiBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
 
 	// sub components
 	b.PrepareNodes()
 }
 
-func (b *uwsgiBackend) CreateNode(name string) Node {
-	node := new(uwsgiNode)
+func (b *scgiBackend) CreateNode(name string) Node {
+	node := new(scgiNode)
 	node.onCreate(name, b.stage, b)
 	b.AddNode(node)
 	return node
 }
 
-// uwsgiNode
-type uwsgiNode struct {
+// scgiNode
+type scgiNode struct {
 	// Parent
-	Node_[*uwsgiBackend]
+	Node_[*scgiBackend]
 	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
 }
 
-func (n *uwsgiNode) onCreate(name string, stage *Stage, backend *uwsgiBackend) {
+func (n *scgiNode) onCreate(name string, stage *Stage, backend *scgiBackend) {
 	n.Node_.OnCreate(name, stage, backend)
 }
 
-func (n *uwsgiNode) OnConfigure() {
+func (n *scgiNode) OnConfigure() {
 	n.Node_.OnConfigure()
 	n._contentSaver_.onConfigure(n, TmpDir()+"/web/backends/"+n.backend.name+"/"+n.name, 0, 0)
 }
-func (n *uwsgiNode) OnPrepare() {
+func (n *scgiNode) OnPrepare() {
 	n.Node_.OnPrepare()
 	n._contentSaver_.onPrepare(n, 0755)
 }
 
-func (n *uwsgiNode) Maintain() { // runner
+func (n *scgiNode) Maintain() { // runner
 	n.LoopRun(time.Second, func(now time.Time) {
 		// TODO: health check, markDown, markUp()
 	})
 	n.markDown()
 	if DebugLevel() >= 2 {
-		Printf("uwsgiNode=%s done\n", n.name)
+		Printf("scgiNode=%s done\n", n.name)
 	}
 	n.backend.DecSub() // node
 }
 
-func (n *uwsgiNode) dial() (*uwsgiConn, error) {
+func (n *scgiNode) dial() (*scgiConn, error) {
 	if DebugLevel() >= 2 {
-		Printf("uwsgiNode=%s dial %s\n", n.name, n.address)
+		Printf("scgiNode=%s dial %s\n", n.name, n.address)
 	}
 	var (
-		fConn *uwsgiConn
+		fConn *scgiConn
 		err   error
 	)
 	if n.IsUDS() {
@@ -194,7 +194,7 @@ func (n *uwsgiNode) dial() (*uwsgiConn, error) {
 	n.IncSub() // conn
 	return fConn, err
 }
-func (n *uwsgiNode) _dialUDS() (*uwsgiConn, error) {
+func (n *scgiNode) _dialUDS() (*scgiConn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("unix", n.address, n.DialTimeout())
 	if err != nil {
@@ -202,7 +202,7 @@ func (n *uwsgiNode) _dialUDS() (*uwsgiConn, error) {
 		return nil, err
 	}
 	if DebugLevel() >= 2 {
-		Printf("uwsgiNode=%s dial %s OK!\n", n.name, n.address)
+		Printf("scgiNode=%s dial %s OK!\n", n.name, n.address)
 	}
 	connID := n.nextConnID()
 	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
@@ -212,9 +212,9 @@ func (n *uwsgiNode) _dialUDS() (*uwsgiConn, error) {
 	}
 	_, _ = connID, rawConn
 	return nil, nil
-	//return getUwsgiConn(connID, n, netConn, rawConn), nil
+	//return getSCGIConn(connID, n, netConn, rawConn), nil
 }
-func (n *uwsgiNode) _dialTCP() (*uwsgiConn, error) {
+func (n *scgiNode) _dialTCP() (*scgiConn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("tcp", n.address, n.DialTimeout())
 	if err != nil {
@@ -223,7 +223,7 @@ func (n *uwsgiNode) _dialTCP() (*uwsgiConn, error) {
 		return nil, err
 	}
 	if DebugLevel() >= 2 {
-		Printf("uwsgiNode=%s dial %s OK!\n", n.name, n.address)
+		Printf("scgiNode=%s dial %s OK!\n", n.name, n.address)
 	}
 	connID := n.nextConnID()
 	rawConn, err := netConn.(*net.TCPConn).SyscallConn()
@@ -233,20 +233,20 @@ func (n *uwsgiNode) _dialTCP() (*uwsgiConn, error) {
 	}
 	_, _ = connID, rawConn
 	return nil, nil
-	//return getUwsgiConn(connID, n, netConn, rawConn), nil
+	//return getSCGIConn(connID, n, netConn, rawConn), nil
 }
 
-// uwsgiConn
-type uwsgiConn struct {
+// scgiConn
+type scgiConn struct {
 	// Assocs
-	request  uwsgiRequest  // the uwsgi request
-	response uwsgiResponse // the uwsgi response
+	request  scgiRequest  // the scgi request
+	response scgiResponse // the scgi response
 	// Conn states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	id     int64 // the conn id
-	node   *uwsgiNode
+	node   *scgiNode
 	region Region // a region-based memory pool
 	conn   *TConn // associated conn
 	// Conn states (zeros)
@@ -255,69 +255,69 @@ type uwsgiConn struct {
 	lastRead  time.Time    // deadline of last read operation
 }
 
-var poolUwsgiConn sync.Pool
+var poolSCGIConn sync.Pool
 
-func getUwsgiConn(tConn *TConn) *uwsgiConn {
-	var conn *uwsgiConn
-	if x := poolUwsgiConn.Get(); x == nil {
-		conn = new(uwsgiConn)
+func getSCGIConn(tConn *TConn) *scgiConn {
+	var conn *scgiConn
+	if x := poolSCGIConn.Get(); x == nil {
+		conn = new(scgiConn)
 		req, resp := &conn.request, &conn.response
 		req.conn = conn
 		req.response = resp
 		resp.conn = conn
 	} else {
-		conn = x.(*uwsgiConn)
+		conn = x.(*scgiConn)
 	}
 	conn.onUse(tConn)
 	return conn
 }
-func putUwsgiConn(conn *uwsgiConn) {
+func putSCGIConn(conn *scgiConn) {
 	conn.onEnd()
-	poolUwsgiConn.Put(conn)
+	poolSCGIConn.Put(conn)
 }
 
-func (x *uwsgiConn) onUse(conn *TConn) {
+func (x *scgiConn) onUse(conn *TConn) {
 	x.region.Init()
 	x.conn = conn
 	x.region.Init()
 	x.request.onUse()
 	x.response.onUse()
 }
-func (x *uwsgiConn) onEnd() {
+func (x *scgiConn) onEnd() {
 	x.request.onEnd()
 	x.response.onEnd()
 	x.conn = nil
 	x.region.Free()
 }
 
-func (x *uwsgiConn) buffer256() []byte          { return x.stockBuffer[:] }
-func (x *uwsgiConn) unsafeMake(size int) []byte { return x.region.Make(size) }
+func (x *scgiConn) buffer256() []byte          { return x.stockBuffer[:] }
+func (x *scgiConn) unsafeMake(size int) []byte { return x.region.Make(size) }
 
-// uwsgiRequest
-type uwsgiRequest struct { // outgoing. needs building
+// scgiRequest
+type scgiRequest struct { // outgoing. needs building
 	// Assocs
-	conn     *uwsgiConn
-	response *uwsgiResponse
+	conn     *scgiConn
+	response *scgiResponse
 }
 
-func (r *uwsgiRequest) onUse() {
+func (r *scgiRequest) onUse() {
 	// TODO
 }
-func (r *uwsgiRequest) onEnd() {
+func (r *scgiRequest) onEnd() {
 	// TODO
 }
 
-// uwsgiResponse must implements the response interface.
-type uwsgiResponse struct { // incoming. needs parsing
+// scgiResponse must implements the response interface.
+type scgiResponse struct { // incoming. needs parsing
 	// Assocs
-	conn *uwsgiConn
+	conn *scgiConn
 }
 
-func (r *uwsgiResponse) onUse() {
+func (r *scgiResponse) onUse() {
 	// TODO
 }
-func (r *uwsgiResponse) onEnd() {
+func (r *scgiResponse) onEnd() {
 	// TODO
 }
 
-//////////////////////////////////////// uwsgi protocol elements ////////////////////////////////////////
+//////////////////////////////////////// SCGI protocol elements ////////////////////////////////////////

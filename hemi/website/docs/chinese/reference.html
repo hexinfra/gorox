@@ -135,6 +135,7 @@ article table.none tr td {
 		<li><a href="#stage-webapp-favicon">stage &gt; webapp &gt; [rule &gt;] favicon</a></li>
 		<li><a href="#stage-webapp-fcgiProxy">stage &gt; webapp &gt; [rule &gt;] fcgiProxy</a></li>
 		<li><a href="#stage-webapp-httpProxy">stage &gt; webapp &gt; [rule &gt;] httpProxy</a></li>
+		<li>stage &gt; webapp &gt; [rule &gt;] scgiProxy</li>
 		<li><a href="#stage-webapp-sitex">stage &gt; webapp &gt; [rule &gt;] sitex</a></li>
 		<li><a href="#stage-webapp-static">stage &gt; webapp &gt; [rule &gt;] static</a></li>
 		<li><a href="#stage-webapp-uwsgiProxy">stage &gt; webapp &gt; [rule &gt;] uwsgiProxy</a></li>
@@ -316,7 +317,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		.idleTimeout = 2s
 		.maxCumulativeStreamsPerConn = 1000
 		.saveContentFilesDir = %tmpDir + "/web/backends/h1b"
-		.maxContentSizeAllowed = 1T
+		.maxContentSize = 1T
 		.recvTimeout = 0s
 		.sendTimeout = 0s
 		.balancer = "roundRobin"
@@ -388,8 +389,8 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					</code>
 				</li>
 				<li>
-					<p>.maxContentSizeAllowed http 内容的最大限制。</p>
-					<code>语法：.maxContentSizeAllowed = Size
+					<p>.maxContentSize http 内容的最大限制。</p>
+					<code>语法：.maxContentSize = Size
 						默认值：1T
 						取值范围： (0, maxInt64)
 					</code>
@@ -1353,7 +1354,7 @@ httpProxy {
 		// .numGates = runtime.NumCPU() ; 默认为cpu的核心数
 		.maxConcurrentConnsPerGate = 10000
 		.webapps = ("example_com")
-		.maxContentSizeAllowed = 1T
+		.maxContentSize = 1T
 		.recvTimeout = 0s
 		.sendTimeout = 0s
 		.forceScheme = ""
@@ -1411,8 +1412,8 @@ httpProxy {
 					</code>
 				</li>
 				<li>
-					<p>.maxContentSizeAllowed 数据包最大限制。</p>
-					<code>语法：.maxContentSizeAllowed = Size
+					<p>.maxContentSize 数据包最大限制。</p>
+					<code>语法：.maxContentSize = Size
 						默认值：1T
 						取值范围： (0s, 内存最大值)
 					</code>

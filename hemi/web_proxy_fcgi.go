@@ -5,11 +5,10 @@
 
 // FCGI reverse proxy (a.k.a. gateway) and backend implementation. See: https://fastcgi-archives.github.io/FastCGI_Specification.html
 
-// FCGI is mainly used by PHP applications. It supports persistent connections and HTTP chunking, but not HTTP trailers.
-// We don't use backend-side chunking due to the limitation of CGI/1.1 even though FCGI can do that through its framing protocol.
-// Perhaps most FCGI applications don't implement this feature either?
-
-// In response side, FCGI applications mostly use "vague" output.
+// HTTP trailers: not supported
+// Persistent connection: supported
+// Vague request content: supported, but currently not implemented due to the limitation of CGI/1.1 even though FCGI can do that through its framing protocol
+// Vague response content: supported
 
 // To avoid ambiguity, the term "content" in FCGI specification is called "payload" in our implementation.
 
@@ -1044,15 +1043,15 @@ type fcgiResponse struct { // incoming. needs parsing
 	// Exchan states (controlled)
 	header pair // to overcome the limitation of Go's escape analysis when receiving headers
 	// Exchan states (non-zeros)
-	records               []byte        // bytes of incoming fcgi records. [<r.stockRecords>/fcgiMaxRecords]
-	input                 []byte        // bytes of incoming response headers. [<r.stockInput>/4K/16K]
-	primes                []pair        // prime fcgi response headers
-	extras                []pair        // extra fcgi response headers
-	recvTimeout           time.Duration // timeout to recv the whole response content. zero means no timeout
-	maxContentSizeAllowed int64         // max content size allowed for current response
-	status                int16         // 200, 302, 404, ...
-	headResult            int16         // result of receiving response head. values are same as http status for convenience
-	bodyResult            int16         // result of receiving response body. values are same as http status for convenience
+	records        []byte        // bytes of incoming fcgi records. [<r.stockRecords>/fcgiMaxRecords]
+	input          []byte        // bytes of incoming response headers. [<r.stockInput>/4K/16K]
+	primes         []pair        // prime fcgi response headers
+	extras         []pair        // extra fcgi response headers
+	recvTimeout    time.Duration // timeout to recv the whole response content. zero means no timeout
+	maxContentSize int64         // max content size allowed for current response
+	status         int16         // 200, 302, 404, ...
+	headResult     int16         // result of receiving response head. values are same as http status for convenience
+	bodyResult     int16         // result of receiving response body. values are same as http status for convenience
 	// Exchan states (zeros)
 	failReason     string    // the reason of headResult or bodyResult
 	bodyTime       time.Time // the time when first body read operation is performed on this exchan
@@ -1114,7 +1113,7 @@ func (r *fcgiResponse) onUse() {
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of header indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
 	r.recvTimeout = r.exchan.conn.node.recvTimeout
-	r.maxContentSizeAllowed = r.exchan.conn.node.maxContentSizeAllowed
+	r.maxContentSize = r.exchan.conn.node.maxContentSize
 	r.status = StatusOK
 	r.headResult = StatusOK
 	r.bodyResult = StatusOK
@@ -1531,7 +1530,7 @@ func (r *fcgiResponse) HasContent() bool {
 }
 func (r *fcgiResponse) proxyTakeContent() any { // to tempFile since we don't know the size of vague content
 	switch content := r._recvContent().(type) {
-	case tempFile: // [0, r.maxContentSizeAllowed]
+	case tempFile: // [0, r.maxContentSize]
 		r.contentFile = content.(*os.File)
 		return r.contentFile
 	case error: // i/o error or unexpected EOF

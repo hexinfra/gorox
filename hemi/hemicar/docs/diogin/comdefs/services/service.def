@@ -1,3 +1,3 @@
 service "s1" {
-	.maxContentSizeAllowed = 16G
+	.maxContentSize = 16G
 }

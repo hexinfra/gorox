@@ -3,7 +3,7 @@ http2Backend "h2b1" {
 	.maxLifetime = 1m
 	.maxCumulativeStreamsPerConn = 1000
 	.saveContentFilesDir = %tmpDir + "/web/backends/h2b"
-	.maxContentSizeAllowed = 1T
+	.maxContentSize = 1T
 	.recvTimeout = 0s
 	.sendTimeout = 0s
 	.balancer = "roundRobin"

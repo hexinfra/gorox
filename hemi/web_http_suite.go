@@ -881,7 +881,7 @@ func (r *serverRequest_) examineHead() bool {
 		// r.headResult is set.
 		return false
 	}
-	if r.contentSize > r.maxContentSizeAllowed {
+	if r.contentSize > r.maxContentSize {
 		r.headResult, r.failReason = StatusContentTooLarge, "content size exceeds server's limit"
 		return false
 	}
@@ -3517,7 +3517,7 @@ func (r *backendResponse_) examineHead() bool {
 		r.headResult, r.failReason = StatusBadRequest, "content is not allowed in 1xx responses"
 		return false
 	}
-	if r.contentSize > r.maxContentSizeAllowed {
+	if r.contentSize > r.maxContentSize {
 		r.headResult, r.failReason = StatusContentTooLarge, "content size exceeds backend's limit"
 		return false
 	}
@@ -3866,21 +3866,21 @@ type httpIn_ struct { // incoming. needs parsing
 	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see httpCodingXXX for values
 	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.nAcceptCodings. see httpCodingXXX for values
 	// Stream states (non-zeros)
-	primes                []pair        // hold prime queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockPrimes>/max]
-	extras                []pair        // hold extra queries, headers(main+subs), cookies, forms, trailers(main+subs), and params. [<r.stockExtras>/max]
-	array                 []byte        // store parsed, dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
-	input                 []byte        // bytes of raw incoming message heads. [<r.stockInput>/4K/16K]
-	recvTimeout           time.Duration // timeout to recv the whole message content. zero means no timeout
-	maxContentSizeAllowed int64         // max content size allowed for current message. if the content is vague, size will be calculated on receiving
-	maxMemoryContentSize  int32         // max content size allowed for loading the content into memory
-	_                     int32         // padding
-	contentSize           int64         // size info about incoming content. >=0: content size, -1: no content, -2: vague content
-	httpVersion           uint8         // Version1_0, Version1_1, Version2, Version3
-	asResponse            bool          // treat this incoming message as a response?
-	keepAlive             int8          // used by HTTP/1.x only. -1: no connection header, 0: connection close, 1: connection keep-alive
-	_                     byte          // padding
-	headResult            int16         // result of receiving message head. values are as same as http status for convenience
-	bodyResult            int16         // result of receiving message body. values are as same as http status for convenience
+	primes               []pair        // hold prime queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockPrimes>/max]
+	extras               []pair        // hold extra queries, headers(main+subs), cookies, forms, trailers(main+subs), and params. [<r.stockExtras>/max]
+	array                []byte        // store parsed, dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
+	input                []byte        // bytes of raw incoming message heads. [<r.stockInput>/4K/16K]
+	recvTimeout          time.Duration // timeout to recv the whole message content. zero means no timeout
+	maxContentSize       int64         // max content size allowed for current message. if the content is vague, size will be calculated on receiving
+	maxMemoryContentSize int32         // max content size allowed for loading the content into memory
+	_                    int32         // padding
+	contentSize          int64         // size info about incoming content. >=0: content size, -1: no content, -2: vague content
+	httpVersion          uint8         // Version1_0, Version1_1, Version2, Version3
+	asResponse           bool          // treat this incoming message as a response?
+	keepAlive            int8          // used by HTTP/1.x only. -1: no connection header, 0: connection close, 1: connection keep-alive
+	_                    byte          // padding
+	headResult           int16         // result of receiving message head. values are as same as http status for convenience
+	bodyResult           int16         // result of receiving message body. values are as same as http status for convenience
 	// Stream states (zeros)
 	failReason  string    // the fail reason of headResult or bodyResult
 	bodyWindow  []byte    // a window used for receiving body. for HTTP/1.x, sizes must be same with r.input. [HTTP/1.x=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
@@ -3939,7 +3939,7 @@ func (r *httpIn_) onUse(httpVersion uint8, asResponse bool) { // for non-zeros
 	}
 	holder := r.stream.Holder()
 	r.recvTimeout = holder.RecvTimeout()
-	r.maxContentSizeAllowed = holder.MaxContentSizeAllowed()
+	r.maxContentSize = holder.MaxContentSize()
 	r.maxMemoryContentSize = holder.MaxMemoryContentSize()
 	r.contentSize = -1 // no content
 	r.httpVersion = httpVersion
@@ -4609,7 +4609,7 @@ func (r *httpIn_) unsafeContent() []byte { // load message content into memory
 	}
 	return r.contentText[0:r.receivedSize]
 }
-func (r *httpIn_) _loadContent() { // into memory. [0, r.maxContentSizeAllowed]
+func (r *httpIn_) _loadContent() { // into memory. [0, r.maxContentSize]
 	if r.contentReceived {
 		// Content is in r.contentText already.
 		return
@@ -4619,7 +4619,7 @@ func (r *httpIn_) _loadContent() { // into memory. [0, r.maxContentSizeAllowed]
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		r.contentText = content // real content is r.contentText[:r.receivedSize]
 		r.contentTextKind = httpContentTextPool
-	case tempFile: // [0, r.maxContentSizeAllowed]. case happens when sized content > 64K1, or content is vague.
+	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is vague.
 		contentFile := content.(*os.File)
 		if r.receivedSize == 0 { // vague content can has 0 size
 			r.contentText = r.input
@@ -4660,7 +4660,7 @@ func (r *httpIn_) proxyTakeContent() any {
 		r.contentText = content
 		r.contentTextKind = httpContentTextPool // so r.contentText can be freed on end
 		return r.contentText[0:r.receivedSize]
-	case tempFile: // [0, r.maxContentSizeAllowed]. case happens when sized content > 64K1, or content is vague.
+	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is vague.
 		r.contentFile = content.(*os.File)
 		return r.contentFile
 	case error: // i/o error or unexpected EOF
@@ -4673,7 +4673,7 @@ func (r *httpIn_) _dropContent() { // if message content is not received, this w
 	switch content := r._recvContent(false).(type) { // don't retain
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
 		PutNK(content)
-	case tempFile: // [0, r.maxContentSizeAllowed]. case happens when sized content > 64K1, or content is vague.
+	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is vague.
 		if content != fakeFile { // this must not happen!
 			BugExitln("temp file is not fake when dropping content")
 		}
@@ -4701,7 +4701,7 @@ func (r *httpIn_) _recvContent(retain bool) any { // to []byte (for small conten
 			PutNK(contentText)
 			return err
 		}
-	} else { // (64K1, r.maxContentSizeAllowed] when sized, or [0, r.maxContentSizeAllowed] when vague. save to tempFile and return the file
+	} else { // (64K1, r.maxContentSize] when sized, or [0, r.maxContentSize] when vague. save to tempFile and return the file
 		contentFile, err := r._newTempFile(retain)
 		if err != nil {
 			return err

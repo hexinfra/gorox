@@ -24,19 +24,19 @@ import (
 
 // contentSaver
 type contentSaver interface {
-	SaveContentFilesDir() string  // the dir to save content temporarily
-	MaxContentSizeAllowed() int64 // max content size allowed
-	RecvTimeout() time.Duration   // timeout to recv the whole message content. zero means no timeout
-	SendTimeout() time.Duration   // timeout to send the whole message. zero means no timeout
+	SaveContentFilesDir() string // the dir to save content temporarily
+	MaxContentSize() int64       // max content size allowed
+	RecvTimeout() time.Duration  // timeout to recv the whole message content. zero means no timeout
+	SendTimeout() time.Duration  // timeout to send the whole message. zero means no timeout
 }
 
 // _contentSaver_ is a mixin.
 type _contentSaver_ struct {
 	// States
-	saveContentFilesDir   string        // temp content files are placed here
-	maxContentSizeAllowed int64         // max content size allowed to receive
-	recvTimeout           time.Duration // timeout to recv the whole message content. zero means no timeout
-	sendTimeout           time.Duration // timeout to send the whole message. zero means no timeout
+	saveContentFilesDir string        // temp content files are placed here
+	maxContentSize      int64         // max content size allowed to receive
+	recvTimeout         time.Duration // timeout to recv the whole message content. zero means no timeout
+	sendTimeout         time.Duration // timeout to send the whole message. zero means no timeout
 }
 
 func (s *_contentSaver_) onConfigure(component Component, defaultDir string, defaultRecv time.Duration, defaultSend time.Duration) {
@@ -48,12 +48,12 @@ func (s *_contentSaver_) onConfigure(component Component, defaultDir string, def
 		return errors.New(".saveContentFilesDir has an invalid value")
 	}, defaultDir)
 
-	// maxContentSizeAllowed
-	component.ConfigureInt64("maxContentSizeAllowed", &s.maxContentSizeAllowed, func(value int64) error {
+	// maxContentSize
+	component.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
 		if value > 0 {
 			return nil
 		}
-		return errors.New(".maxContentSizeAllowed has an invalid value")
+		return errors.New(".maxContentSize has an invalid value")
 	}, _1T)
 
 	// recvTimeout
@@ -81,10 +81,10 @@ func (s *_contentSaver_) onPrepare(component Component, perm os.FileMode) {
 	}
 }
 
-func (s *_contentSaver_) SaveContentFilesDir() string  { return s.saveContentFilesDir } // must ends with '/'
-func (s *_contentSaver_) MaxContentSizeAllowed() int64 { return s.maxContentSizeAllowed }
-func (s *_contentSaver_) RecvTimeout() time.Duration   { return s.recvTimeout }
-func (s *_contentSaver_) SendTimeout() time.Duration   { return s.sendTimeout }
+func (s *_contentSaver_) SaveContentFilesDir() string { return s.saveContentFilesDir } // must ends with '/'
+func (s *_contentSaver_) MaxContentSize() int64       { return s.maxContentSize }
+func (s *_contentSaver_) RecvTimeout() time.Duration  { return s.recvTimeout }
+func (s *_contentSaver_) SendTimeout() time.Duration  { return s.sendTimeout }
 
 // holder
 type holder interface {

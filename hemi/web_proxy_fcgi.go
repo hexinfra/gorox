@@ -543,8 +543,8 @@ func (c *fcgiConn) onPut() {
 
 func (c *fcgiConn) IsUDS() bool { return c.node.IsUDS() }
 
-func (c *fcgiConn) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, c.node.Stage().ID(), c.id, unixTime, c.counter.Add(1))
+func (c *fcgiConn) MakeTempName(dst []byte, unixTime int64) int {
+	return makeTempName(dst, c.node.Stage().ID(), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *fcgiConn) isAlive() bool { return time.Now().Before(c.expireTime) }
@@ -585,11 +585,11 @@ func (c *fcgiConn) setReadDeadline() error {
 	return nil
 }
 
-func (c *fcgiConn) write(p []byte) (int, error)               { return c.netConn.Write(p) }
+func (c *fcgiConn) write(src []byte) (int, error)             { return c.netConn.Write(src) }
 func (c *fcgiConn) writev(vector *net.Buffers) (int64, error) { return vector.WriteTo(c.netConn) }
-func (c *fcgiConn) read(p []byte) (int, error)                { return c.netConn.Read(p) }
-func (c *fcgiConn) readAtLeast(p []byte, min int) (int, error) {
-	return io.ReadAtLeast(c.netConn, p, min)
+func (c *fcgiConn) read(dst []byte) (int, error)              { return c.netConn.Read(dst) }
+func (c *fcgiConn) readAtLeast(dst []byte, min int) (int, error) {
+	return io.ReadAtLeast(c.netConn, dst, min)
 }
 
 func (c *fcgiConn) Close() error {
@@ -629,10 +629,12 @@ func (x *fcgiExchan) isBroken() bool { return x.conn.isBroken() }
 func (x *fcgiExchan) setWriteDeadline() error { return x.conn.setWriteDeadline() }
 func (x *fcgiExchan) setReadDeadline() error  { return x.conn.setReadDeadline() }
 
-func (x *fcgiExchan) write(p []byte) (int, error)                { return x.conn.write(p) }
-func (x *fcgiExchan) writev(vector *net.Buffers) (int64, error)  { return x.conn.writev(vector) }
-func (x *fcgiExchan) read(p []byte) (int, error)                 { return x.conn.read(p) }
-func (x *fcgiExchan) readAtLeast(p []byte, min int) (int, error) { return x.conn.readAtLeast(p, min) }
+func (x *fcgiExchan) write(src []byte) (int, error)             { return x.conn.write(src) }
+func (x *fcgiExchan) writev(vector *net.Buffers) (int64, error) { return x.conn.writev(vector) }
+func (x *fcgiExchan) read(dst []byte) (int, error)              { return x.conn.read(dst) }
+func (x *fcgiExchan) readAtLeast(dst []byte, min int) (int, error) {
+	return x.conn.readAtLeast(dst, min)
+}
 
 func (x *fcgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
 func (x *fcgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }
@@ -978,11 +980,11 @@ func (r *fcgiRequest) _setBeginRequest(p *[]byte) {
 	}
 }
 
-func (r *fcgiRequest) _writeBytes(p []byte) error {
+func (r *fcgiRequest) _writeBytes(data []byte) error {
 	if r.exchan.isBroken() {
 		return fcgiWriteBroken
 	}
-	if len(p) == 0 {
+	if len(data) == 0 {
 		return nil
 	}
 	if r.sendTime.IsZero() {
@@ -992,7 +994,7 @@ func (r *fcgiRequest) _writeBytes(p []byte) error {
 		r.exchan.markBroken()
 		return err
 	}
-	_, err := r.exchan.write(p)
+	_, err := r.exchan.write(data)
 	return r._longTimeCheck(err)
 }
 func (r *fcgiRequest) _writeVector() error {
@@ -1546,11 +1548,11 @@ func (r *fcgiResponse) _recvContent() any { // to tempFile
 	if err != nil {
 		return err
 	}
-	var p []byte
+	var data []byte
 	for {
-		p, err = r.readContent()
-		if len(p) > 0 {
-			if _, e := contentFile.Write(p); e != nil {
+		data, err = r.readContent()
+		if len(data) > 0 {
+			if _, e := contentFile.Write(data); e != nil {
 				err = e
 				goto badRead
 			}
@@ -1570,14 +1572,14 @@ badRead:
 	os.Remove(contentFile.Name())
 	return err
 }
-func (r *fcgiResponse) readContent() (p []byte, err error) {
+func (r *fcgiResponse) readContent() (data []byte, err error) {
 	if r.imme.notEmpty() {
-		p, err = r.input[r.imme.from:r.imme.edge], nil
+		data, err = r.input[r.imme.from:r.imme.edge], nil
 		r.imme.zero()
 		return
 	}
 	if r.stdoutFrom != r.stdoutEdge {
-		p, err = r.records[r.stdoutFrom:r.stdoutEdge], nil
+		data, err = r.records[r.stdoutFrom:r.stdoutEdge], nil
 		r.stdoutFrom, r.stdoutEdge = 0, 0
 		return
 	}

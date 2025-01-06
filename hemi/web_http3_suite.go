@@ -19,7 +19,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/library/quic"
 )
 
-//////////////////////////////////////// HTTP/3 holder implementation ////////////////////////////////////////
+//////////////////////////////////////// HTTP/3 general implementation ////////////////////////////////////////
 
 // http3Conn
 type http3Conn interface {
@@ -118,15 +118,15 @@ func (s *http3Stream_[C]) setWriteDeadline() error { // for content i/o only
 	return nil
 }
 
-func (s *http3Stream_[C]) read(p []byte) (int, error) { // for content i/o only
+func (s *http3Stream_[C]) read(dst []byte) (int, error) { // for content i/o only
 	// TODO
 	return 0, nil
 }
-func (s *http3Stream_[C]) readFull(p []byte) (int, error) { // for content i/o only
+func (s *http3Stream_[C]) readFull(dst []byte) (int, error) { // for content i/o only
 	// TODO
 	return 0, nil
 }
-func (s *http3Stream_[C]) write(p []byte) (int, error) { // for content i/o only
+func (s *http3Stream_[C]) write(src []byte) (int, error) { // for content i/o only
 	// TODO
 	return 0, nil
 }
@@ -403,7 +403,7 @@ type server3Request struct { // incoming. needs parsing
 	// Stream states (zeros)
 }
 
-func (r *server3Request) readContent() (p []byte, err error) { return r.readContent3() }
+func (r *server3Request) readContent() (data []byte, err error) { return r.readContent3() }
 
 // server3Response is the server-side HTTP/3 response.
 type server3Response struct { // outgoing. needs building
@@ -477,8 +477,8 @@ func (r *server3Response) proxyPass1xx(backResp response) bool {
 	r.onUse(Version3)
 	return false
 }
-func (r *server3Response) proxyPassHeaders() error       { return r.writeHeaders3() }
-func (r *server3Response) proxyPassBytes(p []byte) error { return r.proxyPassBytes3(p) }
+func (r *server3Response) proxyPassHeaders() error          { return r.writeHeaders3() }
+func (r *server3Response) proxyPassBytes(data []byte) error { return r.proxyPassBytes3(data) }
 
 func (r *server3Response) finalizeHeaders() { // add at most 256 bytes
 	// TODO
@@ -793,8 +793,8 @@ func (r *backend3Request) addTrailer(name []byte, value []byte) bool {
 }
 func (r *backend3Request) trailer(name []byte) (value []byte, ok bool) { return r.trailer3(name) }
 
-func (r *backend3Request) proxyPassHeaders() error       { return r.writeHeaders3() }
-func (r *backend3Request) proxyPassBytes(p []byte) error { return r.proxyPassBytes3(p) }
+func (r *backend3Request) proxyPassHeaders() error          { return r.writeHeaders3() }
+func (r *backend3Request) proxyPassBytes(data []byte) error { return r.proxyPassBytes3(data) }
 
 func (r *backend3Request) finalizeHeaders() { // add at most 256 bytes
 	// TODO
@@ -821,7 +821,7 @@ func (r *backend3Response) recvHead() {
 	// TODO
 }
 
-func (r *backend3Response) readContent() (p []byte, err error) { return r.readContent3() }
+func (r *backend3Response) readContent() (data []byte, err error) { return r.readContent3() }
 
 // backend3Socket is the backend-side HTTP/3 webSocket.
 type backend3Socket struct { // incoming and outgoing
@@ -858,7 +858,7 @@ func (r *httpIn_) _growHeaders3(size int32) bool {
 	return false
 }
 
-func (r *httpIn_) readContent3() (p []byte, err error) {
+func (r *httpIn_) readContent3() (data []byte, err error) {
 	// TODO
 	return
 }
@@ -946,7 +946,7 @@ func (r *httpOut_) trailers3() []byte {
 	return nil
 }
 
-func (r *httpOut_) proxyPassBytes3(p []byte) error { return r.writeBytes3(p) }
+func (r *httpOut_) proxyPassBytes3(data []byte) error { return r.writeBytes3(data) }
 
 func (r *httpOut_) finalizeVague3() error {
 	// TODO
@@ -968,7 +968,7 @@ func (r *httpOut_) writePiece3(piece *Piece, vague bool) error {
 func (r *httpOut_) writeVector3() error {
 	return nil
 }
-func (r *httpOut_) writeBytes3(p []byte) error {
+func (r *httpOut_) writeBytes3(data []byte) error {
 	// TODO
 	return nil
 }

@@ -23,10 +23,10 @@ func (s *Stream) SetReadDeadline(deadline time.Time) error {
 func (s *Stream) SetWriteDeadline(deadline time.Time) error {
 	return nil
 }
-func (s *Stream) Read(p []byte) (n int, err error) {
+func (s *Stream) Read(dst []byte) (n int, err error) {
 	return
 }
-func (s *Stream) Write(p []byte) (n int, err error) {
+func (s *Stream) Write(src []byte) (n int, err error) {
 	return
 }
 func (s *Stream) Close() error {

@@ -32,9 +32,9 @@ ACTION
 ------
 
   serve      # start as server
-  check      # dry run to check config
   help       # show this message
   version    # show version info
+  check      # dry run to check the config
   advise     # show how to optimize current platform
   pids       # call server to report pids of leader and worker
   stop       # tell server to exit immediately

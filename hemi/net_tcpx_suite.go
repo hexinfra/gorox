@@ -21,7 +21,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/library/system"
 )
 
-//////////////////////////////////////// TCPX holder implementation ////////////////////////////////////////
+//////////////////////////////////////// TCPX general implementation ////////////////////////////////////////
 
 // tcpxHolder
 type tcpxHolder interface {
@@ -96,8 +96,8 @@ func (c *tcpxConn_) onPut() {
 func (c *tcpxConn_) IsUDS() bool { return c.udsMode }
 func (c *tcpxConn_) IsTLS() bool { return c.tlsMode }
 
-func (c *tcpxConn_) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, c.stageID, c.id, unixTime, c.counter.Add(1))
+func (c *tcpxConn_) MakeTempName(dst []byte, unixTime int64) int {
+	return makeTempName(dst, c.stageID, c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *tcpxConn_) SetReadDeadline() error {
@@ -121,13 +121,13 @@ func (c *tcpxConn_) SetWriteDeadline() error {
 	return nil
 }
 
-func (c *tcpxConn_) Recv() (p []byte, err error) {
+func (c *tcpxConn_) Recv() (data []byte, err error) {
 	n, err := c.netConn.Read(c.input)
-	p = c.input[:n]
+	data = c.input[:n]
 	return
 }
-func (c *tcpxConn_) Send(p []byte) (err error) {
-	_, err = c.netConn.Write(p)
+func (c *tcpxConn_) Send(data []byte) (err error) {
+	_, err = c.netConn.Write(data)
 	return
 }
 

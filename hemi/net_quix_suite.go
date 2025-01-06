@@ -17,7 +17,7 @@ import (
 	"github.com/hexinfra/gorox/hemi/library/quic"
 )
 
-//////////////////////////////////////// QUIX holder implementation ////////////////////////////////////////
+//////////////////////////////////////// QUIX general implementation ////////////////////////////////////////
 
 // quixHolder
 type quixHolder interface {
@@ -101,8 +101,8 @@ func (c *quixConn_) onPut() {
 func (c *quixConn_) IsUDS() bool { return c.udsMode }
 func (c *quixConn_) IsTLS() bool { return c.tlsMode }
 
-func (c *quixConn_) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, c.stageID, c.id, unixTime, c.counter.Add(1))
+func (c *quixConn_) MakeTempName(dst []byte, unixTime int64) int {
+	return makeTempName(dst, c.stageID, c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *quixConn_) markBroken()    { c.broken.Store(true) }
@@ -379,11 +379,11 @@ func (s *QUIXStream) onEnd() {
 	s.quicStream = nil
 }
 
-func (s *QUIXStream) Write(p []byte) (n int, err error) {
+func (s *QUIXStream) Write(src []byte) (n int, err error) {
 	// TODO
 	return
 }
-func (s *QUIXStream) Read(p []byte) (n int, err error) {
+func (s *QUIXStream) Read(dst []byte) (n int, err error) {
 	// TODO
 	return
 }
@@ -705,11 +705,11 @@ func (s *QStream) onEnd() {
 	s.quicStream = nil
 }
 
-func (s *QStream) Write(p []byte) (n int, err error) {
+func (s *QStream) Write(src []byte) (n int, err error) {
 	// TODO
 	return
 }
-func (s *QStream) Read(p []byte) (n int, err error) {
+func (s *QStream) Read(dst []byte) (n int, err error) {
 	// TODO
 	return
 }

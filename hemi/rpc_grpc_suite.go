@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-//////////////////////////////////////// gRPC holder implementation ////////////////////////////////////////
+//////////////////////////////////////// gRPC general implementation ////////////////////////////////////////
 
 // _grpcHolder_
 type _grpcHolder_ struct {
@@ -179,8 +179,8 @@ func (c *grpcConn) onPut() {
 func (c *grpcConn) IsUDS() bool { return c.gate.IsUDS() }
 func (c *grpcConn) IsTLS() bool { return c.gate.IsTLS() }
 
-func (c *grpcConn) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, c.gate.server.Stage().ID(), c.id, unixTime, c.counter.Add(1))
+func (c *grpcConn) MakeTempName(dst []byte, unixTime int64) int {
+	return makeTempName(dst, c.gate.server.Stage().ID(), c.id, unixTime, c.counter.Add(1))
 }
 
 //func (c *grpcConn) rpcServer() *grpcServer { return c.server }

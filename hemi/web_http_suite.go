@@ -23,7 +23,7 @@ import (
 	"time"
 )
 
-//////////////////////////////////////// HTTP holder implementation ////////////////////////////////////////
+//////////////////////////////////////// HTTP general implementation ////////////////////////////////////////
 
 // httpHolder collects shared methods between *http[x3]Server and *http[1-3]Node.
 type httpHolder interface {
@@ -74,7 +74,7 @@ type httpConn interface {
 	ID() int64
 	IsUDS() bool
 	IsTLS() bool
-	MakeTempName(to []byte, unixTime int64) int
+	MakeTempName(dst []byte, unixTime int64) int
 	remoteAddr() net.Addr
 	markBroken()
 	isBroken() bool
@@ -118,8 +118,8 @@ func (c *httpConn_) ID() int64 { return c.id }
 func (c *httpConn_) IsUDS() bool { return c.udsMode }
 func (c *httpConn_) IsTLS() bool { return c.tlsMode }
 
-func (c *httpConn_) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, c.stageID, c.id, unixTime, c.counter.Add(1))
+func (c *httpConn_) MakeTempName(dst []byte, unixTime int64) int {
+	return makeTempName(dst, c.stageID, c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *httpConn_) markBroken()    { c.broken.Store(true) }
@@ -137,9 +137,9 @@ type httpStream interface {
 	markBroken()    // mark stream as broken
 	setReadDeadline() error
 	setWriteDeadline() error
-	read(p []byte) (int, error)
-	readFull(p []byte) (int, error)
-	write(p []byte) (int, error)
+	read(dst []byte) (int, error)
+	readFull(dst []byte) (int, error)
+	write(src []byte) (int, error)
 	writev(vector *net.Buffers) (int64, error)
 }
 
@@ -465,7 +465,7 @@ type Request interface { // for *server[1-3]Request
 	forCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool
 	proxyUnsetHost()
 	proxyTakeContent() any
-	readContent() (p []byte, err error)
+	readContent() (data []byte, err error)
 	examineTail() bool
 	hookReviser(reviser Reviser)
 	unsafeVariable(code int16, name string) (value []byte)
@@ -3005,8 +3005,8 @@ func (r *serverResponse_) hookReviser(reviser Reviser) { // to revise output con
 // Socket is the server-side webSocket.
 type Socket interface { // for *server[1-3]Socket
 	// TODO
-	Read(p []byte) (int, error)
-	Write(p []byte) (int, error)
+	Read(dst []byte) (int, error)
+	Write(src []byte) (int, error)
 	Close() error
 }
 
@@ -3403,7 +3403,7 @@ type response interface { // for *backend[1-3]Response
 	IsVague() bool
 	examineTail() bool
 	proxyTakeContent() any
-	readContent() (p []byte, err error)
+	readContent() (data []byte, err error)
 	proxyDelHopHeaders()
 	proxyDelHopTrailers()
 	forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
@@ -3807,8 +3807,8 @@ func (r *backendResponse_) applyTrailer(index uint8) bool {
 
 // socket is the backend-side webSocket.
 type socket interface { // for *backend[1-3]Socket
-	Read(p []byte) (int, error)
-	Write(p []byte) (int, error)
+	Read(dst []byte) (int, error)
+	Write(src []byte) (int, error)
 	Close() error
 }
 
@@ -3844,7 +3844,7 @@ type httpIn interface {
 	IsVague() bool
 	HasTrailers() bool
 
-	readContent() (p []byte, err error)
+	readContent() (data []byte, err error)
 	examineTail() bool
 	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
 }
@@ -4706,11 +4706,11 @@ func (r *httpIn_) _recvContent(retain bool) any { // to []byte (for small conten
 		if err != nil {
 			return err
 		}
-		var p []byte
+		var data []byte
 		for {
-			p, err = r.inMessage.readContent()
-			if len(p) > 0 { // skip 0, nothing to write
-				if _, e := contentFile.Write(p); e != nil {
+			data, err = r.inMessage.readContent()
+			if len(data) > 0 { // skip 0, nothing to write
+				if _, e := contentFile.Write(data); e != nil {
 					err = e
 					goto badRead
 				}
@@ -5229,7 +5229,7 @@ type httpOut interface {
 	trailer(name []byte) (value []byte, ok bool)
 	finalizeVague() error
 	proxyPassHeaders() error
-	proxyPassBytes(p []byte) error
+	proxyPassBytes(data []byte) error
 }
 
 // httpOut_ is the parent for serverResponse_ and backendRequest_.
@@ -5692,8 +5692,8 @@ var ( // httpOut_ errors
 
 // webSocket
 type webSocket interface {
-	Read(p []byte) (int, error)
-	Write(p []byte) (int, error)
+	Read(dst []byte) (int, error)
+	Write(src []byte) (int, error)
 	Close() error
 }
 
@@ -6766,44 +6766,44 @@ func (c *Cookie) size() int {
 	}
 	return n
 }
-func (c *Cookie) writeTo(p []byte) int {
-	i := copy(p, c.name)
-	p[i] = '='
+func (c *Cookie) writeTo(dst []byte) int {
+	i := copy(dst, c.name)
+	dst[i] = '='
 	i++
 	if c.quote {
-		p[i] = '"'
+		dst[i] = '"'
 		i++
-		i += copy(p[i:], c.value)
-		p[i] = '"'
+		i += copy(dst[i:], c.value)
+		dst[i] = '"'
 		i++
 	} else {
-		i += copy(p[i:], c.value)
+		i += copy(dst[i:], c.value)
 	}
 	if !c.expires.IsZero() {
-		i += copy(p[i:], "; Expires=")
-		i += clockWriteHTTPDate(p[i:], c.expires)
+		i += copy(dst[i:], "; Expires=")
+		i += clockWriteHTTPDate(dst[i:], c.expires)
 	}
 	if c.maxAge != 0 {
-		i += copy(p[i:], "; Max-Age=")
-		i += copy(p[i:], c.ageBuf[0:c.aSize])
+		i += copy(dst[i:], "; Max-Age=")
+		i += copy(dst[i:], c.ageBuf[0:c.aSize])
 	}
 	if c.domain != "" {
-		i += copy(p[i:], "; Domain=")
-		i += copy(p[i:], c.domain)
+		i += copy(dst[i:], "; Domain=")
+		i += copy(dst[i:], c.domain)
 	}
 	if c.path != "" {
-		i += copy(p[i:], "; Path=")
-		i += copy(p[i:], c.path)
+		i += copy(dst[i:], "; Path=")
+		i += copy(dst[i:], c.path)
 	}
 	if c.secure {
-		i += copy(p[i:], "; Secure")
+		i += copy(dst[i:], "; Secure")
 	}
 	if c.httpOnly {
-		i += copy(p[i:], "; HttpOnly")
+		i += copy(dst[i:], "; HttpOnly")
 	}
 	if c.sameSite != "" {
-		i += copy(p[i:], "; SameSite=")
-		i += copy(p[i:], c.sameSite)
+		i += copy(dst[i:], "; SameSite=")
+		i += copy(dst[i:], c.sameSite)
 	}
 	return i
 }

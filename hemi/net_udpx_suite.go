@@ -16,7 +16,7 @@ import (
 	"time"
 )
 
-//////////////////////////////////////// UDPX holder implementation ////////////////////////////////////////
+//////////////////////////////////////// UDPX general implementation ////////////////////////////////////////
 
 // udpxHolder
 type udpxHolder interface {
@@ -73,18 +73,18 @@ func (c *udpxConn_) onPut() {
 
 func (c *udpxConn_) IsUDS() bool { return c.udsMode }
 
-func (c *udpxConn_) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, c.stageID, c.id, unixTime, c.counter.Add(1))
+func (c *udpxConn_) MakeTempName(dst []byte, unixTime int64) int {
+	return makeTempName(dst, c.stageID, c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *udpxConn_) markBroken()    { c.broken.Store(true) }
 func (c *udpxConn_) isBroken() bool { return c.broken.Load() }
 
-func (c *udpxConn_) WriteTo(p []byte, addr net.Addr) (n int, err error) {
-	return c.pktConn.WriteTo(p, addr)
+func (c *udpxConn_) WriteTo(src []byte, addr net.Addr) (n int, err error) {
+	return c.pktConn.WriteTo(src, addr)
 }
-func (c *udpxConn_) ReadFrom(p []byte) (n int, addr net.Addr, err error) {
-	return c.pktConn.ReadFrom(p)
+func (c *udpxConn_) ReadFrom(dst []byte) (n int, addr net.Addr, err error) {
+	return c.pktConn.ReadFrom(dst)
 }
 
 //////////////////////////////////////// UDPX router implementation ////////////////////////////////////////

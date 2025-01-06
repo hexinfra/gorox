@@ -587,7 +587,7 @@ func (l *Logger) clear() {
 		l.used = 0
 	}
 }
-func (l *Logger) flush(p []byte) { l.file.Write(p) }
+func (l *Logger) flush(logs []byte) { l.file.Write(logs) }
 
 // Region
 type Region struct { // 512B
@@ -640,7 +640,7 @@ func (r *Region) Free() {
 // tempFile is used to temporarily save request/response content in local file system.
 type tempFile interface {
 	Name() string // used by os.Remove()
-	Write(p []byte) (n int, err error)
+	Write(src []byte) (n int, err error)
 	Seek(offset int64, whence int) (ret int64, err error)
 	Close() error
 }
@@ -649,7 +649,7 @@ type tempFile interface {
 type _fakeFile struct{}
 
 func (f _fakeFile) Name() string                           { return "" }
-func (f _fakeFile) Write(p []byte) (n int, err error)      { return }
+func (f _fakeFile) Write(src []byte) (n int, err error)    { return }
 func (f _fakeFile) Seek(int64, int) (ret int64, err error) { return }
 func (f _fakeFile) Close() error                           { return nil }
 
@@ -736,14 +736,14 @@ var ( // defined errors
 	errNodeBusy = errors.New("node is busy")
 )
 
-func makeTempName(p []byte, stageID int32, connID int64, unixTime int64, counter int64) int {
+func makeTempName(dst []byte, stageID int32, connID int64, unixTime int64, counter int64) int {
 	// TODO: improvement
 	// stageID(8) | connID(16) | seconds(24) | counter(16)
 	stageID &= 0x7f
 	connID &= 0xffff
 	unixTime &= 0xffffff
 	counter &= 0xffff
-	return i64ToDec(int64(stageID)<<56|connID<<40|unixTime<<16|counter, p)
+	return i64ToDec(int64(stageID)<<56|connID<<40|unixTime<<16|counter, dst)
 }
 
 func equalMatch(value []byte, patterns [][]byte) bool {

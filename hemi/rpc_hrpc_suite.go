@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-//////////////////////////////////////// HRPC holder implementation ////////////////////////////////////////
+//////////////////////////////////////// HRPC general implementation ////////////////////////////////////////
 
 // _hrpcHolder_
 type _hrpcHolder_ struct {
@@ -179,8 +179,8 @@ func (c *hrpcConn) onPut() {
 func (c *hrpcConn) IsUDS() bool { return c.gate.IsUDS() }
 func (c *hrpcConn) IsTLS() bool { return c.gate.IsTLS() }
 
-func (c *hrpcConn) MakeTempName(to []byte, unixTime int64) int {
-	return makeTempName(to, c.gate.server.Stage().ID(), c.id, unixTime, c.counter.Add(1))
+func (c *hrpcConn) MakeTempName(dst []byte, unixTime int64) int {
+	return makeTempName(dst, c.gate.server.Stage().ID(), c.id, unixTime, c.counter.Add(1))
 }
 
 //func (c *hrpcConn) rpcServer() *hrpcServer { return c.server }

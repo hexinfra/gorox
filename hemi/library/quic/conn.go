@@ -35,10 +35,10 @@ func (c *Conn) AcceptStream() (*Stream, error) {
 	return nil, nil
 }
 
-func (c *Conn) SendMsg(p []byte) error { // see RFC 9221
+func (c *Conn) SendMsg(src []byte) error { // see RFC 9221
 	return nil
 }
-func (c *Conn) RecvMsg(p []byte) error { // see RFC 9221
+func (c *Conn) RecvMsg(dst []byte) error { // see RFC 9221
 	return nil
 }
 

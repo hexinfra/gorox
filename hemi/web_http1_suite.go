@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-//////////////////////////////////////// HTTP/1.x holder implementation ////////////////////////////////////////
+//////////////////////////////////////// HTTP/1.x general implementation ////////////////////////////////////////
 
 // http1Conn
 type http1Conn interface {
@@ -30,9 +30,9 @@ type http1Conn interface {
 	// Methods
 	setReadDeadline() error
 	setWriteDeadline() error
-	read(p []byte) (int, error)
-	readFull(p []byte) (int, error)
-	write(p []byte) (int, error)
+	read(dst []byte) (int, error)
+	readFull(dst []byte) (int, error)
+	write(src []byte) (int, error)
 	writev(vector *net.Buffers) (int64, error)
 }
 
@@ -84,9 +84,9 @@ func (c *http1Conn_) setWriteDeadline() error {
 	return nil
 }
 
-func (c *http1Conn_) read(p []byte) (int, error)                { return c.netConn.Read(p) }
-func (c *http1Conn_) readFull(p []byte) (int, error)            { return io.ReadFull(c.netConn, p) }
-func (c *http1Conn_) write(p []byte) (int, error)               { return c.netConn.Write(p) }
+func (c *http1Conn_) read(dst []byte) (int, error)              { return c.netConn.Read(dst) }
+func (c *http1Conn_) readFull(dst []byte) (int, error)          { return io.ReadFull(c.netConn, dst) }
+func (c *http1Conn_) write(src []byte) (int, error)             { return c.netConn.Write(src) }
 func (c *http1Conn_) writev(vector *net.Buffers) (int64, error) { return vector.WriteTo(c.netConn) }
 
 // http1Stream
@@ -124,9 +124,9 @@ func (s *http1Stream_[C]) isBroken() bool { return s.conn.isBroken() }
 func (s *http1Stream_[C]) setReadDeadline() error  { return s.conn.setReadDeadline() }
 func (s *http1Stream_[C]) setWriteDeadline() error { return s.conn.setWriteDeadline() }
 
-func (s *http1Stream_[C]) read(p []byte) (int, error)     { return s.conn.read(p) }
-func (s *http1Stream_[C]) readFull(p []byte) (int, error) { return s.conn.readFull(p) }
-func (s *http1Stream_[C]) write(p []byte) (int, error)    { return s.conn.write(p) }
+func (s *http1Stream_[C]) read(dst []byte) (int, error)     { return s.conn.read(dst) }
+func (s *http1Stream_[C]) readFull(dst []byte) (int, error) { return s.conn.readFull(dst) }
+func (s *http1Stream_[C]) write(src []byte) (int, error)    { return s.conn.write(src) }
 func (s *http1Stream_[C]) writev(vector *net.Buffers) (int64, error) {
 	return s.conn.writev(vector)
 }
@@ -898,7 +898,7 @@ func (r *server1Request) cleanInput() {
 	}
 }
 
-func (r *server1Request) readContent() (p []byte, err error) { return r.readContent1() }
+func (r *server1Request) readContent() (data []byte, err error) { return r.readContent1() }
 
 // server1Response is the server-side HTTP/1.x response.
 type server1Response struct { // outgoing. needs building
@@ -1053,8 +1053,8 @@ func (r *server1Response) proxyPass1xx(backResp response) bool {
 	r.onUse(Version1_1)
 	return true
 }
-func (r *server1Response) proxyPassHeaders() error       { return r.writeHeaders1() }
-func (r *server1Response) proxyPassBytes(p []byte) error { return r.proxyPassBytes1(p) }
+func (r *server1Response) proxyPassHeaders() error          { return r.writeHeaders1() }
+func (r *server1Response) proxyPassBytes(data []byte) error { return r.proxyPassBytes1(data) }
 
 func (r *server1Response) finalizeHeaders() { // add at most 256 bytes
 	// date: Sun, 06 Nov 1994 08:49:37 GMT\r\n
@@ -1596,8 +1596,8 @@ func (r *backend1Request) addTrailer(name []byte, value []byte) bool {
 }
 func (r *backend1Request) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }
 
-func (r *backend1Request) proxyPassHeaders() error       { return r.writeHeaders1() }
-func (r *backend1Request) proxyPassBytes(p []byte) error { return r.proxyPassBytes1(p) }
+func (r *backend1Request) proxyPassHeaders() error          { return r.writeHeaders1() }
+func (r *backend1Request) proxyPassBytes(data []byte) error { return r.proxyPassBytes1(data) }
 
 func (r *backend1Request) finalizeHeaders() { // add at most 256 bytes
 	// if-modified-since: Sun, 06 Nov 1994 08:49:37 GMT\r\n
@@ -1777,7 +1777,7 @@ func (r *backend1Response) cleanInput() {
 	}
 }
 
-func (r *backend1Response) readContent() (p []byte, err error) { return r.readContent1() }
+func (r *backend1Response) readContent() (data []byte, err error) { return r.readContent1() }
 
 // backend1Socket is the backend-side HTTP/1.x webSocket.
 type backend1Socket struct { // incoming and outgoing
@@ -1973,14 +1973,14 @@ func (r *httpIn_) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS
 	return true
 }
 
-func (r *httpIn_) readContent1() (p []byte, err error) {
+func (r *httpIn_) readContent1() (data []byte, err error) {
 	if r.contentSize >= 0 { // sized
 		return r._readSizedContent1()
 	} else { // vague. must be -2. -1 (no content) is excluded priorly
 		return r._readVagueContent1()
 	}
 }
-func (r *httpIn_) _readSizedContent1() (p []byte, err error) {
+func (r *httpIn_) _readSizedContent1() ([]byte, error) {
 	if r.receivedSize == r.contentSize { // content is entirely received
 		if r.bodyWindow == nil { // body window is not used. this means content is immediate
 			return r.contentText[:r.receivedSize], io.EOF
@@ -2007,7 +2007,7 @@ func (r *httpIn_) _readSizedContent1() (p []byte, err error) {
 	if r.bodyTime.IsZero() {
 		r.bodyTime = time.Now()
 	}
-	if err = r.stream.setReadDeadline(); err != nil {
+	if err := r.stream.setReadDeadline(); err != nil {
 		return nil, err
 	}
 	size, err := r.stream.readFull(r.bodyWindow[:readSize])
@@ -2020,7 +2020,7 @@ func (r *httpIn_) _readSizedContent1() (p []byte, err error) {
 	}
 	return nil, err
 }
-func (r *httpIn_) _readVagueContent1() (p []byte, err error) {
+func (r *httpIn_) _readVagueContent1() ([]byte, error) {
 	if r.bodyWindow == nil {
 		r.bodyWindow = Get16K() // will be freed on ends. 16K is a tradeoff between performance and memory consumption, and can fit r.imme and trailers
 	}
@@ -2580,7 +2580,7 @@ func (r *httpOut_) trailer1(name []byte) (value []byte, ok bool) {
 }
 func (r *httpOut_) trailers1() []byte { return r.fields[0:r.fieldsEdge] } // Headers and trailers are not manipulated at the same time, so after headers is sent, r.fields is used by trailers.
 
-func (r *httpOut_) proxyPassBytes1(p []byte) error { return r.writeBytes1(p) }
+func (r *httpOut_) proxyPassBytes1(data []byte) error { return r.writeBytes1(data) }
 
 func (r *httpOut_) finalizeVague1() error {
 	if r.nTrailers == 1 { // no trailers
@@ -2702,11 +2702,11 @@ func (r *httpOut_) writeVector1() error {
 	_, err := r.stream.writev(&r.vector)
 	return r._longTimeCheck(err)
 }
-func (r *httpOut_) writeBytes1(p []byte) error {
+func (r *httpOut_) writeBytes1(data []byte) error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
-	if len(p) == 0 { // empty data
+	if len(data) == 0 { // empty data
 		return nil
 	}
 	if r.sendTime.IsZero() {
@@ -2716,7 +2716,7 @@ func (r *httpOut_) writeBytes1(p []byte) error {
 		r.stream.markBroken()
 		return err
 	}
-	_, err := r.stream.write(p)
+	_, err := r.stream.write(data)
 	return r._longTimeCheck(err)
 }
 

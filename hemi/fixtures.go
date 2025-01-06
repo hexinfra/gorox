@@ -97,98 +97,98 @@ func (f *clockFixture) run() { // runner
 	f.stage.DecSub() // clock
 }
 
-func (f *clockFixture) writeDate1(p []byte) int {
-	i := copy(p, "date: ")
-	i += f.writeDate(p[i:])
-	p[i] = '\r'
-	p[i+1] = '\n'
+func (f *clockFixture) writeDate1(dst []byte) int {
+	i := copy(dst, "date: ")
+	i += f.writeDate(dst[i:])
+	dst[i] = '\r'
+	dst[i+1] = '\n'
 	return i + 2
 }
-func (f *clockFixture) writeDate(p []byte) int {
+func (f *clockFixture) writeDate(dst []byte) int {
 	date := f.date.Load()
 	s := clockDayString[3*(date>>8&0xf):]
-	p[0] = s[0] // 'S'
-	p[1] = s[1] // 'u'
-	p[2] = s[2] // 'n'
-	p[3] = ','
-	p[4] = ' '
-	p[5] = byte(date>>12&0xf) + '0' // '0'
-	p[6] = byte(date>>16&0xf) + '0' // '6'
-	p[7] = ' '
+	dst[0] = s[0] // 'S'
+	dst[1] = s[1] // 'u'
+	dst[2] = s[2] // 'n'
+	dst[3] = ','
+	dst[4] = ' '
+	dst[5] = byte(date>>12&0xf) + '0' // '0'
+	dst[6] = byte(date>>16&0xf) + '0' // '6'
+	dst[7] = ' '
 	s = clockMonthString[3*(date>>20&0xf-1):]
-	p[8] = s[0]  // 'N'
-	p[9] = s[1]  // 'o'
-	p[10] = s[2] // 'v'
-	p[11] = ' '
-	p[12] = byte(date>>24&0xf) + '0' // '1'
-	p[13] = byte(date>>28&0xf) + '0' // '9'
-	p[14] = byte(date>>32&0xf) + '0' // '9'
-	p[15] = byte(date>>36&0xf) + '0' // '4'
-	p[16] = ' '
-	p[17] = byte(date>>40&0xf) + '0' // '0'
-	p[18] = byte(date>>44&0xf) + '0' // '8'
-	p[19] = ':'
-	p[20] = byte(date>>48&0xf) + '0' // '4'
-	p[21] = byte(date>>52&0xf) + '0' // '9'
-	p[22] = ':'
-	p[23] = byte(date>>56&0xf) + '0' // '3'
-	p[24] = byte(date>>60&0xf) + '0' // '7'
-	p[25] = ' '
-	p[26] = 'G'
-	p[27] = 'M'
-	p[28] = 'T'
+	dst[8] = s[0]  // 'N'
+	dst[9] = s[1]  // 'o'
+	dst[10] = s[2] // 'v'
+	dst[11] = ' '
+	dst[12] = byte(date>>24&0xf) + '0' // '1'
+	dst[13] = byte(date>>28&0xf) + '0' // '9'
+	dst[14] = byte(date>>32&0xf) + '0' // '9'
+	dst[15] = byte(date>>36&0xf) + '0' // '4'
+	dst[16] = ' '
+	dst[17] = byte(date>>40&0xf) + '0' // '0'
+	dst[18] = byte(date>>44&0xf) + '0' // '8'
+	dst[19] = ':'
+	dst[20] = byte(date>>48&0xf) + '0' // '4'
+	dst[21] = byte(date>>52&0xf) + '0' // '9'
+	dst[22] = ':'
+	dst[23] = byte(date>>56&0xf) + '0' // '3'
+	dst[24] = byte(date>>60&0xf) + '0' // '7'
+	dst[25] = ' '
+	dst[26] = 'G'
+	dst[27] = 'M'
+	dst[28] = 'T'
 	return clockHTTPDateSize
 }
 
-func clockWriteHTTPDate1(p []byte, name []byte, unixTime int64) int {
-	i := copy(p, name)
-	p[i] = ':'
-	p[i+1] = ' '
+func clockWriteHTTPDate1(dst []byte, name []byte, unixTime int64) int {
+	i := copy(dst, name)
+	dst[i] = ':'
+	dst[i+1] = ' '
 	i += 2
 	date := time.Unix(unixTime, 0)
 	date = date.UTC()
-	i += clockWriteHTTPDate(p[i:], date)
-	p[i] = '\r'
-	p[i+1] = '\n'
+	i += clockWriteHTTPDate(dst[i:], date)
+	dst[i] = '\r'
+	dst[i+1] = '\n'
 	return i + 2
 }
-func clockWriteHTTPDate(p []byte, date time.Time) int {
-	if len(p) < clockHTTPDateSize {
+func clockWriteHTTPDate(dst []byte, date time.Time) int {
+	if len(dst) < clockHTTPDateSize {
 		BugExitln("invalid buffer for clockWriteHTTPDate")
 	}
 	s := clockDayString[3*date.Weekday():]
-	p[0] = s[0] // 'S'
-	p[1] = s[1] // 'u'
-	p[2] = s[2] // 'n'
-	p[3] = ','
-	p[4] = ' '
+	dst[0] = s[0] // 'S'
+	dst[1] = s[1] // 'u'
+	dst[2] = s[2] // 'n'
+	dst[3] = ','
+	dst[4] = ' '
 	year, month, day := date.Date() // month: 1-12
-	p[5] = byte(day/10) + '0'       // '0'
-	p[6] = byte(day%10) + '0'       // '6'
-	p[7] = ' '
+	dst[5] = byte(day/10) + '0'     // '0'
+	dst[6] = byte(day%10) + '0'     // '6'
+	dst[7] = ' '
 	s = clockMonthString[3*(month-1):]
-	p[8] = s[0]  // 'N'
-	p[9] = s[1]  // 'o'
-	p[10] = s[2] // 'v'
-	p[11] = ' '
-	p[12] = byte(year/1000) + '0'   // '1'
-	p[13] = byte(year/100%10) + '0' // '9'
-	p[14] = byte(year/10%10) + '0'  // '9'
-	p[15] = byte(year%10) + '0'     // '4'
-	p[16] = ' '
+	dst[8] = s[0]  // 'N'
+	dst[9] = s[1]  // 'o'
+	dst[10] = s[2] // 'v'
+	dst[11] = ' '
+	dst[12] = byte(year/1000) + '0'   // '1'
+	dst[13] = byte(year/100%10) + '0' // '9'
+	dst[14] = byte(year/10%10) + '0'  // '9'
+	dst[15] = byte(year%10) + '0'     // '4'
+	dst[16] = ' '
 	hour, minute, second := date.Clock()
-	p[17] = byte(hour/10) + '0' // '0'
-	p[18] = byte(hour%10) + '0' // '8'
-	p[19] = ':'
-	p[20] = byte(minute/10) + '0' // '4'
-	p[21] = byte(minute%10) + '0' // '9'
-	p[22] = ':'
-	p[23] = byte(second/10) + '0' // '3'
-	p[24] = byte(second%10) + '0' // '7'
-	p[25] = ' '
-	p[26] = 'G'
-	p[27] = 'M'
-	p[28] = 'T'
+	dst[17] = byte(hour/10) + '0' // '0'
+	dst[18] = byte(hour%10) + '0' // '8'
+	dst[19] = ':'
+	dst[20] = byte(minute/10) + '0' // '4'
+	dst[21] = byte(minute%10) + '0' // '9'
+	dst[22] = ':'
+	dst[23] = byte(second/10) + '0' // '3'
+	dst[24] = byte(second%10) + '0' // '7'
+	dst[25] = ' '
+	dst[26] = 'G'
+	dst[27] = 'M'
+	dst[28] = 'T'
 	return clockHTTPDateSize
 }
 

@@ -11,6 +11,8 @@ import (
 	"time"
 
 	. "github.com/hexinfra/gorox/hemi"
+
+	_ "github.com/hexinfra/gorox/hemi/library/drivers/redis"
 )
 
 func init() {

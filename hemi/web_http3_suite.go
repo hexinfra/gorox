@@ -99,7 +99,7 @@ func (s *http3Stream_[C]) onUse(id int64, conn C) {
 func (s *http3Stream_[C]) onEnd() {
 	s._http3Stream0 = _http3Stream0{}
 
-	// s.conn = nil
+	// s.conn will be set as nil by upper code
 	s.httpStream_.onEnd()
 }
 
@@ -130,7 +130,7 @@ func (s *http3Stream_[C]) write(src []byte) (int, error) { // for content i/o on
 	// TODO
 	return 0, nil
 }
-func (s *http3Stream_[C]) writev(vector *net.Buffers) (int64, error) { // for content i/o only
+func (s *http3Stream_[C]) writev(srcVec *net.Buffers) (int64, error) { // for content i/o only
 	// TODO
 	return 0, nil
 }

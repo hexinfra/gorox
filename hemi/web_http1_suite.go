@@ -33,7 +33,7 @@ type http1Conn interface {
 	read(dst []byte) (int, error)
 	readFull(dst []byte) (int, error)
 	write(src []byte) (int, error)
-	writev(vector *net.Buffers) (int64, error)
+	writev(srcVec *net.Buffers) (int64, error)
 }
 
 // http1Conn_
@@ -87,7 +87,7 @@ func (c *http1Conn_) setWriteDeadline() error {
 func (c *http1Conn_) read(dst []byte) (int, error)              { return c.netConn.Read(dst) }
 func (c *http1Conn_) readFull(dst []byte) (int, error)          { return io.ReadFull(c.netConn, dst) }
 func (c *http1Conn_) write(src []byte) (int, error)             { return c.netConn.Write(src) }
-func (c *http1Conn_) writev(vector *net.Buffers) (int64, error) { return vector.WriteTo(c.netConn) }
+func (c *http1Conn_) writev(srcVec *net.Buffers) (int64, error) { return srcVec.WriteTo(c.netConn) }
 
 // http1Stream
 type http1Stream interface {
@@ -127,8 +127,8 @@ func (s *http1Stream_[C]) setWriteDeadline() error { return s.conn.setWriteDeadl
 func (s *http1Stream_[C]) read(dst []byte) (int, error)     { return s.conn.read(dst) }
 func (s *http1Stream_[C]) readFull(dst []byte) (int, error) { return s.conn.readFull(dst) }
 func (s *http1Stream_[C]) write(src []byte) (int, error)    { return s.conn.write(src) }
-func (s *http1Stream_[C]) writev(vector *net.Buffers) (int64, error) {
-	return s.conn.writev(vector)
+func (s *http1Stream_[C]) writev(srcVec *net.Buffers) (int64, error) {
+	return s.conn.writev(srcVec)
 }
 
 //////////////////////////////////////// HTTP/1.x server implementation ////////////////////////////////////////

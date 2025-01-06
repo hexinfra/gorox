@@ -655,9 +655,7 @@ func (c *QConn) onPut() {
 	c.quixConn_.onPut()
 }
 
-func (c *QConn) ranOut() bool {
-	return c.cumulativeStreams.Add(1) > c.maxCumulativeStreams
-}
+func (c *QConn) ranOut() bool { return c.cumulativeStreams.Add(1) > c.maxCumulativeStreams }
 func (c *QConn) FetchStream() (*QStream, error) {
 	// TODO
 	return nil, nil

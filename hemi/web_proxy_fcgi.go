@@ -266,11 +266,11 @@ type fcgiNode struct {
 	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.
 	// States
-	maxExchansPerConn int32         // max exchans of one conn. 0 means infinite
-	idleTimeout       time.Duration // conn idle timeout
-	maxLifetime       time.Duration // conn's max lifetime
-	keepConn          bool          // instructs FCGI server to keep conn?
-	connPool          struct {      // free list of conns in this node
+	maxCumulativeExchansPerConn int32         // max exchans of one conn. 0 means infinite
+	idleTimeout                 time.Duration // conn idle timeout
+	maxLifetime                 time.Duration // conn's max lifetime
+	keepConn                    bool          // instructs FCGI server to keep conn?
+	connPool                    struct {      // free list of conns in this node
 		sync.Mutex
 		head *fcgiConn
 		tail *fcgiConn
@@ -286,12 +286,12 @@ func (n *fcgiNode) OnConfigure() {
 	n.Node_.OnConfigure()
 	n._contentSaver_.onConfigure(n, TmpDir()+"/web/backends/"+n.backend.name+"/"+n.name, 0, 0)
 
-	// maxExchansPerConn
-	n.ConfigureInt32("maxExchansPerConn", &n.maxExchansPerConn, func(value int32) error {
+	// maxCumulativeExchansPerConn
+	n.ConfigureInt32("maxCumulativeExchansPerConn", &n.maxCumulativeExchansPerConn, func(value int32) error {
 		if value >= 0 {
 			return nil
 		}
-		return errors.New(".maxExchansPerConn has an invalid value")
+		return errors.New(".maxCumulativeExchansPerConn has an invalid value")
 	}, 1000)
 
 	// idleTimeout
@@ -318,7 +318,7 @@ func (n *fcgiNode) OnPrepare() {
 	n._contentSaver_.onPrepare(n, 0755)
 }
 
-func (n *fcgiNode) MaxExchansPerConn() int32 { return n.maxExchansPerConn }
+func (n *fcgiNode) MaxCumulativeExchansPerConn() int32 { return n.maxCumulativeExchansPerConn }
 
 func (n *fcgiNode) Maintain() { // runner
 	n.LoopRun(time.Second, func(now time.Time) {
@@ -491,11 +491,11 @@ type fcgiConn struct {
 	rawConn    syscall.RawConn // for syscall
 	persistent bool            // keep the connection after current exchan?
 	// Conn states (zeros)
-	counter     atomic.Int64 // can be used to generate a random number
-	lastWrite   time.Time    // deadline of last write operation
-	lastRead    time.Time    // deadline of last read operation
-	usedExchans atomic.Int32 // how many exchans have been used?
-	broken      atomic.Bool  // is conn broken?
+	counter           atomic.Int64 // can be used to generate a random number
+	lastWrite         time.Time    // deadline of last write operation
+	lastRead          time.Time    // deadline of last read operation
+	cumulativeExchans atomic.Int32 // how many exchans have been used?
+	broken            atomic.Bool  // is conn broken?
 }
 
 var poolFCGIConn sync.Pool
@@ -530,7 +530,7 @@ func (c *fcgiConn) onGet(id int64, node *fcgiNode, netConn net.Conn, rawConn sys
 	c.persistent = node.keepConn
 }
 func (c *fcgiConn) onPut() {
-	c.usedExchans.Store(0)
+	c.cumulativeExchans.Store(0)
 	c.broken.Store(false)
 	c.netConn = nil
 	c.rawConn = nil
@@ -550,7 +550,7 @@ func (c *fcgiConn) MakeTempName(dst []byte, unixTime int64) int {
 func (c *fcgiConn) isAlive() bool { return time.Now().Before(c.expireTime) }
 
 func (c *fcgiConn) ranOut() bool {
-	return c.usedExchans.Add(1) > c.node.maxExchansPerConn
+	return c.cumulativeExchans.Add(1) > c.node.maxCumulativeExchansPerConn
 }
 func (c *fcgiConn) fetchExchan() (*fcgiExchan, error) {
 	exchan := &c.exchan
@@ -586,7 +586,7 @@ func (c *fcgiConn) setReadDeadline() error {
 }
 
 func (c *fcgiConn) write(src []byte) (int, error)             { return c.netConn.Write(src) }
-func (c *fcgiConn) writev(vector *net.Buffers) (int64, error) { return vector.WriteTo(c.netConn) }
+func (c *fcgiConn) writev(srcVec *net.Buffers) (int64, error) { return srcVec.WriteTo(c.netConn) }
 func (c *fcgiConn) read(dst []byte) (int, error)              { return c.netConn.Read(dst) }
 func (c *fcgiConn) readAtLeast(dst []byte, min int) (int, error) {
 	return io.ReadAtLeast(c.netConn, dst, min)
@@ -630,7 +630,7 @@ func (x *fcgiExchan) setWriteDeadline() error { return x.conn.setWriteDeadline()
 func (x *fcgiExchan) setReadDeadline() error  { return x.conn.setReadDeadline() }
 
 func (x *fcgiExchan) write(src []byte) (int, error)             { return x.conn.write(src) }
-func (x *fcgiExchan) writev(vector *net.Buffers) (int64, error) { return x.conn.writev(vector) }
+func (x *fcgiExchan) writev(srcVec *net.Buffers) (int64, error) { return x.conn.writev(srcVec) }
 func (x *fcgiExchan) read(dst []byte) (int, error)              { return x.conn.read(dst) }
 func (x *fcgiExchan) readAtLeast(dst []byte, min int) (int, error) {
 	return x.conn.readAtLeast(dst, min)

@@ -140,7 +140,7 @@ type httpStream interface {
 	read(dst []byte) (int, error)
 	readFull(dst []byte) (int, error)
 	write(src []byte) (int, error)
-	writev(vector *net.Buffers) (int64, error)
+	writev(srcVec *net.Buffers) (int64, error)
 }
 
 // httpStream_ is the parent for *http[1-3]Stream_.

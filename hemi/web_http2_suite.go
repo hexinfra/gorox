@@ -505,9 +505,8 @@ func (c *http2Conn_) readAtLeast(dst []byte, min int) (int, error) {
 	return io.ReadAtLeast(c.netConn, dst, min)
 }
 func (c *http2Conn_) write(src []byte) (int, error) { return c.netConn.Write(src) }
-func (c *http2Conn_) writev(vector *net.Buffers) (int64, error) {
-	// Will consume vector automatically
-	return vector.WriteTo(c.netConn)
+func (c *http2Conn_) writev(srcVec *net.Buffers) (int64, error) {
+	return srcVec.WriteTo(c.netConn)
 }
 
 // http2Stream
@@ -546,7 +545,7 @@ func (s *http2Stream_[C]) onUse(id uint32, conn C) {
 func (s *http2Stream_[C]) onEnd() {
 	s._http2Stream0 = _http2Stream0{}
 
-	// s.conn = nil
+	// s.conn will be set as nil by upper code
 	s.httpStream_.onEnd()
 }
 
@@ -558,8 +557,8 @@ func (s *http2Stream_[C]) setIndex(index uint8) { s.index = index }
 func (s *http2Stream_[C]) Conn() httpConn       { return s.conn }
 func (s *http2Stream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }
 
-func (s *http2Stream_[C]) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream
-func (s *http2Stream_[C]) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream
+func (s *http2Stream_[C]) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream?
+func (s *http2Stream_[C]) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream?
 
 func (s *http2Stream_[C]) setReadDeadline() error { // for content i/o only
 	// TODO
@@ -582,7 +581,7 @@ func (s *http2Stream_[C]) write(src []byte) (int, error) { // for content i/o on
 	// TODO
 	return 0, nil
 }
-func (s *http2Stream_[C]) writev(vector *net.Buffers) (int64, error) { // for content i/o only
+func (s *http2Stream_[C]) writev(srcVec *net.Buffers) (int64, error) { // for content i/o only
 	// TODO
 	return 0, nil
 }

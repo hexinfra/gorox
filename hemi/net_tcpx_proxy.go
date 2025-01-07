@@ -70,30 +70,30 @@ type TCPXProxyConfig struct {
 }
 
 // TCPXReverseProxy
-func TCPXReverseProxy(conn *TCPXConn, backend *TCPXBackend, proxyConfig *TCPXProxyConfig) {
+func TCPXReverseProxy(foreConn *TCPXConn, backend *TCPXBackend, proxyConfig *TCPXProxyConfig) {
 	backConn, backErr := backend.Dial()
 	if backErr != nil {
-		conn.Close()
+		foreConn.Close()
 		return
 	}
 	inboundOver := make(chan struct{}, 1)
 	// Inbound
 	go func() {
 		var (
-			payload []byte
-			err     error
-			backErr error
+			foreData []byte
+			foreErr  error
+			backErr  error
 		)
 		for {
-			if err = conn.SetReadDeadline(); err == nil {
-				if payload, err = conn.Recv(); len(payload) > 0 {
+			if foreErr = foreConn.SetReadDeadline(); foreErr == nil {
+				if foreData, foreErr = foreConn.Recv(); len(foreData) > 0 {
 					if backErr = backConn.SetWriteDeadline(); backErr == nil {
-						backErr = backConn.Send(payload)
+						_, backErr = backConn.Send(foreData)
 					}
 				}
 			}
-			if err != nil || backErr != nil {
-				conn.CloseRead()
+			if foreErr != nil || backErr != nil {
+				foreConn.CloseRead()
 				backConn.CloseWrite()
 				break
 			}
@@ -102,20 +102,20 @@ func TCPXReverseProxy(conn *TCPXConn, backend *TCPXBackend, proxyConfig *TCPXPro
 	}()
 	// Outbound
 	var (
-		payload []byte
-		err     error
+		backData []byte
+		foreErr  error
 	)
 	for {
 		if backErr = backConn.SetReadDeadline(); backErr == nil {
-			if payload, backErr = backConn.Recv(); len(payload) > 0 {
-				if err = conn.SetWriteDeadline(); err == nil {
-					err = conn.Send(payload)
+			if backData, backErr = backConn.Recv(); len(backData) > 0 {
+				if foreErr = foreConn.SetWriteDeadline(); foreErr == nil {
+					_, foreErr = foreConn.Send(backData)
 				}
 			}
 		}
-		if backErr != nil || err != nil {
+		if backErr != nil || foreErr != nil {
 			backConn.CloseRead()
-			conn.CloseWrite()
+			foreConn.CloseWrite()
 			break
 		}
 	}

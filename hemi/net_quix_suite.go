@@ -64,10 +64,10 @@ type quixConn_ struct {
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	id                   int64
-	stageID              int32
+	stageID              int32 // for convenience
 	quicConn             *quic.Conn
-	udsMode              bool
-	tlsMode              bool
+	udsMode              bool  // for convenience
+	tlsMode              bool  // for convenience
 	maxCumulativeStreams int32 // how many streams are allowed on this connection?
 	maxConcurrentStreams int32 // how many concurrent streams are allowed on this connection?
 	// Conn states (zeros)

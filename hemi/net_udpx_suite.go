@@ -44,8 +44,8 @@ type udpxConn_ struct {
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	id      int64
-	stageID int32
-	udsMode bool
+	stageID int32 // for convenience
+	udsMode bool  // for convenience
 	pktConn net.PacketConn
 	rawConn syscall.RawConn // for syscall
 	// Conn states (zeros)

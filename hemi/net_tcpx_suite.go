@@ -49,10 +49,10 @@ type tcpxConn_ struct {
 	stockBuffer [256]byte  // a (fake) buffer to workaround Go's conservative escape analysis
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id           int64 // the conn id
-	stageID      int32
-	udsMode      bool
-	tlsMode      bool
+	id           int64           // the conn id
+	stageID      int32           // for convenience
+	udsMode      bool            // for convenience
+	tlsMode      bool            // for convenience
 	readTimeout  time.Duration   // for convenience
 	writeTimeout time.Duration   // for convenience
 	netConn      net.Conn        // *net.TCPConn, *tls.Conn, *net.UnixConn
@@ -126,8 +126,8 @@ func (c *tcpxConn_) Recv() (data []byte, err error) {
 	data = c.input[:n]
 	return
 }
-func (c *tcpxConn_) Send(data []byte) (err error) {
-	_, err = c.netConn.Write(data)
+func (c *tcpxConn_) Send(data []byte) (n int, err error) {
+	n, err = c.netConn.Write(data)
 	return
 }
 
@@ -483,9 +483,9 @@ func (c *TCPXConn) CloseRead() {
 	c._checkClose()
 }
 func (c *TCPXConn) CloseWrite() {
-	if gate := c.gate; gate.IsUDS() {
+	if c.gate.IsUDS() {
 		c.netConn.(*net.UnixConn).CloseWrite()
-	} else if gate.IsTLS() {
+	} else if c.gate.IsTLS() {
 		c.netConn.(*tls.Conn).CloseWrite()
 	} else {
 		c.netConn.(*net.TCPConn).CloseWrite()
@@ -733,21 +733,21 @@ func (n *tcpxNode) dial() (*TConn, error) {
 		Printf("tcpxNode=%s dial %s\n", n.name, n.address)
 	}
 	var (
-		tConn *TConn
-		err   error
+		conn *TConn
+		err  error
 	)
 	if n.IsUDS() {
-		tConn, err = n._dialUDS()
+		conn, err = n._dialUDS()
 	} else if n.IsTLS() {
-		tConn, err = n._dialTLS()
+		conn, err = n._dialTLS()
 	} else {
-		tConn, err = n._dialTCP()
+		conn, err = n._dialTCP()
 	}
 	if err != nil {
 		return nil, errNodeDown
 	}
 	n.IncSub() // conn
-	return tConn, err
+	return conn, err
 }
 func (n *tcpxNode) _dialUDS() (*TConn, error) {
 	// TODO: dynamic address names?
@@ -850,9 +850,9 @@ func (c *TConn) onPut() {
 }
 
 func (c *TConn) CloseWrite() {
-	if node := c.node; node.IsUDS() {
+	if c.node.IsUDS() {
 		c.netConn.(*net.UnixConn).CloseWrite()
-	} else if node.IsTLS() {
+	} else if c.node.IsTLS() {
 		c.netConn.(*tls.Conn).CloseWrite()
 	} else {
 		c.netConn.(*net.TCPConn).CloseWrite()

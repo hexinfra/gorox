@@ -358,7 +358,7 @@ type WebSocketProxyConfig struct {
 }
 
 // WebSocketReverseProxy
-func WebSocketReverseProxy(req Request, sock Socket, backend HTTPBackend, proxyConfig *WebSocketProxyConfig) {
+func WebSocketReverseProxy(foreReq Request, foreSock Socket, backend HTTPBackend, proxyConfig *WebSocketProxyConfig) {
 	// TODO
-	sock.Close()
+	foreSock.Close()
 }

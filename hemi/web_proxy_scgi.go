@@ -180,19 +180,19 @@ func (n *scgiNode) dial() (*scgiConn, error) {
 		Printf("scgiNode=%s dial %s\n", n.name, n.address)
 	}
 	var (
-		fConn *scgiConn
-		err   error
+		conn *scgiConn
+		err  error
 	)
 	if n.IsUDS() {
-		fConn, err = n._dialUDS()
+		conn, err = n._dialUDS()
 	} else {
-		fConn, err = n._dialTCP()
+		conn, err = n._dialTCP()
 	}
 	if err != nil {
 		return nil, errNodeDown
 	}
 	n.IncSub() // conn
-	return fConn, err
+	return conn, err
 }
 func (n *scgiNode) _dialUDS() (*scgiConn, error) {
 	// TODO: dynamic address names?

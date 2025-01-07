@@ -45,7 +45,7 @@ func (d *dnsProxy) OnPrepare() {
 	// TODO
 }
 
-func (d *dnsProxy) Deal(conn *UDPXConn) (dealt bool) {
+func (d *dnsProxy) DealWith(conn *UDPXConn) (dealt bool) {
 	// TODO
 	return true
 }

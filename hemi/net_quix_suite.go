@@ -506,7 +506,7 @@ type QUIXDealet interface {
 	// Imports
 	Component
 	// Methods
-	Deal(conn *QUIXConn, stream *QUIXStream) (dealt bool)
+	DealWith(conn *QUIXConn, stream *QUIXStream) (dealt bool)
 }
 
 // QUIXDealet_

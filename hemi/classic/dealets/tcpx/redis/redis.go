@@ -55,7 +55,7 @@ func (d *redisProxy) OnPrepare() {
 	// TODO
 }
 
-func (d *redisProxy) Deal(conn *TCPXConn) (dealt bool) {
+func (d *redisProxy) DealWith(conn *TCPXConn) (dealt bool) {
 	return true
 }
 

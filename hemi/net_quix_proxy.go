@@ -57,7 +57,7 @@ func (d *quixProxy) OnConfigure() {
 func (d *quixProxy) OnPrepare() {
 }
 
-func (d *quixProxy) Deal(conn *QUIXConn, stream *QUIXStream) (dealt bool) {
+func (d *quixProxy) DealWith(conn *QUIXConn, stream *QUIXStream) (dealt bool) {
 	QUIXReverseProxy(conn, stream, d.backend, &d.QUIXProxyConfig)
 	return true
 }

@@ -57,7 +57,7 @@ func (d *udpxProxy) OnConfigure() {
 func (d *udpxProxy) OnPrepare() {
 }
 
-func (d *udpxProxy) Deal(conn *UDPXConn) (dealt bool) {
+func (d *udpxProxy) DealWith(conn *UDPXConn) (dealt bool) {
 	UDPXReverseProxy(conn, d.backend, &d.UDPXProxyConfig)
 	return true
 }

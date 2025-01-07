@@ -392,7 +392,7 @@ func (c *udpxCase) isMatch(conn *UDPXConn) bool {
 
 func (c *udpxCase) execute(conn *UDPXConn) (dealt bool) {
 	for _, dealet := range c.dealets {
-		if dealt := dealet.Deal(conn); dealt {
+		if dealt := dealet.DealWith(conn); dealt {
 			return true
 		}
 	}
@@ -448,7 +448,7 @@ type UDPXDealet interface {
 	// Imports
 	Component
 	// Methods
-	Deal(conn *UDPXConn) (dealt bool)
+	DealWith(conn *UDPXConn) (dealt bool)
 }
 
 // UDPXDealet_

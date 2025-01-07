@@ -950,7 +950,7 @@ func (r *httpOut_) proxyPassBytes3(data []byte) error { return r.writeBytes3(dat
 
 func (r *httpOut_) finalizeVague3() error {
 	// TODO
-	if r.nTrailers == 1 { // no trailers
+	if r.numTrailers == 1 { // no trailers
 	} else { // with trailers
 	}
 	return nil

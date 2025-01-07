@@ -61,9 +61,11 @@ type tcpxConn_ struct {
 	region       Region          // a region-based memory pool
 	closeSema    atomic.Int32    // controls read/write close
 	// Conn states (zeros)
-	counter   atomic.Int64 // can be used to generate a random number
-	lastRead  time.Time    // deadline of last read operation
-	lastWrite time.Time    // deadline of last write operation
+	counter     atomic.Int64 // can be used to generate a random number
+	lastRead    time.Time    // deadline of last read operation
+	lastWrite   time.Time    // deadline of last write operation
+	Vector      net.Buffers  // used by Sendv()
+	FixedVector [4][]byte    // used by Sendv()
 }
 
 func (c *tcpxConn_) onGet(id int64, stageID int32, netConn net.Conn, rawConn syscall.RawConn, udsMode bool, tlsMode bool, readTimeout time.Duration, writeTimeout time.Duration) {
@@ -91,6 +93,8 @@ func (c *tcpxConn_) onPut() {
 	c.counter.Store(0)
 	c.lastRead = time.Time{}
 	c.lastWrite = time.Time{}
+	c.Vector = nil
+	c.FixedVector = [4][]byte{}
 }
 
 func (c *tcpxConn_) IsUDS() bool { return c.udsMode }
@@ -126,8 +130,12 @@ func (c *tcpxConn_) Recv() (data []byte, err error) {
 	data = c.input[:n]
 	return
 }
-func (c *tcpxConn_) Send(data []byte) (n int, err error) {
-	n, err = c.netConn.Write(data)
+func (c *tcpxConn_) Send(data []byte) (err error) {
+	_, err = c.netConn.Write(data)
+	return
+}
+func (c *tcpxConn_) Sendv() (err error) {
+	_, err = c.Vector.WriteTo(c.netConn)
 	return
 }
 
@@ -497,6 +505,7 @@ func (c *TCPXConn) _checkClose() {
 		c.Close()
 	}
 }
+
 func (c *TCPXConn) Close() {
 	c.gate.justClose(c.netConn)
 }
@@ -582,7 +591,7 @@ func (c *tcpxCase) isMatch(conn *TCPXConn) bool {
 
 func (c *tcpxCase) execute(conn *TCPXConn) (dealt bool) {
 	for _, dealet := range c.dealets {
-		if dealt := dealet.Deal(conn); dealt {
+		if dealt := dealet.DealWith(conn); dealt {
 			return true
 		}
 	}
@@ -638,7 +647,7 @@ type TCPXDealet interface {
 	// Imports
 	Component
 	// Methods
-	Deal(conn *TCPXConn) (dealt bool)
+	DealWith(conn *TCPXConn) (dealt bool)
 }
 
 // TCPXDealet_
@@ -849,6 +858,9 @@ func (c *TConn) onPut() {
 	c.tcpxConn_.onPut()
 }
 
+func (c *TConn) CloseRead() {
+	c._checkClose()
+}
 func (c *TConn) CloseWrite() {
 	if c.node.IsUDS() {
 		c.netConn.(*net.UnixConn).CloseWrite()
@@ -859,14 +871,12 @@ func (c *TConn) CloseWrite() {
 	}
 	c._checkClose()
 }
-func (c *TConn) CloseRead() {
-	c._checkClose()
-}
 func (c *TConn) _checkClose() {
 	if c.closeSema.Add(-1) == 0 {
 		c.Close()
 	}
 }
+
 func (c *TConn) Close() error {
 	c.node.DecSub() // conn
 	netConn := c.netConn

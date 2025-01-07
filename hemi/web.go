@@ -86,7 +86,7 @@ type Webapp struct {
 	suffixHostnames  [][]byte          // like: ("*.example.com")
 	prefixHostnames  [][]byte          // like: ("www.example.*")
 	revisersByID     [256]Reviser      // for fast searching. position 0 is not used
-	nRevisers        uint8             // used number of revisersByID in this webapp
+	numRevisers      uint8             // used number of revisersByID in this webapp
 }
 
 func (a *Webapp) onCreate(name string, stage *Stage) {
@@ -95,7 +95,7 @@ func (a *Webapp) onCreate(name string, stage *Stage) {
 	a.handlets = make(compDict[Handlet])
 	a.revisers = make(compDict[Reviser])
 	a.socklets = make(compDict[Socklet])
-	a.nRevisers = 1 // position 0 is not used
+	a.numRevisers = 1 // position 0 is not used
 }
 func (a *Webapp) OnShutdown() {
 	close(a.ShutChan) // notifies maintain() which shutdown sub components
@@ -282,7 +282,7 @@ func (a *Webapp) createHandlet(sign string, name string) Handlet {
 	return handlet
 }
 func (a *Webapp) createReviser(sign string, name string) Reviser {
-	if a.nRevisers == 255 {
+	if a.numRevisers == 255 {
 		UseExitln("cannot create reviser: too many revisers in one webapp")
 	}
 	if a.Reviser(name) != nil {
@@ -296,10 +296,10 @@ func (a *Webapp) createReviser(sign string, name string) Reviser {
 	}
 	reviser := create(name, a.stage, a)
 	reviser.setShell(reviser)
-	reviser.setID(a.nRevisers)
+	reviser.setID(a.numRevisers)
 	a.revisers[name] = reviser
-	a.revisersByID[a.nRevisers] = reviser
-	a.nRevisers++
+	a.revisersByID[a.numRevisers] = reviser
+	a.numRevisers++
 	return reviser
 }
 func (a *Webapp) createSocklet(sign string, name string) Socklet {

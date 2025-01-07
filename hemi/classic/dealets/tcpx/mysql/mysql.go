@@ -48,7 +48,7 @@ func (d *mysqlProxy) OnPrepare() {
 	// TODO
 }
 
-func (d *mysqlProxy) Deal(conn *TCPXConn) (dealt bool) {
+func (d *mysqlProxy) DealWith(conn *TCPXConn) (dealt bool) {
 	return true
 }
 

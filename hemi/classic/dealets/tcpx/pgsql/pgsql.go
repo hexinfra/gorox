@@ -48,7 +48,7 @@ func (d *pgsqlProxy) OnPrepare() {
 	// TODO
 }
 
-func (d *pgsqlProxy) Deal(conn *TCPXConn) (dealt bool) {
+func (d *pgsqlProxy) DealWith(conn *TCPXConn) (dealt bool) {
 	return true
 }
 

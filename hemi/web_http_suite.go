@@ -478,7 +478,7 @@ type serverRequest_ struct { // incoming. needs parsing
 	// Stream states (stocks)
 	stockUpfiles [2]Upfile // for r.upfiles. 96B
 	// Stream states (controlled)
-	ranges [4]Range // parsed range fields. at most 4 range fields are allowed. controlled by r.nRanges
+	ranges [4]Range // parsed range fields. at most 4 range fields are allowed. controlled by r.numRanges
 	// Stream states (non-zeros)
 	upfiles []Upfile // decoded upfiles -> r.array (for metadata) and temp files in local file system. [<r.stockUpfiles>/(make=16/128)]
 	// Stream states (zeros)
@@ -508,7 +508,7 @@ type _serverRequest0 struct { // for fast reset, entirely
 	forms           zone     // decoded forms -> r.array
 	ifMatch         int8     // -1: if-match *, 0: no if-match field, >0: number of if-match: 1#entity-tag
 	ifNoneMatch     int8     // -1: if-none-match *, 0: no if-none-match field, >0: number of if-none-match: 1#entity-tag
-	nRanges         int8     // num of ranges. controls r.ranges
+	numRanges       int8     // num of ranges. controls r.ranges
 	maxForwards     int8     // parsed value of "Max-Forwards" header, must <= 127
 	expectContinue  bool     // expect: 100-continue?
 	acceptTrailers  bool     // does client accept trailers? i.e. te: trailers
@@ -930,7 +930,7 @@ func (r *serverRequest_) examineHead() bool {
 			r.indexes.ifModifiedSince = 0
 		}
 		// A server MUST ignore an If-Range header field received in a request that does not contain a Range header field.
-		if r.indexes.ifRange != 0 && r.nRanges == 0 {
+		if r.indexes.ifRange != 0 && r.numRanges == 0 {
 			r._delPrime(r.indexes.ifRange) // we delete it.
 			r.indexes.ifRange = 0
 		}
@@ -950,8 +950,8 @@ func (r *serverRequest_) examineHead() bool {
 			r.headResult, r.failReason = StatusBadRequest, "content is not allowed in CONNECT and TRACE method"
 			return false
 		}
-		if r.nContentCodings > 0 { // have content-encoding
-			if r.nContentCodings > 1 || r.contentCodings[0] != httpCodingGzip {
+		if r.numContentCodings > 0 { // request has content-encoding
+			if r.numContentCodings > 1 || r.contentCodings[0] != httpCodingGzip {
 				r.headResult, r.failReason = StatusUnsupportedMediaType, "currently only gzip content coding is supported in request"
 				return false
 			}
@@ -990,7 +990,7 @@ func (r *serverRequest_) examineHead() bool {
 					return false
 				}
 			}
-			if r.formKind != httpFormNotForm && r.nContentCodings > 0 {
+			if r.formKind != httpFormNotForm && r.numContentCodings > 0 {
 				r.headResult, r.failReason = StatusUnsupportedMediaType, "a form with content coding is not supported yet"
 				return false
 			}
@@ -1155,7 +1155,7 @@ func (r *serverRequest_) checkRange(header *pair, index uint8) bool { // Range =
 		r._delPrime(index)
 		return true
 	}
-	if r.nRanges > 0 {
+	if r.numRanges > 0 {
 		r.headResult, r.failReason = StatusBadRequest, "duplicated range header"
 		return false
 	}
@@ -1273,12 +1273,12 @@ badRange:
 	return false
 }
 func (r *serverRequest_) _addRange(rang Range) bool {
-	if r.nRanges == int8(cap(r.ranges)) {
+	if r.numRanges == int8(cap(r.ranges)) {
 		r.headResult, r.failReason = StatusBadRequest, "too many ranges"
 		return false
 	}
-	r.ranges[r.nRanges] = rang
-	r.nRanges++
+	r.ranges[r.numRanges] = rang
+	r.numRanges++
 	return true
 }
 func (r *serverRequest_) checkUserAgent(header *pair, index uint8) bool { // User-Agent = product *( RWS ( product / comment ) )
@@ -1637,7 +1637,7 @@ func (r *serverRequest_) parseCookie(cookieString span) bool { // cookie-string 
 }
 
 func (r *serverRequest_) AcceptTrailers() bool { return r.acceptTrailers }
-func (r *serverRequest_) HasRanges() bool      { return r.nRanges > 0 }
+func (r *serverRequest_) HasRanges() bool      { return r.numRanges > 0 }
 func (r *serverRequest_) HasIfRange() bool     { return r.indexes.ifRange != 0 }
 func (r *serverRequest_) UserAgent() string    { return string(r.UnsafeUserAgent()) }
 func (r *serverRequest_) UnsafeUserAgent() []byte {
@@ -1822,7 +1822,7 @@ func (r *serverRequest_) _evalIfRangeDate(date int64) (pass bool) {
 
 func (r *serverRequest_) EvalRanges(contentSize int64) []Range { // returned ranges are converted from [from:last] to the format of [from:edge)
 	rangedSize := int64(0)
-	for i := int8(0); i < r.nRanges; i++ {
+	for i := int8(0); i < r.numRanges; i++ {
 		rang := &r.ranges[i]
 		if rang.From == -1 { // "-" suffix-length, means the last `suffix-length` bytes
 			if rang.Last == 0 {
@@ -1853,7 +1853,7 @@ func (r *serverRequest_) EvalRanges(contentSize int64) []Range { // returned ran
 			return nil
 		}
 	}
-	return r.ranges[:r.nRanges]
+	return r.ranges[:r.numRanges]
 }
 
 func (r *serverRequest_) proxyUnsetHost() {
@@ -3863,8 +3863,8 @@ type httpIn_ struct { // incoming. needs parsing
 	inputNext      int32    // HTTP/1.x request only. next request begins from r.input[r.inputNext]. exists because HTTP/1.1 supports pipelining
 	inputEdge      int32    // edge position of current message head is at r.input[r.inputEdge]. placed here to make it compatible with HTTP/1.1 pipelining
 	mainPair       pair     // to overcome the limitation of Go's escape analysis when receiving pairs
-	contentCodings [4]uint8 // content-encoding flags, controlled by r.nContentCodings. see httpCodingXXX for values
-	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.nAcceptCodings. see httpCodingXXX for values
+	contentCodings [4]uint8 // content-encoding flags, controlled by r.numContentCodings. see httpCodingXXX for values
+	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.numAcceptCodings. see httpCodingXXX for values
 	// Stream states (non-zeros)
 	primes               []pair        // hold prime queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockPrimes>/max]
 	extras               []pair        // hold extra queries, headers(main+subs), cookies, forms, trailers(main+subs), and params. [<r.stockExtras>/max]
@@ -3890,42 +3890,42 @@ type httpIn_ struct { // incoming. needs parsing
 	_httpIn0              // all values in this struct must be zero by default!
 }
 type _httpIn0 struct { // for fast reset, entirely
-	elemBack         int32   // element begins from. for parsing elements in control & headers & content & trailers
-	elemFore         int32   // element spanning to. for parsing elements in control & headers & content & trailers
-	head             span    // head (control + headers) of current message -> r.input. set after head is received. only for debugging
-	imme             span    // HTTP/1.x only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
-	hasExtra         [8]bool // has extra pairs? see pairXXX for indexes
-	dateTime         int64   // parsed unix time of the date header
-	arrayEdge        int32   // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
-	arrayKind        int8    // kind of current r.array. see arrayKindXXX
-	receiving        int8    // what section of the message are we currently receiving. see httpSectionXXX
-	headers          zone    // headers ->r.primes
-	hasRevisers      bool    // are there any incoming revisers hooked on this incoming message?
-	upgradeSocket    bool    // upgrade: websocket?
-	acceptGzip       bool    // does the peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
-	acceptBrotli     bool    // does the peer accept brotli content coding? i.e. accept-encoding: gzip, br
-	nContentCodings  int8    // num of content-encoding flags, controls r.contentCodings
-	nAcceptCodings   int8    // num of accept-encoding flags, controls r.acceptCodings
-	iContentLength   uint8   // index of content-length header in r.primes
-	iContentLocation uint8   // index of content-location header in r.primes
-	iContentRange    uint8   // index of content-range header in r.primes
-	iContentType     uint8   // index of content-type header in r.primes
-	iDate            uint8   // index of date header in r.primes
-	_                [3]byte // padding
-	zConnection      zone    // zone of connection headers in r.primes. may not be continuous
-	zContentLanguage zone    // zone of content-language headers in r.primes. may not be continuous
-	zTrailer         zone    // zone of trailer headers in r.primes. may not be continuous
-	zVia             zone    // zone of via headers in r.primes. may not be continuous
-	contentReceived  bool    // is the content received? true if the message has no content or the content is received
-	contentTextKind  int8    // kind of current r.contentText if it is text. see httpContentTextXXX
-	receivedSize     int64   // bytes of currently received content. used by both sized & vague content receiver
-	chunkSize        int64   // left size of current chunk if the chunk is too large to receive in one call. HTTP/1.1 chunked only
-	chunkBack        int32   // for parsing chunked elements. HTTP/1.1 chunked only
-	chunkFore        int32   // for parsing chunked elements. HTTP/1.1 chunked only
-	chunkEdge        int32   // edge position of the filled chunked data in r.bodyWindow. HTTP/1.1 chunked only
-	transferChunked  bool    // transfer-encoding: chunked? HTTP/1.1 only
-	overChunked      bool    // for HTTP/1.1 requests, if chunked receiver over received in r.bodyWindow, then r.bodyWindow will be used as r.input on ends
-	trailers         zone    // trailers -> r.primes. set after trailer section is received and parsed
+	elemBack          int32   // element begins from. for parsing elements in control & headers & content & trailers
+	elemFore          int32   // element spanning to. for parsing elements in control & headers & content & trailers
+	head              span    // head (control + headers) of current message -> r.input. set after head is received. only for debugging
+	imme              span    // HTTP/1.x only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
+	hasExtra          [8]bool // has extra pairs? see pairXXX for indexes
+	dateTime          int64   // parsed unix time of the date header
+	arrayEdge         int32   // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
+	arrayKind         int8    // kind of current r.array. see arrayKindXXX
+	receiving         int8    // what section of the message are we currently receiving. see httpSectionXXX
+	headers           zone    // headers ->r.primes
+	hasRevisers       bool    // are there any incoming revisers hooked on this incoming message?
+	upgradeSocket     bool    // upgrade: websocket?
+	acceptGzip        bool    // does the peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
+	acceptBrotli      bool    // does the peer accept brotli content coding? i.e. accept-encoding: gzip, br
+	numContentCodings int8    // num of content-encoding flags, controls r.contentCodings
+	numAcceptCodings  int8    // num of accept-encoding flags, controls r.acceptCodings
+	iContentLength    uint8   // index of content-length header in r.primes
+	iContentLocation  uint8   // index of content-location header in r.primes
+	iContentRange     uint8   // index of content-range header in r.primes
+	iContentType      uint8   // index of content-type header in r.primes
+	iDate             uint8   // index of date header in r.primes
+	_                 [3]byte // padding
+	zConnection       zone    // zone of connection headers in r.primes. may not be continuous
+	zContentLanguage  zone    // zone of content-language headers in r.primes. may not be continuous
+	zTrailer          zone    // zone of trailer headers in r.primes. may not be continuous
+	zVia              zone    // zone of via headers in r.primes. may not be continuous
+	contentReceived   bool    // is the content received? true if the message has no content or the content is received
+	contentTextKind   int8    // kind of current r.contentText if it is text. see httpContentTextXXX
+	receivedSize      int64   // bytes of currently received content. used by both sized & vague content receiver
+	chunkSize         int64   // left size of current chunk if the chunk is too large to receive in one call. HTTP/1.1 chunked only
+	chunkBack         int32   // for parsing chunked elements. HTTP/1.1 chunked only
+	chunkFore         int32   // for parsing chunked elements. HTTP/1.1 chunked only
+	chunkEdge         int32   // edge position of the filled chunked data in r.bodyWindow. HTTP/1.1 chunked only
+	transferChunked   bool    // transfer-encoding: chunked? HTTP/1.1 only
+	overChunked       bool    // for HTTP/1.1 requests, if chunked receiver over received in r.bodyWindow, then r.bodyWindow will be used as r.input on ends
+	trailers          zone    // trailers -> r.primes. set after trailer section is received and parsed
 }
 
 func (r *httpIn_) onUse(httpVersion uint8, asResponse bool) { // for non-zeros
@@ -4434,7 +4434,7 @@ func (r *httpIn_) checkAcceptEncoding(pairs []pair, from uint8, edge uint8) bool
 	// codings = content-coding / "identity" / "*"
 	// content-coding = token
 	for i := from; i < edge; i++ {
-		if r.nAcceptCodings == int8(cap(r.acceptCodings)) {
+		if r.numAcceptCodings == int8(cap(r.acceptCodings)) {
 			break // ignore too many codings
 		}
 		pair := &pairs[i]
@@ -4459,8 +4459,8 @@ func (r *httpIn_) checkAcceptEncoding(pairs []pair, from uint8, edge uint8) bool
 		} else {
 			coding = httpCodingUnknown
 		}
-		r.acceptCodings[r.nAcceptCodings] = coding
-		r.nAcceptCodings++
+		r.acceptCodings[r.numAcceptCodings] = coding
+		r.numAcceptCodings++
 	}
 	return true
 }
@@ -4492,7 +4492,7 @@ func (r *httpIn_) checkConnection(pairs []pair, from uint8, edge uint8) bool { /
 func (r *httpIn_) checkContentEncoding(pairs []pair, from uint8, edge uint8) bool { // Content-Encoding = #content-coding
 	// content-coding = token
 	for i := from; i < edge; i++ {
-		if r.nContentCodings == int8(cap(r.contentCodings)) {
+		if r.numContentCodings == int8(cap(r.contentCodings)) {
 			r.headResult, r.failReason = StatusBadRequest, "too many content codings applied to content"
 			return false
 		}
@@ -4510,8 +4510,8 @@ func (r *httpIn_) checkContentEncoding(pairs []pair, from uint8, edge uint8) boo
 		} else {
 			coding = httpCodingUnknown
 		}
-		r.contentCodings[r.nContentCodings] = coding
-		r.nContentCodings++
+		r.contentCodings[r.numContentCodings] = coding
+		r.numContentCodings++
 	}
 	return true
 }
@@ -5240,7 +5240,7 @@ type httpOut_ struct { // outgoing. needs building
 	// Stream states (stocks)
 	stockFields [1536]byte // for r.fields
 	// Stream states (controlled)
-	edges [128]uint16 // edges of headers or trailers in r.fields, but not used at the same time. controlled by r.nHeaders or r.nTrailers. edges[0] is not used!
+	edges [128]uint16 // edges of headers or trailers in r.fields, but not used at the same time. controlled by r.numHeaders or r.numTrailers. edges[0] is not used!
 	piece Piece       // for r.chain. used when sending content or echoing chunks
 	chain Chain       // outgoing piece chain. used when sending content or echoing chunks
 	// Stream states (non-zeros)
@@ -5249,8 +5249,8 @@ type httpOut_ struct { // outgoing. needs building
 	contentSize int64         // info of outgoing content. -1: not set, -2: vague, >=0: size
 	httpVersion uint8         // Version1_1, Version2, Version3
 	asRequest   bool          // treat this outgoing message as request?
-	nHeaders    uint8         // 1+num of added headers, starts from 1 because edges[0] is not used
-	nTrailers   uint8         // 1+num of added trailers, starts from 1 because edges[0] is not used
+	numHeaders  uint8         // 1+num of added headers, starts from 1 because edges[0] is not used
+	numTrailers uint8         // 1+num of added trailers, starts from 1 because edges[0] is not used
 	// Stream states (zeros)
 	sendTime      time.Time   // the time when first write operation is performed
 	contentRanges []Range     // if outgoing content is ranged, this will be set
@@ -5277,7 +5277,7 @@ func (r *httpOut_) onUse(httpVersion uint8, asRequest bool) { // for non-zeros
 	r.contentSize = -1 // not set
 	r.httpVersion = httpVersion
 	r.asRequest = asRequest
-	r.nHeaders, r.nTrailers = 1, 1 // r.edges[0] is not used
+	r.numHeaders, r.numTrailers = 1, 1 // r.edges[0] is not used
 }
 func (r *httpOut_) onEnd() { // for zeros
 	if cap(r.fields) != cap(r.stockFields) {
@@ -5381,7 +5381,7 @@ func (r *httpOut_) _appendSingleton(pIndex *uint8, name []byte, value []byte) bo
 	if *pIndex > 0 || !r.outMessage.addHeader(name, value) {
 		return false
 	}
-	*pIndex = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
+	*pIndex = r.numHeaders - 1 // r.numHeaders begins from 1, so must minus one
 	return true
 }
 
@@ -5417,7 +5417,7 @@ func (r *httpOut_) _addUnixTime(pUnixTime *int64, pIndex *uint8, name []byte, ht
 	if !r.outMessage.addHeader(name, httpDate) {
 		return false
 	}
-	*pIndex = r.nHeaders - 1 // r.nHeaders begins from 1, so must minus one
+	*pIndex = r.numHeaders - 1 // r.numHeaders begins from 1, so must minus one
 	return true
 }
 func (r *httpOut_) _delUnixTime(pUnixTime *int64, pIndex *uint8) bool {
@@ -5630,13 +5630,13 @@ func (r *httpOut_) _beforeEcho() error {
 }
 
 func (r *httpOut_) growHeader(size int) (from int, edge int, ok bool) { // headers and trailers are not manipulated at the same time
-	if r.nHeaders == uint8(cap(r.edges)) { // too many headers
+	if r.numHeaders == uint8(cap(r.edges)) { // too many headers
 		return
 	}
 	return r._growFields(size)
 }
 func (r *httpOut_) growTrailer(size int) (from int, edge int, ok bool) { // headers and trailers are not manipulated at the same time
-	if r.nTrailers == uint8(cap(r.edges)) { // too many trailers
+	if r.numTrailers == uint8(cap(r.edges)) { // too many trailers
 		return
 	}
 	return r._growFields(size)

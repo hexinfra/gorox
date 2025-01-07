@@ -45,6 +45,6 @@ func (d *limitDealet) OnPrepare() {
 	// TODO
 }
 
-func (d *limitDealet) Deal(conn *TCPXConn) (dealt bool) {
+func (d *limitDealet) DealWith(conn *TCPXConn) (dealt bool) {
 	return true
 }

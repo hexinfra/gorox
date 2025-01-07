@@ -43,16 +43,18 @@ type http1Conn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	netConn net.Conn        // *net.TCPConn, *tls.Conn, *net.UnixConn
-	rawConn syscall.RawConn // for syscall, only usable when netConn is TCP/UDS
+	netConn    net.Conn        // *net.TCPConn, *tls.Conn, *net.UnixConn
+	rawConn    syscall.RawConn // for syscall, only usable when netConn is TCP/UDS
+	persistent bool            // keep the connection after current stream? true by default
 	// Conn states (zeros)
 }
 
-func (c *http1Conn_) onGet(id int64, stageID int32, udsMode bool, tlsMode bool, netConn net.Conn, rawConn syscall.RawConn, readTimeout time.Duration, writeTimeout time.Duration) {
+func (c *http1Conn_) onGet(id int64, stageID int32, udsMode bool, tlsMode bool, netConn net.Conn, rawConn syscall.RawConn, readTimeout time.Duration, writeTimeout time.Duration, persistent bool) {
 	c.httpConn_.onGet(id, stageID, udsMode, tlsMode, readTimeout, writeTimeout)
 
 	c.netConn = netConn
 	c.rawConn = rawConn
+	c.persistent = persistent
 }
 func (c *http1Conn_) onPut() {
 	c.netConn = nil
@@ -142,9 +144,8 @@ type server1Conn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	gate       *httpxGate // the gate to which the conn belongs
-	persistent bool       // keep the connection after current stream? true by default
-	closeSafe  bool       // if false, send a FIN first to avoid TCP's RST following immediate close(). true by default
+	gate      *httpxGate // the gate to which the conn belongs
+	closeSafe bool       // if false, send a FIN first to avoid TCP's RST following immediate close(). true by default
 	// Conn states (zeros)
 }
 
@@ -175,10 +176,9 @@ func putServer1Conn(serverConn *server1Conn) {
 
 func (c *server1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
 	server := gate.server
-	c.http1Conn_.onGet(id, server.Stage().ID(), gate.IsUDS(), gate.IsTLS(), netConn, rawConn, server.ReadTimeout(), server.WriteTimeout())
+	c.http1Conn_.onGet(id, server.Stage().ID(), gate.IsUDS(), gate.IsTLS(), netConn, rawConn, server.ReadTimeout(), server.WriteTimeout(), true)
 
 	c.gate = gate
-	c.persistent = true
 	c.closeSafe = true
 
 	// Input is conn scoped but put in stream scoped request for convenience
@@ -1392,7 +1392,6 @@ type backend1Conn struct {
 	// Conn states (non-zeros)
 	node       *http1Node // the node to which the connection belongs
 	expireTime time.Time  // when the conn is considered expired
-	persistent bool       // keep the connection after current stream? true by default
 	// Conn states (zeros)
 }
 
@@ -1422,11 +1421,10 @@ func putBackend1Conn(backendConn *backend1Conn) {
 }
 
 func (c *backend1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.http1Conn_.onGet(id, node.Stage().ID(), node.IsUDS(), node.IsTLS(), netConn, rawConn, node.ReadTimeout(), node.WriteTimeout())
+	c.http1Conn_.onGet(id, node.Stage().ID(), node.IsUDS(), node.IsTLS(), netConn, rawConn, node.ReadTimeout(), node.WriteTimeout(), true)
 
 	c.node = node
 	c.expireTime = time.Now().Add(node.idleTimeout)
-	c.persistent = true
 }
 func (c *backend1Conn) onPut() {
 	c.expireTime = time.Time{}
@@ -2346,9 +2344,9 @@ func (r *httpOut_) addHeader1(name []byte, value []byte) bool {
 	}
 }
 func (r *httpOut_) header1(name []byte) (value []byte, ok bool) {
-	if r.nHeaders > 1 && len(name) > 0 {
+	if r.numHeaders > 1 && len(name) > 0 {
 		from := uint16(0)
-		for i := uint8(1); i < r.nHeaders; i++ {
+		for i := uint8(1); i < r.numHeaders; i++ {
 			edge := r.edges[i]
 			header := r.fields[from:edge]
 			if p := bytes.IndexByte(header, ':'); p != -1 && bytes.Equal(header[0:p], name) {
@@ -2360,9 +2358,9 @@ func (r *httpOut_) header1(name []byte) (value []byte, ok bool) {
 	return
 }
 func (r *httpOut_) hasHeader1(name []byte) bool {
-	if r.nHeaders > 1 && len(name) > 0 {
+	if r.numHeaders > 1 && len(name) > 0 {
 		from := uint16(0)
-		for i := uint8(1); i < r.nHeaders; i++ {
+		for i := uint8(1); i < r.numHeaders; i++ {
 			edge := r.edges[i]
 			header := r.fields[from:edge]
 			if p := bytes.IndexByte(header, ':'); p != -1 && bytes.Equal(header[0:p], name) {
@@ -2375,16 +2373,16 @@ func (r *httpOut_) hasHeader1(name []byte) bool {
 }
 func (r *httpOut_) delHeader1(name []byte) (deleted bool) {
 	from := uint16(0)
-	for i := uint8(1); i < r.nHeaders; {
+	for i := uint8(1); i < r.numHeaders; {
 		edge := r.edges[i]
 		if p := bytes.IndexByte(r.fields[from:edge], ':'); bytes.Equal(r.fields[from:from+uint16(p)], name) {
 			size := edge - from
 			copy(r.fields[from:], r.fields[edge:])
-			for j := i + 1; j < r.nHeaders; j++ {
+			for j := i + 1; j < r.numHeaders; j++ {
 				r.edges[j] -= size
 			}
 			r.fieldsEdge -= size
-			r.nHeaders--
+			r.numHeaders--
 			deleted = true
 		} else {
 			from = edge
@@ -2401,17 +2399,17 @@ func (r *httpOut_) delHeaderAt1(i uint8) {
 	edge := r.edges[i]
 	size := edge - from
 	copy(r.fields[from:], r.fields[edge:])
-	for j := i + 1; j < r.nHeaders; j++ {
+	for j := i + 1; j < r.numHeaders; j++ {
 		r.edges[j] -= size
 	}
 	r.fieldsEdge -= size
-	r.nHeaders--
+	r.numHeaders--
 }
 func (r *httpOut_) _addCRLFHeader1(from int) {
 	r.fields[from] = '\r'
 	r.fields[from+1] = '\n'
-	r.edges[r.nHeaders] = uint16(from + 2)
-	r.nHeaders++
+	r.edges[r.numHeaders] = uint16(from + 2)
+	r.numHeaders++
 }
 func (r *httpOut_) _addFixedHeader1(name []byte, value []byte) { // used by finalizeHeaders
 	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], name))
@@ -2557,17 +2555,17 @@ func (r *httpOut_) addTrailer1(name []byte, value []byte) bool {
 		from += copy(r.fields[from:], value)
 		r.fields[from] = '\r'
 		r.fields[from+1] = '\n'
-		r.edges[r.nTrailers] = uint16(from + 2)
-		r.nTrailers++
+		r.edges[r.numTrailers] = uint16(from + 2)
+		r.numTrailers++
 		return true
 	} else {
 		return false
 	}
 }
 func (r *httpOut_) trailer1(name []byte) (value []byte, ok bool) {
-	if r.nTrailers > 1 && len(name) > 0 {
+	if r.numTrailers > 1 && len(name) > 0 {
 		from := uint16(0)
-		for i := uint8(1); i < r.nTrailers; i++ {
+		for i := uint8(1); i < r.numTrailers; i++ {
 			edge := r.edges[i]
 			trailer := r.fields[from:edge]
 			if p := bytes.IndexByte(trailer, ':'); p != -1 && bytes.Equal(trailer[0:p], name) {
@@ -2583,7 +2581,7 @@ func (r *httpOut_) trailers1() []byte { return r.fields[0:r.fieldsEdge] } // Hea
 func (r *httpOut_) proxyPassBytes1(data []byte) error { return r.writeBytes1(data) }
 
 func (r *httpOut_) finalizeVague1() error {
-	if r.nTrailers == 1 { // no trailers
+	if r.numTrailers == 1 { // no trailers
 		return r.writeBytes1(http1BytesZeroCRLFCRLF) // 0\r\n\r\n
 	} else { // with trailers
 		r.vector = r.fixedVector[0:3]

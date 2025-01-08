@@ -745,7 +745,7 @@ func (r *fcgiRequest) proxyCopyHeaders(httpReq Request, proxy *fcgiProxy) bool {
 	}
 
 	// Add http params
-	if !httpReq.forHeaders(func(header *pair, name []byte, value []byte) bool {
+	if !httpReq.proxyWalkHeaders(func(header *pair, name []byte, value []byte) bool {
 		return r._addHTTPParam(header, name, value)
 	}) {
 		return false
@@ -971,11 +971,11 @@ func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
 	}
 }
 
-func (r *fcgiRequest) _setBeginRequest(p *[]byte) {
+func (r *fcgiRequest) _setBeginRequest(beginRequest *[]byte) {
 	if r.exchan.conn.node.keepConn {
-		*p = fcgiBeginKeepConn
+		*beginRequest = fcgiBeginKeepConn
 	} else {
-		*p = fcgiBeginDontKeep
+		*beginRequest = fcgiBeginDontKeep
 	}
 }
 
@@ -1595,7 +1595,7 @@ func (r *fcgiResponse) examineTail() bool { return true }  // fcgi doesn't suppo
 func (r *fcgiResponse) proxyDelHopHeaders()  {} // for fcgi, nothing to delete
 func (r *fcgiResponse) proxyDelHopTrailers() {} // fcgi doesn't support trailers
 
-func (r *fcgiResponse) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by Response.proxyCopyHeaders(). excluding sub headers
+func (r *fcgiResponse) proxyWalkHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // excluding sub headers
 	for i := 1; i < len(r.primes); i++ { // r.primes[0] is not used
 		if header := &r.primes[i]; header.nameHash != 0 && !header.isSubField() {
 			if !callback(header, header.nameAt(r.input), header.valueAt(r.input)) {
@@ -1605,7 +1605,7 @@ func (r *fcgiResponse) forHeaders(callback func(header *pair, name []byte, value
 	}
 	return true
 }
-func (r *fcgiResponse) forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers
+func (r *fcgiResponse) proxyWalkTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers
 	return true
 }
 

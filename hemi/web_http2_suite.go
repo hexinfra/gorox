@@ -1377,8 +1377,8 @@ func (r *server2Response) trailer(name []byte) (value []byte, ok bool) { return 
 func (r *server2Response) proxyPass1xx(backResp response) bool {
 	backResp.proxyDelHopHeaders()
 	r.status = backResp.Status()
-	if !backResp.forHeaders(func(header *pair, name []byte, value []byte) bool {
-		return r.insertHeader(header.nameHash, name, value)
+	if !backResp.proxyWalkHeaders(func(header *pair, name []byte, value []byte) bool {
+		return r.insertHeader(header.nameHash, name, value) // some headers are restricted
 	}) {
 		return false
 	}
@@ -1751,7 +1751,7 @@ func (r *backend2Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
 	return false
 }
-func (r *backend2Request) proxyCopyCookies(foreReq Request) bool { // DO NOT merge into one "cookie" header!
+func (r *backend2Request) proxyCopyCookies(foreReq Request) bool { // NOTE: DO NOT merge into one "cookie" header!
 	// TODO: one by one?
 	return true
 }

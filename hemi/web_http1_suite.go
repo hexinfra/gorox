@@ -1035,8 +1035,8 @@ func (r *server1Response) trailer(name []byte) (value []byte, ok bool) { return 
 func (r *server1Response) proxyPass1xx(backResp response) bool {
 	backResp.proxyDelHopHeaders()
 	r.status = backResp.Status()
-	if !backResp.forHeaders(func(header *pair, name []byte, value []byte) bool {
-		return r.insertHeader(header.nameHash, name, value)
+	if !backResp.proxyWalkHeaders(func(header *pair, name []byte, value []byte) bool {
+		return r.insertHeader(header.nameHash, name, value) // some headers are restricted
 	}) {
 		return false
 	}
@@ -1555,9 +1555,9 @@ func (r *backend1Request) AddCookie(name string, value string) bool { // cookie:
 	// TODO. need some space to place the cookie. use stream.unsafeMake()?
 	return false
 }
-func (r *backend1Request) proxyCopyCookies(foreReq Request) bool { // merge all cookies into one "cookie" header
+func (r *backend1Request) proxyCopyCookies(foreReq Request) bool { // NOTE: merge all cookies into one "cookie" header
 	headerSize := len(bytesCookie) + len(bytesColonSpace) // `cookie: `
-	foreReq.forCookies(func(cookie *pair, name []byte, value []byte) bool {
+	foreReq.proxyWalkCookies(func(cookie *pair, name []byte, value []byte) bool {
 		headerSize += len(name) + 1 + len(value) + 2 // `name=value; `
 		return true
 	})
@@ -1566,7 +1566,7 @@ func (r *backend1Request) proxyCopyCookies(foreReq Request) bool { // merge all 
 		r.fields[from] = ':'
 		r.fields[from+1] = ' '
 		from += 2
-		foreReq.forCookies(func(cookie *pair, name []byte, value []byte) bool {
+		foreReq.proxyWalkCookies(func(cookie *pair, name []byte, value []byte) bool {
 			from += copy(r.fields[from:], name)
 			r.fields[from] = '='
 			from++

@@ -460,9 +460,9 @@ type Request interface { // for *server[1-3]Request
 	makeAbsPath()
 	proxyDelHopHeaders()
 	proxyDelHopTrailers()
-	forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
-	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
-	forCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool
+	proxyWalkHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
+	proxyWalkTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
+	proxyWalkCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool
 	proxyUnsetHost()
 	proxyTakeContent() any
 	readContent() (data []byte, err error)
@@ -1697,7 +1697,7 @@ func (r *serverRequest_) DelCookie(name string) (deleted bool) {
 func (r *serverRequest_) AddCookie(name string, value string) bool { // as extra
 	return r.addExtra(name, value, 0, pairCookie)
 }
-func (r *serverRequest_) forCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool {
+func (r *serverRequest_) proxyWalkCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool {
 	for i := r.cookies.from; i < r.cookies.edge; i++ {
 		if cookie := &r.primes[i]; cookie.nameHash != 0 {
 			if !callback(cookie, cookie.nameAt(r.input), cookie.valueAt(r.input)) {
@@ -2974,14 +2974,14 @@ func (r *serverResponse_) proxyCopyHeaders(backResp response, proxyConfig *WebEx
 	// copy control (:status)
 	r.SetStatus(backResp.Status())
 
-	// copy selective forbidden headers (excluding set-cookie, which is copied directly) from resp
+	// copy selective forbidden headers (excluding set-cookie, which is copied directly) from backResp
 
-	// copy remaining headers from resp
-	if !backResp.forHeaders(func(header *pair, name []byte, value []byte) bool {
+	// copy remaining headers from backResp
+	if !backResp.proxyWalkHeaders(func(header *pair, name []byte, value []byte) bool {
 		if header.nameHash == hashSetCookie && bytes.Equal(name, bytesSetCookie) { // set-cookie is copied directly
 			return r.outMessage.addHeader(name, value)
 		} else {
-			return r.outMessage.insertHeader(header.nameHash, name, value)
+			return r.outMessage.insertHeader(header.nameHash, name, value) // some headers are restricted
 		}
 	}) {
 		return false
@@ -3135,7 +3135,7 @@ type stream interface { // for *backend[1-3]Stream
 type request interface { // for *backend[1-3]Request
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	proxySetAuthority(hostname []byte, colonport []byte) bool
-	proxyCopyCookies(foreReq Request) bool // HTTP 1.x/2/3 have different requirements on "cookie" header
+	proxyCopyCookies(foreReq Request) bool // NOTE: HTTP 1.x/2/3 have different requirements on "cookie" header
 	proxyCopyHeaders(foreReq Request, proxyConfig *WebExchanProxyConfig) bool
 	proxyPassMessage(foreReq Request) error                       // pass content to backend directly
 	proxyPostMessage(foreContent any, foreHasTrailers bool) error // post held content to backend
@@ -3347,7 +3347,7 @@ func (r *backendRequest_) proxyCopyHeaders(foreReq Request, proxyConfig *WebExch
 		// we have no way to set scheme in HTTP/1.x unless we use absolute-form, which is a risk as some servers may not support it.
 	}
 
-	// copy selective forbidden headers (including cookie) from req
+	// copy selective forbidden headers (including cookie) from foreReq
 	if foreReq.HasCookies() && !r.outMessage.(request).proxyCopyCookies(foreReq) {
 		return false
 	}
@@ -3374,9 +3374,13 @@ func (r *backendRequest_) proxyCopyHeaders(foreReq Request, proxyConfig *WebExch
 		}
 	}
 
-	// copy remaining headers from req
-	if !foreReq.forHeaders(func(header *pair, name []byte, value []byte) bool {
-		return r.outMessage.insertHeader(header.nameHash, name, value)
+	// copy remaining headers from foreReq
+	if !foreReq.proxyWalkHeaders(func(header *pair, name []byte, value []byte) bool {
+		if false { // TODO: some special headers should be copied directly?
+			return r.outMessage.addHeader(name, value)
+		} else {
+			return r.outMessage.insertHeader(header.nameHash, name, value) // some headers are restricted
+		}
 	}) {
 		return false
 	}
@@ -3406,8 +3410,8 @@ type response interface { // for *backend[1-3]Response
 	readContent() (data []byte, err error)
 	proxyDelHopHeaders()
 	proxyDelHopTrailers()
-	forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
-	forTrailers(callback func(header *pair, name []byte, value []byte) bool) bool
+	proxyWalkHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
+	proxyWalkTrailers(callback func(header *pair, name []byte, value []byte) bool) bool
 	recvHead()
 	reuse()
 }
@@ -3846,7 +3850,7 @@ type httpIn interface {
 
 	readContent() (data []byte, err error)
 	examineTail() bool
-	forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
+	proxyWalkTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
 }
 
 // httpIn_ is the parent for serverRequest_ and backendResponse_.
@@ -5030,12 +5034,12 @@ func (r *httpIn_) _placeOf(pair *pair) []byte {
 }
 
 func (r *httpIn_) proxyDelHopHeaders() {
-	r._delHopFields(r.headers, pairHeader, r.delHeader)
+	r._proxyDelHopFields(r.headers, pairHeader, r.delHeader)
 }
 func (r *httpIn_) proxyDelHopTrailers() {
-	r._delHopFields(r.trailers, pairTrailer, r.delTrailer)
+	r._proxyDelHopFields(r.trailers, pairTrailer, r.delTrailer)
 }
-func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name []byte, nameHash uint16)) { // TODO: improve performance
+func (r *httpIn_) _proxyDelHopFields(fields zone, extraKind int8, delField func(name []byte, nameHash uint16)) { // TODO: improve performance
 	// These fields should be removed anyway: proxy-connection, keep-alive, te, transfer-encoding, upgrade
 	delField(bytesProxyConnection, hashProxyConnection)
 	delField(bytesKeepAlive, hashKeepAlive)
@@ -5045,11 +5049,11 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name 
 	delField(bytesTransferEncoding, hashTransferEncoding)
 	delField(bytesUpgrade, hashUpgrade)
 
-	// Now remove options in primes and extras.
-	// Note: we don't remove ("connection: xxx") itself, we simply ignore it when acting as a proxy.
+	// Now remove connection options in primes and extras.
+	// Note: we don't remove ("connection: xxx, yyy") itself here, we simply restrict it from being copied or inserted when acting as a proxy.
 	for i := r.zConnection.from; i < r.zConnection.edge; i++ {
 		prime := &r.primes[i]
-		// Skip fields that are not "connection: xxx"
+		// Skip fields that are not "connection: xxx, yyy"
 		if prime.nameHash != hashConnection || !prime.nameEqualBytes(r.input, bytesConnection) {
 			continue
 		}
@@ -5060,31 +5064,31 @@ func (r *httpIn_) _delHopFields(fields zone, extraKind int8, delField func(name 
 		if optionHash == hashConnection && bytes.Equal(optionName, bytesConnection) {
 			continue
 		}
+		// Got a "connection: xxx" option, remove it from fields
 		for j := fields.from; j < fields.edge; j++ {
 			if field := &r.primes[j]; field.nameHash == optionHash && field.nameEqualBytes(p, optionName) {
 				field.zero()
 			}
 		}
-		if !r.hasExtra[extraKind] {
-			continue
-		}
-		for j := 0; j < len(r.extras); j++ {
-			if extra := &r.extras[j]; extra.nameHash == optionHash && extra.kind == extraKind {
-				if p := r._placeOf(extra); extra.nameEqualBytes(p, optionName) {
-					extra.zero()
+		if r.hasExtra[extraKind] {
+			for j := 0; j < len(r.extras); j++ {
+				if extra := &r.extras[j]; extra.nameHash == optionHash && extra.kind == extraKind {
+					if p := r._placeOf(extra); extra.nameEqualBytes(p, optionName) {
+						extra.zero()
+					}
 				}
 			}
 		}
 	}
 }
 
-func (r *httpIn_) forHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // by httpOut.proxyCopyHeaders(). excluding sub headers
-	return r._forMainFields(r.headers, pairHeader, callback)
+func (r *httpIn_) proxyWalkHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // excluding sub headers
+	return r._proxyWalkMainFields(r.headers, pairHeader, callback)
 }
-func (r *httpIn_) forTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // by httpOut.proxyCopyTrailers(). excluding sub trailers
-	return r._forMainFields(r.trailers, pairTrailer, callback)
+func (r *httpIn_) proxyWalkTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // excluding sub trailers
+	return r._proxyWalkMainFields(r.trailers, pairTrailer, callback)
 }
-func (r *httpIn_) _forMainFields(fields zone, extraKind int8, callback func(field *pair, name []byte, value []byte) bool) bool {
+func (r *httpIn_) _proxyWalkMainFields(fields zone, extraKind int8, callback func(field *pair, name []byte, value []byte) bool) bool {
 	for i := fields.from; i < fields.edge; i++ {
 		if field := &r.primes[i]; field.nameHash != 0 {
 			p := r._placeOf(field)
@@ -5105,19 +5109,19 @@ func (r *httpIn_) _forMainFields(fields zone, extraKind int8, callback func(fiel
 	return true
 }
 
-func (r *httpIn_) arrayCopy(p []byte) bool { // callers don't guarantee the intended memory cost is limited
-	if len(p) > 0 {
-		edge := r.arrayEdge + int32(len(p))
+func (r *httpIn_) arrayCopy(src []byte) bool { // callers don't guarantee the intended memory cost is limited
+	if len(src) > 0 {
+		edge := r.arrayEdge + int32(len(src))
 		if edge < r.arrayEdge { // overflow
 			return false
 		}
 		if edge > r.maxMemoryContentSize {
 			return false
 		}
-		if !r._growArray(int32(len(p))) {
+		if !r._growArray(int32(len(src))) {
 			return false
 		}
-		r.arrayEdge += int32(copy(r.array[r.arrayEdge:], p))
+		r.arrayEdge += int32(copy(r.array[r.arrayEdge:], src))
 	}
 	return true
 }
@@ -5324,7 +5328,7 @@ func (r *httpOut_) AddHeaderBytes(name []byte, value []byte) bool {
 			return false
 		}
 	}
-	return r.outMessage.insertHeader(nameHash, lower, value)
+	return r.outMessage.insertHeader(nameHash, lower, value) // some headers are restricted
 }
 func (r *httpOut_) DelHeader(name string) bool {
 	return r.DelHeaderBytes(ConstBytes(name))
@@ -5517,7 +5521,7 @@ func (r *httpOut_) _proxyPassMessage(inMessage httpIn) error {
 		}
 	}
 	if inMessage.HasTrailers() { // added trailers will be written by upper code eventually.
-		if !inMessage.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
+		if !inMessage.proxyWalkTrailers(func(trailer *pair, name []byte, value []byte) bool {
 			return r.outMessage.addTrailer(name, value)
 		}) {
 			return httpOutTrailerFailed
@@ -5552,7 +5556,7 @@ func (r *httpOut_) proxyPostMessage(content any, hasTrailers bool) error {
 	}
 }
 func (r *httpOut_) _proxyCopyTrailers(inMessage httpIn, proxyConfig *WebExchanProxyConfig) bool {
-	return inMessage.forTrailers(func(trailer *pair, name []byte, value []byte) bool {
+	return inMessage.proxyWalkTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.outMessage.addTrailer(name, value)
 	})
 }

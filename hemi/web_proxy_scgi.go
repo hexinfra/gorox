@@ -7,7 +7,7 @@
 
 // HTTP trailers: not supported
 // Persistent connection: not supported
-// Vague request content: not supported, proxy MUST send a sized request
+// Vague request content: not supported, proxies MUST send sized requests
 // Vague response content: supported
 
 // SCGI protocol doesn't define the format of its response. Seems it follows the format of CGI response.

@@ -181,7 +181,7 @@ func (h *fcgiProxy) Handle(httpReq Request, httpResp Response) (handled bool) {
 
 	var fcgiContent any
 	fcgiHasContent := false // TODO: if fcgi server includes a content even for HEAD method, what should we do?
-	if httpReq.MethodCode() != MethodHEAD {
+	if !httpReq.IsHEAD() {
 		fcgiHasContent = fcgiResp.HasContent()
 	}
 	if fcgiHasContent && h.BufferServerContent { // including size 0

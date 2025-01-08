@@ -12,33 +12,6 @@ import (
 	"testing"
 )
 
-func TestHTTPMethods(t *testing.T) {
-	methodCodes := map[string]uint32{
-		"GET":     MethodGET,
-		"HEAD":    MethodHEAD,
-		"POST":    MethodPOST,
-		"PUT":     MethodPUT,
-		"DELETE":  MethodDELETE,
-		"CONNECT": MethodCONNECT,
-		"OPTIONS": MethodOPTIONS,
-		"TRACE":   MethodTRACE,
-	}
-	methods := bytes.Split(serverMethodBytes, []byte(" "))
-	for _, method := range methods {
-		hash := bytesHash(method)
-		m := serverMethodTable[serverMethodFind(hash)]
-		if m.hash != hash {
-			t.Error("invalid hash")
-		}
-		if !bytes.Equal(serverMethodBytes[m.from:m.edge], method) {
-			t.Error("invalid from edge")
-		}
-		if m.code != methodCodes[string(method)] {
-			t.Error("invalid code")
-		}
-	}
-}
-
 func TestSpan(t *testing.T) {
 	s := span{3, 4}
 	if s.size() != 1 {

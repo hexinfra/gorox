@@ -123,7 +123,7 @@ func (h *staticHandlet) OnPrepare() {
 }
 
 func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
-	if req.MethodCode()&(MethodGET|MethodHEAD) == 0 {
+	if !req.IsGET() && !req.IsHEAD() {
 		resp.SendMethodNotAllowed("GET, HEAD", nil)
 		return true
 	}

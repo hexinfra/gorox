@@ -337,11 +337,14 @@ type Request interface { // for *server[1-3]Request
 	Scheme() string // http, https
 	UnsafeScheme() []byte
 
-	MethodCode() uint32
 	IsGET() bool
+	IsHEAD() bool
 	IsPOST() bool
 	IsPUT() bool
 	IsDELETE() bool
+	IsCONNECT() bool
+	IsOPTIONS() bool
+	IsTRACE() bool
 	Method() string // GET, POST, ...
 	UnsafeMethod() []byte
 
@@ -600,11 +603,14 @@ func (r *serverRequest_) IsHTTPS() bool        { return r.schemeCode == SchemeHT
 func (r *serverRequest_) Scheme() string       { return httpSchemeStrings[r.schemeCode] }
 func (r *serverRequest_) UnsafeScheme() []byte { return httpSchemeByteses[r.schemeCode] }
 
-func (r *serverRequest_) MethodCode() uint32   { return r.methodCode }
 func (r *serverRequest_) IsGET() bool          { return r.methodCode == MethodGET }
+func (r *serverRequest_) IsHEAD() bool         { return r.methodCode == MethodHEAD }
 func (r *serverRequest_) IsPOST() bool         { return r.methodCode == MethodPOST }
 func (r *serverRequest_) IsPUT() bool          { return r.methodCode == MethodPUT }
 func (r *serverRequest_) IsDELETE() bool       { return r.methodCode == MethodDELETE }
+func (r *serverRequest_) IsCONNECT() bool      { return r.methodCode == MethodCONNECT }
+func (r *serverRequest_) IsOPTIONS() bool      { return r.methodCode == MethodOPTIONS }
+func (r *serverRequest_) IsTRACE() bool        { return r.methodCode == MethodTRACE }
 func (r *serverRequest_) Method() string       { return string(r.UnsafeMethod()) }
 func (r *serverRequest_) UnsafeMethod() []byte { return r.input[r.method.from:r.method.edge] }
 func (r *serverRequest_) recognizeMethod(method []byte, methodHash uint16) {
@@ -613,7 +619,7 @@ func (r *serverRequest_) recognizeMethod(method []byte, methodHash uint16) {
 	}
 }
 
-var ( // method hash table
+var ( // perfect hash table for best known http methods
 	serverMethodBytes = []byte("GET HEAD POST PUT DELETE CONNECT OPTIONS TRACE")
 	serverMethodTable = [8]struct {
 		hash uint16
@@ -889,7 +895,7 @@ func (r *serverRequest_) examineHead() bool {
 	if r.upgradeSocket {
 		// RFC 6455 (section 4.1):
 		// The method of the request MUST be GET, and the HTTP version MUST be at least 1.1.
-		if r.methodCode != MethodGET || r.httpVersion == Version1_0 || r.contentSize != -1 {
+		if !r.IsGET() || r.httpVersion == Version1_0 || r.contentSize != -1 {
 			r.headResult, r.failReason = StatusMethodNotAllowed, "webSocket only supports GET method and HTTP version >= 1.1, without content"
 			return false
 		}
@@ -957,7 +963,7 @@ func (r *serverRequest_) examineHead() bool {
 			}
 		}
 		if r.iContentType == 0 { // no content-type
-			if r.methodCode == MethodOPTIONS {
+			if r.IsOPTIONS() {
 				// RFC 9110 (section 9.3.7):
 				// A client that generates an OPTIONS request containing content MUST send
 				// a valid Content-Type header field describing the representation media type.
@@ -1149,7 +1155,7 @@ func (r *serverRequest_) checkProxyAuthorization(header *pair, index uint8) bool
 	return true
 }
 func (r *serverRequest_) checkRange(header *pair, index uint8) bool { // Range = ranges-specifier
-	if r.methodCode != MethodGET {
+	if !r.IsGET() {
 		// A server MUST ignore a Range header field received with a request method that is unrecognized or for which range handling is not defined.
 		// For this specification, GET is the only method for which range handling is defined.
 		r._delPrime(index)
@@ -1436,7 +1442,7 @@ func (r *serverRequest_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool
 		r.headResult, r.failReason = StatusBadRequest, "http upgrade is only supported in http/1.1"
 		return false
 	}
-	if r.methodCode == MethodCONNECT {
+	if r.IsCONNECT() {
 		// TODO: confirm this
 		return true
 	}

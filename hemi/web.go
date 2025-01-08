@@ -674,17 +674,7 @@ func (r *Rule) executeExchan(req Request, resp Response) (handled bool) {
 			}
 		}
 		if toOrigin { // request to origin server
-			methodCode := req.MethodCode()
-			/*
-				if methodCode == 0 { // unrecognized request method
-					// RFC 9110:
-					// An origin server that receives a request method that is unrecognized or not
-					// implemented SHOULD respond with the 501 (Not Implemented) status code.
-					resp.SendNotImplemented(nil)
-					return true
-				}
-			*/
-			if methodCode == MethodPUT && req.HasHeader("content-range") {
+			if req.IsPUT() && req.HasHeader("content-range") {
 				// RFC 9110:
 				// An origin server SHOULD respond with a 400 (Bad Request) status code
 				// if it receives Content-Range on a PUT for a target resource that

@@ -264,7 +264,7 @@ func WebExchanReverseProxy(foreReq Request, foreResp Response, cacher Cacher, ba
 
 	var backContent any // nil, []byte, tempFile
 	backHasContent := false
-	if foreReq.MethodCode() != MethodHEAD {
+	if !foreReq.IsHEAD() {
 		backHasContent = backResp.HasContent()
 	}
 	if backHasContent && proxyConfig.BufferServerContent { // including size 0

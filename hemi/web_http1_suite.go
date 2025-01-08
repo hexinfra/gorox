@@ -286,7 +286,7 @@ func (s *server1Stream) execute() {
 		return
 	}
 
-	if req.methodCode == MethodCONNECT {
+	if req.IsCONNECT() {
 		req.headResult, req.failReason = StatusNotImplemented, "http tunnel proxy is not implemented here"
 		s._serveAbnormal(req, resp)
 		return
@@ -352,7 +352,7 @@ func (s *server1Stream) execute() {
 		}
 
 		// Prepare the response according to the request
-		if req.methodCode == MethodHEAD {
+		if req.IsHEAD() {
 			resp.forbidContent = true
 		}
 
@@ -411,7 +411,7 @@ func (s *server1Stream) _serveAbnormal(req *server1Request, resp *server1Respons
 		resp.AddHeaderBytes(bytesAllow, bytesGET)
 	}
 	resp.finalizeHeaders()
-	if req.methodCode == MethodHEAD || resp.forbidContent { // we follow the method semantic even we are in abnormal
+	if req.IsHEAD() || resp.forbidContent { // we follow the method semantic even we are in abnormal
 		resp.vector = resp.fixedVector[0:3]
 	} else {
 		resp.vector = resp.fixedVector[0:4]
@@ -518,7 +518,7 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 	// Now r.elemFore is at request-target.
 	r.elemBack = r.elemFore
 	// request-target = absolute-form / origin-form / authority-form / asterisk-form
-	if b := r.input[r.elemFore]; b != '*' && r.methodCode != MethodCONNECT { // absolute-form / origin-form
+	if b := r.input[r.elemFore]; b != '*' && !r.IsCONNECT() { // absolute-form / origin-form
 		if b != '/' { // absolute-form
 			r.targetForm = httpTargetAbsolute
 			// absolute-form = absolute-URI
@@ -598,7 +598,7 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 			}
 			if b == ' ' { // ends of request-target
 				// Don't treat this as httpTargetAsterisk! r.uri is empty but we fetch it through r.URI() or like which gives '/' if uri is empty.
-				if r.methodCode == MethodOPTIONS {
+				if r.IsOPTIONS() {
 					// OPTIONS http://www.example.org:8001 HTTP/1.1
 					r.asteriskOptions = true
 				} else {
@@ -760,7 +760,7 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 		r.targetForm = httpTargetAsterisk
 		// RFC 9112 (section 3.2.4):
 		// The "asterisk-form" of request-target is only used for a server-wide OPTIONS request (Section 9.3.7 of [HTTP]).
-		if r.methodCode != MethodOPTIONS {
+		if !r.IsOPTIONS() {
 			r.headResult, r.failReason = StatusBadRequest, "asterisk-form is only used by OPTIONS method"
 			return false
 		}
@@ -778,7 +778,7 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 		// If the request-target is in authority-form or asterisk-form, the
 		// target URI's combined path and query component is empty. Otherwise,
 		// the target URI's combined path and query component is the request-target.
-	} else { // r.methodCode == MethodCONNECT, authority-form
+	} else { // CONNECT method, must be authority-form
 		r.targetForm = httpTargetAuthority
 		// RFC 9112 (section 3.2.3):
 		// The "authority-form" of request-target is only used for CONNECT requests (Section 9.3.6 of [HTTP]).

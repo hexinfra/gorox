@@ -21,14 +21,14 @@ import (
 
 //////////////////////////////////////// HTTP/3 general implementation ////////////////////////////////////////
 
-// http3Conn
+// http3Conn collects shared methods between *server3Conn and *backend3Conn.
 type http3Conn interface {
 	// Imports
 	httpConn
 	// Methods
 }
 
-// http3Conn_
+// http3Conn_ is the parent for server3Conn and backend3Conn.
 type http3Conn_ struct {
 	// Parent
 	httpConn_
@@ -68,14 +68,14 @@ func (c *http3Conn_) onPut() {
 
 func (c *http3Conn_) remoteAddr() net.Addr { return nil } // TODO
 
-// http3Stream
+// http3Stream collects shared methods between *server3Stream and *backend3Stream.
 type http3Stream interface {
 	// Imports
 	httpStream
 	// Methods
 }
 
-// http3Stream_
+// http3Stream_ is the parent for server3Stream and backend3Stream.
 type http3Stream_[C http3Conn] struct {
 	// Parent
 	httpStream_
@@ -133,6 +133,141 @@ func (s *http3Stream_[C]) write(src []byte) (int, error) { // for content i/o on
 func (s *http3Stream_[C]) writev(srcVec *net.Buffers) (int64, error) { // for content i/o only
 	// TODO
 	return 0, nil
+}
+
+//////////////////////////////////////// HTTP/3 incoming implementation ////////////////////////////////////////
+
+func (r *httpIn_) _growHeaders3(size int32) bool {
+	// TODO
+	// use r.input
+	return false
+}
+
+func (r *httpIn_) readContent3() (data []byte, err error) {
+	// TODO
+	return
+}
+
+// http3InFrame is the server-side HTTP/3 incoming frame.
+type http3InFrame struct {
+	// TODO
+}
+
+func (f *http3InFrame) zero() { *f = http3InFrame{} }
+
+// http3Buffer
+type http3Buffer struct {
+	buf [_16K]byte // header + payload
+	ref atomic.Int32
+}
+
+var poolHTTP3Buffer sync.Pool
+
+func getHTTP3Buffer() *http3Buffer {
+	var buffer *http3Buffer
+	if x := poolHTTP3Buffer.Get(); x == nil {
+		buffer = new(http3Buffer)
+	} else {
+		buffer = x.(*http3Buffer)
+	}
+	return buffer
+}
+func putHTTP3Buffer(buffer *http3Buffer) { poolHTTP3Buffer.Put(buffer) }
+
+func (b *http3Buffer) size() uint32  { return uint32(cap(b.buf)) }
+func (b *http3Buffer) getRef() int32 { return b.ref.Load() }
+func (b *http3Buffer) incRef()       { b.ref.Add(1) }
+func (b *http3Buffer) decRef() {
+	if b.ref.Add(-1) == 0 {
+		if DebugLevel() >= 1 {
+			Printf("putHTTP3Buffer ref=%d\n", b.ref.Load())
+		}
+		putHTTP3Buffer(b)
+	}
+}
+
+//////////////////////////////////////// HTTP/3 outgoing implementation ////////////////////////////////////////
+
+func (r *httpOut_) addHeader3(name []byte, value []byte) bool {
+	// TODO
+	return false
+}
+func (r *httpOut_) header3(name []byte) (value []byte, ok bool) {
+	// TODO
+	return
+}
+func (r *httpOut_) hasHeader3(name []byte) bool {
+	// TODO
+	return false
+}
+func (r *httpOut_) delHeader3(name []byte) (deleted bool) {
+	// TODO
+	return false
+}
+func (r *httpOut_) delHeaderAt3(i uint8) {
+	// TODO
+}
+
+func (r *httpOut_) sendChain3() error {
+	// TODO
+	return nil
+}
+
+func (r *httpOut_) echoChain3() error {
+	// TODO
+	return nil
+}
+
+func (r *httpOut_) addTrailer3(name []byte, value []byte) bool {
+	// TODO
+	return false
+}
+func (r *httpOut_) trailer3(name []byte) (value []byte, ok bool) {
+	// TODO
+	return
+}
+func (r *httpOut_) trailers3() []byte {
+	// TODO
+	return nil
+}
+
+func (r *httpOut_) proxyPassBytes3(data []byte) error { return r.writeBytes3(data) }
+
+func (r *httpOut_) finalizeVague3() error {
+	// TODO
+	if r.numTrailers == 1 { // no trailers
+	} else { // with trailers
+	}
+	return nil
+}
+
+func (r *httpOut_) writeHeaders3() error { // used by echo and pass
+	// TODO
+	r.fieldsEdge = 0 // now that headers are all sent, r.fields will be used by trailers (if any), so reset it.
+	return nil
+}
+func (r *httpOut_) writePiece3(piece *Piece, vague bool) error {
+	// TODO
+	return nil
+}
+func (r *httpOut_) writeVector3() error {
+	return nil
+}
+func (r *httpOut_) writeBytes3(data []byte) error {
+	// TODO
+	return nil
+}
+
+// http3OutFrame is the server-side HTTP/3 outgoing frame.
+type http3OutFrame struct {
+	// TODO
+}
+
+func (f *http3OutFrame) zero() { *f = http3OutFrame{} }
+
+//////////////////////////////////////// HTTP/3 socket implementation ////////////////////////////////////////
+
+func (s *httpSocket_) todo3() {
 }
 
 //////////////////////////////////////// HTTP/3 server implementation ////////////////////////////////////////
@@ -463,7 +598,7 @@ func (r *server3Response) addTrailer(name []byte, value []byte) bool {
 }
 func (r *server3Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer3(name) }
 
-func (r *server3Response) proxyPass1xx(backResp response) bool {
+func (r *server3Response) proxyPass1xx(backResp backendResponse) bool {
 	backResp.proxyDelHopHeaders()
 	r.status = backResp.Status()
 	if !backResp.proxyWalkHeaders(func(header *pair, name []byte, value []byte) bool {
@@ -566,11 +701,11 @@ func (b *HTTP3Backend) CreateNode(name string) Node {
 	return node
 }
 
-func (b *HTTP3Backend) FetchStream() (stream, error) {
+func (b *HTTP3Backend) FetchStream() (backendStream, error) {
 	node := b.nodes[b.nodeIndexGet()]
 	return node.fetchStream()
 }
-func (b *HTTP3Backend) StoreStream(stream stream) {
+func (b *HTTP3Backend) StoreStream(stream backendStream) {
 	stream3 := stream.(*backend3Stream)
 	stream3.conn.node.storeStream(stream3)
 }
@@ -745,9 +880,9 @@ func (s *backend3Stream) onEnd() { // for zeros
 
 func (s *backend3Stream) Holder() httpHolder { return s.conn.node }
 
-func (s *backend3Stream) Request() request   { return &s.request }
-func (s *backend3Stream) Response() response { return &s.response }
-func (s *backend3Stream) Socket() socket     { return nil } // TODO. See RFC 9220
+func (s *backend3Stream) Request() backendRequest   { return &s.request }
+func (s *backend3Stream) Response() backendResponse { return &s.response }
+func (s *backend3Stream) Socket() backendSocket     { return nil } // TODO. See RFC 9220
 
 // backend3Request is the backend-side HTTP/3 request.
 type backend3Request struct { // outgoing. needs building
@@ -848,141 +983,6 @@ func (s *backend3Socket) onUse() {
 }
 func (s *backend3Socket) onEnd() {
 	s.backendSocket_.onEnd()
-}
-
-//////////////////////////////////////// HTTP/3 incoming implementation ////////////////////////////////////////
-
-func (r *httpIn_) _growHeaders3(size int32) bool {
-	// TODO
-	// use r.input
-	return false
-}
-
-func (r *httpIn_) readContent3() (data []byte, err error) {
-	// TODO
-	return
-}
-
-// http3InFrame is the server-side HTTP/3 incoming frame.
-type http3InFrame struct {
-	// TODO
-}
-
-func (f *http3InFrame) zero() { *f = http3InFrame{} }
-
-// http3Buffer
-type http3Buffer struct {
-	buf [_16K]byte // header + payload
-	ref atomic.Int32
-}
-
-var poolHTTP3Buffer sync.Pool
-
-func getHTTP3Buffer() *http3Buffer {
-	var buffer *http3Buffer
-	if x := poolHTTP3Buffer.Get(); x == nil {
-		buffer = new(http3Buffer)
-	} else {
-		buffer = x.(*http3Buffer)
-	}
-	return buffer
-}
-func putHTTP3Buffer(buffer *http3Buffer) { poolHTTP3Buffer.Put(buffer) }
-
-func (b *http3Buffer) size() uint32  { return uint32(cap(b.buf)) }
-func (b *http3Buffer) getRef() int32 { return b.ref.Load() }
-func (b *http3Buffer) incRef()       { b.ref.Add(1) }
-func (b *http3Buffer) decRef() {
-	if b.ref.Add(-1) == 0 {
-		if DebugLevel() >= 1 {
-			Printf("putHTTP3Buffer ref=%d\n", b.ref.Load())
-		}
-		putHTTP3Buffer(b)
-	}
-}
-
-//////////////////////////////////////// HTTP/3 outgoing implementation ////////////////////////////////////////
-
-func (r *httpOut_) addHeader3(name []byte, value []byte) bool {
-	// TODO
-	return false
-}
-func (r *httpOut_) header3(name []byte) (value []byte, ok bool) {
-	// TODO
-	return
-}
-func (r *httpOut_) hasHeader3(name []byte) bool {
-	// TODO
-	return false
-}
-func (r *httpOut_) delHeader3(name []byte) (deleted bool) {
-	// TODO
-	return false
-}
-func (r *httpOut_) delHeaderAt3(i uint8) {
-	// TODO
-}
-
-func (r *httpOut_) sendChain3() error {
-	// TODO
-	return nil
-}
-
-func (r *httpOut_) echoChain3() error {
-	// TODO
-	return nil
-}
-
-func (r *httpOut_) addTrailer3(name []byte, value []byte) bool {
-	// TODO
-	return false
-}
-func (r *httpOut_) trailer3(name []byte) (value []byte, ok bool) {
-	// TODO
-	return
-}
-func (r *httpOut_) trailers3() []byte {
-	// TODO
-	return nil
-}
-
-func (r *httpOut_) proxyPassBytes3(data []byte) error { return r.writeBytes3(data) }
-
-func (r *httpOut_) finalizeVague3() error {
-	// TODO
-	if r.numTrailers == 1 { // no trailers
-	} else { // with trailers
-	}
-	return nil
-}
-
-func (r *httpOut_) writeHeaders3() error { // used by echo and pass
-	// TODO
-	r.fieldsEdge = 0 // now that headers are all sent, r.fields will be used by trailers (if any), so reset it.
-	return nil
-}
-func (r *httpOut_) writePiece3(piece *Piece, vague bool) error {
-	// TODO
-	return nil
-}
-func (r *httpOut_) writeVector3() error {
-	return nil
-}
-func (r *httpOut_) writeBytes3(data []byte) error {
-	// TODO
-	return nil
-}
-
-// http3OutFrame is the server-side HTTP/3 outgoing frame.
-type http3OutFrame struct {
-	// TODO
-}
-
-func (f *http3OutFrame) zero() { *f = http3OutFrame{} }
-
-//////////////////////////////////////// HTTP/3 webSocket implementation ////////////////////////////////////////
-
-func (s *webSocket_) todo3() {
 }
 
 //////////////////////////////////////// HTTP/3 protocol elements ////////////////////////////////////////

@@ -18,6 +18,7 @@ import (
 	"net"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 )
 
@@ -210,9 +211,7 @@ func (n *scgiNode) _dialUDS() (*scgiConn, error) {
 		netConn.Close()
 		return nil, err
 	}
-	_, _ = connID, rawConn
-	return nil, nil
-	//return getSCGIConn(connID, n, netConn, rawConn), nil
+	return getSCGIConn(connID, n, netConn, rawConn), nil
 }
 func (n *scgiNode) _dialTCP() (*scgiConn, error) {
 	// TODO: dynamic address names?
@@ -231,9 +230,7 @@ func (n *scgiNode) _dialTCP() (*scgiConn, error) {
 		netConn.Close()
 		return nil, err
 	}
-	_, _ = connID, rawConn
-	return nil, nil
-	//return getSCGIConn(connID, n, netConn, rawConn), nil
+	return getSCGIConn(connID, n, netConn, rawConn), nil
 }
 
 // scgiConn
@@ -245,10 +242,11 @@ type scgiConn struct {
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id     int64 // the conn id
-	node   *scgiNode
-	region Region // a region-based memory pool
-	conn   *TConn // associated conn
+	id      int64 // the conn id
+	node    *scgiNode
+	region  Region // a region-based memory pool
+	netConn net.Conn
+	rawConn syscall.RawConn
 	// Conn states (zeros)
 	counter   atomic.Int64 // can be used to generate a random number
 	lastWrite time.Time    // deadline of last write operation
@@ -257,7 +255,7 @@ type scgiConn struct {
 
 var poolSCGIConn sync.Pool
 
-func getSCGIConn(tConn *TConn) *scgiConn {
+func getSCGIConn(id int64, node *scgiNode, netConn net.Conn, rawConn syscall.RawConn) *scgiConn {
 	var conn *scgiConn
 	if x := poolSCGIConn.Get(); x == nil {
 		conn = new(scgiConn)
@@ -268,7 +266,7 @@ func getSCGIConn(tConn *TConn) *scgiConn {
 	} else {
 		conn = x.(*scgiConn)
 	}
-	conn.onUse(tConn)
+	conn.onUse(id, node, netConn, rawConn)
 	return conn
 }
 func putSCGIConn(conn *scgiConn) {
@@ -276,22 +274,25 @@ func putSCGIConn(conn *scgiConn) {
 	poolSCGIConn.Put(conn)
 }
 
-func (x *scgiConn) onUse(conn *TConn) {
-	x.region.Init()
-	x.conn = conn
-	x.region.Init()
-	x.request.onUse()
-	x.response.onUse()
+func (c *scgiConn) onUse(id int64, node *scgiNode, netConn net.Conn, rawConn syscall.RawConn) {
+	c.region.Init()
+	c.netConn = netConn
+	c.rawConn = rawConn
+	c.node = node
+	c.request.onUse()
+	c.response.onUse()
 }
-func (x *scgiConn) onEnd() {
-	x.request.onEnd()
-	x.response.onEnd()
-	x.conn = nil
-	x.region.Free()
+func (c *scgiConn) onEnd() {
+	c.request.onEnd()
+	c.response.onEnd()
+	c.netConn = nil
+	c.rawConn = nil
+	c.node = nil
+	c.region.Free()
 }
 
-func (x *scgiConn) buffer256() []byte          { return x.stockBuffer[:] }
-func (x *scgiConn) unsafeMake(size int) []byte { return x.region.Make(size) }
+func (c *scgiConn) buffer256() []byte          { return c.stockBuffer[:] }
+func (c *scgiConn) unsafeMake(size int) []byte { return c.region.Make(size) }
 
 // scgiRequest
 type scgiRequest struct { // outgoing. needs building
@@ -307,7 +308,7 @@ func (r *scgiRequest) onEnd() {
 	// TODO
 }
 
-// scgiResponse must implements the response interface.
+// scgiResponse must implements the backendResponse interface.
 type scgiResponse struct { // incoming. needs parsing
 	// Assocs
 	conn *scgiConn

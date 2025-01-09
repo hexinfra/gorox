@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// Classic components.
+// Classic components are the standard builtin components that supplement the core components of the Hemi Engine.
 
 package classic
 

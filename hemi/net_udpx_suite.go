@@ -18,11 +18,11 @@ import (
 
 //////////////////////////////////////// UDPX general implementation ////////////////////////////////////////
 
-// udpxHolder
+// udpxHolder collects shared methods between *UDPXRouter and *udpxNode.
 type udpxHolder interface {
 }
 
-// _udpxHolder_
+// _udpxHolder_ is a mixin for UDPXRouter and udpxNode.
 type _udpxHolder_ struct {
 	// States
 	// UDP_CORK, UDP_GSO, ...
@@ -33,11 +33,11 @@ func (h *_udpxHolder_) onConfigure(component Component) {
 func (h *_udpxHolder_) onPrepare(component Component) {
 }
 
-// udpxConn
+// udpxConn collects shared methods between *UDPXConn and *UConn.
 type udpxConn interface {
 }
 
-// udpxConn_
+// udpxConn_ is the parent for UDPXConn and UConn.
 type udpxConn_ struct {
 	// Conn states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis

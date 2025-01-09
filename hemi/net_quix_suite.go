@@ -19,11 +19,11 @@ import (
 
 //////////////////////////////////////// QUIX general implementation ////////////////////////////////////////
 
-// quixHolder
+// quixHolder collects shared methods between *QUIXRouter and *quixNode.
 type quixHolder interface {
 }
 
-// _quixHolder_
+// _quixHolder_ is mixin for QUIXRouter and quixNode.
 type _quixHolder_ struct {
 	// States
 	maxCumulativeStreamsPerConn int32 // max cumulative streams of one conn. 0 means infinite
@@ -53,14 +53,13 @@ func (h *_quixHolder_) onPrepare(component Component) {
 func (h *_quixHolder_) MaxCumulativeStreamsPerConn() int32 { return h.maxCumulativeStreamsPerConn }
 func (h *_quixHolder_) MaxConcurrentStreamsPerConn() int32 { return h.maxConcurrentStreamsPerConn }
 
-// quixConn
+// quixConn collects shared methods between *QUIXConn and *QConn.
 type quixConn interface {
 }
 
-// quixConn_
+// quixConn_ is the parent for QUIXConn and QConn.
 type quixConn_ struct {
 	// Conn states (stocks)
-	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	id                   int64
@@ -108,12 +107,17 @@ func (c *quixConn_) MakeTempName(dst []byte, unixTime int64) int {
 func (c *quixConn_) markBroken()    { c.broken.Store(true) }
 func (c *quixConn_) isBroken() bool { return c.broken.Load() }
 
-// quixStream
+// quixStream collects shared methods between *QUIXStream and *QStream.
 type quixStream interface {
 }
 
-// quixStream_
+// quixStream_ is a mixin for QUIXStream and QStream.
 type quixStream_ struct {
+	// Stream states (stocks)
+	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
 }
 
 //////////////////////////////////////// QUIX router implementation ////////////////////////////////////////

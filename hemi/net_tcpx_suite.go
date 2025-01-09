@@ -23,11 +23,11 @@ import (
 
 //////////////////////////////////////// TCPX general implementation ////////////////////////////////////////
 
-// tcpxHolder
+// tcpxHolder collects shared methods between *TCPXRouter and *tcpxNode.
 type tcpxHolder interface {
 }
 
-// _tcpxHolder_
+// _tcpxHolder_ is a mixin for TCPXRouter and tcpxNode.
 type _tcpxHolder_ struct {
 	// States
 	// TCP_CORK, TCP_DEFER_ACCEPT, TCP_FASTOPEN, ...
@@ -38,15 +38,15 @@ func (h *_tcpxHolder_) onConfigure(component Component) {
 func (h *_tcpxHolder_) onPrepare(component Component) {
 }
 
-// tcpxConn
+// tcpxConn collects shared methods between *TCPXConn and *TConn.
 type tcpxConn interface {
 }
 
-// tcpxConn_
+// tcpxConn_ is the parent for TCPXConn and TConn.
 type tcpxConn_ struct {
 	// Conn states (stocks)
-	stockInput  [8192]byte // for c.input
 	stockBuffer [256]byte  // a (fake) buffer to workaround Go's conservative escape analysis
+	stockInput  [8192]byte // for c.input
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	id           int64           // the conn id

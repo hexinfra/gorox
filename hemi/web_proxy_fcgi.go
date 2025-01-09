@@ -1031,7 +1031,7 @@ var ( // fcgi request errors
 	fcgiWriteBroken   = errors.New("fcgi: write broken")
 )
 
-// fcgiResponse is the FCGI response in a FCGI exchange. It must implements the response interface.
+// fcgiResponse is the FCGI response in a FCGI exchange. It must implements the backendResponse interface.
 type fcgiResponse struct { // incoming. needs parsing
 	// Assocs
 	exchan *fcgiExchan

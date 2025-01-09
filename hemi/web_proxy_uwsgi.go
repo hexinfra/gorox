@@ -18,6 +18,7 @@ import (
 	"net"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 )
 
@@ -210,9 +211,7 @@ func (n *uwsgiNode) _dialUDS() (*uwsgiConn, error) {
 		netConn.Close()
 		return nil, err
 	}
-	_, _ = connID, rawConn
-	return nil, nil
-	//return getUwsgiConn(connID, n, netConn, rawConn), nil
+	return getUwsgiConn(connID, n, netConn, rawConn), nil
 }
 func (n *uwsgiNode) _dialTCP() (*uwsgiConn, error) {
 	// TODO: dynamic address names?
@@ -231,9 +230,7 @@ func (n *uwsgiNode) _dialTCP() (*uwsgiConn, error) {
 		netConn.Close()
 		return nil, err
 	}
-	_, _ = connID, rawConn
-	return nil, nil
-	//return getUwsgiConn(connID, n, netConn, rawConn), nil
+	return getUwsgiConn(connID, n, netConn, rawConn), nil
 }
 
 // uwsgiConn
@@ -245,10 +242,11 @@ type uwsgiConn struct {
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id     int64 // the conn id
-	node   *uwsgiNode
-	region Region // a region-based memory pool
-	conn   *TConn // associated conn
+	id      int64 // the conn id
+	node    *uwsgiNode
+	region  Region // a region-based memory pool
+	netConn net.Conn
+	rawConn syscall.RawConn
 	// Conn states (zeros)
 	counter   atomic.Int64 // can be used to generate a random number
 	lastWrite time.Time    // deadline of last write operation
@@ -257,7 +255,7 @@ type uwsgiConn struct {
 
 var poolUwsgiConn sync.Pool
 
-func getUwsgiConn(tConn *TConn) *uwsgiConn {
+func getUwsgiConn(id int64, node *uwsgiNode, netConn net.Conn, rawConn syscall.RawConn) *uwsgiConn {
 	var conn *uwsgiConn
 	if x := poolUwsgiConn.Get(); x == nil {
 		conn = new(uwsgiConn)
@@ -268,7 +266,7 @@ func getUwsgiConn(tConn *TConn) *uwsgiConn {
 	} else {
 		conn = x.(*uwsgiConn)
 	}
-	conn.onUse(tConn)
+	conn.onUse(id, node, netConn, rawConn)
 	return conn
 }
 func putUwsgiConn(conn *uwsgiConn) {
@@ -276,22 +274,25 @@ func putUwsgiConn(conn *uwsgiConn) {
 	poolUwsgiConn.Put(conn)
 }
 
-func (x *uwsgiConn) onUse(conn *TConn) {
-	x.region.Init()
-	x.conn = conn
-	x.region.Init()
-	x.request.onUse()
-	x.response.onUse()
+func (c *uwsgiConn) onUse(id int64, node *uwsgiNode, netConn net.Conn, rawConn syscall.RawConn) {
+	c.region.Init()
+	c.netConn = netConn
+	c.rawConn = rawConn
+	c.node = node
+	c.request.onUse()
+	c.response.onUse()
 }
-func (x *uwsgiConn) onEnd() {
-	x.request.onEnd()
-	x.response.onEnd()
-	x.conn = nil
-	x.region.Free()
+func (c *uwsgiConn) onEnd() {
+	c.request.onEnd()
+	c.response.onEnd()
+	c.netConn = nil
+	c.rawConn = nil
+	c.node = nil
+	c.region.Free()
 }
 
-func (x *uwsgiConn) buffer256() []byte          { return x.stockBuffer[:] }
-func (x *uwsgiConn) unsafeMake(size int) []byte { return x.region.Make(size) }
+func (c *uwsgiConn) buffer256() []byte          { return c.stockBuffer[:] }
+func (c *uwsgiConn) unsafeMake(size int) []byte { return c.region.Make(size) }
 
 // uwsgiRequest
 type uwsgiRequest struct { // outgoing. needs building
@@ -307,7 +308,7 @@ func (r *uwsgiRequest) onEnd() {
 	// TODO
 }
 
-// uwsgiResponse must implements the response interface.
+// uwsgiResponse must implements the backendResponse interface.
 type uwsgiResponse struct { // incoming. needs parsing
 	// Assocs
 	conn *uwsgiConn

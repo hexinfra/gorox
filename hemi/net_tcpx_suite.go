@@ -64,6 +64,7 @@ type tcpxConn_ struct {
 	counter     atomic.Int64 // can be used to generate a random number
 	lastRead    time.Time    // deadline of last read operation
 	lastWrite   time.Time    // deadline of last write operation
+	broken      atomic.Bool  // is connection broken?
 	Vector      net.Buffers  // used by Sendv()
 	FixedVector [4][]byte    // used by Sendv()
 }
@@ -93,6 +94,7 @@ func (c *tcpxConn_) onPut() {
 	c.counter.Store(0)
 	c.lastRead = time.Time{}
 	c.lastWrite = time.Time{}
+	c.broken.Store(false)
 	c.Vector = nil
 	c.FixedVector = [4][]byte{}
 }
@@ -103,6 +105,9 @@ func (c *tcpxConn_) IsTLS() bool { return c.tlsMode }
 func (c *tcpxConn_) MakeTempName(dst []byte, unixTime int64) int {
 	return makeTempName(dst, c.stageID, c.id, unixTime, c.counter.Add(1))
 }
+
+func (c *tcpxConn_) markBroken()    { c.broken.Store(true) }
+func (c *tcpxConn_) isBroken() bool { return c.broken.Load() }
 
 func (c *tcpxConn_) SetReadDeadline() error {
 	deadline := time.Now().Add(c.readTimeout)

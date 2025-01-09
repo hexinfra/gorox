@@ -62,7 +62,7 @@ type quixConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id                   int64
+	id                   int64 // the conn id
 	stageID              int32 // for convenience
 	quicConn             *quic.Conn
 	udsMode              bool  // for convenience

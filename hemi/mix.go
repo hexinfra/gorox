@@ -189,6 +189,7 @@ func (s *Server_[G]) AddGate(gate G) { s.gates = append(s.gates, gate) }
 // Gate is the interface for all gates. Gates are not components.
 type Gate interface {
 	// Methods
+	Stage() *Stage
 	Address() string
 	IsUDS() bool
 	IsTLS() bool
@@ -199,6 +200,7 @@ type Gate interface {
 // Gate_ is the parent for all gates.
 type Gate_[S Server] struct {
 	// Assocs
+	stage  *Stage // current stage
 	server S
 	// States
 	id       int32          // gate id
@@ -207,12 +209,14 @@ type Gate_[S Server] struct {
 }
 
 func (g *Gate_[S]) OnNew(server S, id int32) {
+	g.stage = server.Stage()
 	g.server = server
 	g.id = id
 	g.shut.Store(false)
 }
 
-func (g *Gate_[S]) Server() S { return g.server }
+func (g *Gate_[S]) Stage() *Stage { return g.stage }
+func (g *Gate_[S]) Server() S     { return g.server }
 
 func (g *Gate_[S]) Address() string { return g.server.Address() }
 func (g *Gate_[S]) IsUDS() bool     { return g.server.IsUDS() }

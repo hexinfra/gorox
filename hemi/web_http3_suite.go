@@ -36,7 +36,7 @@ type http3Conn_ struct {
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	quicConn *quic.Conn        // the quic connection
-	inBuffer *http3Buffer      // ...
+	inBuffer *http3InBuffer    // ...
 	table    http3DynamicTable // ...
 	// Conn states (zeros)
 	activeStreams [http3MaxConcurrentStreams]http3Stream // active (open, remoteClosed, localClosed) streams
@@ -53,7 +53,7 @@ func (c *http3Conn_) onGet(id int64, stageID int32, udsMode bool, tlsMode bool, 
 
 	c.quicConn = quicConn
 	if c.inBuffer == nil {
-		c.inBuffer = getHTTP3Buffer()
+		c.inBuffer = getHTTP3InBuffer()
 		c.inBuffer.incRef()
 	}
 }
@@ -82,24 +82,27 @@ type http3Stream_[C http3Conn] struct {
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	id   int64
-	conn C // the http/3 connection
+	id         int64        // the stream id
+	conn       C            // the http/3 connection
+	quicStream *quic.Stream // the quic stream
 	// Stream states (zeros)
 	_http3Stream0 // all values in this struct must be zero by default!
 }
 type _http3Stream0 struct { // for fast reset, entirely
 }
 
-func (s *http3Stream_[C]) onUse(id int64, conn C) {
+func (s *http3Stream_[C]) onUse(id int64, conn C, quicStream *quic.Stream) {
 	s.httpStream_.onUse()
 
 	s.id = id
 	s.conn = conn
+	s.quicStream = quicStream
 }
 func (s *http3Stream_[C]) onEnd() {
 	s._http3Stream0 = _http3Stream0{}
 
 	// s.conn will be set as nil by upper code
+	s.quicStream = nil
 	s.httpStream_.onEnd()
 }
 
@@ -155,34 +158,34 @@ type http3InFrame struct {
 
 func (f *http3InFrame) zero() { *f = http3InFrame{} }
 
-// http3Buffer
-type http3Buffer struct {
+// http3InBuffer
+type http3InBuffer struct {
 	buf [_16K]byte // header + payload
 	ref atomic.Int32
 }
 
-var poolHTTP3Buffer sync.Pool
+var poolHTTP3InBuffer sync.Pool
 
-func getHTTP3Buffer() *http3Buffer {
-	var buffer *http3Buffer
-	if x := poolHTTP3Buffer.Get(); x == nil {
-		buffer = new(http3Buffer)
+func getHTTP3InBuffer() *http3InBuffer {
+	var inBuffer *http3InBuffer
+	if x := poolHTTP3InBuffer.Get(); x == nil {
+		inBuffer = new(http3InBuffer)
 	} else {
-		buffer = x.(*http3Buffer)
+		inBuffer = x.(*http3InBuffer)
 	}
-	return buffer
+	return inBuffer
 }
-func putHTTP3Buffer(buffer *http3Buffer) { poolHTTP3Buffer.Put(buffer) }
+func putHTTP3InBuffer(inBuffer *http3InBuffer) { poolHTTP3InBuffer.Put(inBuffer) }
 
-func (b *http3Buffer) size() uint32  { return uint32(cap(b.buf)) }
-func (b *http3Buffer) getRef() int32 { return b.ref.Load() }
-func (b *http3Buffer) incRef()       { b.ref.Add(1) }
-func (b *http3Buffer) decRef() {
+func (b *http3InBuffer) size() uint32  { return uint32(cap(b.buf)) }
+func (b *http3InBuffer) getRef() int32 { return b.ref.Load() }
+func (b *http3InBuffer) incRef()       { b.ref.Add(1) }
+func (b *http3InBuffer) decRef() {
 	if b.ref.Add(-1) == 0 {
 		if DebugLevel() >= 1 {
-			Printf("putHTTP3Buffer ref=%d\n", b.ref.Load())
+			Printf("putHTTP3InBuffer ref=%d\n", b.ref.Load())
 		}
-		putHTTP3Buffer(b)
+		putHTTP3InBuffer(b)
 	}
 }
 
@@ -452,7 +455,6 @@ type server3Stream struct {
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	quicStream *quic.Stream // the underlying quic stream
 	// Stream states (zeros)
 	_server3Stream0 // all values in this struct must be zero by default!
 }
@@ -486,9 +488,8 @@ func putServer3Stream(serverStream *server3Stream) {
 }
 
 func (s *server3Stream) onUse(conn *server3Conn, quicStream *quic.Stream) { // for non-zeros
-	s.http3Stream_.onUse(123, conn) // TODO
+	s.http3Stream_.onUse(123, conn, quicStream) // TODO
 
-	s.quicStream = quicStream
 	s.request.onUse(Version3)
 	s.response.onUse(Version3)
 }
@@ -499,7 +500,6 @@ func (s *server3Stream) onEnd() { // for zeros
 		s.socket.onEnd()
 		s.socket = nil
 	}
-	s.quicStream = nil
 	s._server3Stream0 = _server3Stream0{}
 
 	s.http3Stream_.onEnd()
@@ -620,7 +620,7 @@ func (r *server3Response) finalizeHeaders() { // add at most 256 bytes
 	/*
 		// date: Sun, 06 Nov 1994 08:49:37 GMT
 		if r.iDate == 0 {
-			clock := r.stream.(*server3Stream).conn.gate.server.stage.clock
+			clock := r.stream.(*server3Stream).conn.gate.stage.clock
 			r.fieldsEdge += uint16(clock.writeDate3(r.fields[r.fieldsEdge:]))
 		}
 	*/
@@ -827,7 +827,6 @@ type backend3Stream struct {
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	quicStream *quic.Stream // the underlying quic stream
 	// Stream states (zeros)
 	_backend3Stream0 // all values in this struct must be zero by default!
 }
@@ -858,9 +857,8 @@ func putBackend3Stream(backendStream *backend3Stream) {
 }
 
 func (s *backend3Stream) onUse(conn *backend3Conn, quicStream *quic.Stream) { // for non-zeros
-	s.http3Stream_.onUse(123, conn) // TODO
+	s.http3Stream_.onUse(123, conn, quicStream) // TODO
 
-	s.quicStream = quicStream
 	s.request.onUse(Version3)
 	s.response.onUse(Version3)
 }
@@ -871,7 +869,6 @@ func (s *backend3Stream) onEnd() { // for zeros
 		s.socket.onEnd()
 		s.socket = nil
 	}
-	s.quicStream = nil
 	s._backend3Stream0 = _backend3Stream0{}
 
 	s.http3Stream_.onEnd()

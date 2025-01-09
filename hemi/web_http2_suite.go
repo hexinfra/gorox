@@ -526,8 +526,8 @@ type http2Stream_[C http2Conn] struct {
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	id   uint32
-	conn C // the http/2 connection
+	id   uint32 // the stream id
+	conn C      // the http/2 connection
 	// Stream states (zeros)
 	_http2Stream0 // all values in this struct must be zero by default!
 }
@@ -1746,7 +1746,7 @@ func (r *server2Response) finalizeHeaders() { // add at most 256 bytes
 	/*
 		// date: Sun, 06 Nov 1994 08:49:37 GMT
 		if r.iDate == 0 {
-			clock := r.stream.(*server2Stream).conn.gate.server.stage.clock
+			clock := r.stream.(*server2Stream).conn.gate.stage.clock
 			r.fieldsEdge += uint16(clock.writeDate2(r.fields[r.fieldsEdge:]))
 		}
 	*/

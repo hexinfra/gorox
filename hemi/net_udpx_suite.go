@@ -43,7 +43,7 @@ type udpxConn_ struct {
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id      int64
+	id      int64 // the conn id
 	stageID int32 // for convenience
 	udsMode bool  // for convenience
 	pktConn net.PacketConn

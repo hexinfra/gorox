@@ -138,7 +138,7 @@ type socksConn struct {
 	stockInput [8192]byte
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id      int64
+	id      int64 // the conn id
 	gate    *socksGate
 	tcpConn *net.TCPConn
 	input   []byte

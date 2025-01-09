@@ -162,7 +162,7 @@ func (g *hrpcGate) serve() { // runner
 type hrpcConn struct {
 	// Parent
 	// States
-	id      int64
+	id      int64 // the conn id
 	gate    *hrpcGate
 	counter atomic.Int64 // can be used to generate a random number
 }
@@ -180,7 +180,7 @@ func (c *hrpcConn) IsUDS() bool { return c.gate.IsUDS() }
 func (c *hrpcConn) IsTLS() bool { return c.gate.IsTLS() }
 
 func (c *hrpcConn) MakeTempName(dst []byte, unixTime int64) int {
-	return makeTempName(dst, c.gate.server.Stage().ID(), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(dst, c.gate.Stage().ID(), c.id, unixTime, c.counter.Add(1))
 }
 
 //func (c *hrpcConn) rpcServer() *hrpcServer { return c.server }

@@ -133,7 +133,7 @@ type echoConn struct {
 	buffer [8152]byte
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id      int64
+	id      int64 // the conn id
 	gate    *echoGate
 	tcpConn *net.TCPConn
 	// Conn states (zeros)

@@ -798,7 +798,7 @@ type Reviser_ struct {
 	// Parent
 	Component_
 	// States
-	id uint8
+	id uint8 // the reviser id
 }
 
 func (r *Reviser_) ID() uint8      { return r.id }

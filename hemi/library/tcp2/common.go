@@ -5,7 +5,7 @@
 
 // Common elements.
 
-package quic
+package tcp2
 
 import (
 	"sync"

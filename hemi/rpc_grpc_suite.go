@@ -48,12 +48,13 @@ type grpcServer struct {
 	// Assocs
 	defaultService *Service // default service if not found
 	// States
-	forServices    []string                // for what services
-	exactServices  []*hostnameTo[*Service] // like: ("example.com")
-	suffixServices []*hostnameTo[*Service] // like: ("*.example.com")
-	prefixServices []*hostnameTo[*Service] // like: ("www.example.*")
-	recvTimeout    time.Duration           // timeout to recv the whole message content. zero means no timeout
-	sendTimeout    time.Duration           // timeout to send the whole message. zero means no timeout
+	forServices               []string                // for what services
+	exactServices             []*hostnameTo[*Service] // like: ("example.com")
+	suffixServices            []*hostnameTo[*Service] // like: ("*.example.com")
+	prefixServices            []*hostnameTo[*Service] // like: ("www.example.*")
+	recvTimeout               time.Duration           // timeout to recv the whole message content. zero means no timeout
+	sendTimeout               time.Duration           // timeout to send the whole message. zero means no timeout
+	maxConcurrentConnsPerGate int32                   // max concurrent connections allowed per gate
 }
 
 func (s *grpcServer) onCreate(name string, stage *Stage) {
@@ -81,10 +82,20 @@ func (s *grpcServer) OnConfigure() {
 		}
 		return errors.New(".sendTimeout has an invalid value")
 	}, 60*time.Second)
+
+	// maxConcurrentConnsPerGate
+	s.ConfigureInt32("maxConcurrentConnsPerGate", &s.maxConcurrentConnsPerGate, func(value int32) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".maxConcurrentConnsPerGate has an invalid value")
+	}, 10000)
 }
 func (s *grpcServer) OnPrepare() {
 	s.Server_.OnPrepare()
 }
+
+func (s *grpcServer) MaxConcurrentConnsPerGate() int32 { return s.maxConcurrentConnsPerGate }
 
 func (s *grpcServer) BindServices() {
 	for _, serviceName := range s.forServices {
@@ -138,10 +149,13 @@ type grpcGate struct {
 	// Parent
 	Gate_[*grpcServer]
 	// States
+	maxConcurrentConns int32
+	concurrentConns    atomic.Int32
 }
 
 func (g *grpcGate) onNew(server *grpcServer, id int32) {
 	g.Gate_.OnNew(server, id)
+	g.maxConcurrentConns = server.MaxConcurrentConnsPerGate()
 }
 
 func (g *grpcGate) Open() error {

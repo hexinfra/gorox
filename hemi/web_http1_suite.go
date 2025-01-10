@@ -2118,18 +2118,18 @@ type http1Node struct {
 }
 
 func (n *http1Node) onCreate(name string, stage *Stage, backend *HTTP1Backend) {
-	n.httpNode_.OnCreate(name, stage, backend)
+	n.httpNode_.onCreate(name, stage, backend)
 }
 
 func (n *http1Node) OnConfigure() {
-	n.httpNode_.OnConfigure()
+	n.httpNode_.onConfigure()
 	if n.tlsMode {
 		n.tlsConfig.InsecureSkipVerify = true
 		n.tlsConfig.NextProtos = []string{"http/1.1"}
 	}
 }
 func (n *http1Node) OnPrepare() {
-	n.httpNode_.OnPrepare()
+	n.httpNode_.onPrepare()
 }
 
 func (n *http1Node) Maintain() { // runner

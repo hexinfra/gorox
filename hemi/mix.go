@@ -24,7 +24,6 @@ import (
 
 // holder collects shared methods between Server and Node.
 type holder interface {
-	// Methods
 	Stage() *Stage
 	Address() string
 	IsUDS() bool
@@ -33,8 +32,10 @@ type holder interface {
 	WriteTimeout() time.Duration
 }
 
-// _holder_ is a mixin for Server_ and Node_.
-type _holder_ struct {
+// holder_ is the parent for Server_ and Node_.
+type holder_ struct {
+	// Parent
+	Component_
 	// Assocs
 	stage *Stage // current stage
 	// States
@@ -46,15 +47,15 @@ type _holder_ struct {
 	writeTimeout time.Duration // write() timeout
 }
 
-func (h *_holder_) onConfigure(component Component, defaultRead time.Duration, defaultWrite time.Duration) {
+func (h *holder_) onConfigure(defaultRead time.Duration, defaultWrite time.Duration) {
 	// tlsMode
-	component.ConfigureBool("tlsMode", &h.tlsMode, false)
+	h.ConfigureBool("tlsMode", &h.tlsMode, false)
 	if h.tlsMode {
 		h.tlsConfig = new(tls.Config)
 	}
 
 	// readTimeout
-	component.ConfigureDuration("readTimeout", &h.readTimeout, func(value time.Duration) error {
+	h.ConfigureDuration("readTimeout", &h.readTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
@@ -62,24 +63,24 @@ func (h *_holder_) onConfigure(component Component, defaultRead time.Duration, d
 	}, defaultRead)
 
 	// writeTimeout
-	component.ConfigureDuration("writeTimeout", &h.writeTimeout, func(value time.Duration) error {
+	h.ConfigureDuration("writeTimeout", &h.writeTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
 		return errors.New(".writeTimeout has an invalid value")
 	}, defaultWrite)
 }
-func (h *_holder_) onPrepare(component Component) {
+func (h *holder_) onPrepare() {
 }
 
-func (h *_holder_) Stage() *Stage { return h.stage }
+func (h *holder_) Stage() *Stage { return h.stage }
 
-func (h *_holder_) Address() string             { return h.address }
-func (h *_holder_) IsUDS() bool                 { return h.udsMode }
-func (h *_holder_) IsTLS() bool                 { return h.tlsMode }
-func (h *_holder_) TLSConfig() *tls.Config      { return h.tlsConfig }
-func (h *_holder_) ReadTimeout() time.Duration  { return h.readTimeout }
-func (h *_holder_) WriteTimeout() time.Duration { return h.writeTimeout }
+func (h *holder_) Address() string             { return h.address }
+func (h *holder_) IsUDS() bool                 { return h.udsMode }
+func (h *holder_) IsTLS() bool                 { return h.tlsMode }
+func (h *holder_) TLSConfig() *tls.Config      { return h.tlsConfig }
+func (h *holder_) ReadTimeout() time.Duration  { return h.readTimeout }
+func (h *holder_) WriteTimeout() time.Duration { return h.writeTimeout }
 
 // Server component. A Server has a group of Gates.
 type Server interface {
@@ -93,18 +94,15 @@ type Server interface {
 // Server_ is the parent for all servers.
 type Server_[G Gate] struct {
 	// Parent
-	Component_
-	// Mixins
-	_holder_
+	holder_
 	// Assocs
 	gates []G // a server has many gates
 	// States
-	colonport                 string // like: ":9876"
-	colonportBytes            []byte // []byte(colonport)
-	udsColonport              string // uds doesn't have a port. use this as port if server is listening at uds
-	udsColonportBytes         []byte // []byte(udsColonport)
-	numGates                  int32  // number of gates
-	maxConcurrentConnsPerGate int32  // max concurrent connections allowed per gate
+	colonport         string // like: ":9876"
+	colonportBytes    []byte // []byte(colonport)
+	udsColonport      string // uds doesn't have a port. we can use this as its colonport if server is listening at uds
+	udsColonportBytes []byte // []byte(udsColonport)
+	numGates          int32  // number of gates
 }
 
 func (s *Server_[G]) OnCreate(name string, stage *Stage) {
@@ -119,7 +117,7 @@ func (s *Server_[G]) OnShutdown() {
 }
 
 func (s *Server_[G]) OnConfigure() {
-	s._holder_.onConfigure(s, 60*time.Second, 60*time.Second)
+	s.holder_.onConfigure(60*time.Second, 60*time.Second)
 
 	// address
 	if v, ok := s.Find("address"); ok {
@@ -149,25 +147,16 @@ func (s *Server_[G]) OnConfigure() {
 		}
 		return errors.New(".numGates has an invalid value")
 	}, s.stage.NumCPU())
-
-	// maxConcurrentConnsPerGate
-	s.ConfigureInt32("maxConcurrentConnsPerGate", &s.maxConcurrentConnsPerGate, func(value int32) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".maxConcurrentConnsPerGate has an invalid value")
-	}, 10000)
 }
 func (s *Server_[G]) OnPrepare() {
-	s._holder_.onPrepare(s)
+	s.holder_.onPrepare()
 
 	if s.udsMode { // unix domain socket does not support reuseaddr/reuseport.
 		s.numGates = 1
 	}
 }
 
-func (s *Server_[G]) NumGates() int32                  { return s.numGates }
-func (s *Server_[G]) MaxConcurrentConnsPerGate() int32 { return s.maxConcurrentConnsPerGate }
+func (s *Server_[G]) NumGates() int32 { return s.numGates }
 
 func (s *Server_[G]) Colonport() string {
 	if s.udsMode {
@@ -188,7 +177,6 @@ func (s *Server_[G]) AddGate(gate G) { s.gates = append(s.gates, gate) }
 
 // Gate is the interface for all gates. Gates are not components.
 type Gate interface {
-	// Methods
 	Stage() *Stage
 	Address() string
 	IsUDS() bool
@@ -355,9 +343,7 @@ type Node interface {
 // Node_ is the parent for all backend nodes.
 type Node_[B Backend] struct {
 	// Parent
-	Component_
-	// Mixins
-	_holder_
+	holder_
 	// Assocs
 	backend B
 	// States
@@ -379,7 +365,7 @@ func (n *Node_[B]) OnShutdown() {
 }
 
 func (n *Node_[B]) OnConfigure() {
-	n._holder_.onConfigure(n, 30*time.Second, 30*time.Second)
+	n.holder_.onConfigure(30*time.Second, 30*time.Second)
 
 	// address
 	if v, ok := n.Find("address"); ok {
@@ -414,7 +400,7 @@ func (n *Node_[B]) OnConfigure() {
 	}, 1)
 }
 func (n *Node_[B]) OnPrepare() {
-	n._holder_.onPrepare(n)
+	n.holder_.onPrepare()
 }
 
 func (n *Node_[B]) Backend() B { return n.backend }

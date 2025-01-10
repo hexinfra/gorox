@@ -5,7 +5,7 @@
 
 // QUIC connection.
 
-package quic
+package tcp2
 
 import (
 	"net"

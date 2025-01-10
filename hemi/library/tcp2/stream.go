@@ -5,7 +5,7 @@
 
 // QUIC stream.
 
-package quic
+package tcp2
 
 import (
 	"time"
@@ -16,6 +16,8 @@ type Stream struct {
 	conn *Conn
 	id   int64
 }
+
+func (s *Stream) ID() int64 { return s.id }
 
 func (s *Stream) SetReadDeadline(deadline time.Time) error {
 	return nil

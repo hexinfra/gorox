@@ -1035,7 +1035,7 @@ type httpxGate struct {
 }
 
 func (g *httpxGate) onNew(server *httpxServer, id int32) {
-	g.httpGate_.onNew(server, id, server.MaxConcurrentConnsPerGate())
+	g.httpGate_.onNew(server, id)
 }
 
 func (g *httpxGate) Open() error {
@@ -1381,23 +1381,23 @@ var server2PrefaceAndMore = []byte{
 }
 
 var server2InFrameProcessors = [http2NumFrameKinds]func(*server2Conn, *http2InFrame) error{
-	(*server2Conn).processDataInFrame,
-	(*server2Conn).processHeadersInFrame,
-	(*server2Conn).processPriorityInFrame,
-	(*server2Conn).processRSTStreamInFrame,
-	(*server2Conn).processSettingsInFrame,
+	(*server2Conn).onDataInFrame,
+	(*server2Conn).onHeadersInFrame,
+	(*server2Conn).onPriorityInFrame,
+	(*server2Conn).onRSTStreamInFrame,
+	(*server2Conn).onSettingsInFrame,
 	nil, // pushPromise frames are rejected priorly
-	(*server2Conn).processPingInFrame,
+	(*server2Conn).onPingInFrame,
 	nil, // goaway frames are hijacked by c.receiver()
-	(*server2Conn).processWindowUpdateInFrame,
+	(*server2Conn).onWindowUpdateInFrame,
 	nil, // discrete continuation frames are rejected priorly
 }
 
-func (c *server2Conn) processDataInFrame(dataInFrame *http2InFrame) error {
+func (c *server2Conn) onDataInFrame(dataInFrame *http2InFrame) error {
 	// TODO
 	return nil
 }
-func (c *server2Conn) processHeadersInFrame(headersInFrame *http2InFrame) error {
+func (c *server2Conn) onHeadersInFrame(headersInFrame *http2InFrame) error {
 	var (
 		stream *server2Stream
 		req    *server2Request
@@ -1443,11 +1443,11 @@ func (c *server2Conn) processHeadersInFrame(headersInFrame *http2InFrame) error 
 	}
 	return nil
 }
-func (c *server2Conn) processPriorityInFrame(priorityInFrame *http2InFrame) error {
+func (c *server2Conn) onPriorityInFrame(priorityInFrame *http2InFrame) error {
 	// TODO
 	return nil
 }
-func (c *server2Conn) processRSTStreamInFrame(rstStreamInFrame *http2InFrame) error {
+func (c *server2Conn) onRSTStreamInFrame(rstStreamInFrame *http2InFrame) error {
 	streamID := rstStreamInFrame.streamID
 	if streamID > c.lastStreamID {
 		return http2ErrorProtocol
@@ -1455,7 +1455,7 @@ func (c *server2Conn) processRSTStreamInFrame(rstStreamInFrame *http2InFrame) er
 	// TODO
 	return nil
 }
-func (c *server2Conn) processSettingsInFrame(settingsInFrame *http2InFrame) error {
+func (c *server2Conn) onSettingsInFrame(settingsInFrame *http2InFrame) error {
 	if settingsInFrame.ack {
 		c.acknowledged = true
 		return nil
@@ -1508,7 +1508,7 @@ func (c *server2Conn) _updatePeerSettings(settingsInFrame *http2InFrame) error {
 func (c *server2Conn) _adjustStreamWindows(delta int32) {
 	// TODO
 }
-func (c *server2Conn) processPingInFrame(pingInFrame *http2InFrame) error {
+func (c *server2Conn) onPingInFrame(pingInFrame *http2InFrame) error {
 	pongOutFrame := &c.outFrame
 	pongOutFrame.length = 8
 	pongOutFrame.streamID = 0
@@ -1519,7 +1519,7 @@ func (c *server2Conn) processPingInFrame(pingInFrame *http2InFrame) error {
 	pongOutFrame.zero()
 	return err
 }
-func (c *server2Conn) processWindowUpdateInFrame(windowUpdateInFrame *http2InFrame) error {
+func (c *server2Conn) onWindowUpdateInFrame(windowUpdateInFrame *http2InFrame) error {
 	windowSize := binary.BigEndian.Uint32(windowUpdateInFrame.effective())
 	if windowSize == 0 || windowSize > _2G1 {
 		return http2ErrorProtocol
@@ -1844,18 +1844,18 @@ type http2Node struct {
 }
 
 func (n *http2Node) onCreate(name string, stage *Stage, backend *HTTP2Backend) {
-	n.httpNode_.OnCreate(name, stage, backend)
+	n.httpNode_.onCreate(name, stage, backend)
 }
 
 func (n *http2Node) OnConfigure() {
-	n.httpNode_.OnConfigure()
+	n.httpNode_.onConfigure()
 	if n.tlsMode {
 		n.tlsConfig.InsecureSkipVerify = true
 		n.tlsConfig.NextProtos = []string{"h2"}
 	}
 }
 func (n *http2Node) OnPrepare() {
-	n.httpNode_.OnPrepare()
+	n.httpNode_.onPrepare()
 }
 
 func (n *http2Node) Maintain() { // runner
@@ -1940,35 +1940,35 @@ func (c *backend2Conn) storeStream(stream *backend2Stream) {
 }
 
 var backend2InFrameProcessors = [http2NumFrameKinds]func(*backend2Conn, *http2InFrame) error{
-	(*backend2Conn).processDataInFrame,
-	(*backend2Conn).processHeadersInFrame,
-	(*backend2Conn).processPriorityInFrame,
-	(*backend2Conn).processRSTStreamInFrame,
-	(*backend2Conn).processSettingsInFrame,
+	(*backend2Conn).onDataInFrame,
+	(*backend2Conn).onHeadersInFrame,
+	(*backend2Conn).onPriorityInFrame,
+	(*backend2Conn).onRSTStreamInFrame,
+	(*backend2Conn).onSettingsInFrame,
 	nil, // pushPromise frames are rejected priorly
-	(*backend2Conn).processPingInFrame,
+	(*backend2Conn).onPingInFrame,
 	nil, // goaway frames are hijacked by c.receiver()
-	(*backend2Conn).processWindowUpdateInFrame,
+	(*backend2Conn).onWindowUpdateInFrame,
 	nil, // discrete continuation frames are rejected priorly
 }
 
-func (c *backend2Conn) processDataInFrame(dataInFrame *http2InFrame) error {
+func (c *backend2Conn) onDataInFrame(dataInFrame *http2InFrame) error {
 	// TODO
 	return nil
 }
-func (c *backend2Conn) processHeadersInFrame(headersInFrame *http2InFrame) error {
+func (c *backend2Conn) onHeadersInFrame(headersInFrame *http2InFrame) error {
 	// TODO
 	return nil
 }
-func (c *backend2Conn) processPriorityInFrame(priorityInFrame *http2InFrame) error {
+func (c *backend2Conn) onPriorityInFrame(priorityInFrame *http2InFrame) error {
 	// TODO
 	return nil
 }
-func (c *backend2Conn) processRSTStreamInFrame(rstStreamInFrame *http2InFrame) error {
+func (c *backend2Conn) onRSTStreamInFrame(rstStreamInFrame *http2InFrame) error {
 	// TODO
 	return nil
 }
-func (c *backend2Conn) processSettingsInFrame(settingsInFrame *http2InFrame) error {
+func (c *backend2Conn) onSettingsInFrame(settingsInFrame *http2InFrame) error {
 	// TODO: server sent a new settings
 	return nil
 }
@@ -1979,7 +1979,7 @@ func (c *backend2Conn) _updatePeerSettings(settingsInFrame *http2InFrame) error 
 func (c *backend2Conn) _adjustStreamWindows(delta int32) {
 	// TODO
 }
-func (c *backend2Conn) processPingInFrame(pingInFrame *http2InFrame) error {
+func (c *backend2Conn) onPingInFrame(pingInFrame *http2InFrame) error {
 	pongOutFrame := &c.outFrame
 	pongOutFrame.length = 8
 	pongOutFrame.streamID = 0
@@ -1990,7 +1990,7 @@ func (c *backend2Conn) processPingInFrame(pingInFrame *http2InFrame) error {
 	pongOutFrame.zero()
 	return err
 }
-func (c *backend2Conn) processWindowUpdateInFrame(windowUpdateInFrame *http2InFrame) error {
+func (c *backend2Conn) onWindowUpdateInFrame(windowUpdateInFrame *http2InFrame) error {
 	windowSize := binary.BigEndian.Uint32(windowUpdateInFrame.effective())
 	if windowSize == 0 || windowSize > _2G1 {
 		return http2ErrorProtocol

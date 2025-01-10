@@ -2061,6 +2061,7 @@ type HTTPServer interface { // for *http[x3]Server
 	Server
 	httpHolder
 	// Methods
+	MaxConcurrentConnsPerGate() int32
 	bindWebapps()
 }
 
@@ -2073,12 +2074,13 @@ type httpServer_[G httpGate] struct {
 	// Assocs
 	defaultWebapp *Webapp // default webapp if not found
 	// States
-	webapps       []string               // for what webapps
-	exactWebapps  []*hostnameTo[*Webapp] // like: ("example.com")
-	suffixWebapps []*hostnameTo[*Webapp] // like: ("*.example.com")
-	prefixWebapps []*hostnameTo[*Webapp] // like: ("www.example.*")
-	forceScheme   int8                   // scheme (http/https) that must be used
-	alignScheme   bool                   // use https scheme for TLS and http scheme for others?
+	webapps                   []string               // for what webapps
+	exactWebapps              []*hostnameTo[*Webapp] // like: ("example.com")
+	suffixWebapps             []*hostnameTo[*Webapp] // like: ("*.example.com")
+	prefixWebapps             []*hostnameTo[*Webapp] // like: ("www.example.*")
+	forceScheme               int8                   // scheme (http/https) that must be used
+	alignScheme               bool                   // use https scheme for TLS and http scheme for others?
+	maxConcurrentConnsPerGate int32                  // max concurrent connections allowed per gate
 }
 
 func (s *httpServer_[G]) onCreate(name string, stage *Stage) {
@@ -2111,11 +2113,21 @@ func (s *httpServer_[G]) onConfigure() {
 
 	// alignScheme
 	s.ConfigureBool("alignScheme", &s.alignScheme, true)
+
+	// maxConcurrentConnsPerGate
+	s.ConfigureInt32("maxConcurrentConnsPerGate", &s.maxConcurrentConnsPerGate, func(value int32) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".maxConcurrentConnsPerGate has an invalid value")
+	}, 10000)
 }
 func (s *httpServer_[G]) onPrepare() {
 	s.Server_.OnPrepare()
 	s._httpHolder_.onPrepare(s, 0755)
 }
+
+func (s *httpServer_[G]) MaxConcurrentConnsPerGate() int32 { return s.maxConcurrentConnsPerGate }
 
 func (s *httpServer_[G]) bindWebapps() {
 	for _, webappName := range s.webapps {
@@ -2192,9 +2204,9 @@ type httpGate_[S HTTPServer] struct {
 	concurrentConns    atomic.Int32 // current concurrent conns. TODO: false sharing
 }
 
-func (g *httpGate_[S]) onNew(server S, id int32, maxConcurrentConns int32) {
+func (g *httpGate_[S]) onNew(server S, id int32) {
 	g.Gate_.OnNew(server, id)
-	g.maxConcurrentConns = maxConcurrentConns
+	g.maxConcurrentConns = server.MaxConcurrentConnsPerGate()
 	g.concurrentConns.Store(0)
 }
 
@@ -4980,11 +4992,11 @@ type httpNode_[B HTTPBackend] struct {
 	maxLifetime    time.Duration // conn's max lifetime
 }
 
-func (n *httpNode_[B]) OnCreate(name string, stage *Stage, backend B) {
+func (n *httpNode_[B]) onCreate(name string, stage *Stage, backend B) {
 	n.Node_.OnCreate(name, stage, backend)
 }
 
-func (n *httpNode_[B]) OnConfigure() {
+func (n *httpNode_[B]) onConfigure() {
 	n.Node_.OnConfigure()
 	n._httpHolder_.onConfigure(n, TmpDir()+"/web/backends/"+n.backend.Name()+"/"+n.name, 0, 0)
 
@@ -5012,7 +5024,7 @@ func (n *httpNode_[B]) OnConfigure() {
 		return errors.New(".maxLifetime has an invalid value")
 	}, 1*time.Minute)
 }
-func (n *httpNode_[B]) OnPrepare() {
+func (n *httpNode_[B]) onPrepare() {
 	n.Node_.OnPrepare()
 	n._httpHolder_.onPrepare(n, 0755)
 }
@@ -5749,7 +5761,7 @@ const ( // basic http constants
 	SchemeHTTP  = 0 // must be 0
 	SchemeHTTPS = 1
 
-	// method codes
+	// best known http method codes
 	MethodGET     = 0x00000001
 	MethodHEAD    = 0x00000002
 	MethodPOST    = 0x00000004

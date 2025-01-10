@@ -5,4 +5,4 @@
 
 // QUIC config.
 
-package quic
+package tcp2

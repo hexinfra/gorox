@@ -4,7 +4,6 @@ udpxRouter "um1" {
 	.readTimeout     = 60s
 	.writeTimeout    = 60s
 	.numGates        = runtime.NumCPU()
-	.maxConcurrentConnsPerGate = 10000
 
 	// dealets
 

@@ -10,6 +10,7 @@ package hemi
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"net"
 	"os"
 	"regexp"
@@ -156,8 +157,9 @@ type TCPXRouter struct {
 	dealets compDict[TCPXDealet] // defined dealets. indexed by name
 	cases   []*tcpxCase          // defined cases. the order must be kept, so we use list. TODO: use ordered map?
 	// States
-	accessLog *LogConfig // ...
-	logger    *Logger    // router access logger
+	maxConcurrentConnsPerGate int32      // max concurrent connections allowed per gate
+	accessLog                 *LogConfig // ...
+	logger                    *Logger    // router access logger
 }
 
 func (r *TCPXRouter) onCreate(name string, stage *Stage) {
@@ -169,6 +171,13 @@ func (r *TCPXRouter) OnConfigure() {
 	r.Server_.OnConfigure()
 	r._tcpxHolder_.onConfigure(r)
 
+	// maxConcurrentConnsPerGate
+	r.ConfigureInt32("maxConcurrentConnsPerGate", &r.maxConcurrentConnsPerGate, func(value int32) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".maxConcurrentConnsPerGate has an invalid value")
+	}, 10000)
 	// accessLog, TODO
 
 	// sub components
@@ -192,6 +201,8 @@ func (r *TCPXRouter) OnPrepare() {
 		kase.OnPrepare()
 	}
 }
+
+func (r *TCPXRouter) MaxConcurrentConnsPerGate() int32 { return r.maxConcurrentConnsPerGate }
 
 func (r *TCPXRouter) createDealet(sign string, name string) TCPXDealet {
 	if _, ok := r.dealets[name]; ok {

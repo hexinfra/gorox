@@ -110,28 +110,28 @@ func (s *http3Stream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }
 func (s *http3Stream_[C]) markBroken()    {}               // TODO
 func (s *http3Stream_[C]) isBroken() bool { return false } // TODO
 
-func (s *http3Stream_[C]) setReadDeadline() error { // for content i/o only
+func (s *http3Stream_[C]) setReadDeadline() error {
 	// TODO
 	return nil
 }
-func (s *http3Stream_[C]) setWriteDeadline() error { // for content i/o only
+func (s *http3Stream_[C]) setWriteDeadline() error {
 	// TODO
 	return nil
 }
 
-func (s *http3Stream_[C]) read(dst []byte) (int, error) { // for content i/o only
+func (s *http3Stream_[C]) read(dst []byte) (int, error) {
 	// TODO
 	return 0, nil
 }
-func (s *http3Stream_[C]) readFull(dst []byte) (int, error) { // for content i/o only
+func (s *http3Stream_[C]) readFull(dst []byte) (int, error) {
 	// TODO
 	return 0, nil
 }
-func (s *http3Stream_[C]) write(src []byte) (int, error) { // for content i/o only
+func (s *http3Stream_[C]) write(src []byte) (int, error) {
 	// TODO
 	return 0, nil
 }
-func (s *http3Stream_[C]) writev(srcVec *net.Buffers) (int64, error) { // for content i/o only
+func (s *http3Stream_[C]) writev(srcVec *net.Buffers) (int64, error) {
 	// TODO
 	return 0, nil
 }

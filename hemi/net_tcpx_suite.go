@@ -111,8 +111,7 @@ func (c *tcpxConn_) markBroken()    { c.broken.Store(true) }
 func (c *tcpxConn_) isBroken() bool { return c.broken.Load() }
 
 func (c *tcpxConn_) SetReadDeadline() error {
-	deadline := time.Now().Add(c.readTimeout)
-	if deadline.Sub(c.lastRead) >= time.Second {
+	if deadline := time.Now().Add(c.readTimeout); deadline.Sub(c.lastRead) >= time.Second {
 		if err := c.netConn.SetReadDeadline(deadline); err != nil {
 			return err
 		}
@@ -121,8 +120,7 @@ func (c *tcpxConn_) SetReadDeadline() error {
 	return nil
 }
 func (c *tcpxConn_) SetWriteDeadline() error {
-	deadline := time.Now().Add(c.writeTimeout)
-	if deadline.Sub(c.lastWrite) >= time.Second {
+	if deadline := time.Now().Add(c.writeTimeout); deadline.Sub(c.lastWrite) >= time.Second {
 		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
 		}

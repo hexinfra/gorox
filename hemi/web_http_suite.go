@@ -403,7 +403,7 @@ func (r *httpIn_) DelHeader(name string) (deleted bool) {
 func (r *httpIn_) delHeader(name []byte, nameHash uint16) {
 	r.delPair(WeakString(name), nameHash, r.headers, pairHeader)
 }
-func (r *httpIn_) AddHeader(name string, value string) bool { // as extra
+func (r *httpIn_) AddHeader(name string, value string) bool { // as extra, by webapp
 	// TODO: add restrictions on what headers are allowed to add? should we check the value?
 	// TODO: parse and check?
 	// setFlags?
@@ -913,14 +913,14 @@ func (r *httpIn_) determineContentMode() bool {
 }
 func (r *httpIn_) IsVague() bool { return r.contentSize == -2 }
 
-func (r *httpIn_) ContentSize() int64 { return r.contentSize }
+func (r *httpIn_) ContentSize() int64  { return r.contentSize }
+func (r *httpIn_) ContentType() string { return string(r.UnsafeContentType()) }
 func (r *httpIn_) UnsafeContentLength() []byte {
 	if r.iContentLength == 0 {
 		return nil
 	}
 	return r.primes[r.iContentLength].valueAt(r.input)
 }
-func (r *httpIn_) ContentType() string { return string(r.UnsafeContentType()) }
 func (r *httpIn_) UnsafeContentType() []byte {
 	if r.iContentType == 0 {
 		return nil
@@ -1109,7 +1109,7 @@ func (r *httpIn_) DelTrailer(name string) (deleted bool) {
 func (r *httpIn_) delTrailer(name []byte, nameHash uint16) {
 	r.delPair(WeakString(name), nameHash, r.trailers, pairTrailer)
 }
-func (r *httpIn_) AddTrailer(name string, value string) bool { // as extra
+func (r *httpIn_) AddTrailer(name string, value string) bool { // as extra, by webapp
 	// TODO: add restrictions on what trailers are allowed to add? should we check the value?
 	// TODO: parse and check?
 	// setFlags?
@@ -1830,9 +1830,9 @@ func (r *httpOut_) _proxyPassMessage(inMessage httpIn) error {
 		}
 	}
 	for {
-		p, err := inMessage.readContent()
-		if len(p) >= 0 {
-			if e := proxyPass(p); e != nil {
+		data, err := inMessage.readContent()
+		if len(data) >= 0 {
+			if e := proxyPass(data); e != nil {
 				return e
 			}
 		}
@@ -2025,7 +2025,7 @@ type httpSocket interface {
 }
 
 // httpSocket_
-type httpSocket_ struct { // incoming and outgoing.
+type httpSocket_ struct { // incoming and outgoing
 	// Assocs
 	stream httpStream // *server[1-3]Stream, *backend[1-3]Stream
 	socket httpSocket // *server[1-3]Socket, *backend[1-3]Socket
@@ -2722,7 +2722,7 @@ func (r *serverRequest_) HasQuery(name string) bool {
 func (r *serverRequest_) DelQuery(name string) (deleted bool) {
 	return r.delPair(name, 0, r.queries, pairQuery)
 }
-func (r *serverRequest_) AddQuery(name string, value string) bool { // as extra
+func (r *serverRequest_) AddQuery(name string, value string) bool { // as extra, by webapp
 	return r.addExtra(name, value, 0, pairQuery)
 }
 
@@ -3602,7 +3602,7 @@ func (r *serverRequest_) HasCookie(name string) bool {
 func (r *serverRequest_) DelCookie(name string) (deleted bool) {
 	return r.delPair(name, 0, r.cookies, pairCookie)
 }
-func (r *serverRequest_) AddCookie(name string, value string) bool { // as extra
+func (r *serverRequest_) AddCookie(name string, value string) bool { // as extra, by webapp
 	return r.addExtra(name, value, 0, pairCookie)
 }
 func (r *serverRequest_) proxyWalkCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool {
@@ -4379,7 +4379,7 @@ func (r *serverRequest_) DelForm(name string) (deleted bool) {
 	r.parseHTMLForm()
 	return r.delPair(name, 0, r.forms, pairForm)
 }
-func (r *serverRequest_) AddForm(name string, value string) bool { // as extra
+func (r *serverRequest_) AddForm(name string, value string) bool { // as extra, by webapp
 	return r.addExtra(name, value, 0, pairForm)
 }
 
@@ -4919,7 +4919,7 @@ type Socket interface { // for *server[1-3]Socket
 }
 
 // serverSocket_ is the parent for server[1-3]Socket.
-type serverSocket_ struct {
+type serverSocket_ struct { // incoming and outgoing
 	// Parent
 	httpSocket_
 	// Assocs
@@ -5725,7 +5725,7 @@ type backendSocket interface { // for *backend[1-3]Socket
 }
 
 // backendSocket_ is the parent for backend[1-3]Socket.
-type backendSocket_ struct {
+type backendSocket_ struct { // incoming and outgoing
 	// Parent
 	httpSocket_
 	// Assocs

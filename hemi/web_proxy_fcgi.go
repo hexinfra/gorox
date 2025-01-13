@@ -10,7 +10,7 @@
 // Vague request content: supported, but currently not implemented due to the limitation of CGI/1.1 even though FCGI can do that through its framing protocol
 // Vague response content: supported
 
-// To avoid ambiguity, the term "content" in FCGI specification is called "payload" in our implementation.
+// FCGI is like HTTP/2. To avoid ambiguity, the term "content" in FCGI specification is called "payload" in our implementation.
 
 package hemi
 
@@ -564,8 +564,7 @@ func (c *fcgiConn) markBroken()    { c.broken.Store(true) }
 func (c *fcgiConn) isBroken() bool { return c.broken.Load() }
 
 func (c *fcgiConn) setWriteDeadline() error {
-	deadline := time.Now().Add(c.node.writeTimeout)
-	if deadline.Sub(c.lastWrite) >= time.Second {
+	if deadline := time.Now().Add(c.node.writeTimeout); deadline.Sub(c.lastWrite) >= time.Second {
 		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
 		}
@@ -574,8 +573,7 @@ func (c *fcgiConn) setWriteDeadline() error {
 	return nil
 }
 func (c *fcgiConn) setReadDeadline() error {
-	deadline := time.Now().Add(c.node.readTimeout)
-	if deadline.Sub(c.lastRead) >= time.Second {
+	if deadline := time.Now().Add(c.node.readTimeout); deadline.Sub(c.lastRead) >= time.Second {
 		if err := c.netConn.SetReadDeadline(deadline); err != nil {
 			return err
 		}
@@ -850,21 +848,21 @@ func (r *fcgiRequest) proxyPassMessage(httpReq Request) error { // only for size
 		return err
 	}
 	for {
-		stdin, err := httpReq.readContent()
-		if len(stdin) > 0 {
-			size := len(stdin)
+		data, err := httpReq.readContent()
+		if len(data) > 0 {
+			size := len(data)
 			r.stdinHeader[4], r.stdinHeader[5] = byte(size>>8), byte(size)
 			if err == io.EOF { // EOF is immediate, write with emptyStdin
 				r.vector = r.fixedVector[0:3]
 				r.vector[0] = r.stdinHeader[:]
-				r.vector[1] = stdin
+				r.vector[1] = data
 				r.vector[2] = fcgiEmptyStdin
 				return r._writeVector()
 			}
 			// EOF is not immediate, err must be nil.
 			r.vector = r.fixedVector[0:2]
 			r.vector[0] = r.stdinHeader[:]
-			r.vector[1] = stdin
+			r.vector[1] = data
 			if e := r._writeVector(); e != nil {
 				return e
 			}

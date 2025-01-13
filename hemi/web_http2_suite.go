@@ -481,8 +481,7 @@ func (c *http2Conn_) quitStream(streamID uint32) {
 func (c *http2Conn_) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
 
 func (c *http2Conn_) setReadDeadline() error {
-	deadline := time.Now().Add(c.readTimeout)
-	if deadline.Sub(c.lastRead) >= time.Second {
+	if deadline := time.Now().Add(c.readTimeout); deadline.Sub(c.lastRead) >= time.Second {
 		if err := c.netConn.SetReadDeadline(deadline); err != nil {
 			return err
 		}
@@ -491,8 +490,7 @@ func (c *http2Conn_) setReadDeadline() error {
 	return nil
 }
 func (c *http2Conn_) setWriteDeadline() error {
-	deadline := time.Now().Add(c.writeTimeout)
-	if deadline.Sub(c.lastWrite) >= time.Second {
+	if deadline := time.Now().Add(c.writeTimeout); deadline.Sub(c.lastWrite) >= time.Second {
 		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
 		}

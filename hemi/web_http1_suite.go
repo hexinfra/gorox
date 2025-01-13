@@ -1093,8 +1093,7 @@ func putServer1Conn(serverConn *server1Conn) {
 }
 
 func (c *server1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	server := gate.server
-	c.http1Conn_.onGet(id, server.Stage().ID(), gate.IsUDS(), gate.IsTLS(), netConn, rawConn, server.ReadTimeout(), server.WriteTimeout(), true)
+	c.http1Conn_.onGet(id, gate.Stage().ID(), gate.UDSMode(), gate.TLSMode(), netConn, rawConn, gate.ReadTimeout(), gate.WriteTimeout(), true)
 
 	c.gate = gate
 	c.closeSafe = true
@@ -1145,9 +1144,9 @@ func (c *server1Conn) serve() { // runner
 	// response. Finally, the server fully closes the connection.
 	netConn := c.netConn
 	if !c.closeSafe {
-		if c.IsUDS() {
+		if c.UDSMode() {
 			netConn.(*net.UnixConn).CloseWrite()
-		} else if c.IsTLS() {
+		} else if c.TLSMode() {
 			netConn.(*tls.Conn).CloseWrite()
 		} else {
 			netConn.(*net.TCPConn).CloseWrite()
@@ -1224,7 +1223,7 @@ func (s *server1Stream) execute() {
 	if server.forceScheme != -1 { // forceScheme is set explicitly
 		req.schemeCode = uint8(server.forceScheme)
 	} else { // scheme is not forced. should it be aligned?
-		if conn.IsTLS() { // secured
+		if conn.TLSMode() { // secured
 			if req.schemeCode == SchemeHTTP && server.alignScheme {
 				req.schemeCode = SchemeHTTPS
 			}
@@ -2159,9 +2158,9 @@ func (n *http1Node) fetchStream() (*backend1Stream, error) {
 		return nil, errNodeDown
 	}
 	var err error
-	if n.IsUDS() {
+	if n.UDSMode() {
 		conn, err = n._dialUDS()
-	} else if n.IsTLS() {
+	} else if n.TLSMode() {
 		conn, err = n._dialTLS()
 	} else {
 		conn, err = n._dialTCP()
@@ -2339,7 +2338,7 @@ func putBackend1Conn(backendConn *backend1Conn) {
 }
 
 func (c *backend1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.http1Conn_.onGet(id, node.Stage().ID(), node.IsUDS(), node.IsTLS(), netConn, rawConn, node.ReadTimeout(), node.WriteTimeout(), true)
+	c.http1Conn_.onGet(id, node.Stage().ID(), node.UDSMode(), node.TLSMode(), netConn, rawConn, node.ReadTimeout(), node.WriteTimeout(), true)
 
 	c.node = node
 	c.expireTime = time.Now().Add(node.idleTimeout)
@@ -2441,7 +2440,7 @@ func (r *backend1Request) setMethodURI(method []byte, uri []byte, hasContent boo
 	}
 }
 func (r *backend1Request) proxySetAuthority(hostname []byte, colonport []byte) bool {
-	if r.stream.Conn().IsTLS() {
+	if r.stream.Conn().TLSMode() {
 		if bytes.Equal(colonport, bytesColonport443) {
 			colonport = nil
 		}

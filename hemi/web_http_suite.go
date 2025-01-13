@@ -72,8 +72,8 @@ func (h *_httpHolder_) MaxMemoryContentSize() int32        { return h.maxMemoryC
 // httpConn collects shared methods between *server[1-3]Conn and *backend[1-3]Conn.
 type httpConn interface {
 	ID() int64
-	IsUDS() bool
-	IsTLS() bool
+	UDSMode() bool
+	TLSMode() bool
 	MakeTempName(dst []byte, unixTime int64) int
 	remoteAddr() net.Addr
 	markBroken()
@@ -115,8 +115,8 @@ func (c *httpConn_) onPut() {
 
 func (c *httpConn_) ID() int64 { return c.id }
 
-func (c *httpConn_) IsUDS() bool { return c.udsMode }
-func (c *httpConn_) IsTLS() bool { return c.tlsMode }
+func (c *httpConn_) UDSMode() bool { return c.udsMode }
+func (c *httpConn_) TLSMode() bool { return c.tlsMode }
 
 func (c *httpConn_) MakeTempName(dst []byte, unixTime int64) int {
 	return makeTempName(dst, c.stageID, c.id, unixTime, c.counter.Add(1))
@@ -2135,7 +2135,7 @@ func (s *httpServer_[G]) bindWebapps() {
 		if webapp == nil {
 			continue
 		}
-		if s.IsTLS() {
+		if s.TLSMode() {
 			if webapp.tlsCertificate == "" || webapp.tlsPrivateKey == "" {
 				UseExitln("webapps that bound to tls server must have certificates and private keys")
 			}
@@ -5249,7 +5249,7 @@ func (r *backendRequest_) proxyCopyHeaders(foreReq Request, proxyConfig *WebExch
 	}
 	if r.httpVersion >= Version2 {
 		var scheme []byte
-		if r.stream.Conn().IsTLS() {
+		if r.stream.Conn().TLSMode() {
 			scheme = bytesSchemeHTTPS
 		} else {
 			scheme = bytesSchemeHTTP

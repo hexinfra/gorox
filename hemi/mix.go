@@ -26,8 +26,8 @@ import (
 type holder interface {
 	Stage() *Stage
 	Address() string
-	IsUDS() bool
-	IsTLS() bool
+	UDSMode() bool
+	TLSMode() bool
 	ReadTimeout() time.Duration
 	WriteTimeout() time.Duration
 }
@@ -74,8 +74,8 @@ func (h *_holder_) onPrepare(component Component) {
 func (h *_holder_) Stage() *Stage { return h.stage }
 
 func (h *_holder_) Address() string             { return h.address }
-func (h *_holder_) IsUDS() bool                 { return h.udsMode }
-func (h *_holder_) IsTLS() bool                 { return h.tlsMode }
+func (h *_holder_) UDSMode() bool               { return h.udsMode }
+func (h *_holder_) TLSMode() bool               { return h.tlsMode }
 func (h *_holder_) TLSConfig() *tls.Config      { return h.tlsConfig }
 func (h *_holder_) ReadTimeout() time.Duration  { return h.readTimeout }
 func (h *_holder_) WriteTimeout() time.Duration { return h.writeTimeout }
@@ -831,8 +831,8 @@ var varCodes = map[string]int16{ // TODO
 	// general conn vars for quix, tcpx, and udpx
 	"srcHost": 0,
 	"srcPort": 1,
-	"isUDS":   2,
-	"isTLS":   3,
+	"udsMode": 2,
+	"tlsMode": 3,
 
 	// quix conn vars
 

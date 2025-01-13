@@ -71,7 +71,7 @@ func (c *udpxConn_) onPut() {
 	c.broken.Store(false)
 }
 
-func (c *udpxConn_) IsUDS() bool { return c.udsMode }
+func (c *udpxConn_) UDSMode() bool { return c.udsMode }
 
 func (c *udpxConn_) MakeTempName(dst []byte, unixTime int64) int {
 	return makeTempName(dst, c.stageID, c.id, unixTime, c.counter.Add(1))
@@ -179,7 +179,7 @@ func (r *UDPXRouter) Serve() { // runner
 		}
 		r.AddGate(gate)
 		r.IncSub() // gate
-		if r.IsUDS() {
+		if r.UDSMode() {
 			go gate.serveUDS()
 		} else {
 			go gate.serveUDP()
@@ -302,8 +302,7 @@ func putUDPXConn(conn *UDPXConn) {
 }
 
 func (c *UDPXConn) onGet(id int64, gate *udpxGate, pktConn net.PacketConn, rawConn syscall.RawConn) {
-	router := gate.server
-	c.udpxConn_.onGet(id, router.Stage().ID(), pktConn, rawConn, router.IsUDS())
+	c.udpxConn_.onGet(id, gate.Stage().ID(), pktConn, rawConn, gate.UDSMode())
 
 	c.gate = gate
 }
@@ -328,7 +327,7 @@ var udpxConnVariables = [...]func(*UDPXConn) []byte{ // keep sync with varCodes
 	// TODO
 	0: nil, // srcHost
 	1: nil, // srcPort
-	2: nil, // isUDS
+	2: nil, // udsMode
 }
 
 // udpxCase
@@ -575,7 +574,7 @@ func putUConn(conn *UConn) {
 }
 
 func (c *UConn) onGet(id int64, node *udpxNode, pktConn net.PacketConn, rawConn syscall.RawConn) {
-	c.udpxConn_.onGet(id, node.Stage().ID(), pktConn, rawConn, node.IsUDS())
+	c.udpxConn_.onGet(id, node.Stage().ID(), pktConn, rawConn, node.UDSMode())
 
 	c.node = node
 }

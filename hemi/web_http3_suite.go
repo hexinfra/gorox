@@ -309,7 +309,7 @@ func (s *http3Server) Serve() { // runner
 		}
 		s.AddGate(gate)
 		s.IncSub() // gate
-		if s.IsUDS() {
+		if s.UDSMode() {
 			go gate.serveUDS()
 		} else {
 			go gate.serveTLS()
@@ -415,8 +415,7 @@ func putServer3Conn(serverConn *server3Conn) {
 }
 
 func (c *server3Conn) onGet(id int64, gate *http3Gate, quicConn *tcp2.Conn) {
-	server := gate.server
-	c.http3Conn_.onGet(id, server.Stage().ID(), gate.IsUDS(), gate.IsTLS(), quicConn, server.ReadTimeout(), server.WriteTimeout())
+	c.http3Conn_.onGet(id, gate.Stage().ID(), gate.UDSMode(), gate.TLSMode(), quicConn, gate.ReadTimeout(), gate.WriteTimeout())
 
 	c.gate = gate
 }
@@ -781,7 +780,7 @@ func putBackend3Conn(backendConn *backend3Conn) {
 }
 
 func (c *backend3Conn) onGet(id int64, node *http3Node, quicConn *tcp2.Conn) {
-	c.http3Conn_.onGet(id, node.Stage().ID(), node.IsUDS(), node.IsTLS(), quicConn, node.ReadTimeout(), node.WriteTimeout())
+	c.http3Conn_.onGet(id, node.Stage().ID(), node.UDSMode(), node.TLSMode(), quicConn, node.ReadTimeout(), node.WriteTimeout())
 
 	c.node = node
 	c.expireTime = time.Now().Add(node.idleTimeout)

@@ -986,7 +986,7 @@ func (s *httpxServer) OnConfigure() {
 func (s *httpxServer) OnPrepare() {
 	s.httpServer_.onPrepare()
 
-	if s.IsTLS() {
+	if s.TLSMode() {
 		var nextProtos []string
 		switch s.httpMode {
 		case 2:
@@ -1009,9 +1009,9 @@ func (s *httpxServer) Serve() { // runner
 		}
 		s.AddGate(gate)
 		s.IncSub() // gate
-		if s.IsUDS() {
+		if s.UDSMode() {
 			go gate.serveUDS()
-		} else if s.IsTLS() {
+		} else if s.TLSMode() {
 			go gate.serveTLS()
 		} else {
 			go gate.serveTCP()
@@ -1041,7 +1041,7 @@ func (g *httpxGate) Open() error {
 		listener net.Listener
 		err      error
 	)
-	if g.IsUDS() {
+	if g.UDSMode() {
 		address := g.Address()
 		// UDS doesn't support SO_REUSEADDR or SO_REUSEPORT, so we have to remove it first.
 		// This affects graceful upgrading, maybe we can implement fd transfer in the future.
@@ -1234,8 +1234,7 @@ func putServer2Conn(serverConn *server2Conn) {
 }
 
 func (c *server2Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	server := gate.server
-	c.http2Conn_.onGet(id, server.Stage().ID(), gate.IsUDS(), gate.IsTLS(), netConn, rawConn, server.ReadTimeout(), server.WriteTimeout())
+	c.http2Conn_.onGet(id, gate.Stage().ID(), gate.UDSMode(), gate.TLSMode(), netConn, rawConn, gate.ReadTimeout(), gate.WriteTimeout())
 
 	c.gate = gate
 }
@@ -1910,7 +1909,7 @@ func putBackend2Conn(backendConn *backend2Conn) {
 }
 
 func (c *backend2Conn) onGet(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.http2Conn_.onGet(id, node.Stage().ID(), node.IsUDS(), node.IsTLS(), netConn, rawConn, node.ReadTimeout(), node.WriteTimeout())
+	c.http2Conn_.onGet(id, node.Stage().ID(), node.UDSMode(), node.TLSMode(), netConn, rawConn, node.ReadTimeout(), node.WriteTimeout())
 
 	c.node = node
 	c.expireTime = time.Now().Add(node.idleTimeout)

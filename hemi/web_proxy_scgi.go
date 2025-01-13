@@ -184,7 +184,7 @@ func (n *scgiNode) dial() (*scgiConn, error) {
 		conn *scgiConn
 		err  error
 	)
-	if n.IsUDS() {
+	if n.UDSMode() {
 		conn, err = n._dialUDS()
 	} else {
 		conn, err = n._dialTCP()

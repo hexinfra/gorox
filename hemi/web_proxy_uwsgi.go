@@ -184,7 +184,7 @@ func (n *uwsgiNode) dial() (*uwsgiConn, error) {
 		conn *uwsgiConn
 		err  error
 	)
-	if n.IsUDS() {
+	if n.UDSMode() {
 		conn, err = n._dialUDS()
 	} else {
 		conn, err = n._dialTCP()

@@ -97,8 +97,8 @@ func (c *quixConn_) onPut() {
 	c.concurrentStreams.Store(0)
 }
 
-func (c *quixConn_) IsUDS() bool { return c.udsMode }
-func (c *quixConn_) IsTLS() bool { return c.tlsMode }
+func (c *quixConn_) UDSMode() bool { return c.udsMode }
+func (c *quixConn_) TLSMode() bool { return c.tlsMode }
 
 func (c *quixConn_) MakeTempName(dst []byte, unixTime int64) int {
 	return makeTempName(dst, c.stageID, c.id, unixTime, c.counter.Add(1))
@@ -359,8 +359,7 @@ func putQUIXConn(conn *QUIXConn) {
 }
 
 func (c *QUIXConn) onGet(id int64, gate *quixGate, quicConn *tcp2.Conn) {
-	router := gate.server
-	c.quixConn_.onGet(id, router.Stage().ID(), quicConn, gate.IsUDS(), gate.IsTLS(), router.MaxCumulativeStreamsPerConn(), router.MaxConcurrentStreamsPerConn())
+	c.quixConn_.onGet(id, gate.Stage().ID(), quicConn, gate.UDSMode(), gate.TLSMode(), gate.MaxCumulativeStreamsPerConn(), gate.MaxConcurrentStreamsPerConn())
 
 	c.gate = gate
 }
@@ -384,8 +383,8 @@ var quixConnVariables = [...]func(*QUIXConn) []byte{ // keep sync with varCodes
 	// TODO
 	0: nil, // srcHost
 	1: nil, // srcPort
-	2: nil, // isUDS
-	3: nil, // isTLS
+	2: nil, // udsMode
+	3: nil, // tlsMode
 }
 
 // QUIXStream
@@ -690,7 +689,7 @@ func putQConn(conn *QConn) {
 }
 
 func (c *QConn) onGet(id int64, node *quixNode, quicConn *tcp2.Conn) {
-	c.quixConn_.onGet(id, node.Stage().ID(), quicConn, node.IsUDS(), node.IsTLS(), node.MaxCumulativeStreamsPerConn(), node.MaxConcurrentStreamsPerConn())
+	c.quixConn_.onGet(id, node.Stage().ID(), quicConn, node.UDSMode(), node.TLSMode(), node.MaxCumulativeStreamsPerConn(), node.MaxConcurrentStreamsPerConn())
 
 	c.node = node
 }

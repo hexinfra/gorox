@@ -100,8 +100,8 @@ func (c *tcpxConn_) onPut() {
 	c.FixedVector = [4][]byte{}
 }
 
-func (c *tcpxConn_) IsUDS() bool { return c.udsMode }
-func (c *tcpxConn_) IsTLS() bool { return c.tlsMode }
+func (c *tcpxConn_) UDSMode() bool { return c.udsMode }
+func (c *tcpxConn_) TLSMode() bool { return c.tlsMode }
 
 func (c *tcpxConn_) MakeTempName(dst []byte, unixTime int64) int {
 	return makeTempName(dst, c.stageID, c.id, unixTime, c.counter.Add(1))
@@ -245,9 +245,9 @@ func (r *TCPXRouter) Serve() { // runner
 		}
 		r.AddGate(gate)
 		r.IncSub() // gate
-		if r.IsUDS() {
+		if r.UDSMode() {
 			go gate.serveUDS()
-		} else if r.IsTLS() {
+		} else if r.TLSMode() {
 			go gate.serveTLS()
 		} else {
 			go gate.serveTCP()
@@ -331,7 +331,7 @@ func (g *tcpxGate) Open() error {
 		listener net.Listener
 		err      error
 	)
-	if g.IsUDS() {
+	if g.UDSMode() {
 		address := g.Address()
 		// UDS doesn't support SO_REUSEADDR or SO_REUSEPORT, so we have to remove it first.
 		// This affects graceful upgrading, maybe we can implement fd transfer in the future.
@@ -495,8 +495,7 @@ func putTCPXConn(conn *TCPXConn) {
 }
 
 func (c *TCPXConn) onGet(id int64, gate *tcpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	router := gate.server
-	c.tcpxConn_.onGet(id, router.Stage().ID(), netConn, rawConn, gate.IsUDS(), gate.IsTLS(), router.ReadTimeout(), router.WriteTimeout())
+	c.tcpxConn_.onGet(id, gate.Stage().ID(), netConn, rawConn, gate.UDSMode(), gate.TLSMode(), gate.ReadTimeout(), gate.WriteTimeout())
 
 	c.gate = gate
 }
@@ -510,9 +509,9 @@ func (c *TCPXConn) CloseRead() {
 	c._checkClose()
 }
 func (c *TCPXConn) CloseWrite() {
-	if c.gate.IsUDS() {
+	if c.gate.UDSMode() {
 		c.netConn.(*net.UnixConn).CloseWrite()
-	} else if c.gate.IsTLS() {
+	} else if c.gate.TLSMode() {
 		c.netConn.(*tls.Conn).CloseWrite()
 	} else {
 		c.netConn.(*net.TCPConn).CloseWrite()
@@ -538,8 +537,8 @@ var tcpxConnVariables = [...]func(*TCPXConn) []byte{ // keep sync with varCodes
 	// TODO
 	0: nil, // srcHost
 	1: nil, // srcPort
-	2: nil, // isUDS
-	3: nil, // isTLS
+	2: nil, // udsMode
+	3: nil, // tlsMode
 	4: nil, // serverName
 	5: nil, // nextProto
 }
@@ -764,9 +763,9 @@ func (n *tcpxNode) dial() (*TConn, error) {
 		conn *TConn
 		err  error
 	)
-	if n.IsUDS() {
+	if n.UDSMode() {
 		conn, err = n._dialUDS()
-	} else if n.IsTLS() {
+	} else if n.TLSMode() {
 		conn, err = n._dialTLS()
 	} else {
 		conn, err = n._dialTCP()
@@ -867,7 +866,7 @@ func putTConn(conn *TConn) {
 }
 
 func (c *TConn) onGet(id int64, node *tcpxNode, netConn net.Conn, rawConn syscall.RawConn) {
-	c.tcpxConn_.onGet(id, node.Stage().ID(), netConn, rawConn, node.IsUDS(), node.IsTLS(), node.ReadTimeout(), node.WriteTimeout())
+	c.tcpxConn_.onGet(id, node.Stage().ID(), netConn, rawConn, node.UDSMode(), node.TLSMode(), node.ReadTimeout(), node.WriteTimeout())
 
 	c.node = node
 }
@@ -881,9 +880,9 @@ func (c *TConn) CloseRead() {
 	c._checkClose()
 }
 func (c *TConn) CloseWrite() {
-	if c.node.IsUDS() {
+	if c.node.UDSMode() {
 		c.netConn.(*net.UnixConn).CloseWrite()
-	} else if c.node.IsTLS() {
+	} else if c.node.TLSMode() {
 		c.netConn.(*tls.Conn).CloseWrite()
 	} else {
 		c.netConn.(*net.TCPConn).CloseWrite()

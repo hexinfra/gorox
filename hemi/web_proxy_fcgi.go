@@ -348,7 +348,7 @@ func (n *fcgiNode) fetchExchan() (*fcgiExchan, error) {
 		return nil, errNodeDown
 	}
 	var err error
-	if n.IsUDS() {
+	if n.UDSMode() {
 		conn, err = n._dialUDS()
 	} else {
 		conn, err = n._dialTCP()
@@ -379,7 +379,7 @@ func (n *fcgiNode) dial() (*fcgiConn, error) {
 		conn *fcgiConn
 		err  error
 	)
-	if n.IsUDS() {
+	if n.UDSMode() {
 		conn, err = n._dialUDS()
 	} else {
 		conn, err = n._dialTCP()
@@ -540,7 +540,7 @@ func (c *fcgiConn) onPut() {
 	c.lastRead = time.Time{}
 }
 
-func (c *fcgiConn) IsUDS() bool { return c.node.IsUDS() }
+func (c *fcgiConn) UDSMode() bool { return c.node.UDSMode() }
 
 func (c *fcgiConn) MakeTempName(dst []byte, unixTime int64) int {
 	return makeTempName(dst, c.node.Stage().ID(), c.id, unixTime, c.counter.Add(1))

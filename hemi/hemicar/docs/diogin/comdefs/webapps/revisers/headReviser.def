@@ -1,6 +1,0 @@
-headReviser "hr1" {
-	.addResponse = ["cache-control" : "max-age=86400"]
-	.addRequest = ["env" : "gray"]
-	.delRequest = ("cookie", "date")
-	.delResponse = ("cookie", "date")
-}

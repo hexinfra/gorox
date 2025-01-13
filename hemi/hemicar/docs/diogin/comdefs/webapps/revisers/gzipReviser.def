@@ -1,5 +1,0 @@
-gzipReviser "gr1" {
-	.compressLevel = 1
-	.minLength = 8k 
-	.onContentTypes = ("text/html") 
-}

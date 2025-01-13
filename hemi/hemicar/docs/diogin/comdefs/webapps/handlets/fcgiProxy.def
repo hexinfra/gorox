@@ -1,8 +1,0 @@
-fcgiProxy "fp1" {
-	.toBackend = "php-fpm"
-	.scriptFilename = ""
-	.indexFile = "index.php"
-	.bufferClientContent = true
-	.bufferServerContent = true
-	.withCacher = "cacher name"
-}

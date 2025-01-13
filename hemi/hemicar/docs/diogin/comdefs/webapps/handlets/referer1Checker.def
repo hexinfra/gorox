@@ -1,5 +1,0 @@
-referer1Checker "rc1" {
-	.serverNames = ("*.gorox.com")
-	.none = false
-	.blocked = false
-}

@@ -181,8 +181,8 @@ type Gate interface {
 	// Imports
 	holder
 	// Methods
-	IsShut() bool
 	Shut() error
+	IsShut() bool
 }
 
 // Gate_ is the parent for all gates.
@@ -207,8 +207,8 @@ func (g *Gate_[S]) OnNew(server S, id int32) {
 func (g *Gate_[S]) Server() S { return g.server }
 
 func (g *Gate_[S]) ID() int32    { return g.id }
-func (g *Gate_[S]) IsShut() bool { return g.shut.Load() }
 func (g *Gate_[S]) MarkShut()    { g.shut.Store(true) }
+func (g *Gate_[S]) IsShut() bool { return g.shut.Load() }
 
 func (g *Gate_[S]) IncSub()   { g.subConns.Add(1) }
 func (g *Gate_[S]) WaitSubs() { g.subConns.Wait() }
@@ -414,38 +414,22 @@ func (n *Node_[B]) isDown() bool { return n.down.Load() }
 
 // contentSaver
 type contentSaver interface {
-	SaveContentFilesDir() string // the dir to save content temporarily
-	MaxContentSize() int64       // max content size allowed
 	RecvTimeout() time.Duration  // timeout to recv the whole message content. zero means no timeout
 	SendTimeout() time.Duration  // timeout to send the whole message. zero means no timeout
+	MaxContentSize() int64       // max content size allowed
+	SaveContentFilesDir() string // the dir to save content temporarily
 }
 
 // _contentSaver_ is a mixin.
 type _contentSaver_ struct {
 	// States
-	saveContentFilesDir string        // temp content files are placed here
-	maxContentSize      int64         // max content size allowed to receive
 	recvTimeout         time.Duration // timeout to recv the whole message content. zero means no timeout
 	sendTimeout         time.Duration // timeout to send the whole message. zero means no timeout
+	maxContentSize      int64         // max content size allowed to receive
+	saveContentFilesDir string        // temp content files are placed here
 }
 
-func (s *_contentSaver_) onConfigure(component Component, defaultDir string, defaultRecv time.Duration, defaultSend time.Duration) {
-	// saveContentFilesDir
-	component.ConfigureString("saveContentFilesDir", &s.saveContentFilesDir, func(value string) error {
-		if value != "" && len(value) <= 232 {
-			return nil
-		}
-		return errors.New(".saveContentFilesDir has an invalid value")
-	}, defaultDir)
-
-	// maxContentSize
-	component.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".maxContentSize has an invalid value")
-	}, _1T)
-
+func (s *_contentSaver_) onConfigure(component Component, defaultRecv time.Duration, defaultSend time.Duration, defaultDir string) {
 	// recvTimeout
 	component.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) error {
 		if value >= 0 {
@@ -461,6 +445,22 @@ func (s *_contentSaver_) onConfigure(component Component, defaultDir string, def
 		}
 		return errors.New(".sendTimeout has an invalid value")
 	}, defaultSend)
+
+	// maxContentSize
+	component.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New(".maxContentSize has an invalid value")
+	}, _1T)
+
+	// saveContentFilesDir
+	component.ConfigureString("saveContentFilesDir", &s.saveContentFilesDir, func(value string) error {
+		if value != "" && len(value) <= 232 {
+			return nil
+		}
+		return errors.New(".saveContentFilesDir has an invalid value")
+	}, defaultDir)
 }
 func (s *_contentSaver_) onPrepare(component Component, perm os.FileMode) {
 	if err := os.MkdirAll(s.saveContentFilesDir, perm); err != nil {
@@ -471,10 +471,10 @@ func (s *_contentSaver_) onPrepare(component Component, perm os.FileMode) {
 	}
 }
 
-func (s *_contentSaver_) SaveContentFilesDir() string { return s.saveContentFilesDir } // must ends with '/'
-func (s *_contentSaver_) MaxContentSize() int64       { return s.maxContentSize }
 func (s *_contentSaver_) RecvTimeout() time.Duration  { return s.recvTimeout }
 func (s *_contentSaver_) SendTimeout() time.Duration  { return s.sendTimeout }
+func (s *_contentSaver_) MaxContentSize() int64       { return s.maxContentSize }
+func (s *_contentSaver_) SaveContentFilesDir() string { return s.saveContentFilesDir } // must ends with '/'
 
 // LogConfig
 type LogConfig struct {

@@ -1,9 +1,0 @@
-sitex "s1" {
-	.rdbms = "mysql://user:pass@host:port/dbname?charset=utf8mb4"
-	.sites = [
-		"front": [
-			"hostnames": ("example.net"),
-			"viewDir": %topDir + "/apps/english/view",
-		],
-	]
-}

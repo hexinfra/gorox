@@ -1,4 +1,0 @@
-hostnameChecker "hc1" {
-	.hostname = "www.example.cpm"
-	.permanent = true
-}

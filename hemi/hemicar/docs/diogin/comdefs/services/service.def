@@ -1,3 +1,0 @@
-service "s1" {
-	.maxContentSize = 16G
-}

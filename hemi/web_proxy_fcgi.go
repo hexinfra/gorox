@@ -283,7 +283,7 @@ func (n *fcgiNode) onCreate(name string, stage *Stage, backend *fcgiBackend) {
 
 func (n *fcgiNode) OnConfigure() {
 	n.Node_.OnConfigure()
-	n._contentSaver_.onConfigure(n, TmpDir()+"/web/backends/"+n.backend.name+"/"+n.name, 0*time.Second, 0*time.Second)
+	n._contentSaver_.onConfigure(n, 0*time.Second, 0*time.Second, TmpDir()+"/web/backends/"+n.backend.name+"/"+n.name)
 
 	// maxCumulativeExchansPerConn
 	n.ConfigureInt32("maxCumulativeExchansPerConn", &n.maxCumulativeExchansPerConn, func(value int32) error {

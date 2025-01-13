@@ -1,6 +1,0 @@
-uwsgiProxy "up1" {
-	.toBackend = "python-app"
-	.bufferClientContent = true
-	.bufferServerContent = true
-	.withCacher = "cacher name"
-}

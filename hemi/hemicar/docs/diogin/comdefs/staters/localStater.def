@@ -1,3 +1,0 @@
-localStater "ls1" {
-	.stateDir = %varDir + "/staters/ls1"
-}

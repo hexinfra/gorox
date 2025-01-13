@@ -43,8 +43,8 @@ type _httpHolder_ struct {
 	maxMemoryContentSize        int32 // max content size that can be loaded into memory directly
 }
 
-func (h *_httpHolder_) onConfigure(component Component, defaultDir string, defaultRecv time.Duration, defaultSend time.Duration) {
-	h._contentSaver_.onConfigure(component, defaultDir, defaultRecv, defaultSend)
+func (h *_httpHolder_) onConfigure(component Component, defaultRecv time.Duration, defaultSend time.Duration, defaultDir string) {
+	h._contentSaver_.onConfigure(component, defaultRecv, defaultSend, defaultDir)
 
 	// maxCumulativeStreamsPerConn
 	component.ConfigureInt32("maxCumulativeStreamsPerConn", &h.maxCumulativeStreamsPerConn, func(value int32) error {
@@ -2091,7 +2091,7 @@ func (s *httpServer_[G]) onCreate(name string, stage *Stage) {
 
 func (s *httpServer_[G]) onConfigure() {
 	s.Server_.OnConfigure()
-	s._httpHolder_.onConfigure(s, TmpDir()+"/web/servers/"+s.name, 0*time.Second, 0*time.Second)
+	s._httpHolder_.onConfigure(s, 0*time.Second, 0*time.Second, TmpDir()+"/web/servers/"+s.name)
 
 	// webapps
 	s.ConfigureStringList("webapps", &s.webapps, nil, []string{})
@@ -5004,7 +5004,7 @@ func (n *httpNode_[B]) onCreate(name string, stage *Stage, backend B) {
 
 func (n *httpNode_[B]) onConfigure() {
 	n.Node_.OnConfigure()
-	n._httpHolder_.onConfigure(n, TmpDir()+"/web/backends/"+n.backend.Name()+"/"+n.name, 0*time.Second, 0*time.Second)
+	n._httpHolder_.onConfigure(n, 0*time.Second, 0*time.Second, TmpDir()+"/web/backends/"+n.backend.Name()+"/"+n.name)
 
 	// keepAliveConns
 	n.ConfigureInt32("keepAliveConns", &n.keepAliveConns, func(value int32) error {

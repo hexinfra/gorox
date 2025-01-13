@@ -19,11 +19,11 @@ import (
 
 //////////////////////////////////////// QUIX general implementation ////////////////////////////////////////
 
-// quixHolder collects shared methods between *QUIXRouter and *quixNode.
+// quixHolder collects shared methods between *QUIXGate and *quixNode.
 type quixHolder interface {
 }
 
-// _quixHolder_ is mixin for QUIXRouter and quixNode.
+// _quixHolder_ is mixin for QUIXRouter, QUIXGate, and quixNode.
 type _quixHolder_ struct {
 	// States
 	maxCumulativeStreamsPerConn int32 // max cumulative streams of one conn. 0 means infinite
@@ -135,7 +135,7 @@ type QUIXRouter struct {
 	// Parent
 	Server_[*quixGate]
 	// Mixins
-	_quixHolder_
+	_quixHolder_ // to carry configs used by gates
 	// Assocs
 	dealets compDict[QUIXDealet] // defined dealets. indexed by name
 	cases   []*quixCase          // defined cases. the order must be kept, so we use list. TODO: use ordered map?
@@ -265,6 +265,8 @@ func (r *QUIXRouter) Logf(format string, args ...any) {
 	}
 }
 
+func (r *QUIXRouter) quixHolder() _quixHolder_ { return r._quixHolder_ }
+
 func (r *QUIXRouter) serveConn(conn *QUIXConn) { // runner
 	for _, kase := range r.cases {
 		if !kase.isMatch(conn) {
@@ -281,6 +283,8 @@ func (r *QUIXRouter) serveConn(conn *QUIXConn) { // runner
 type quixGate struct {
 	// Parent
 	Gate_[*QUIXRouter]
+	// Mixins
+	_quixHolder_
 	// States
 	maxConcurrentConns int32          // max concurrent conns allowed for this gate
 	concurrentConns    atomic.Int32   // TODO: false sharing
@@ -289,6 +293,7 @@ type quixGate struct {
 
 func (g *quixGate) onNew(router *QUIXRouter, id int32) {
 	g.Gate_.OnNew(router, id)
+	g._quixHolder_ = router.quixHolder()
 	g.maxConcurrentConns = router.MaxConcurrentConnsPerGate()
 	g.concurrentConns.Store(0)
 }

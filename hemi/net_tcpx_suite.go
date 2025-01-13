@@ -24,11 +24,11 @@ import (
 
 //////////////////////////////////////// TCPX general implementation ////////////////////////////////////////
 
-// tcpxHolder collects shared methods between *TCPXRouter and *tcpxNode.
+// tcpxHolder collects shared methods between *TCPXGate and *tcpxNode.
 type tcpxHolder interface {
 }
 
-// _tcpxHolder_ is a mixin for TCPXRouter and tcpxNode.
+// _tcpxHolder_ is a mixin for TCPXRouter, TCPXGate, and tcpxNode.
 type _tcpxHolder_ struct {
 	// States
 	// TCP_CORK, TCP_DEFER_ACCEPT, TCP_FASTOPEN, ...
@@ -150,7 +150,7 @@ type TCPXRouter struct {
 	// Parent
 	Server_[*tcpxGate]
 	// Mixins
-	_tcpxHolder_
+	_tcpxHolder_ // to carry configs used by gates
 	// Assocs
 	dealets compDict[TCPXDealet] // defined dealets. indexed by name
 	cases   []*tcpxCase          // defined cases. the order must be kept, so we use list. TODO: use ordered map?
@@ -287,6 +287,8 @@ func (r *TCPXRouter) Logf(format string, args ...any) {
 	}
 }
 
+func (r *TCPXRouter) tcpxHolder() _tcpxHolder_ { return r._tcpxHolder_ }
+
 func (r *TCPXRouter) serveConn(conn *TCPXConn) { // runner
 	for _, kase := range r.cases {
 		if !kase.isMatch(conn) {
@@ -303,6 +305,8 @@ func (r *TCPXRouter) serveConn(conn *TCPXConn) { // runner
 type tcpxGate struct {
 	// Parent
 	Gate_[*TCPXRouter]
+	// Mixins
+	_tcpxHolder_
 	// States
 	maxConcurrentConns int32        // max concurrent conns allowed for this gate
 	concurrentConns    atomic.Int32 // TODO: false sharing
@@ -311,6 +315,7 @@ type tcpxGate struct {
 
 func (g *tcpxGate) onNew(router *TCPXRouter, id int32) {
 	g.Gate_.OnNew(router, id)
+	g._tcpxHolder_ = router.tcpxHolder()
 	g.maxConcurrentConns = router.MaxConcurrentConnsPerGate()
 	g.concurrentConns.Store(0)
 }

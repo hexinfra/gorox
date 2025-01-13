@@ -18,11 +18,11 @@ import (
 
 //////////////////////////////////////// UDPX general implementation ////////////////////////////////////////
 
-// udpxHolder collects shared methods between *UDPXRouter and *udpxNode.
+// udpxHolder collects shared methods between *UDPXGate and *udpxNode.
 type udpxHolder interface {
 }
 
-// _udpxHolder_ is a mixin for UDPXRouter and udpxNode.
+// _udpxHolder_ is a mixin for UDPXRouter, UDPXGate, and udpxNode.
 type _udpxHolder_ struct {
 	// States
 	// UDP_CORK, UDP_GSO, ...
@@ -94,7 +94,7 @@ type UDPXRouter struct {
 	// Parent
 	Server_[*udpxGate]
 	// Mixins
-	_udpxHolder_
+	_udpxHolder_ // to carry configs used by gates
 	// Assocs
 	dealets compDict[UDPXDealet] // defined dealets. indexed by name
 	cases   []*udpxCase          // defined cases. the order must be kept, so we use list. TODO: use ordered map?
@@ -219,6 +219,8 @@ func (r *UDPXRouter) Logf(format string, args ...any) {
 	}
 }
 
+func (r *UDPXRouter) udpxHolder() _udpxHolder_ { return r._udpxHolder_ }
+
 func (r *UDPXRouter) serveConn(conn *UDPXConn) { // runner
 	for _, kase := range r.cases {
 		if !kase.isMatch(conn) {
@@ -235,11 +237,14 @@ func (r *UDPXRouter) serveConn(conn *UDPXConn) { // runner
 type udpxGate struct {
 	// Parent
 	Gate_[*UDPXRouter]
+	// Mixins
+	_udpxHolder_
 	// States
 }
 
 func (g *udpxGate) onNew(router *UDPXRouter, id int32) {
 	g.Gate_.OnNew(router, id)
+	g._udpxHolder_ = router.udpxHolder()
 }
 
 func (g *udpxGate) Open() error {

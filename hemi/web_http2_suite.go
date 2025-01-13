@@ -1614,7 +1614,7 @@ func (s *server2Stream) onEnd() { // for zeros
 	s.conn = nil // we can't do this in http2Stream_.onEnd() due to Go's limit, so put here
 }
 
-func (s *server2Stream) Holder() httpHolder { return s.conn.gate.server }
+func (s *server2Stream) Holder() httpHolder { return s.conn.gate }
 
 func (s *server2Stream) execute() { // runner
 	defer putServer2Stream(s)

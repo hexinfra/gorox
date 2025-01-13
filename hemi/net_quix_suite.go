@@ -111,7 +111,7 @@ func (c *quixConn_) isBroken() bool { return c.broken.Load() }
 type quixStream interface {
 }
 
-// quixStream_ is a mixin for QUIXStream and QStream.
+// quixStream_ is the parent for QUIXStream and QStream.
 type quixStream_ struct {
 	// Stream states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis

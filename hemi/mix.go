@@ -37,7 +37,7 @@ type _holder_ struct {
 	// Assocs
 	stage *Stage // current stage
 	// States
-	address      string        // hostname:port, /path/to/unix.sock
+	address      string        // :port, hostname:port, /path/to/unix.sock
 	udsMode      bool          // is address a unix domain socket?
 	tlsMode      bool          // use tls to secure the transport?
 	tlsConfig    *tls.Config   // set if tls mode is true

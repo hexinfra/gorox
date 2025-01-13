@@ -104,8 +104,9 @@ More usage examples
 -------------------
 
 We provide some example configs for Gorox to use, see them under conf/examples.
-For example, if you are using Gorox as an HTTP reverse proxy, there is a demo
-config in conf/examples/http_proxy.conf, you can modify it and start Gorox like:
+For example, if you would like to use Gorox as an HTTP reverse proxy, there is a
+demo config in conf/examples/http_proxy.conf, you can modify it and start Gorox
+like:
 
     shell> ./gorox -config conf/examples/http_proxy.conf
 

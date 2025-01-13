@@ -158,7 +158,7 @@ func (n *scgiNode) onCreate(name string, stage *Stage, backend *scgiBackend) {
 
 func (n *scgiNode) OnConfigure() {
 	n.Node_.OnConfigure()
-	n._contentSaver_.onConfigure(n, TmpDir()+"/web/backends/"+n.backend.name+"/"+n.name, 0, 0)
+	n._contentSaver_.onConfigure(n, TmpDir()+"/web/backends/"+n.backend.name+"/"+n.name, 0*time.Second, 0*time.Second)
 }
 func (n *scgiNode) OnPrepare() {
 	n.Node_.OnPrepare()

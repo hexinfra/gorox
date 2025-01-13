@@ -158,7 +158,7 @@ func (n *uwsgiNode) onCreate(name string, stage *Stage, backend *uwsgiBackend) {
 
 func (n *uwsgiNode) OnConfigure() {
 	n.Node_.OnConfigure()
-	n._contentSaver_.onConfigure(n, TmpDir()+"/web/backends/"+n.backend.name+"/"+n.name, 0, 0)
+	n._contentSaver_.onConfigure(n, TmpDir()+"/web/backends/"+n.backend.name+"/"+n.name, 0*time.Second, 0*time.Second)
 }
 func (n *uwsgiNode) OnPrepare() {
 	n.Node_.OnPrepare()

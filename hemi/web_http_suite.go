@@ -25,7 +25,7 @@ import (
 
 //////////////////////////////////////// HTTP general implementation ////////////////////////////////////////
 
-// httpHolder collects shared methods between *http[x3]Server and *http[1-3]Node.
+// httpHolder collects shared methods between *http[x3]Gate and *http[1-3]Node.
 type httpHolder interface {
 	// Imports
 	contentSaver
@@ -34,7 +34,7 @@ type httpHolder interface {
 	MaxMemoryContentSize() int32 // allowed to load into memory
 }
 
-// _httpHolder_ is a mixin for httpServer_ and httpNode_.
+// _httpHolder_ is a mixin for httpServer_, httpGate_, and httpNode_.
 type _httpHolder_ struct {
 	// Mixins
 	_contentSaver_ // so responses can save their large contents in local file system.
@@ -43,8 +43,8 @@ type _httpHolder_ struct {
 	maxMemoryContentSize        int32 // max content size that can be loaded into memory directly
 }
 
-func (h *_httpHolder_) onConfigure(component Component, defaultDir string, recvTimeout time.Duration, sendTimeout time.Duration) {
-	h._contentSaver_.onConfigure(component, defaultDir, recvTimeout, sendTimeout)
+func (h *_httpHolder_) onConfigure(component Component, defaultDir string, defaultRecv time.Duration, defaultSend time.Duration) {
+	h._contentSaver_.onConfigure(component, defaultDir, defaultRecv, defaultSend)
 
 	// maxCumulativeStreamsPerConn
 	component.ConfigureInt32("maxCumulativeStreamsPerConn", &h.maxCumulativeStreamsPerConn, func(value int32) error {
@@ -2059,10 +2059,10 @@ var ( // httpSocket_ errors
 type HTTPServer interface { // for *http[x3]Server
 	// Imports
 	Server
-	httpHolder
 	// Methods
 	MaxConcurrentConnsPerGate() int32
 	bindWebapps()
+	httpHolder() _httpHolder_
 }
 
 // httpServer_ is the parent for http[x3]Server.
@@ -2070,7 +2070,7 @@ type httpServer_[G httpGate] struct {
 	// Parent
 	Server_[G]
 	// Mixins
-	_httpHolder_
+	_httpHolder_ // to carry configs used by gates
 	// Assocs
 	defaultWebapp *Webapp // default webapp if not found
 	// States
@@ -2091,7 +2091,7 @@ func (s *httpServer_[G]) onCreate(name string, stage *Stage) {
 
 func (s *httpServer_[G]) onConfigure() {
 	s.Server_.OnConfigure()
-	s._httpHolder_.onConfigure(s, TmpDir()+"/web/servers/"+s.name, 0, 0)
+	s._httpHolder_.onConfigure(s, TmpDir()+"/web/servers/"+s.name, 0*time.Second, 0*time.Second)
 
 	// webapps
 	s.ConfigureStringList("webapps", &s.webapps, nil, []string{})
@@ -2188,10 +2188,13 @@ func (s *httpServer_[G]) findWebapp(hostname []byte) *Webapp {
 	return s.defaultWebapp // may be nil
 }
 
+func (s *httpServer_[G]) httpHolder() _httpHolder_ { return s._httpHolder_ }
+
 // httpGate
 type httpGate interface {
 	// Imports
 	Gate
+	httpHolder
 	// Methods
 }
 
@@ -2199,6 +2202,8 @@ type httpGate interface {
 type httpGate_[S HTTPServer] struct {
 	// Parent
 	Gate_[S]
+	// Mixins
+	_httpHolder_
 	// States
 	maxConcurrentConns int32        // max concurrent conns allowed for this gate
 	concurrentConns    atomic.Int32 // current concurrent conns. TODO: false sharing
@@ -2206,6 +2211,7 @@ type httpGate_[S HTTPServer] struct {
 
 func (g *httpGate_[S]) onNew(server S, id int32) {
 	g.Gate_.OnNew(server, id)
+	g._httpHolder_ = server.httpHolder()
 	g.maxConcurrentConns = server.MaxConcurrentConnsPerGate()
 	g.concurrentConns.Store(0)
 }
@@ -4998,7 +5004,7 @@ func (n *httpNode_[B]) onCreate(name string, stage *Stage, backend B) {
 
 func (n *httpNode_[B]) onConfigure() {
 	n.Node_.OnConfigure()
-	n._httpHolder_.onConfigure(n, TmpDir()+"/web/backends/"+n.backend.Name()+"/"+n.name, 0, 0)
+	n._httpHolder_.onConfigure(n, TmpDir()+"/web/backends/"+n.backend.Name()+"/"+n.name, 0*time.Second, 0*time.Second)
 
 	// keepAliveConns
 	n.ConfigureInt32("keepAliveConns", &n.keepAliveConns, func(value int32) error {

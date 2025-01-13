@@ -504,7 +504,7 @@ func (s *server3Stream) onEnd() { // for zeros
 	s.conn = nil // we can't do this in http3Stream_.onEnd() due to Go's limit, so put here
 }
 
-func (s *server3Stream) Holder() httpHolder { return s.conn.gate.server }
+func (s *server3Stream) Holder() httpHolder { return s.conn.gate }
 
 func (s *server3Stream) execute() { // runner
 	// TODO ...

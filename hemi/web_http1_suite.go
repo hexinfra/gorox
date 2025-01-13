@@ -1192,7 +1192,7 @@ func (s *server1Stream) onEnd() { // for zeros
 	s.http1Stream_.onEnd()
 }
 
-func (s *server1Stream) Holder() httpHolder { return s.conn.gate.server }
+func (s *server1Stream) Holder() httpHolder { return s.conn.gate }
 
 func (s *server1Stream) execute() {
 	req, resp := &s.request, &s.response

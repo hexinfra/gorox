@@ -189,15 +189,15 @@ func (r *QUIXRouter) OnPrepare() {
 
 func (r *QUIXRouter) MaxConcurrentConnsPerGate() int32 { return r.maxConcurrentConnsPerGate }
 
-func (r *QUIXRouter) createDealet(sign string, compName string) QUIXDealet {
+func (r *QUIXRouter) createDealet(compSign string, compName string) QUIXDealet {
 	if _, ok := r.dealets[compName]; ok {
 		UseExitln("conflicting dealet with a same component name in router")
 	}
 	creatorsLock.RLock()
 	defer creatorsLock.RUnlock()
-	create, ok := quixDealetCreators[sign]
+	create, ok := quixDealetCreators[compSign]
 	if !ok {
-		UseExitln("unknown dealet sign: " + sign)
+		UseExitln("unknown dealet sign: " + compSign)
 	}
 	dealet := create(compName, r.stage, r)
 	dealet.setShell(dealet)

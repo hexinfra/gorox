@@ -266,22 +266,22 @@ func (a *Webapp) maintain() { // runner
 	a.stage.DecSub() // webapp
 }
 
-func (a *Webapp) createHandlet(sign string, compName string) Handlet {
+func (a *Webapp) createHandlet(compSign string, compName string) Handlet {
 	if a.Handlet(compName) != nil {
 		UseExitln("conflicting handlet with a same component name in webapp")
 	}
 	creatorsLock.RLock()
-	create, ok := handletCreators[sign]
+	create, ok := handletCreators[compSign]
 	creatorsLock.RUnlock()
 	if !ok {
-		UseExitln("unknown handlet sign: " + sign)
+		UseExitln("unknown handlet sign: " + compSign)
 	}
 	handlet := create(compName, a.stage, a)
 	handlet.setShell(handlet)
 	a.handlets[compName] = handlet
 	return handlet
 }
-func (a *Webapp) createReviser(sign string, compName string) Reviser {
+func (a *Webapp) createReviser(compSign string, compName string) Reviser {
 	if a.numRevisers == 255 {
 		UseExitln("cannot create reviser: too many revisers in one webapp")
 	}
@@ -289,10 +289,10 @@ func (a *Webapp) createReviser(sign string, compName string) Reviser {
 		UseExitln("conflicting reviser with a same component name in webapp")
 	}
 	creatorsLock.RLock()
-	create, ok := reviserCreators[sign]
+	create, ok := reviserCreators[compSign]
 	creatorsLock.RUnlock()
 	if !ok {
-		UseExitln("unknown reviser sign: " + sign)
+		UseExitln("unknown reviser sign: " + compSign)
 	}
 	reviser := create(compName, a.stage, a)
 	reviser.setShell(reviser)
@@ -302,15 +302,15 @@ func (a *Webapp) createReviser(sign string, compName string) Reviser {
 	a.numRevisers++
 	return reviser
 }
-func (a *Webapp) createSocklet(sign string, compName string) Socklet {
+func (a *Webapp) createSocklet(compSign string, compName string) Socklet {
 	if a.Socklet(compName) != nil {
 		UseExitln("conflicting socklet with a same component name in webapp")
 	}
 	creatorsLock.RLock()
-	create, ok := sockletCreators[sign]
+	create, ok := sockletCreators[compSign]
 	creatorsLock.RUnlock()
 	if !ok {
-		UseExitln("unknown socklet sign: " + sign)
+		UseExitln("unknown socklet sign: " + compSign)
 	}
 	socklet := create(compName, a.stage, a)
 	socklet.setShell(socklet)

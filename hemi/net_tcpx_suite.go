@@ -203,15 +203,15 @@ func (r *TCPXRouter) OnPrepare() {
 
 func (r *TCPXRouter) MaxConcurrentConnsPerGate() int32 { return r.maxConcurrentConnsPerGate }
 
-func (r *TCPXRouter) createDealet(sign string, compName string) TCPXDealet {
+func (r *TCPXRouter) createDealet(compSign string, compName string) TCPXDealet {
 	if _, ok := r.dealets[compName]; ok {
 		UseExitln("conflicting dealet with a same component name in router")
 	}
 	creatorsLock.RLock()
 	defer creatorsLock.RUnlock()
-	create, ok := tcpxDealetCreators[sign]
+	create, ok := tcpxDealetCreators[compSign]
 	if !ok {
-		UseExitln("unknown dealet sign: " + sign)
+		UseExitln("unknown dealet sign: " + compSign)
 	}
 	dealet := create(compName, r.stage, r)
 	dealet.setShell(dealet)

@@ -56,17 +56,17 @@ var signedComps = map[string]int16{ // signed comps. more dynamic comps are sign
 	"rule":       compRule,
 }
 
-func signComp(sign string, comp int16) {
-	if signedComp, ok := signedComps[sign]; ok {
-		BugExitf("conflicting sign: comp=%d sign=%s\n", signedComp, sign)
+func signComp(compSign string, compType int16) {
+	if signedComp, ok := signedComps[compSign]; ok {
+		BugExitf("conflicting component sign: compType=%d compSign=%s\n", signedComp, compSign)
 	}
-	signedComps[sign] = comp
+	signedComps[compSign] = compType
 }
 
 var ( // fixture signs, component creators, and initializers of services & webapps
 	fixtureSigns       = make(map[string]bool) // we guarantee this is not manipulated concurrently, so no lock is required
 	creatorsLock       sync.RWMutex
-	backendCreators    = make(map[string]func(compName string, stage *Stage) Backend) // indexed by sign, same below.
+	backendCreators    = make(map[string]func(compName string, stage *Stage) Backend) // indexed by compSign, same below.
 	staterCreators     = make(map[string]func(compName string, stage *Stage) Stater)
 	cacherCreators     = make(map[string]func(compName string, stage *Stage) Cacher)
 	serverCreators     = make(map[string]func(compName string, stage *Stage) Server)
@@ -82,65 +82,65 @@ var ( // fixture signs, component creators, and initializers of services & webap
 	webappInits        = make(map[string]func(webapp *Webapp) error)   // indexed by webapp name.
 )
 
-func registerFixture(sign string) {
-	if _, ok := fixtureSigns[sign]; ok {
+func registerFixture(compSign string) {
+	if _, ok := fixtureSigns[compSign]; ok {
 		BugExitln("fixture sign conflicted")
 	}
-	fixtureSigns[sign] = true
-	signComp(sign, compFixture)
+	fixtureSigns[compSign] = true
+	signComp(compSign, compFixture)
 }
-func RegisterBackend(sign string, create func(compName string, stage *Stage) Backend) {
-	_registerComponent0(sign, compBackend, backendCreators, create)
+func RegisterBackend(compSign string, create func(compName string, stage *Stage) Backend) {
+	_registerComponent0(compSign, compBackend, backendCreators, create)
 }
-func RegisterStater(sign string, create func(compName string, stage *Stage) Stater) {
-	_registerComponent0(sign, compStater, staterCreators, create)
+func RegisterStater(compSign string, create func(compName string, stage *Stage) Stater) {
+	_registerComponent0(compSign, compStater, staterCreators, create)
 }
-func RegisterCacher(sign string, create func(compName string, stage *Stage) Cacher) {
-	_registerComponent0(sign, compCacher, cacherCreators, create)
+func RegisterCacher(compSign string, create func(compName string, stage *Stage) Cacher) {
+	_registerComponent0(compSign, compCacher, cacherCreators, create)
 }
-func RegisterServer(sign string, create func(compName string, stage *Stage) Server) {
-	_registerComponent0(sign, compServer, serverCreators, create)
+func RegisterServer(compSign string, create func(compName string, stage *Stage) Server) {
+	_registerComponent0(compSign, compServer, serverCreators, create)
 }
-func RegisterCronjob(sign string, create func(compName string, stage *Stage) Cronjob) {
-	_registerComponent0(sign, compCronjob, cronjobCreators, create)
+func RegisterCronjob(compSign string, create func(compName string, stage *Stage) Cronjob) {
+	_registerComponent0(compSign, compCronjob, cronjobCreators, create)
 }
-func RegisterQUIXDealet(sign string, create func(compName string, stage *Stage, router *QUIXRouter) QUIXDealet) {
-	_registerComponent1(sign, compQUIXDealet, quixDealetCreators, create)
+func RegisterQUIXDealet(compSign string, create func(compName string, stage *Stage, router *QUIXRouter) QUIXDealet) {
+	_registerComponent1(compSign, compQUIXDealet, quixDealetCreators, create)
 }
-func RegisterTCPXDealet(sign string, create func(compName string, stage *Stage, router *TCPXRouter) TCPXDealet) {
-	_registerComponent1(sign, compTCPXDealet, tcpxDealetCreators, create)
+func RegisterTCPXDealet(compSign string, create func(compName string, stage *Stage, router *TCPXRouter) TCPXDealet) {
+	_registerComponent1(compSign, compTCPXDealet, tcpxDealetCreators, create)
 }
-func RegisterUDPXDealet(sign string, create func(compName string, stage *Stage, router *UDPXRouter) UDPXDealet) {
-	_registerComponent1(sign, compUDPXDealet, udpxDealetCreators, create)
+func RegisterUDPXDealet(compSign string, create func(compName string, stage *Stage, router *UDPXRouter) UDPXDealet) {
+	_registerComponent1(compSign, compUDPXDealet, udpxDealetCreators, create)
 }
-func RegisterHandlet(sign string, create func(compName string, stage *Stage, webapp *Webapp) Handlet) {
-	_registerComponent1(sign, compHandlet, handletCreators, create)
+func RegisterHandlet(compSign string, create func(compName string, stage *Stage, webapp *Webapp) Handlet) {
+	_registerComponent1(compSign, compHandlet, handletCreators, create)
 }
-func RegisterReviser(sign string, create func(compName string, stage *Stage, webapp *Webapp) Reviser) {
-	_registerComponent1(sign, compReviser, reviserCreators, create)
+func RegisterReviser(compSign string, create func(compName string, stage *Stage, webapp *Webapp) Reviser) {
+	_registerComponent1(compSign, compReviser, reviserCreators, create)
 }
-func RegisterSocklet(sign string, create func(compName string, stage *Stage, webapp *Webapp) Socklet) {
-	_registerComponent1(sign, compSocklet, sockletCreators, create)
+func RegisterSocklet(compSign string, create func(compName string, stage *Stage, webapp *Webapp) Socklet) {
+	_registerComponent1(compSign, compSocklet, sockletCreators, create)
 }
-func _registerComponent0[T Component](sign string, comp int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // backend, stater, cacher, server, cronjob
+func _registerComponent0[T Component](compSign string, compType int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // backend, stater, cacher, server, cronjob
 	creatorsLock.Lock()
 	defer creatorsLock.Unlock()
 
-	if _, ok := creators[sign]; ok {
+	if _, ok := creators[compSign]; ok {
 		BugExitln("component0 sign conflicted")
 	}
-	creators[sign] = create
-	signComp(sign, comp)
+	creators[compSign] = create
+	signComp(compSign, compType)
 }
-func _registerComponent1[T Component, C Component](sign string, comp int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // dealet, handlet, reviser, socklet
+func _registerComponent1[T Component, C Component](compSign string, compType int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // dealet, handlet, reviser, socklet
 	creatorsLock.Lock()
 	defer creatorsLock.Unlock()
 
-	if _, ok := creators[sign]; ok {
+	if _, ok := creators[compSign]; ok {
 		BugExitln("component1 sign conflicted")
 	}
-	creators[sign] = create
-	signComp(sign, comp)
+	creators[compSign] = create
+	signComp(compSign, compType)
 }
 func RegisterServiceInit(compName string, init func(service *Service) error) {
 	initsLock.Lock()
@@ -159,8 +159,8 @@ type Component interface {
 	CompName() string
 
 	OnConfigure()
-	Find(propName string) (value Value, ok bool)
-	Prop(propName string) (value Value, ok bool)
+	Find(propName string) (propValue Value, ok bool)
+	Prop(propName string) (propValue Value, ok bool)
 	ConfigureBool(propName string, prop *bool, defaultValue bool)
 	ConfigureInt64(propName string, prop *int64, check func(value int64) error, defaultValue int64)
 	ConfigureInt32(propName string, prop *int32, check func(value int32) error, defaultValue int32)
@@ -207,16 +207,16 @@ func (c *Component_) MakeComp(compName string) {
 }
 func (c *Component_) CompName() string { return c.compName }
 
-func (c *Component_) Find(propName string) (value Value, ok bool) {
+func (c *Component_) Find(propName string) (propValue Value, ok bool) {
 	for component := c.shell; component != nil; component = component.getParent() {
-		if value, ok = component.Prop(propName); ok {
+		if propValue, ok = component.Prop(propName); ok {
 			break
 		}
 	}
 	return
 }
-func (c *Component_) Prop(propName string) (value Value, ok bool) {
-	value, ok = c.props[propName]
+func (c *Component_) Prop(propName string) (propValue Value, ok bool) {
+	propValue, ok = c.props[propName]
 	return
 }
 
@@ -257,8 +257,8 @@ func (c *Component_) ConfigureStringDict(propName string, prop *map[string]strin
 	_configureProp(c, propName, prop, (*Value).StringDict, check, defaultValue)
 }
 func _configureProp[T any](c *Component_, propName string, prop *T, conv func(*Value) (T, bool), check func(value T) error, defaultValue T) {
-	if v, ok := c.Find(propName); ok {
-		if value, ok := conv(&v); ok && check == nil {
+	if propValue, ok := c.Find(propName); ok {
+		if value, ok := conv(&propValue); ok && check == nil {
 			*prop = value
 		} else if ok && check != nil {
 			if err := check(value); err == nil {
@@ -327,7 +327,7 @@ type Stage struct {
 	clock       *clockFixture         // for fast accessing
 	fcache      *fcacheFixture        // for fast accessing
 	resolv      *resolvFixture        // for fast accessing
-	fixtures    compDict[fixture]     // indexed by sign
+	fixtures    compDict[fixture]     // indexed by compSign
 	backends    compDict[Backend]     // indexed by backendName
 	quixRouters compDict[*QUIXRouter] // indexed by routerName
 	tcpxRouters compDict[*TCPXRouter] // indexed by routerName
@@ -517,13 +517,13 @@ func (s *Stage) OnPrepare() {
 	s.cronjobs.walk(Cronjob.OnPrepare)
 }
 
-func (s *Stage) createBackend(sign string, compName string) Backend {
+func (s *Stage) createBackend(compSign string, compName string) Backend {
 	if s.Backend(compName) != nil {
 		UseExitf("conflicting backend with a same component name '%s'\n", compName)
 	}
-	create, ok := backendCreators[sign]
+	create, ok := backendCreators[compSign]
 	if !ok {
-		UseExitln("unknown backend type: " + sign)
+		UseExitln("unknown backend type: " + compSign)
 	}
 	backend := create(compName, s)
 	backend.setShell(backend)
@@ -570,26 +570,26 @@ func (s *Stage) createService(compName string) *Service {
 	s.services[compName] = service
 	return service
 }
-func (s *Stage) createStater(sign string, compName string) Stater {
+func (s *Stage) createStater(compSign string, compName string) Stater {
 	if s.Stater(compName) != nil {
 		UseExitf("conflicting stater with a same component name '%s'\n", compName)
 	}
-	create, ok := staterCreators[sign]
+	create, ok := staterCreators[compSign]
 	if !ok {
-		UseExitln("unknown stater type: " + sign)
+		UseExitln("unknown stater type: " + compSign)
 	}
 	stater := create(compName, s)
 	stater.setShell(stater)
 	s.staters[compName] = stater
 	return stater
 }
-func (s *Stage) createCacher(sign string, compName string) Cacher {
+func (s *Stage) createCacher(compSign string, compName string) Cacher {
 	if s.Cacher(compName) != nil {
 		UseExitf("conflicting cacher with a same component name '%s'\n", compName)
 	}
-	create, ok := cacherCreators[sign]
+	create, ok := cacherCreators[compSign]
 	if !ok {
-		UseExitln("unknown cacher type: " + sign)
+		UseExitln("unknown cacher type: " + compSign)
 	}
 	cacher := create(compName, s)
 	cacher.setShell(cacher)
@@ -606,26 +606,26 @@ func (s *Stage) createWebapp(compName string) *Webapp {
 	s.webapps[compName] = webapp
 	return webapp
 }
-func (s *Stage) createServer(sign string, compName string) Server {
+func (s *Stage) createServer(compSign string, compName string) Server {
 	if s.Server(compName) != nil {
 		UseExitf("conflicting server with a same component name '%s'\n", compName)
 	}
-	create, ok := serverCreators[sign]
+	create, ok := serverCreators[compSign]
 	if !ok {
-		UseExitln("unknown server type: " + sign)
+		UseExitln("unknown server type: " + compSign)
 	}
 	server := create(compName, s)
 	server.setShell(server)
 	s.servers[compName] = server
 	return server
 }
-func (s *Stage) createCronjob(sign string, compName string) Cronjob {
+func (s *Stage) createCronjob(compSign string, compName string) Cronjob {
 	if s.Cronjob(compName) != nil {
 		UseExitf("conflicting cronjob with a same component name '%s'\n", compName)
 	}
-	create, ok := cronjobCreators[sign]
+	create, ok := cronjobCreators[compSign]
 	if !ok {
-		UseExitln("unknown cronjob type: " + sign)
+		UseExitln("unknown cronjob type: " + compSign)
 	}
 	cronjob := create(compName, s)
 	cronjob.setShell(cronjob)
@@ -636,7 +636,7 @@ func (s *Stage) createCronjob(sign string, compName string) Cronjob {
 func (s *Stage) Clock() *clockFixture                   { return s.clock }
 func (s *Stage) Fcache() *fcacheFixture                 { return s.fcache }
 func (s *Stage) Resolv() *resolvFixture                 { return s.resolv }
-func (s *Stage) Fixture(sign string) fixture            { return s.fixtures[sign] }
+func (s *Stage) Fixture(compSign string) fixture        { return s.fixtures[compSign] }
 func (s *Stage) Backend(compName string) Backend        { return s.backends[compName] }
 func (s *Stage) QUIXRouter(compName string) *QUIXRouter { return s.quixRouters[compName] }
 func (s *Stage) TCPXRouter(compName string) *TCPXRouter { return s.tcpxRouters[compName] }

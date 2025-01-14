@@ -137,15 +137,15 @@ func (r *UDPXRouter) OnPrepare() {
 	}
 }
 
-func (r *UDPXRouter) createDealet(sign string, compName string) UDPXDealet {
+func (r *UDPXRouter) createDealet(compSign string, compName string) UDPXDealet {
 	if _, ok := r.dealets[compName]; ok {
 		UseExitln("conflicting dealet with a same component name in router")
 	}
 	creatorsLock.RLock()
 	defer creatorsLock.RUnlock()
-	create, ok := udpxDealetCreators[sign]
+	create, ok := udpxDealetCreators[compSign]
 	if !ok {
-		UseExitln("unknown dealet sign: " + sign)
+		UseExitln("unknown dealet sign: " + compSign)
 	}
 	dealet := create(compName, r.stage, r)
 	dealet.setShell(dealet)

@@ -166,8 +166,8 @@ func (c *configurator) parseFixture(compSign *token, stage *Stage) { // xxxFixtu
 	c._parseLeaf(fixture)
 }
 func (c *configurator) parseBackend(compSign *token, stage *Stage) { // xxxBackend <compName> {}
-	backendName := c.forwardExpectToken(tokenString)
-	backend := stage.createBackend(compSign.text, backendName.text)
+	compName := c.forwardExpectToken(tokenString)
+	backend := stage.createBackend(compSign.text, compName.text)
 	backend.setParent(stage)
 	c.forwardExpectToken(tokenLeftBrace) // {
 	for {
@@ -191,14 +191,14 @@ func (c *configurator) parseBackend(compSign *token, stage *Stage) { // xxxBacke
 	}
 }
 func (c *configurator) parseNode(backend Backend) { // node <compName> {}
-	var nodeName string
+	var compName string
 	if current := c.forwardToken(); current.kind == tokenString {
-		nodeName = current.text
+		compName = current.text
 		c.forwardToken()
 	} else {
-		nodeName = c.makeCompName()
+		compName = c.makeCompName()
 	}
-	node := backend.CreateNode(nodeName)
+	node := backend.CreateNode(compName)
 	node.setParent(backend)
 	c._parseLeaf(node)
 }
@@ -364,8 +364,8 @@ func (c *configurator) parseCaseCond(kase interface{ setInfo(info any) }) {
 	kase.setInfo(cond)
 }
 func (c *configurator) parseService(compSign *token, stage *Stage) { // service <compName> {}
-	serviceName := c.forwardExpectToken(tokenString)
-	service := stage.createService(serviceName.text)
+	compName := c.forwardExpectToken(tokenString)
+	service := stage.createService(compName.text)
 	service.setParent(stage)
 	c.forwardToken()
 	c._parseLeaf(service)
@@ -377,8 +377,8 @@ func (c *configurator) parseCacher(compSign *token, stage *Stage) { // xxxCacher
 	parseComponent0(c, compSign, stage, stage.createCacher)
 }
 func (c *configurator) parseWebapp(compSign *token, stage *Stage) { // webapp <compName> {}
-	webappName := c.forwardExpectToken(tokenString)
-	webapp := stage.createWebapp(webappName.text)
+	compName := c.forwardExpectToken(tokenString)
+	webapp := stage.createWebapp(compName.text)
 	webapp.setParent(stage)
 	c.forwardExpectToken(tokenLeftBrace) // {
 	for {

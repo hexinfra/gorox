@@ -45,15 +45,15 @@ type _holder_ struct {
 	writeTimeout time.Duration // write() timeout
 }
 
-func (h *_holder_) onConfigure(component Component, defaultRead time.Duration, defaultWrite time.Duration) {
+func (h *_holder_) onConfigure(comp Component, defaultRead time.Duration, defaultWrite time.Duration) {
 	// tlsMode
-	component.ConfigureBool("tlsMode", &h.tlsMode, false)
+	comp.ConfigureBool("tlsMode", &h.tlsMode, false)
 	if h.tlsMode {
 		h.tlsConfig = new(tls.Config)
 	}
 
 	// readTimeout
-	component.ConfigureDuration("readTimeout", &h.readTimeout, func(value time.Duration) error {
+	comp.ConfigureDuration("readTimeout", &h.readTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
@@ -61,14 +61,14 @@ func (h *_holder_) onConfigure(component Component, defaultRead time.Duration, d
 	}, defaultRead)
 
 	// writeTimeout
-	component.ConfigureDuration("writeTimeout", &h.writeTimeout, func(value time.Duration) error {
+	comp.ConfigureDuration("writeTimeout", &h.writeTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
 		}
 		return errors.New(".writeTimeout has an invalid value")
 	}, defaultWrite)
 }
-func (h *_holder_) onPrepare(component Component) {
+func (h *_holder_) onPrepare(comp Component) {
 }
 
 func (h *_holder_) Stage() *Stage { return h.stage }
@@ -429,9 +429,9 @@ type _contentSaver_ struct {
 	saveContentFilesDir string        // temp content files are placed here
 }
 
-func (s *_contentSaver_) onConfigure(component Component, defaultRecv time.Duration, defaultSend time.Duration, defaultDir string) {
+func (s *_contentSaver_) onConfigure(comp Component, defaultRecv time.Duration, defaultSend time.Duration, defaultDir string) {
 	// recvTimeout
-	component.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) error {
+	comp.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) error {
 		if value >= 0 {
 			return nil
 		}
@@ -439,7 +439,7 @@ func (s *_contentSaver_) onConfigure(component Component, defaultRecv time.Durat
 	}, defaultRecv)
 
 	// sendTimeout
-	component.ConfigureDuration("sendTimeout", &s.sendTimeout, func(value time.Duration) error {
+	comp.ConfigureDuration("sendTimeout", &s.sendTimeout, func(value time.Duration) error {
 		if value >= 0 {
 			return nil
 		}
@@ -447,7 +447,7 @@ func (s *_contentSaver_) onConfigure(component Component, defaultRecv time.Durat
 	}, defaultSend)
 
 	// maxContentSize
-	component.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
+	comp.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
 		if value > 0 {
 			return nil
 		}
@@ -455,14 +455,14 @@ func (s *_contentSaver_) onConfigure(component Component, defaultRecv time.Durat
 	}, _1T)
 
 	// saveContentFilesDir
-	component.ConfigureString("saveContentFilesDir", &s.saveContentFilesDir, func(value string) error {
+	comp.ConfigureString("saveContentFilesDir", &s.saveContentFilesDir, func(value string) error {
 		if value != "" && len(value) <= 232 {
 			return nil
 		}
 		return errors.New(".saveContentFilesDir has an invalid value")
 	}, defaultDir)
 }
-func (s *_contentSaver_) onPrepare(component Component, perm os.FileMode) {
+func (s *_contentSaver_) onPrepare(comp Component, perm os.FileMode) {
 	if err := os.MkdirAll(s.saveContentFilesDir, perm); err != nil {
 		EnvExitln(err.Error())
 	}

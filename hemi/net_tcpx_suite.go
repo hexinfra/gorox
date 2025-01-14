@@ -34,9 +34,9 @@ type _tcpxHolder_ struct {
 	// TCP_CORK, TCP_DEFER_ACCEPT, TCP_FASTOPEN, ...
 }
 
-func (h *_tcpxHolder_) onConfigure(component Component) {
+func (h *_tcpxHolder_) onConfigure(comp Component) {
 }
-func (h *_tcpxHolder_) onPrepare(component Component) {
+func (h *_tcpxHolder_) onPrepare(comp Component) {
 }
 
 // tcpxConn collects shared methods between *TCPXConn and *TConn.

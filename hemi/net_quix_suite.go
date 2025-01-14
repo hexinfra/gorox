@@ -32,9 +32,9 @@ type _quixHolder_ struct {
 	maxConcurrentStreamsPerConn int32 // max concurrent streams of one conn
 }
 
-func (h *_quixHolder_) onConfigure(component Component) {
+func (h *_quixHolder_) onConfigure(comp Component) {
 	// maxCumulativeStreamsPerConn
-	component.ConfigureInt32("maxCumulativeStreamsPerConn", &h.maxCumulativeStreamsPerConn, func(value int32) error {
+	comp.ConfigureInt32("maxCumulativeStreamsPerConn", &h.maxCumulativeStreamsPerConn, func(value int32) error {
 		if value >= 0 {
 			return nil
 		}
@@ -42,14 +42,14 @@ func (h *_quixHolder_) onConfigure(component Component) {
 	}, 1000)
 
 	// maxCumulativeStreamsPerConn
-	component.ConfigureInt32("maxConcurrentStreamsPerConn", &h.maxConcurrentStreamsPerConn, func(value int32) error {
+	comp.ConfigureInt32("maxConcurrentStreamsPerConn", &h.maxConcurrentStreamsPerConn, func(value int32) error {
 		if value >= 0 {
 			return nil
 		}
 		return errors.New(".maxConcurrentStreamsPerConn has an invalid value")
 	}, 1000)
 }
-func (h *_quixHolder_) onPrepare(component Component) {
+func (h *_quixHolder_) onPrepare(comp Component) {
 }
 
 func (h *_quixHolder_) MaxCumulativeStreamsPerConn() int32 { return h.maxCumulativeStreamsPerConn }

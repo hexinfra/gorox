@@ -28,9 +28,9 @@ type _udpxHolder_ struct {
 	// UDP_CORK, UDP_GSO, ...
 }
 
-func (h *_udpxHolder_) onConfigure(component Component) {
+func (h *_udpxHolder_) onConfigure(comp Component) {
 }
-func (h *_udpxHolder_) onPrepare(component Component) {
+func (h *_udpxHolder_) onPrepare(comp Component) {
 }
 
 // udpxConn collects shared methods between *UDPXConn and *UConn.

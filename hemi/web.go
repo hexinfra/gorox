@@ -65,9 +65,9 @@ type Webapp struct {
 	stage    *Stage            // current stage
 	stater   Stater            // the stater which is used by this webapp
 	servers  []HTTPServer      // bound http servers. may be empty
-	handlets compDict[Handlet] // defined handlets. indexed by component name
-	revisers compDict[Reviser] // defined revisers. indexed by component name
-	socklets compDict[Socklet] // defined socklets. indexed by component name
+	handlets compDict[Handlet] // defined handlets. indexed by compName
+	revisers compDict[Reviser] // defined revisers. indexed by compName
+	socklets compDict[Socklet] // defined socklets. indexed by compName
 	rules    []*Rule           // defined rules. the order must be kept, so we use list. TODO: use ordered map?
 	// States
 	hostnames        [][]byte          // like: ("www.example.com", "1.2.3.4", "fff8::1")

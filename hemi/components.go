@@ -21,50 +21,51 @@ import (
 )
 
 const ( // list of component types
-	compStage      int16 = 1 + iota // stage
-	compFixture                     // clock, fcache, resolv, ...
-	compBackend                     // http1Backend, quixBackend, udpxBackend, ...
-	compNode                        // node
-	compQUIXRouter                  // quixRouter
-	compQUIXDealet                  // quixProxy, ...
-	compTCPXRouter                  // tcpxRouter
-	compTCPXDealet                  // tcpxProxy, redisProxy, ...
-	compUDPXRouter                  // udpxRouter
-	compUDPXDealet                  // udpxProxy, dnsProxy, ...
-	compCase                        // case
-	compService                     // service
-	compStater                      // localStater, redisStater, ...
-	compCacher                      // localCacher, redisCacher, ...
-	compWebapp                      // webapp
-	compHandlet                     // static, httpProxy, ...
-	compReviser                     // gzipReviser, wrapReviser, ...
-	compSocklet                     // helloSocklet, ...
-	compRule                        // rule
-	compServer                      // httpxServer, hrpcServer, echoServer, ...
-	compCronjob                     // cleanCronjob, statCronjob, ...
+	compTypeStage      int16 = 1 + iota // stage
+	compTypeFixture                     // clock, fcache, resolv, ...
+	compTypeBackend                     // http1Backend, quixBackend, udpxBackend, ...
+	compTypeNode                        // node
+	compTypeQUIXRouter                  // quixRouter
+	compTypeQUIXDealet                  // quixProxy, ...
+	compTypeTCPXRouter                  // tcpxRouter
+	compTypeTCPXDealet                  // tcpxProxy, redisProxy, ...
+	compTypeUDPXRouter                  // udpxRouter
+	compTypeUDPXDealet                  // udpxProxy, dnsProxy, ...
+	compTypeCase                        // case
+	compTypeService                     // service
+	compTypeStater                      // localStater, redisStater, ...
+	compTypeCacher                      // localCacher, redisCacher, ...
+	compTypeWebapp                      // webapp
+	compTypeHandlet                     // static, httpProxy, ...
+	compTypeReviser                     // gzipReviser, wrapReviser, ...
+	compTypeSocklet                     // helloSocklet, ...
+	compTypeRule                        // rule
+	compTypeServer                      // httpxServer, hrpcServer, echoServer, ...
+	compTypeCronjob                     // cleanCronjob, statCronjob, ...
 )
 
 var signedComps = map[string]int16{ // signed comps. more dynamic comps are signed using signComp() below
-	"stage":      compStage,
-	"node":       compNode,
-	"quixRouter": compQUIXRouter,
-	"tcpxRouter": compTCPXRouter,
-	"udpxRouter": compUDPXRouter,
-	"case":       compCase,
-	"service":    compService,
-	"webapp":     compWebapp,
-	"rule":       compRule,
+	"stage":      compTypeStage,
+	"node":       compTypeNode,
+	"quixRouter": compTypeQUIXRouter,
+	"tcpxRouter": compTypeTCPXRouter,
+	"udpxRouter": compTypeUDPXRouter,
+	"case":       compTypeCase,
+	"service":    compTypeService,
+	"webapp":     compTypeWebapp,
+	"rule":       compTypeRule,
 }
 
 func signComp(compSign string, compType int16) {
-	if signedComp, ok := signedComps[compSign]; ok {
-		BugExitf("conflicting component sign: compType=%d compSign=%s\n", signedComp, compSign)
+	if signedType, ok := signedComps[compSign]; ok {
+		BugExitf("conflicting component sign: compType=%d compSign=%s\n", signedType, compSign)
 	}
 	signedComps[compSign] = compType
 }
 
 var ( // fixture signs, component creators, and initializers of services & webapps
-	fixtureSigns       = make(map[string]bool) // we guarantee this is not manipulated concurrently, so no lock is required
+	fixtureSigns = make(map[string]bool) // we guarantee this is not manipulated concurrently, so no lock is required
+
 	creatorsLock       sync.RWMutex
 	backendCreators    = make(map[string]func(compName string, stage *Stage) Backend) // indexed by compSign, same below.
 	staterCreators     = make(map[string]func(compName string, stage *Stage) Stater)
@@ -77,9 +78,10 @@ var ( // fixture signs, component creators, and initializers of services & webap
 	handletCreators    = make(map[string]func(compName string, stage *Stage, webapp *Webapp) Handlet)
 	reviserCreators    = make(map[string]func(compName string, stage *Stage, webapp *Webapp) Reviser)
 	sockletCreators    = make(map[string]func(compName string, stage *Stage, webapp *Webapp) Socklet)
-	initsLock          sync.RWMutex
-	serviceInits       = make(map[string]func(service *Service) error) // indexed by service name.
-	webappInits        = make(map[string]func(webapp *Webapp) error)   // indexed by webapp name.
+
+	initsLock    sync.RWMutex
+	serviceInits = make(map[string]func(service *Service) error) // indexed by compName, same below.
+	webappInits  = make(map[string]func(webapp *Webapp) error)
 )
 
 func registerFixture(compSign string) {
@@ -87,40 +89,23 @@ func registerFixture(compSign string) {
 		BugExitln("fixture sign conflicted")
 	}
 	fixtureSigns[compSign] = true
-	signComp(compSign, compFixture)
+	signComp(compSign, compTypeFixture)
 }
+
 func RegisterBackend(compSign string, create func(compName string, stage *Stage) Backend) {
-	_registerComponent0(compSign, compBackend, backendCreators, create)
+	_registerComponent0(compSign, compTypeBackend, backendCreators, create)
 }
 func RegisterStater(compSign string, create func(compName string, stage *Stage) Stater) {
-	_registerComponent0(compSign, compStater, staterCreators, create)
+	_registerComponent0(compSign, compTypeStater, staterCreators, create)
 }
 func RegisterCacher(compSign string, create func(compName string, stage *Stage) Cacher) {
-	_registerComponent0(compSign, compCacher, cacherCreators, create)
+	_registerComponent0(compSign, compTypeCacher, cacherCreators, create)
 }
 func RegisterServer(compSign string, create func(compName string, stage *Stage) Server) {
-	_registerComponent0(compSign, compServer, serverCreators, create)
+	_registerComponent0(compSign, compTypeServer, serverCreators, create)
 }
 func RegisterCronjob(compSign string, create func(compName string, stage *Stage) Cronjob) {
-	_registerComponent0(compSign, compCronjob, cronjobCreators, create)
-}
-func RegisterQUIXDealet(compSign string, create func(compName string, stage *Stage, router *QUIXRouter) QUIXDealet) {
-	_registerComponent1(compSign, compQUIXDealet, quixDealetCreators, create)
-}
-func RegisterTCPXDealet(compSign string, create func(compName string, stage *Stage, router *TCPXRouter) TCPXDealet) {
-	_registerComponent1(compSign, compTCPXDealet, tcpxDealetCreators, create)
-}
-func RegisterUDPXDealet(compSign string, create func(compName string, stage *Stage, router *UDPXRouter) UDPXDealet) {
-	_registerComponent1(compSign, compUDPXDealet, udpxDealetCreators, create)
-}
-func RegisterHandlet(compSign string, create func(compName string, stage *Stage, webapp *Webapp) Handlet) {
-	_registerComponent1(compSign, compHandlet, handletCreators, create)
-}
-func RegisterReviser(compSign string, create func(compName string, stage *Stage, webapp *Webapp) Reviser) {
-	_registerComponent1(compSign, compReviser, reviserCreators, create)
-}
-func RegisterSocklet(compSign string, create func(compName string, stage *Stage, webapp *Webapp) Socklet) {
-	_registerComponent1(compSign, compSocklet, sockletCreators, create)
+	_registerComponent0(compSign, compTypeCronjob, cronjobCreators, create)
 }
 func _registerComponent0[T Component](compSign string, compType int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // backend, stater, cacher, server, cronjob
 	creatorsLock.Lock()
@@ -132,6 +117,25 @@ func _registerComponent0[T Component](compSign string, compType int16, creators 
 	creators[compSign] = create
 	signComp(compSign, compType)
 }
+
+func RegisterQUIXDealet(compSign string, create func(compName string, stage *Stage, router *QUIXRouter) QUIXDealet) {
+	_registerComponent1(compSign, compTypeQUIXDealet, quixDealetCreators, create)
+}
+func RegisterTCPXDealet(compSign string, create func(compName string, stage *Stage, router *TCPXRouter) TCPXDealet) {
+	_registerComponent1(compSign, compTypeTCPXDealet, tcpxDealetCreators, create)
+}
+func RegisterUDPXDealet(compSign string, create func(compName string, stage *Stage, router *UDPXRouter) UDPXDealet) {
+	_registerComponent1(compSign, compTypeUDPXDealet, udpxDealetCreators, create)
+}
+func RegisterHandlet(compSign string, create func(compName string, stage *Stage, webapp *Webapp) Handlet) {
+	_registerComponent1(compSign, compTypeHandlet, handletCreators, create)
+}
+func RegisterReviser(compSign string, create func(compName string, stage *Stage, webapp *Webapp) Reviser) {
+	_registerComponent1(compSign, compTypeReviser, reviserCreators, create)
+}
+func RegisterSocklet(compSign string, create func(compName string, stage *Stage, webapp *Webapp) Socklet) {
+	_registerComponent1(compSign, compTypeSocklet, sockletCreators, create)
+}
 func _registerComponent1[T Component, C Component](compSign string, compType int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // dealet, handlet, reviser, socklet
 	creatorsLock.Lock()
 	defer creatorsLock.Unlock()
@@ -142,6 +146,7 @@ func _registerComponent1[T Component, C Component](compSign string, compType int
 	creators[compSign] = create
 	signComp(compSign, compType)
 }
+
 func RegisterServiceInit(compName string, init func(service *Service) error) {
 	initsLock.Lock()
 	serviceInits[compName] = init
@@ -179,7 +184,7 @@ type Component interface {
 	OnShutdown()
 	DecSub() // called by sub components or objects of this component
 
-	setCompName(compName string)
+	setName(compName string)
 	setShell(shell Component)
 	setParent(parent Component)
 	getParent() Component
@@ -270,7 +275,7 @@ func _configureProp[T any](c *Component_, propName string, prop *T, conv func(*V
 		} else {
 			UseExitln(fmt.Sprintf("invalid %s in %s", propName, c.compName))
 		}
-	} else {
+	} else { // not found. use default value
 		*prop = defaultValue
 	}
 }
@@ -294,7 +299,7 @@ func (c *Component_) LoopRun(interval time.Duration, callback func(now time.Time
 	}
 }
 
-func (c *Component_) setCompName(compName string)              { c.compName = compName }
+func (c *Component_) setName(compName string)                  { c.compName = compName }
 func (c *Component_) setShell(shell Component)                 { c.shell = shell }
 func (c *Component_) setParent(parent Component)               { c.parent = parent }
 func (c *Component_) getParent() Component                     { return c.parent }
@@ -366,6 +371,7 @@ func (s *Stage) onCreate() {
 	s.fixtures[signClock] = s.clock
 	s.fixtures[signFcache] = s.fcache
 	s.fixtures[signResolv] = s.resolv
+
 	s.backends = make(compDict[Backend])
 	s.quixRouters = make(compDict[*QUIXRouter])
 	s.tcpxRouters = make(compDict[*TCPXRouter])
@@ -633,10 +639,11 @@ func (s *Stage) createCronjob(compSign string, compName string) Cronjob {
 	return cronjob
 }
 
-func (s *Stage) Clock() *clockFixture                   { return s.clock }
-func (s *Stage) Fcache() *fcacheFixture                 { return s.fcache }
-func (s *Stage) Resolv() *resolvFixture                 { return s.resolv }
-func (s *Stage) Fixture(compSign string) fixture        { return s.fixtures[compSign] }
+func (s *Stage) Clock() *clockFixture            { return s.clock }
+func (s *Stage) Fcache() *fcacheFixture          { return s.fcache }
+func (s *Stage) Resolv() *resolvFixture          { return s.resolv }
+func (s *Stage) Fixture(compSign string) fixture { return s.fixtures[compSign] }
+
 func (s *Stage) Backend(compName string) Backend        { return s.backends[compName] }
 func (s *Stage) QUIXRouter(compName string) *QUIXRouter { return s.quixRouters[compName] }
 func (s *Stage) TCPXRouter(compName string) *TCPXRouter { return s.tcpxRouters[compName] }
@@ -673,7 +680,7 @@ func (s *Stage) Start(id int32) {
 		Printf("varDir=%s\n", VarDir())
 	}
 
-	// Init running environment
+	// Init the running environment
 	rand.Seed(time.Now().UnixNano())
 	if err := os.Chdir(TopDir()); err != nil {
 		EnvExitln(err.Error())
@@ -685,15 +692,23 @@ func (s *Stage) Start(id int32) {
 	}
 
 	// Bind services and webapps to servers
-	s.bindServerServices()
-	s.bindServerWebapps()
+	if DebugLevel() >= 1 {
+		Println("bind services and webapps to servers")
+	}
+	for _, server := range s.servers {
+		if rpcServer, ok := server.(RPCServer); ok {
+			rpcServer.BindServices()
+		} else if webServer, ok := server.(HTTPServer); ok {
+			webServer.bindWebapps()
+		}
+	}
 
-	// Prepare all components
+	// Prepare all components in current stage
 	if err := s.prepare(); err != nil {
 		EnvExitln(err.Error())
 	}
 
-	// Start all components
+	// Start all components in current stage
 	s.startFixtures() // go fixture.run()
 	s.startBackends() // go backend.maintain()
 	s.startRouters()  // go router.serve()
@@ -719,26 +734,6 @@ func (s *Stage) configure() (err error) {
 	}()
 	s.OnConfigure()
 	return nil
-}
-func (s *Stage) bindServerServices() {
-	if DebugLevel() >= 1 {
-		Println("bind services to rpc servers")
-	}
-	for _, server := range s.servers {
-		if rpcServer, ok := server.(RPCServer); ok {
-			rpcServer.BindServices()
-		}
-	}
-}
-func (s *Stage) bindServerWebapps() {
-	if DebugLevel() >= 1 {
-		Println("bind webapps to http servers")
-	}
-	for _, server := range s.servers {
-		if httpServer, ok := server.(HTTPServer); ok {
-			httpServer.bindWebapps()
-		}
-	}
 }
 func (s *Stage) prepare() (err error) {
 	if DebugLevel() >= 1 {

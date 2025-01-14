@@ -43,11 +43,11 @@ type _httpHolder_ struct {
 	maxMemoryContentSize        int32 // max content size that can be loaded into memory directly
 }
 
-func (h *_httpHolder_) onConfigure(component Component, defaultRecv time.Duration, defaultSend time.Duration, defaultDir string) {
-	h._contentSaver_.onConfigure(component, defaultRecv, defaultSend, defaultDir)
+func (h *_httpHolder_) onConfigure(comp Component, defaultRecv time.Duration, defaultSend time.Duration, defaultDir string) {
+	h._contentSaver_.onConfigure(comp, defaultRecv, defaultSend, defaultDir)
 
 	// maxCumulativeStreamsPerConn
-	component.ConfigureInt32("maxCumulativeStreamsPerConn", &h.maxCumulativeStreamsPerConn, func(value int32) error {
+	comp.ConfigureInt32("maxCumulativeStreamsPerConn", &h.maxCumulativeStreamsPerConn, func(value int32) error {
 		if value >= 0 {
 			return nil
 		}
@@ -55,15 +55,15 @@ func (h *_httpHolder_) onConfigure(component Component, defaultRecv time.Duratio
 	}, 1000)
 
 	// maxMemoryContentSize
-	component.ConfigureInt32("maxMemoryContentSize", &h.maxMemoryContentSize, func(value int32) error {
+	comp.ConfigureInt32("maxMemoryContentSize", &h.maxMemoryContentSize, func(value int32) error {
 		if value > 0 && value <= _1G { // DO NOT CHANGE THIS, otherwise integer overflow may occur
 			return nil
 		}
 		return errors.New(".maxMemoryContentSize has an invalid value")
 	}, _16M)
 }
-func (h *_httpHolder_) onPrepare(component Component, perm os.FileMode) {
-	h._contentSaver_.onPrepare(component, perm)
+func (h *_httpHolder_) onPrepare(comp Component, perm os.FileMode) {
+	h._contentSaver_.onPrepare(comp, perm)
 }
 
 func (h *_httpHolder_) MaxCumulativeStreamsPerConn() int32 { return h.maxCumulativeStreamsPerConn }

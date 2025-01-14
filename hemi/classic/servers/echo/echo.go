@@ -20,9 +20,9 @@ import (
 )
 
 func init() {
-	RegisterServer("echoServer", func(name string, stage *Stage) Server {
+	RegisterServer("echoServer", func(compName string, stage *Stage) Server {
 		s := new(echoServer)
-		s.onCreate(name, stage)
+		s.onCreate(compName, stage)
 		return s
 	})
 }
@@ -35,8 +35,8 @@ type echoServer struct {
 	// States
 }
 
-func (s *echoServer) onCreate(name string, stage *Stage) {
-	s.Server_.OnCreate(name, stage)
+func (s *echoServer) onCreate(compName string, stage *Stage) {
+	s.Server_.OnCreate(compName, stage)
 }
 
 func (s *echoServer) OnConfigure() {
@@ -59,7 +59,7 @@ func (s *echoServer) Serve() { // runner
 	}
 	s.WaitSubs() // gates
 	if DebugLevel() >= 2 {
-		Printf("echoServer=%s done\n", s.Name())
+		Printf("echoServer=%s done\n", s.CompName())
 	}
 	s.Stage().DecSub() // server
 }

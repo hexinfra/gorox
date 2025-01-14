@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterHandlet("rewriter", func(name string, stage *Stage, webapp *Webapp) Handlet {
+	RegisterHandlet("rewriter", func(compName string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(rewriterChecker)
-		h.onCreate(name, stage, webapp)
+		h.onCreate(compName, stage, webapp)
 		return h
 	})
 }
@@ -29,8 +29,8 @@ type rewriterChecker struct {
 	// States
 }
 
-func (h *rewriterChecker) onCreate(name string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(name)
+func (h *rewriterChecker) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	h.MakeComp(compName)
 	h.stage = stage
 	h.webapp = webapp
 }

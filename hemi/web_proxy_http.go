@@ -47,9 +47,9 @@ func (o *Hobject) todo() {
 }
 
 func init() {
-	RegisterHandlet("httpProxy", func(name string, stage *Stage, webapp *Webapp) Handlet {
+	RegisterHandlet("httpProxy", func(compName string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(httpProxy)
-		h.onCreate(name, stage, webapp)
+		h.onCreate(compName, stage, webapp)
 		return h
 	})
 }
@@ -67,8 +67,8 @@ type httpProxy struct {
 	WebExchanProxyConfig // embeded
 }
 
-func (h *httpProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(name)
+func (h *httpProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	h.MakeComp(compName)
 	h.stage = stage
 	h.webapp = webapp
 }
@@ -79,9 +79,9 @@ func (h *httpProxy) OnShutdown() {
 func (h *httpProxy) OnConfigure() {
 	// toBackend
 	if v, ok := h.Find("toBackend"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if backend := h.stage.Backend(name); backend == nil {
-				UseExitf("unknown backend: '%s'\n", name)
+		if compName, ok := v.String(); ok && compName != "" {
+			if backend := h.stage.Backend(compName); backend == nil {
+				UseExitf("unknown backend: '%s'\n", compName)
 			} else {
 				h.backend = backend.(HTTPBackend)
 			}
@@ -94,9 +94,9 @@ func (h *httpProxy) OnConfigure() {
 
 	// withCacher
 	if v, ok := h.Find("withCacher"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if cacher := h.stage.Cacher(name); cacher == nil {
-				UseExitf("unknown cacher: '%s'\n", name)
+		if compName, ok := v.String(); ok && compName != "" {
+			if cacher := h.stage.Cacher(compName); cacher == nil {
+				UseExitf("unknown cacher: '%s'\n", compName)
 			} else {
 				h.cacher = cacher
 			}
@@ -298,9 +298,9 @@ func WebExchanReverseProxy(foreReq Request, foreResp Response, cacher Cacher, ba
 }
 
 func init() {
-	RegisterSocklet("sockProxy", func(name string, stage *Stage, webapp *Webapp) Socklet {
+	RegisterSocklet("sockProxy", func(compName string, stage *Stage, webapp *Webapp) Socklet {
 		s := new(sockProxy)
-		s.onCreate(name, stage, webapp)
+		s.onCreate(compName, stage, webapp)
 		return s
 	})
 }
@@ -317,8 +317,8 @@ type sockProxy struct {
 	WebSocketProxyConfig // embeded
 }
 
-func (s *sockProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
-	s.MakeComp(name)
+func (s *sockProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	s.MakeComp(compName)
 	s.stage = stage
 	s.webapp = webapp
 }
@@ -329,9 +329,9 @@ func (s *sockProxy) OnShutdown() {
 func (s *sockProxy) OnConfigure() {
 	// toBackend
 	if v, ok := s.Find("toBackend"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if backend := s.stage.Backend(name); backend == nil {
-				UseExitf("unknown backend: '%s'\n", name)
+		if compName, ok := v.String(); ok && compName != "" {
+			if backend := s.stage.Backend(compName); backend == nil {
+				UseExitf("unknown backend: '%s'\n", compName)
 			} else {
 				s.backend = backend.(HTTPBackend)
 			}

@@ -274,9 +274,9 @@ func (s *httpSocket_) todo3() {
 //////////////////////////////////////// HTTP/3 server implementation ////////////////////////////////////////
 
 func init() {
-	RegisterServer("http3Server", func(name string, stage *Stage) Server {
+	RegisterServer("http3Server", func(compName string, stage *Stage) Server {
 		s := new(http3Server)
-		s.onCreate(name, stage)
+		s.onCreate(compName, stage)
 		return s
 	})
 }
@@ -288,8 +288,8 @@ type http3Server struct {
 	// States
 }
 
-func (s *http3Server) onCreate(name string, stage *Stage) {
-	s.httpServer_.onCreate(name, stage)
+func (s *http3Server) onCreate(compName string, stage *Stage) {
+	s.httpServer_.onCreate(compName, stage)
 	s.tlsConfig = new(tls.Config) // currently tls mode is always enabled in http/3
 }
 
@@ -317,7 +317,7 @@ func (s *http3Server) Serve() { // runner
 	}
 	s.WaitSubs() // gates
 	if DebugLevel() >= 2 {
-		Printf("http3Server=%s done\n", s.Name())
+		Printf("http3Server=%s done\n", s.CompName())
 	}
 	s.stage.DecSub() // server
 }
@@ -660,9 +660,9 @@ func (s *server3Socket) onEnd() {
 //////////////////////////////////////// HTTP/3 backend implementation ////////////////////////////////////////
 
 func init() {
-	RegisterBackend("http3Backend", func(name string, stage *Stage) Backend {
+	RegisterBackend("http3Backend", func(compName string, stage *Stage) Backend {
 		b := new(HTTP3Backend)
-		b.onCreate(name, stage)
+		b.onCreate(compName, stage)
 		return b
 	})
 }
@@ -674,8 +674,8 @@ type HTTP3Backend struct {
 	// States
 }
 
-func (b *HTTP3Backend) onCreate(name string, stage *Stage) {
-	b.httpBackend_.OnCreate(name, stage)
+func (b *HTTP3Backend) onCreate(compName string, stage *Stage) {
+	b.httpBackend_.OnCreate(compName, stage)
 }
 
 func (b *HTTP3Backend) OnConfigure() {
@@ -691,9 +691,9 @@ func (b *HTTP3Backend) OnPrepare() {
 	b.PrepareNodes()
 }
 
-func (b *HTTP3Backend) CreateNode(name string) Node {
+func (b *HTTP3Backend) CreateNode(compName string) Node {
 	node := new(http3Node)
-	node.onCreate(name, b.stage, b)
+	node.onCreate(compName, b.stage, b)
 	b.AddNode(node)
 	return node
 }
@@ -714,8 +714,8 @@ type http3Node struct {
 	// States
 }
 
-func (n *http3Node) onCreate(name string, stage *Stage, backend *HTTP3Backend) {
-	n.httpNode_.onCreate(name, stage, backend)
+func (n *http3Node) onCreate(compName string, stage *Stage, backend *HTTP3Backend) {
+	n.httpNode_.onCreate(compName, stage, backend)
 }
 
 func (n *http3Node) OnConfigure() {
@@ -734,7 +734,7 @@ func (n *http3Node) Maintain() { // runner
 	})
 	// TODO: wait for all conns
 	if DebugLevel() >= 2 {
-		Printf("http3Node=%s done\n", n.name)
+		Printf("http3Node=%s done\n", n.compName)
 	}
 	n.backend.DecSub() // node
 }

@@ -14,9 +14,9 @@ import (
 )
 
 func init() {
-	RegisterCacher("memCacher", func(name string, stage *Stage) Cacher {
+	RegisterCacher("memCacher", func(compName string, stage *Stage) Cacher {
 		c := new(memCacher)
-		c.onCreate(name, stage)
+		c.onCreate(compName, stage)
 		return c
 	})
 }
@@ -30,8 +30,8 @@ type memCacher struct {
 	// States
 }
 
-func (c *memCacher) onCreate(name string, stage *Stage) {
-	c.MakeComp(name)
+func (c *memCacher) onCreate(compName string, stage *Stage) {
+	c.MakeComp(compName)
 	c.stage = stage
 }
 func (c *memCacher) OnShutdown() {
@@ -50,7 +50,7 @@ func (c *memCacher) Maintain() { // runner
 		// TODO
 	})
 	if DebugLevel() >= 2 {
-		Printf("memCacher=%s done\n", c.Name())
+		Printf("memCacher=%s done\n", c.CompName())
 	}
 	c.stage.DecSub() // cacher
 }

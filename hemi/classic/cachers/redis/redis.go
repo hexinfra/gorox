@@ -16,9 +16,9 @@ import (
 )
 
 func init() {
-	RegisterCacher("redisCacher", func(name string, stage *Stage) Cacher {
+	RegisterCacher("redisCacher", func(compName string, stage *Stage) Cacher {
 		c := new(redisCacher)
-		c.onCreate(name, stage)
+		c.onCreate(compName, stage)
 		return c
 	})
 }
@@ -33,8 +33,8 @@ type redisCacher struct {
 	nodes []string
 }
 
-func (c *redisCacher) onCreate(name string, stage *Stage) {
-	c.MakeComp(name)
+func (c *redisCacher) onCreate(compName string, stage *Stage) {
+	c.MakeComp(compName)
 	c.stage = stage
 }
 func (c *redisCacher) OnShutdown() {
@@ -53,7 +53,7 @@ func (c *redisCacher) Maintain() { // runner
 		// TODO
 	})
 	if DebugLevel() >= 2 {
-		Printf("redisCacher=%s done\n", c.Name())
+		Printf("redisCacher=%s done\n", c.CompName())
 	}
 	c.stage.DecSub() // cacher
 }

@@ -21,9 +21,9 @@ import (
 )
 
 func init() {
-	RegisterTCPXDealet("redisProxy", func(name string, stage *Stage, router *TCPXRouter) TCPXDealet {
+	RegisterTCPXDealet("redisProxy", func(compName string, stage *Stage, router *TCPXRouter) TCPXDealet {
 		d := new(redisProxy)
-		d.onCreate(name, stage, router)
+		d.onCreate(compName, stage, router)
 		return d
 	})
 }
@@ -39,8 +39,8 @@ type redisProxy struct {
 	// States
 }
 
-func (d *redisProxy) onCreate(name string, stage *Stage, router *TCPXRouter) {
-	d.MakeComp(name)
+func (d *redisProxy) onCreate(compName string, stage *Stage, router *TCPXRouter) {
+	d.MakeComp(compName)
 	d.stage = stage
 	d.router = router
 }
@@ -60,9 +60,9 @@ func (d *redisProxy) DealWith(conn *TCPXConn) (dealt bool) {
 }
 
 func init() {
-	RegisterBackend("redisBackend", func(name string, stage *Stage) Backend {
+	RegisterBackend("redisBackend", func(compName string, stage *Stage) Backend {
 		b := new(RedisBackend)
-		b.onCreate(name, stage)
+		b.onCreate(compName, stage)
 		return b
 	})
 }
@@ -74,8 +74,8 @@ type RedisBackend struct {
 	// States
 }
 
-func (b *RedisBackend) onCreate(name string, stage *Stage) {
-	b.Backend_.OnCreate(name, stage)
+func (b *RedisBackend) onCreate(compName string, stage *Stage) {
+	b.Backend_.OnCreate(compName, stage)
 }
 
 func (b *RedisBackend) OnConfigure() {
@@ -91,9 +91,9 @@ func (b *RedisBackend) OnPrepare() {
 	b.PrepareNodes()
 }
 
-func (b *RedisBackend) CreateNode(name string) Node {
+func (b *RedisBackend) CreateNode(compName string) Node {
 	node := new(redisNode)
-	node.onCreate(name, b.Stage(), b)
+	node.onCreate(compName, b.Stage(), b)
 	b.AddNode(node)
 	return node
 }
@@ -120,8 +120,8 @@ type redisNode struct {
 	maxLifetime time.Duration // conn's max lifetime
 }
 
-func (n *redisNode) onCreate(name string, stage *Stage, backend *RedisBackend) {
-	n.Node_.OnCreate(name, stage, backend)
+func (n *redisNode) onCreate(compName string, stage *Stage, backend *RedisBackend) {
+	n.Node_.OnCreate(compName, stage, backend)
 }
 
 func (n *redisNode) OnConfigure() {

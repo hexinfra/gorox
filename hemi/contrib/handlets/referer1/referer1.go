@@ -21,9 +21,9 @@ var (
 )
 
 func init() {
-	RegisterHandlet("referer1Checker", func(name string, stage *Stage, webapp *Webapp) Handlet {
+	RegisterHandlet("referer1Checker", func(compName string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(referer1Checker)
-		h.onCreate(name, stage, webapp)
+		h.onCreate(compName, stage, webapp)
 		return h
 	})
 }
@@ -44,8 +44,8 @@ type referer1Checker struct {
 	IsBlocked bool
 }
 
-func (h *referer1Checker) onCreate(name string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(name)
+func (h *referer1Checker) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	h.MakeComp(compName)
 	h.stage = stage
 	h.webapp = webapp
 }

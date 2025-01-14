@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterHandlet("webdavHandlet", func(name string, stage *Stage, webapp *Webapp) Handlet {
+	RegisterHandlet("webdavHandlet", func(compName string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(webdavHandlet)
-		h.onCreate(name, stage, webapp)
+		h.onCreate(compName, stage, webapp)
 		return h
 	})
 }
@@ -29,8 +29,8 @@ type webdavHandlet struct {
 	// States
 }
 
-func (h *webdavHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(name)
+func (h *webdavHandlet) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	h.MakeComp(compName)
 	h.stage = stage
 	h.webapp = webapp
 }

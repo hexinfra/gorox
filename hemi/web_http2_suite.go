@@ -513,7 +513,7 @@ type http2Stream interface {
 	httpStream
 	// Methods
 	getID() uint32
-	getIndex() uint8 // at activeStreams
+	getIndex() uint8      // at activeStreams
 	setIndex(index uint8) // at activeStreams
 }
 
@@ -937,9 +937,9 @@ func (s *httpSocket_) todo2() {
 //////////////////////////////////////// HTTP/2 server implementation ////////////////////////////////////////
 
 func init() {
-	RegisterServer("httpxServer", func(name string, stage *Stage) Server {
+	RegisterServer("httpxServer", func(compName string, stage *Stage) Server {
 		s := new(httpxServer)
-		s.onCreate(name, stage)
+		s.onCreate(compName, stage)
 		return s
 	})
 }
@@ -952,8 +952,8 @@ type httpxServer struct {
 	httpMode int8 // 0: adaptive, 1: http/1.x, 2: http/2
 }
 
-func (s *httpxServer) onCreate(name string, stage *Stage) {
-	s.httpServer_.onCreate(name, stage)
+func (s *httpxServer) onCreate(compName string, stage *Stage) {
+	s.httpServer_.onCreate(compName, stage)
 
 	s.httpMode = 1 // http/1.x by default. change to adaptive mode after http/2 server has been fully implemented
 }
@@ -1019,7 +1019,7 @@ func (s *httpxServer) Serve() { // runner
 	}
 	s.WaitSubs() // gates
 	if DebugLevel() >= 2 {
-		Printf("httpxServer=%s done\n", s.Name())
+		Printf("httpxServer=%s done\n", s.CompName())
 	}
 	s.stage.DecSub() // server
 }
@@ -1083,7 +1083,7 @@ func (g *httpxGate) serveUDS() { // runner
 			if g.IsShut() {
 				break
 			} else {
-				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)
+				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.compName, g.id, err)
 				continue
 			}
 		}
@@ -1095,7 +1095,7 @@ func (g *httpxGate) serveUDS() { // runner
 		rawConn, err := udsConn.SyscallConn()
 		if err != nil {
 			g.justClose(udsConn)
-			//g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
+			//g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.compName, g.id, err)
 			continue
 		}
 		if g.server.httpMode == 2 {
@@ -1122,7 +1122,7 @@ func (g *httpxGate) serveTLS() { // runner
 			if g.IsShut() {
 				break
 			} else {
-				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)
+				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.compName, g.id, err)
 				continue
 			}
 		}
@@ -1161,7 +1161,7 @@ func (g *httpxGate) serveTCP() { // runner
 			if g.IsShut() {
 				break
 			} else {
-				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.name, g.id, err)
+				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.compName, g.id, err)
 				continue
 			}
 		}
@@ -1173,7 +1173,7 @@ func (g *httpxGate) serveTCP() { // runner
 		rawConn, err := tcpConn.SyscallConn()
 		if err != nil {
 			g.justClose(tcpConn)
-			//g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.name, g.id, err)
+			//g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.compName, g.id, err)
 			continue
 		}
 		if g.server.httpMode == 2 {
@@ -1786,9 +1786,9 @@ func (s *server2Socket) onEnd() {
 //////////////////////////////////////// HTTP/2 backend implementation ////////////////////////////////////////
 
 func init() {
-	RegisterBackend("http2Backend", func(name string, stage *Stage) Backend {
+	RegisterBackend("http2Backend", func(compName string, stage *Stage) Backend {
 		b := new(HTTP2Backend)
-		b.onCreate(name, stage)
+		b.onCreate(compName, stage)
 		return b
 	})
 }
@@ -1800,8 +1800,8 @@ type HTTP2Backend struct {
 	// States
 }
 
-func (b *HTTP2Backend) onCreate(name string, stage *Stage) {
-	b.httpBackend_.OnCreate(name, stage)
+func (b *HTTP2Backend) onCreate(compName string, stage *Stage) {
+	b.httpBackend_.OnCreate(compName, stage)
 }
 
 func (b *HTTP2Backend) OnConfigure() {
@@ -1817,9 +1817,9 @@ func (b *HTTP2Backend) OnPrepare() {
 	b.PrepareNodes()
 }
 
-func (b *HTTP2Backend) CreateNode(name string) Node {
+func (b *HTTP2Backend) CreateNode(compName string) Node {
 	node := new(http2Node)
-	node.onCreate(name, b.stage, b)
+	node.onCreate(compName, b.stage, b)
 	b.AddNode(node)
 	return node
 }
@@ -1840,8 +1840,8 @@ type http2Node struct {
 	// States
 }
 
-func (n *http2Node) onCreate(name string, stage *Stage, backend *HTTP2Backend) {
-	n.httpNode_.onCreate(name, stage, backend)
+func (n *http2Node) onCreate(compName string, stage *Stage, backend *HTTP2Backend) {
+	n.httpNode_.onCreate(compName, stage, backend)
 }
 
 func (n *http2Node) OnConfigure() {
@@ -1861,7 +1861,7 @@ func (n *http2Node) Maintain() { // runner
 	})
 	// TODO: wait for all conns
 	if DebugLevel() >= 2 {
-		Printf("http2Node=%s done\n", n.name)
+		Printf("http2Node=%s done\n", n.compName)
 	}
 	n.backend.DecSub() // node
 }

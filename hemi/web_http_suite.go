@@ -2084,15 +2084,15 @@ type httpServer_[G httpGate] struct {
 	maxConcurrentConnsPerGate int32                  // max concurrent connections allowed per gate
 }
 
-func (s *httpServer_[G]) onCreate(name string, stage *Stage) {
-	s.Server_.OnCreate(name, stage)
+func (s *httpServer_[G]) onCreate(compName string, stage *Stage) {
+	s.Server_.OnCreate(compName, stage)
 
 	s.forceScheme = -1 // not forced
 }
 
 func (s *httpServer_[G]) onConfigure() {
 	s.Server_.OnConfigure()
-	s._httpHolder_.onConfigure(s, 0*time.Second, 0*time.Second, TmpDir()+"/web/servers/"+s.name)
+	s._httpHolder_.onConfigure(s, 0*time.Second, 0*time.Second, TmpDir()+"/web/servers/"+s.compName)
 
 	// webapps
 	s.ConfigureStringList("webapps", &s.webapps, nil, []string{})
@@ -4968,8 +4968,8 @@ type httpBackend_[N HTTPNode] struct {
 	// States
 }
 
-func (b *httpBackend_[N]) onCreate(name string, stage *Stage) {
-	b.Backend_.OnCreate(name, stage)
+func (b *httpBackend_[N]) onCreate(compName string, stage *Stage) {
+	b.Backend_.OnCreate(compName, stage)
 }
 
 func (b *httpBackend_[N]) onConfigure() {
@@ -4999,13 +4999,13 @@ type httpNode_[B HTTPBackend] struct {
 	maxLifetime    time.Duration // conn's max lifetime
 }
 
-func (n *httpNode_[B]) onCreate(name string, stage *Stage, backend B) {
-	n.Node_.OnCreate(name, stage, backend)
+func (n *httpNode_[B]) onCreate(compName string, stage *Stage, backend B) {
+	n.Node_.OnCreate(compName, stage, backend)
 }
 
 func (n *httpNode_[B]) onConfigure() {
 	n.Node_.OnConfigure()
-	n._httpHolder_.onConfigure(n, 0*time.Second, 0*time.Second, TmpDir()+"/web/backends/"+n.backend.Name()+"/"+n.name)
+	n._httpHolder_.onConfigure(n, 0*time.Second, 0*time.Second, TmpDir()+"/web/backends/"+n.backend.CompName()+"/"+n.compName)
 
 	// keepAliveConns
 	n.ConfigureInt32("keepAliveConns", &n.keepAliveConns, func(value int32) error {

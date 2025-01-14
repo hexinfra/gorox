@@ -15,9 +15,9 @@ import (
 )
 
 func init() {
-	RegisterHandlet("static", func(name string, stage *Stage, webapp *Webapp) Handlet {
+	RegisterHandlet("static", func(compName string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(staticHandlet)
-		h.onCreate(name, stage, webapp)
+		h.onCreate(compName, stage, webapp)
 		return h
 	})
 }
@@ -39,8 +39,8 @@ type staticHandlet struct {
 	useWebappWebRoot bool              // true if webRoot is same with webapp.webRoot
 }
 
-func (h *staticHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(name)
+func (h *staticHandlet) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	h.MakeComp(compName)
 	h.stage = stage
 	h.webapp = webapp
 }
@@ -63,9 +63,9 @@ func (h *staticHandlet) OnConfigure() {
 	h.useWebappWebRoot = h.webRoot == h.webapp.webRoot
 	if DebugLevel() >= 1 {
 		if h.useWebappWebRoot {
-			Printf("static=%s use webapp web root\n", h.Name())
+			Printf("static=%s use webapp web root\n", h.CompName())
 		} else {
-			Printf("static=%s NOT use webapp web root\n", h.Name())
+			Printf("static=%s NOT use webapp web root\n", h.CompName())
 		}
 	}
 

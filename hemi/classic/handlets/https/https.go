@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterHandlet("httpsChecker", func(name string, stage *Stage, webapp *Webapp) Handlet {
+	RegisterHandlet("httpsChecker", func(compName string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(httpsChecker)
-		h.onCreate(name, stage, webapp)
+		h.onCreate(compName, stage, webapp)
 		return h
 	})
 }
@@ -31,8 +31,8 @@ type httpsChecker struct {
 	authority string
 }
 
-func (h *httpsChecker) onCreate(name string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(name)
+func (h *httpsChecker) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	h.MakeComp(compName)
 	h.stage = stage
 	h.webapp = webapp
 }

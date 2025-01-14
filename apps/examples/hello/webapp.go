@@ -9,9 +9,9 @@ import (
 )
 
 func init() {
-	RegisterHandlet("helloHandlet", func(name string, stage *Stage, webapp *Webapp) Handlet {
+	RegisterHandlet("helloHandlet", func(compName string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(helloHandlet)
-		h.onCreate(name, stage, webapp)
+		h.onCreate(compName, stage, webapp)
 		return h
 	})
 }
@@ -27,8 +27,8 @@ type helloHandlet struct {
 	example string // an example config entry
 }
 
-func (h *helloHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(name)
+func (h *helloHandlet) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	h.MakeComp(compName)
 	h.stage = stage
 	h.webapp = webapp
 }

@@ -25,9 +25,9 @@ import (
 //////////////////////////////////////// SCGI reverse proxy implementation ////////////////////////////////////////
 
 func init() {
-	RegisterHandlet("scgiProxy", func(name string, stage *Stage, webapp *Webapp) Handlet {
+	RegisterHandlet("scgiProxy", func(compName string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(scgiProxy)
-		h.onCreate(name, stage, webapp)
+		h.onCreate(compName, stage, webapp)
 		return h
 	})
 }
@@ -45,8 +45,8 @@ type scgiProxy struct {
 	WebExchanProxyConfig // embeded
 }
 
-func (h *scgiProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(name)
+func (h *scgiProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	h.MakeComp(compName)
 	h.stage = stage
 	h.webapp = webapp
 }
@@ -57,13 +57,13 @@ func (h *scgiProxy) OnShutdown() {
 func (h *scgiProxy) OnConfigure() {
 	// toBackend
 	if v, ok := h.Find("toBackend"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if backend := h.stage.Backend(name); backend == nil {
-				UseExitf("unknown backend: '%s'\n", name)
+		if compName, ok := v.String(); ok && compName != "" {
+			if backend := h.stage.Backend(compName); backend == nil {
+				UseExitf("unknown backend: '%s'\n", compName)
 			} else if scgiBackend, ok := backend.(*scgiBackend); ok {
 				h.backend = scgiBackend
 			} else {
-				UseExitf("incorrect backend '%s' for scgiProxy, must be scgiBackend\n", name)
+				UseExitf("incorrect backend '%s' for scgiProxy, must be scgiBackend\n", compName)
 			}
 		} else {
 			UseExitln("invalid toBackend")
@@ -74,9 +74,9 @@ func (h *scgiProxy) OnConfigure() {
 
 	// withCacher
 	if v, ok := h.Find("withCacher"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if cacher := h.stage.Cacher(name); cacher == nil {
-				UseExitf("unknown cacher: '%s'\n", name)
+		if compName, ok := v.String(); ok && compName != "" {
+			if cacher := h.stage.Cacher(compName); cacher == nil {
+				UseExitf("unknown cacher: '%s'\n", compName)
 			} else {
 				h.cacher = cacher
 			}
@@ -105,9 +105,9 @@ func (h *scgiProxy) Handle(httpReq Request, httpResp Response) (handled bool) {
 //////////////////////////////////////// SCGI backend implementation ////////////////////////////////////////
 
 func init() {
-	RegisterBackend("scgiBackend", func(name string, stage *Stage) Backend {
+	RegisterBackend("scgiBackend", func(compName string, stage *Stage) Backend {
 		b := new(scgiBackend)
-		b.onCreate(name, stage)
+		b.onCreate(compName, stage)
 		return b
 	})
 }
@@ -119,8 +119,8 @@ type scgiBackend struct {
 	// States
 }
 
-func (b *scgiBackend) onCreate(name string, stage *Stage) {
-	b.Backend_.OnCreate(name, stage)
+func (b *scgiBackend) onCreate(compName string, stage *Stage) {
+	b.Backend_.OnCreate(compName, stage)
 }
 
 func (b *scgiBackend) OnConfigure() {
@@ -136,9 +136,9 @@ func (b *scgiBackend) OnPrepare() {
 	b.PrepareNodes()
 }
 
-func (b *scgiBackend) CreateNode(name string) Node {
+func (b *scgiBackend) CreateNode(compName string) Node {
 	node := new(scgiNode)
-	node.onCreate(name, b.stage, b)
+	node.onCreate(compName, b.stage, b)
 	b.AddNode(node)
 	return node
 }
@@ -152,13 +152,13 @@ type scgiNode struct {
 	// States
 }
 
-func (n *scgiNode) onCreate(name string, stage *Stage, backend *scgiBackend) {
-	n.Node_.OnCreate(name, stage, backend)
+func (n *scgiNode) onCreate(compName string, stage *Stage, backend *scgiBackend) {
+	n.Node_.OnCreate(compName, stage, backend)
 }
 
 func (n *scgiNode) OnConfigure() {
 	n.Node_.OnConfigure()
-	n._contentSaver_.onConfigure(n, 0*time.Second, 0*time.Second, TmpDir()+"/web/backends/"+n.backend.name+"/"+n.name)
+	n._contentSaver_.onConfigure(n, 0*time.Second, 0*time.Second, TmpDir()+"/web/backends/"+n.backend.compName+"/"+n.compName)
 }
 func (n *scgiNode) OnPrepare() {
 	n.Node_.OnPrepare()
@@ -171,14 +171,14 @@ func (n *scgiNode) Maintain() { // runner
 	})
 	n.markDown()
 	if DebugLevel() >= 2 {
-		Printf("scgiNode=%s done\n", n.name)
+		Printf("scgiNode=%s done\n", n.compName)
 	}
 	n.backend.DecSub() // node
 }
 
 func (n *scgiNode) dial() (*scgiConn, error) {
 	if DebugLevel() >= 2 {
-		Printf("scgiNode=%s dial %s\n", n.name, n.address)
+		Printf("scgiNode=%s dial %s\n", n.compName, n.address)
 	}
 	var (
 		conn *scgiConn
@@ -203,7 +203,7 @@ func (n *scgiNode) _dialUDS() (*scgiConn, error) {
 		return nil, err
 	}
 	if DebugLevel() >= 2 {
-		Printf("scgiNode=%s dial %s OK!\n", n.name, n.address)
+		Printf("scgiNode=%s dial %s OK!\n", n.compName, n.address)
 	}
 	connID := n.nextConnID()
 	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
@@ -222,7 +222,7 @@ func (n *scgiNode) _dialTCP() (*scgiConn, error) {
 		return nil, err
 	}
 	if DebugLevel() >= 2 {
-		Printf("scgiNode=%s dial %s OK!\n", n.name, n.address)
+		Printf("scgiNode=%s dial %s OK!\n", n.compName, n.address)
 	}
 	connID := n.nextConnID()
 	rawConn, err := netConn.(*net.TCPConn).SyscallConn()

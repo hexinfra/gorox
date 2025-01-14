@@ -140,7 +140,7 @@ type QUIXRouter struct {
 	// Mixins
 	_quixHolder_ // to carry configs used by gates
 	// Assocs
-	dealets compDict[QUIXDealet] // defined dealets. indexed by name
+	dealets compDict[QUIXDealet] // defined dealets. indexed by component name
 	cases   []*quixCase          // defined cases. the order must be kept, so we use list. TODO: use ordered map?
 	// States
 	maxConcurrentConnsPerGate int32      // max concurrent connections allowed per gate
@@ -148,8 +148,8 @@ type QUIXRouter struct {
 	logger                    *Logger    // router access logger
 }
 
-func (r *QUIXRouter) onCreate(name string, stage *Stage) {
-	r.Server_.OnCreate(name, stage)
+func (r *QUIXRouter) onCreate(compName string, stage *Stage) {
+	r.Server_.OnCreate(compName, stage)
 	r.dealets = make(compDict[QUIXDealet])
 }
 
@@ -189,9 +189,9 @@ func (r *QUIXRouter) OnPrepare() {
 
 func (r *QUIXRouter) MaxConcurrentConnsPerGate() int32 { return r.maxConcurrentConnsPerGate }
 
-func (r *QUIXRouter) createDealet(sign string, name string) QUIXDealet {
-	if _, ok := r.dealets[name]; ok {
-		UseExitln("conflicting dealet with a same name in router")
+func (r *QUIXRouter) createDealet(sign string, compName string) QUIXDealet {
+	if _, ok := r.dealets[compName]; ok {
+		UseExitln("conflicting dealet with a same component name in router")
 	}
 	creatorsLock.RLock()
 	defer creatorsLock.RUnlock()
@@ -199,24 +199,24 @@ func (r *QUIXRouter) createDealet(sign string, name string) QUIXDealet {
 	if !ok {
 		UseExitln("unknown dealet sign: " + sign)
 	}
-	dealet := create(name, r.stage, r)
+	dealet := create(compName, r.stage, r)
 	dealet.setShell(dealet)
-	r.dealets[name] = dealet
+	r.dealets[compName] = dealet
 	return dealet
 }
-func (r *QUIXRouter) createCase(name string) *quixCase {
-	if r.hasCase(name) {
-		UseExitln("conflicting case with a same name")
+func (r *QUIXRouter) createCase(compName string) *quixCase {
+	if r.hasCase(compName) {
+		UseExitln("conflicting case with a same component name")
 	}
 	kase := new(quixCase)
-	kase.onCreate(name, r)
+	kase.onCreate(compName, r)
 	kase.setShell(kase)
 	r.cases = append(r.cases, kase)
 	return kase
 }
-func (r *QUIXRouter) hasCase(name string) bool {
+func (r *QUIXRouter) hasCase(compName string) bool {
 	for _, kase := range r.cases {
-		if kase.Name() == name {
+		if kase.CompName() == compName {
 			return true
 		}
 	}
@@ -247,7 +247,7 @@ func (r *QUIXRouter) Serve() { // runner
 		r.logger.Close()
 	}
 	if DebugLevel() >= 2 {
-		Printf("quixRouter=%s done\n", r.Name())
+		Printf("quixRouter=%s done\n", r.CompName())
 	}
 	r.stage.DecSub() // router
 }
@@ -451,8 +451,8 @@ type quixCase struct {
 	matcher  func(kase *quixCase, conn *QUIXConn, value []byte) bool
 }
 
-func (c *quixCase) onCreate(name string, router *QUIXRouter) {
-	c.MakeComp(name)
+func (c *quixCase) onCreate(compName string, router *QUIXRouter) {
+	c.MakeComp(compName)
 	c.router = router
 }
 func (c *quixCase) OnShutdown() {
@@ -566,9 +566,9 @@ type QUIXDealet_ struct {
 //////////////////////////////////////// QUIX backend implementation ////////////////////////////////////////
 
 func init() {
-	RegisterBackend("quixBackend", func(name string, stage *Stage) Backend {
+	RegisterBackend("quixBackend", func(compName string, stage *Stage) Backend {
 		b := new(QUIXBackend)
-		b.onCreate(name, stage)
+		b.onCreate(compName, stage)
 		return b
 	})
 }
@@ -580,8 +580,8 @@ type QUIXBackend struct {
 	// States
 }
 
-func (b *QUIXBackend) onCreate(name string, stage *Stage) {
-	b.Backend_.OnCreate(name, stage)
+func (b *QUIXBackend) onCreate(compName string, stage *Stage) {
+	b.Backend_.OnCreate(compName, stage)
 }
 
 func (b *QUIXBackend) OnConfigure() {
@@ -597,9 +597,9 @@ func (b *QUIXBackend) OnPrepare() {
 	b.PrepareNodes()
 }
 
-func (b *QUIXBackend) CreateNode(name string) Node {
+func (b *QUIXBackend) CreateNode(compName string) Node {
 	node := new(quixNode)
-	node.onCreate(name, b.stage, b)
+	node.onCreate(compName, b.stage, b)
 	b.AddNode(node)
 	return node
 }
@@ -626,8 +626,8 @@ type quixNode struct {
 	// States
 }
 
-func (n *quixNode) onCreate(name string, stage *Stage, backend *QUIXBackend) {
-	n.Node_.OnCreate(name, stage, backend)
+func (n *quixNode) onCreate(compName string, stage *Stage, backend *QUIXBackend) {
+	n.Node_.OnCreate(compName, stage, backend)
 }
 
 func (n *quixNode) OnConfigure() {
@@ -645,7 +645,7 @@ func (n *quixNode) Maintain() { // runner
 	})
 	// TODO: wait for all conns
 	if DebugLevel() >= 2 {
-		Printf("quixNode=%s done\n", n.name)
+		Printf("quixNode=%s done\n", n.compName)
 	}
 	n.backend.DecSub() // node
 }

@@ -15,9 +15,9 @@ import (
 )
 
 func init() {
-	RegisterReviser("wrapReviser", func(name string, stage *Stage, webapp *Webapp) Reviser {
+	RegisterReviser("wrapReviser", func(compName string, stage *Stage, webapp *Webapp) Reviser {
 		r := new(wrapReviser)
-		r.onCreate(name, stage, webapp)
+		r.onCreate(compName, stage, webapp)
 		return r
 	})
 }
@@ -33,8 +33,8 @@ type wrapReviser struct {
 	rank int8
 }
 
-func (r *wrapReviser) onCreate(name string, stage *Stage, webapp *Webapp) {
-	r.MakeComp(name)
+func (r *wrapReviser) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	r.MakeComp(compName)
 	r.stage = stage
 	r.webapp = webapp
 }

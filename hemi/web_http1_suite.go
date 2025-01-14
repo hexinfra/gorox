@@ -1298,7 +1298,7 @@ func (s *server1Stream) execute() {
 }
 func (s *server1Stream) _serveAbnormal(req *server1Request, resp *server1Response) { // 4xx & 5xx
 	if DebugLevel() >= 2 {
-		Printf("server=%s gate=%d conn=%d headResult=%d\n", s.conn.gate.server.Name(), s.conn.gate.ID(), s.conn.id, s.request.headResult)
+		Printf("server=%s gate=%d conn=%d headResult=%d\n", s.conn.gate.server.CompName(), s.conn.gate.ID(), s.conn.id, s.request.headResult)
 	}
 	s.conn.persistent = false // close anyway.
 
@@ -2054,9 +2054,9 @@ func (s *server1Socket) onEnd() {
 //////////////////////////////////////// HTTP/1.x backend implementation ////////////////////////////////////////
 
 func init() {
-	RegisterBackend("http1Backend", func(name string, stage *Stage) Backend {
+	RegisterBackend("http1Backend", func(compName string, stage *Stage) Backend {
 		b := new(HTTP1Backend)
-		b.onCreate(name, stage)
+		b.onCreate(compName, stage)
 		return b
 	})
 }
@@ -2068,8 +2068,8 @@ type HTTP1Backend struct {
 	// States
 }
 
-func (b *HTTP1Backend) onCreate(name string, stage *Stage) {
-	b.httpBackend_.OnCreate(name, stage)
+func (b *HTTP1Backend) onCreate(compName string, stage *Stage) {
+	b.httpBackend_.OnCreate(compName, stage)
 }
 
 func (b *HTTP1Backend) OnConfigure() {
@@ -2085,9 +2085,9 @@ func (b *HTTP1Backend) OnPrepare() {
 	b.PrepareNodes()
 }
 
-func (b *HTTP1Backend) CreateNode(name string) Node {
+func (b *HTTP1Backend) CreateNode(compName string) Node {
 	node := new(http1Node)
-	node.onCreate(name, b.stage, b)
+	node.onCreate(compName, b.stage, b)
 	b.AddNode(node)
 	return node
 }
@@ -2114,8 +2114,8 @@ type http1Node struct {
 	}
 }
 
-func (n *http1Node) onCreate(name string, stage *Stage, backend *HTTP1Backend) {
-	n.httpNode_.onCreate(name, stage, backend)
+func (n *http1Node) onCreate(compName string, stage *Stage, backend *HTTP1Backend) {
+	n.httpNode_.onCreate(compName, stage, backend)
 }
 
 func (n *http1Node) OnConfigure() {
@@ -2139,7 +2139,7 @@ func (n *http1Node) Maintain() { // runner
 	}
 	n.WaitSubs() // conns. TODO: max timeout?
 	if DebugLevel() >= 2 {
-		Printf("http1Node=%s done\n", n.name)
+		Printf("http1Node=%s done\n", n.compName)
 	}
 	n.backend.DecSub() // node
 }
@@ -2179,12 +2179,12 @@ func (n *http1Node) storeStream(stream *backend1Stream) {
 		conn.Close()
 		n.DecSub() // conn
 		if DebugLevel() >= 2 {
-			Printf("Backend1Conn[node=%s id=%d] closed\n", conn.node.Name(), conn.id)
+			Printf("Backend1Conn[node=%s id=%d] closed\n", conn.node.CompName(), conn.id)
 		}
 	} else {
 		n.pushConn(conn)
 		if DebugLevel() >= 2 {
-			Printf("Backend1Conn[node=%s id=%d] pushed\n", conn.node.Name(), conn.id)
+			Printf("Backend1Conn[node=%s id=%d] pushed\n", conn.node.CompName(), conn.id)
 		}
 	}
 }
@@ -2197,7 +2197,7 @@ func (n *http1Node) _dialUDS() (*backend1Conn, error) {
 		return nil, err
 	}
 	if DebugLevel() >= 2 {
-		Printf("http1Node=%s dial %s OK!\n", n.name, n.address)
+		Printf("http1Node=%s dial %s OK!\n", n.compName, n.address)
 	}
 	connID := n.nextConnID()
 	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
@@ -2216,7 +2216,7 @@ func (n *http1Node) _dialTLS() (*backend1Conn, error) {
 		return nil, err
 	}
 	if DebugLevel() >= 2 {
-		Printf("http1Node=%s dial %s OK!\n", n.name, n.address)
+		Printf("http1Node=%s dial %s OK!\n", n.compName, n.address)
 	}
 	connID := n.nextConnID()
 	tlsConn := tls.Client(netConn, n.tlsConfig)
@@ -2239,7 +2239,7 @@ func (n *http1Node) _dialTCP() (*backend1Conn, error) {
 		return nil, err
 	}
 	if DebugLevel() >= 2 {
-		Printf("http1Node=%s dial %s OK!\n", n.name, n.address)
+		Printf("http1Node=%s dial %s OK!\n", n.compName, n.address)
 	}
 	connID := n.nextConnID()
 	rawConn, err := netConn.(*net.TCPConn).SyscallConn()

@@ -17,9 +17,9 @@ import (
 )
 
 func init() {
-	RegisterHandlet("sitex", func(name string, stage *Stage, webapp *Webapp) Handlet {
+	RegisterHandlet("sitex", func(compName string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(Sitex)
-		h.OnCreate(name, stage, webapp)
+		h.OnCreate(compName, stage, webapp)
 		return h
 	})
 }
@@ -37,8 +37,8 @@ type Sitex struct {
 	hostnameSites map[string]*Site // hostname -> site, for routing
 }
 
-func (h *Sitex) OnCreate(name string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(name)
+func (h *Sitex) OnCreate(compName string, stage *Stage, webapp *Webapp) {
+	h.MakeComp(compName)
 	h.stage = stage
 	h.webapp = webapp
 	h.hostnameSites = make(map[string]*Site)
@@ -85,7 +85,7 @@ func (h *Sitex) OnConfigure() {
 				UseExitln("viewDir must be string")
 			}
 		} else {
-			site.viewDir = TopDir() + "/apps/" + h.webapp.Name() + "/" + name + "/view"
+			site.viewDir = TopDir() + "/apps/" + h.webapp.CompName() + "/" + name + "/view"
 		}
 		site.settings = make(map[string]string)
 		if vSettings, ok := siteDict["settings"]; ok {
@@ -102,11 +102,11 @@ func (h *Sitex) OnPrepare() {
 	// TODO
 }
 
-func (h *Sitex) RegisterSite(name string, pack any) { // called on webapp init.
-	if site, ok := h.sites[name]; ok {
+func (h *Sitex) RegisterSite(siteName string, pack any) { // called on webapp init.
+	if site, ok := h.sites[siteName]; ok {
 		site.pack = reflect.TypeOf(pack)
 	} else {
-		BugExitf("unknown site: %s\n", name)
+		BugExitf("unknown site: %s\n", siteName)
 	}
 }
 

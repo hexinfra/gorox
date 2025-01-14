@@ -14,9 +14,9 @@ import (
 )
 
 func init() {
-	RegisterTCPXDealet("pgsqlProxy", func(name string, stage *Stage, router *TCPXRouter) TCPXDealet {
+	RegisterTCPXDealet("pgsqlProxy", func(compName string, stage *Stage, router *TCPXRouter) TCPXDealet {
 		d := new(pgsqlProxy)
-		d.onCreate(name, stage, router)
+		d.onCreate(compName, stage, router)
 		return d
 	})
 }
@@ -32,8 +32,8 @@ type pgsqlProxy struct {
 	// States
 }
 
-func (d *pgsqlProxy) onCreate(name string, stage *Stage, router *TCPXRouter) {
-	d.MakeComp(name)
+func (d *pgsqlProxy) onCreate(compName string, stage *Stage, router *TCPXRouter) {
+	d.MakeComp(compName)
 	d.stage = stage
 	d.router = router
 }
@@ -53,9 +53,9 @@ func (d *pgsqlProxy) DealWith(conn *TCPXConn) (dealt bool) {
 }
 
 func init() {
-	RegisterBackend("pgsqlBackend", func(name string, stage *Stage) Backend {
+	RegisterBackend("pgsqlBackend", func(compName string, stage *Stage) Backend {
 		b := new(PgsqlBackend)
-		b.onCreate(name, stage)
+		b.onCreate(compName, stage)
 		return b
 	})
 }
@@ -67,8 +67,8 @@ type PgsqlBackend struct {
 	// States
 }
 
-func (b *PgsqlBackend) onCreate(name string, stage *Stage) {
-	b.Backend_.OnCreate(name, stage)
+func (b *PgsqlBackend) onCreate(compName string, stage *Stage) {
+	b.Backend_.OnCreate(compName, stage)
 }
 
 func (b *PgsqlBackend) OnConfigure() {
@@ -84,9 +84,9 @@ func (b *PgsqlBackend) OnPrepare() {
 	b.PrepareNodes()
 }
 
-func (b *PgsqlBackend) CreateNode(name string) Node {
+func (b *PgsqlBackend) CreateNode(compName string) Node {
 	node := new(pgsqlNode)
-	node.onCreate(name, b.Stage(), b)
+	node.onCreate(compName, b.Stage(), b)
 	b.AddNode(node)
 	return node
 }
@@ -97,8 +97,8 @@ type pgsqlNode struct {
 	Node_[*PgsqlBackend]
 }
 
-func (n *pgsqlNode) onCreate(name string, stage *Stage, backend *PgsqlBackend) {
-	n.Node_.OnCreate(name, stage, backend)
+func (n *pgsqlNode) onCreate(compName string, stage *Stage, backend *PgsqlBackend) {
+	n.Node_.OnCreate(compName, stage, backend)
 }
 
 func (n *pgsqlNode) OnConfigure() {

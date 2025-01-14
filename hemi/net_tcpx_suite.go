@@ -153,7 +153,7 @@ type TCPXRouter struct {
 	// Mixins
 	_tcpxHolder_ // to carry configs used by gates
 	// Assocs
-	dealets compDict[TCPXDealet] // defined dealets. indexed by name
+	dealets compDict[TCPXDealet] // defined dealets. indexed by component name
 	cases   []*tcpxCase          // defined cases. the order must be kept, so we use list. TODO: use ordered map?
 	// States
 	maxConcurrentConnsPerGate int32      // max concurrent connections allowed per gate
@@ -161,8 +161,8 @@ type TCPXRouter struct {
 	logger                    *Logger    // router access logger
 }
 
-func (r *TCPXRouter) onCreate(name string, stage *Stage) {
-	r.Server_.OnCreate(name, stage)
+func (r *TCPXRouter) onCreate(compName string, stage *Stage) {
+	r.Server_.OnCreate(compName, stage)
 	r.dealets = make(compDict[TCPXDealet])
 }
 
@@ -203,9 +203,9 @@ func (r *TCPXRouter) OnPrepare() {
 
 func (r *TCPXRouter) MaxConcurrentConnsPerGate() int32 { return r.maxConcurrentConnsPerGate }
 
-func (r *TCPXRouter) createDealet(sign string, name string) TCPXDealet {
-	if _, ok := r.dealets[name]; ok {
-		UseExitln("conflicting dealet with a same name in router")
+func (r *TCPXRouter) createDealet(sign string, compName string) TCPXDealet {
+	if _, ok := r.dealets[compName]; ok {
+		UseExitln("conflicting dealet with a same component name in router")
 	}
 	creatorsLock.RLock()
 	defer creatorsLock.RUnlock()
@@ -213,24 +213,24 @@ func (r *TCPXRouter) createDealet(sign string, name string) TCPXDealet {
 	if !ok {
 		UseExitln("unknown dealet sign: " + sign)
 	}
-	dealet := create(name, r.stage, r)
+	dealet := create(compName, r.stage, r)
 	dealet.setShell(dealet)
-	r.dealets[name] = dealet
+	r.dealets[compName] = dealet
 	return dealet
 }
-func (r *TCPXRouter) createCase(name string) *tcpxCase {
-	if r.hasCase(name) {
-		UseExitln("conflicting case with a same name")
+func (r *TCPXRouter) createCase(compName string) *tcpxCase {
+	if r.hasCase(compName) {
+		UseExitln("conflicting case with a same component name")
 	}
 	kase := new(tcpxCase)
-	kase.onCreate(name, r)
+	kase.onCreate(compName, r)
 	kase.setShell(kase)
 	r.cases = append(r.cases, kase)
 	return kase
 }
-func (r *TCPXRouter) hasCase(name string) bool {
+func (r *TCPXRouter) hasCase(compName string) bool {
 	for _, kase := range r.cases {
-		if kase.Name() == name {
+		if kase.CompName() == compName {
 			return true
 		}
 	}
@@ -267,7 +267,7 @@ func (r *TCPXRouter) Serve() { // runner
 		r.logger.Close()
 	}
 	if DebugLevel() >= 2 {
-		Printf("tcpxRouter=%s done\n", r.Name())
+		Printf("tcpxRouter=%s done\n", r.CompName())
 	}
 	r.stage.DecSub() // router
 }
@@ -560,8 +560,8 @@ type tcpxCase struct {
 	matcher  func(kase *tcpxCase, conn *TCPXConn, value []byte) bool
 }
 
-func (c *tcpxCase) onCreate(name string, router *TCPXRouter) {
-	c.MakeComp(name)
+func (c *tcpxCase) onCreate(compName string, router *TCPXRouter) {
+	c.MakeComp(compName)
 	c.router = router
 }
 func (c *tcpxCase) OnShutdown() {
@@ -679,9 +679,9 @@ type TCPXDealet_ struct {
 //////////////////////////////////////// TCPX backend implementation ////////////////////////////////////////
 
 func init() {
-	RegisterBackend("tcpxBackend", func(name string, stage *Stage) Backend {
+	RegisterBackend("tcpxBackend", func(compName string, stage *Stage) Backend {
 		b := new(TCPXBackend)
-		b.onCreate(name, stage)
+		b.onCreate(compName, stage)
 		return b
 	})
 }
@@ -693,8 +693,8 @@ type TCPXBackend struct {
 	// States
 }
 
-func (b *TCPXBackend) onCreate(name string, stage *Stage) {
-	b.Backend_.OnCreate(name, stage)
+func (b *TCPXBackend) onCreate(compName string, stage *Stage) {
+	b.Backend_.OnCreate(compName, stage)
 }
 
 func (b *TCPXBackend) OnConfigure() {
@@ -710,9 +710,9 @@ func (b *TCPXBackend) OnPrepare() {
 	b.PrepareNodes()
 }
 
-func (b *TCPXBackend) CreateNode(name string) Node {
+func (b *TCPXBackend) CreateNode(compName string) Node {
 	node := new(tcpxNode)
-	node.onCreate(name, b.stage, b)
+	node.onCreate(compName, b.stage, b)
 	b.AddNode(node)
 	return node
 }
@@ -731,8 +731,8 @@ type tcpxNode struct {
 	// States
 }
 
-func (n *tcpxNode) onCreate(name string, stage *Stage, backend *TCPXBackend) {
-	n.Node_.OnCreate(name, stage, backend)
+func (n *tcpxNode) onCreate(compName string, stage *Stage, backend *TCPXBackend) {
+	n.Node_.OnCreate(compName, stage, backend)
 }
 
 func (n *tcpxNode) OnConfigure() {
@@ -751,14 +751,14 @@ func (n *tcpxNode) Maintain() { // runner
 	n.markDown()
 	n.WaitSubs() // conns. TODO: max timeout?
 	if DebugLevel() >= 2 {
-		Printf("tcpxNode=%s done\n", n.name)
+		Printf("tcpxNode=%s done\n", n.compName)
 	}
 	n.backend.DecSub() // node
 }
 
 func (n *tcpxNode) dial() (*TConn, error) {
 	if DebugLevel() >= 2 {
-		Printf("tcpxNode=%s dial %s\n", n.name, n.address)
+		Printf("tcpxNode=%s dial %s\n", n.compName, n.address)
 	}
 	var (
 		conn *TConn
@@ -785,7 +785,7 @@ func (n *tcpxNode) _dialUDS() (*TConn, error) {
 		return nil, err
 	}
 	if DebugLevel() >= 2 {
-		Printf("tcpxNode=%s dial %s OK!\n", n.name, n.address)
+		Printf("tcpxNode=%s dial %s OK!\n", n.compName, n.address)
 	}
 	connID := n.nextConnID()
 	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
@@ -804,7 +804,7 @@ func (n *tcpxNode) _dialTLS() (*TConn, error) {
 		return nil, err
 	}
 	if DebugLevel() >= 2 {
-		Printf("tcpxNode=%s dial %s OK!\n", n.name, n.address)
+		Printf("tcpxNode=%s dial %s OK!\n", n.compName, n.address)
 	}
 	connID := n.nextConnID()
 	tlsConn := tls.Client(netConn, n.tlsConfig)
@@ -827,7 +827,7 @@ func (n *tcpxNode) _dialTCP() (*TConn, error) {
 		return nil, err
 	}
 	if DebugLevel() >= 2 {
-		Printf("tcpxNode=%s dial %s OK!\n", n.name, n.address)
+		Printf("tcpxNode=%s dial %s OK!\n", n.compName, n.address)
 	}
 	connID := n.nextConnID()
 	rawConn, err := netConn.(*net.TCPConn).SyscallConn()

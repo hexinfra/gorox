@@ -18,9 +18,9 @@ func init() {
 }
 
 func init() {
-	RegisterHandlet("sharedHandlet", func(name string, stage *Stage, webapp *Webapp) Handlet {
+	RegisterHandlet("sharedHandlet", func(compName string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(sharedHandlet)
-		h.onCreate(name, stage, webapp)
+		h.onCreate(compName, stage, webapp)
 		return h
 	})
 }
@@ -35,8 +35,8 @@ type sharedHandlet struct {
 	// States
 }
 
-func (h *sharedHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(name)
+func (h *sharedHandlet) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	h.MakeComp(compName)
 	h.stage = stage
 	h.webapp = webapp
 }

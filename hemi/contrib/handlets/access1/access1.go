@@ -24,9 +24,9 @@ const (
 )
 
 func init() {
-	RegisterHandlet("access1Checker", func(name string, stage *Stage, webapp *Webapp) Handlet {
+	RegisterHandlet("access1Checker", func(compName string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(access1Checker)
-		h.onCreate(name, stage, webapp)
+		h.onCreate(compName, stage, webapp)
 		return h
 	})
 }
@@ -46,8 +46,8 @@ type access1Checker struct {
 	denyRules  []*ipRule
 }
 
-func (h *access1Checker) onCreate(name string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(name)
+func (h *access1Checker) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	h.MakeComp(compName)
 	h.stage = stage
 	h.webapp = webapp
 }

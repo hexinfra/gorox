@@ -105,8 +105,8 @@ type Server_[G Gate] struct {
 	numGates          int32  // number of gates
 }
 
-func (s *Server_[G]) OnCreate(name string, stage *Stage) {
-	s.MakeComp(name)
+func (s *Server_[G]) OnCreate(compName string, stage *Stage) {
+	s.MakeComp(compName)
 	s.stage = stage
 }
 func (s *Server_[G]) OnShutdown() {
@@ -220,7 +220,7 @@ type Backend interface {
 	Component
 	// Methods
 	Maintain() // runner
-	CreateNode(name string) Node
+	CreateNode(compName string) Node
 }
 
 // Backend_ is the parent for backends.
@@ -238,8 +238,8 @@ type Backend_[N Node] struct {
 	healthCheck  any          // TODO
 }
 
-func (b *Backend_[N]) OnCreate(name string, stage *Stage) {
-	b.MakeComp(name)
+func (b *Backend_[N]) OnCreate(compName string, stage *Stage) {
+	b.MakeComp(compName)
 	b.stage = stage
 	b.nodeIndex.Store(-1)
 	b.healthCheck = nil // TODO
@@ -301,7 +301,7 @@ func (b *Backend_[N]) Maintain() { // runner
 	b.WaitSubs() // nodes
 
 	if DebugLevel() >= 2 {
-		Printf("backend=%s done\n", b.Name())
+		Printf("backend=%s done\n", b.CompName())
 	}
 
 	b.stage.DecSub() // backend
@@ -353,8 +353,8 @@ type Node_[B Backend] struct {
 	health      any           // TODO
 }
 
-func (n *Node_[B]) OnCreate(name string, stage *Stage, backend B) {
-	n.MakeComp(name)
+func (n *Node_[B]) OnCreate(compName string, stage *Stage, backend B) {
+	n.MakeComp(compName)
 	n.stage = stage
 	n.backend = backend
 	n.health = nil // TODO

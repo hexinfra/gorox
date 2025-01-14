@@ -13,9 +13,9 @@ import (
 )
 
 func init() {
-	RegisterReviser("gunzipReviser", func(name string, stage *Stage, webapp *Webapp) Reviser {
+	RegisterReviser("gunzipReviser", func(compName string, stage *Stage, webapp *Webapp) Reviser {
 		r := new(gunzipReviser)
-		r.onCreate(name, stage, webapp)
+		r.onCreate(compName, stage, webapp)
 		return r
 	})
 }
@@ -31,8 +31,8 @@ type gunzipReviser struct {
 	onContentTypes []string
 }
 
-func (r *gunzipReviser) onCreate(name string, stage *Stage, webapp *Webapp) {
-	r.MakeComp(name)
+func (r *gunzipReviser) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	r.MakeComp(compName)
 	r.stage = stage
 	r.webapp = webapp
 }

@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterHandlet("favicon", func(name string, stage *Stage, webapp *Webapp) Handlet {
+	RegisterHandlet("favicon", func(compName string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(faviconHandlet)
-		h.onCreate(name, stage, webapp)
+		h.onCreate(compName, stage, webapp)
 		return h
 	})
 }
@@ -29,8 +29,8 @@ type faviconHandlet struct {
 	// States
 }
 
-func (h *faviconHandlet) onCreate(name string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(name)
+func (h *faviconHandlet) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	h.MakeComp(compName)
 	h.stage = stage
 	h.webapp = webapp
 }

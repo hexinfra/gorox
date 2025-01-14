@@ -34,9 +34,9 @@ type grpcCall_ struct {
 //////////////////////////////////////// gRPC server implementation ////////////////////////////////////////
 
 func init() {
-	RegisterServer("grpcServer", func(name string, stage *Stage) Server {
+	RegisterServer("grpcServer", func(compName string, stage *Stage) Server {
 		s := new(grpcServer)
-		s.onCreate(name, stage)
+		s.onCreate(compName, stage)
 		return s
 	})
 }
@@ -57,8 +57,8 @@ type grpcServer struct {
 	maxConcurrentConnsPerGate int32                   // max concurrent connections allowed per gate
 }
 
-func (s *grpcServer) onCreate(name string, stage *Stage) {
-	s.Server_.OnCreate(name, stage)
+func (s *grpcServer) onCreate(compName string, stage *Stage) {
+	s.Server_.OnCreate(compName, stage)
 }
 
 func (s *grpcServer) OnConfigure() {

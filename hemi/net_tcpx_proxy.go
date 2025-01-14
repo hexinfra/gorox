@@ -8,9 +8,9 @@
 package hemi
 
 func init() {
-	RegisterTCPXDealet("tcpxProxy", func(name string, stage *Stage, router *TCPXRouter) TCPXDealet {
+	RegisterTCPXDealet("tcpxProxy", func(compName string, stage *Stage, router *TCPXRouter) TCPXDealet {
 		d := new(tcpxProxy)
-		d.onCreate(name, stage, router)
+		d.onCreate(compName, stage, router)
 		return d
 	})
 }
@@ -27,8 +27,8 @@ type tcpxProxy struct {
 	TCPXProxyConfig // embeded
 }
 
-func (d *tcpxProxy) onCreate(name string, stage *Stage, router *TCPXRouter) {
-	d.MakeComp(name)
+func (d *tcpxProxy) onCreate(compName string, stage *Stage, router *TCPXRouter) {
+	d.MakeComp(compName)
 	d.stage = stage
 	d.router = router
 }
@@ -39,13 +39,13 @@ func (d *tcpxProxy) OnShutdown() {
 func (d *tcpxProxy) OnConfigure() {
 	// toBackend
 	if v, ok := d.Find("toBackend"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if backend := d.stage.Backend(name); backend == nil {
-				UseExitf("unknown backend: '%s'\n", name)
+		if compName, ok := v.String(); ok && compName != "" {
+			if backend := d.stage.Backend(compName); backend == nil {
+				UseExitf("unknown backend: '%s'\n", compName)
 			} else if tcpxBackend, ok := backend.(*TCPXBackend); ok {
 				d.backend = tcpxBackend
 			} else {
-				UseExitf("incorrect backend '%s' for tcpxProxy\n", name)
+				UseExitf("incorrect backend '%s' for tcpxProxy\n", compName)
 			}
 		} else {
 			UseExitln("invalid toBackend")

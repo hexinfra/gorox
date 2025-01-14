@@ -38,8 +38,8 @@ type Service struct {
 	bundlets        map[string]Bundlet // ...
 }
 
-func (s *Service) onCreate(name string, stage *Stage) {
-	s.MakeComp(name)
+func (s *Service) onCreate(compName string, stage *Stage) {
+	s.MakeComp(compName)
 	s.stage = stage
 }
 func (s *Service) OnShutdown() {
@@ -61,7 +61,7 @@ func (s *Service) OnPrepare() {
 	}
 
 	initsLock.RLock()
-	serviceInit := serviceInits[s.name]
+	serviceInit := serviceInits[s.compName]
 	initsLock.RUnlock()
 	if serviceInit != nil {
 		if err := serviceInit(s); err != nil {
@@ -78,7 +78,7 @@ func (s *Service) maintain() { // runner
 		s.logger.Close()
 	}
 	if DebugLevel() >= 2 {
-		Printf("service=%s done\n", s.Name())
+		Printf("service=%s done\n", s.CompName())
 	}
 	s.stage.DecSub() // service
 }

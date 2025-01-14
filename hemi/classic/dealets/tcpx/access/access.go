@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterTCPXDealet("accessDealet", func(name string, stage *Stage, router *TCPXRouter) TCPXDealet {
+	RegisterTCPXDealet("accessDealet", func(compName string, stage *Stage, router *TCPXRouter) TCPXDealet {
 		d := new(accessDealet)
-		d.onCreate(name, stage, router)
+		d.onCreate(compName, stage, router)
 		return d
 	})
 }
@@ -29,8 +29,8 @@ type accessDealet struct {
 	// States
 }
 
-func (d *accessDealet) onCreate(name string, stage *Stage, router *TCPXRouter) {
-	d.MakeComp(name)
+func (d *accessDealet) onCreate(compName string, stage *Stage, router *TCPXRouter) {
+	d.MakeComp(compName)
 	d.stage = stage
 	d.router = router
 }

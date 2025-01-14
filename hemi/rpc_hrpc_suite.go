@@ -34,9 +34,9 @@ type hrpcCall_ struct {
 //////////////////////////////////////// HRPC server implementation ////////////////////////////////////////
 
 func init() {
-	RegisterServer("hrpcServer", func(name string, stage *Stage) Server {
+	RegisterServer("hrpcServer", func(compName string, stage *Stage) Server {
 		s := new(hrpcServer)
-		s.onCreate(name, stage)
+		s.onCreate(compName, stage)
 		return s
 	})
 }
@@ -57,8 +57,8 @@ type hrpcServer struct {
 	maxConcurrentConnsPerGate int32                   // max concurrent connections allowed per gate
 }
 
-func (s *hrpcServer) onCreate(name string, stage *Stage) {
-	s.Server_.OnCreate(name, stage)
+func (s *hrpcServer) onCreate(compName string, stage *Stage) {
+	s.Server_.OnCreate(compName, stage)
 }
 
 func (s *hrpcServer) OnConfigure() {

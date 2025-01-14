@@ -65,9 +65,9 @@ type Webapp struct {
 	stage    *Stage            // current stage
 	stater   Stater            // the stater which is used by this webapp
 	servers  []HTTPServer      // bound http servers. may be empty
-	handlets compDict[Handlet] // defined handlets. indexed by name
-	revisers compDict[Reviser] // defined revisers. indexed by name
-	socklets compDict[Socklet] // defined socklets. indexed by name
+	handlets compDict[Handlet] // defined handlets. indexed by component name
+	revisers compDict[Reviser] // defined revisers. indexed by component name
+	socklets compDict[Socklet] // defined socklets. indexed by component name
 	rules    []*Rule           // defined rules. the order must be kept, so we use list. TODO: use ordered map?
 	// States
 	hostnames        [][]byte          // like: ("www.example.com", "1.2.3.4", "fff8::1")
@@ -89,8 +89,8 @@ type Webapp struct {
 	numRevisers      uint8             // used number of revisersByID in this webapp
 }
 
-func (a *Webapp) onCreate(name string, stage *Stage) {
-	a.MakeComp(name)
+func (a *Webapp) onCreate(compName string, stage *Stage) {
+	a.MakeComp(compName)
 	a.stage = stage
 	a.handlets = make(compDict[Handlet])
 	a.revisers = make(compDict[Reviser])
@@ -192,9 +192,9 @@ func (a *Webapp) OnConfigure() {
 
 	// withStater
 	if v, ok := a.Find("withStater"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if stater := a.stage.Stater(name); stater == nil {
-				UseExitf("unknown stater: '%s'\n", name)
+		if compName, ok := v.String(); ok && compName != "" {
+			if stater := a.stage.Stater(compName); stater == nil {
+				UseExitf("unknown stater: '%s'\n", compName)
 			} else {
 				a.stater = stater
 			}
@@ -230,7 +230,7 @@ func (a *Webapp) OnPrepare() {
 	}
 
 	initsLock.RLock()
-	webappInit := webappInits[a.name]
+	webappInit := webappInits[a.compName]
 	initsLock.RUnlock()
 	if webappInit != nil {
 		if err := webappInit(a); err != nil {
@@ -239,7 +239,7 @@ func (a *Webapp) OnPrepare() {
 	}
 
 	if len(a.rules) == 0 {
-		Printf("no rules defined for webapp: '%s'\n", a.name)
+		Printf("no rules defined for webapp: '%s'\n", a.compName)
 	}
 }
 
@@ -261,14 +261,14 @@ func (a *Webapp) maintain() { // runner
 		a.logger.Close()
 	}
 	if DebugLevel() >= 2 {
-		Printf("webapp=%s done\n", a.Name())
+		Printf("webapp=%s done\n", a.CompName())
 	}
 	a.stage.DecSub() // webapp
 }
 
-func (a *Webapp) createHandlet(sign string, name string) Handlet {
-	if a.Handlet(name) != nil {
-		UseExitln("conflicting handlet with a same name in webapp")
+func (a *Webapp) createHandlet(sign string, compName string) Handlet {
+	if a.Handlet(compName) != nil {
+		UseExitln("conflicting handlet with a same component name in webapp")
 	}
 	creatorsLock.RLock()
 	create, ok := handletCreators[sign]
@@ -276,17 +276,17 @@ func (a *Webapp) createHandlet(sign string, name string) Handlet {
 	if !ok {
 		UseExitln("unknown handlet sign: " + sign)
 	}
-	handlet := create(name, a.stage, a)
+	handlet := create(compName, a.stage, a)
 	handlet.setShell(handlet)
-	a.handlets[name] = handlet
+	a.handlets[compName] = handlet
 	return handlet
 }
-func (a *Webapp) createReviser(sign string, name string) Reviser {
+func (a *Webapp) createReviser(sign string, compName string) Reviser {
 	if a.numRevisers == 255 {
 		UseExitln("cannot create reviser: too many revisers in one webapp")
 	}
-	if a.Reviser(name) != nil {
-		UseExitln("conflicting reviser with a same name in webapp")
+	if a.Reviser(compName) != nil {
+		UseExitln("conflicting reviser with a same component name in webapp")
 	}
 	creatorsLock.RLock()
 	create, ok := reviserCreators[sign]
@@ -294,17 +294,17 @@ func (a *Webapp) createReviser(sign string, name string) Reviser {
 	if !ok {
 		UseExitln("unknown reviser sign: " + sign)
 	}
-	reviser := create(name, a.stage, a)
+	reviser := create(compName, a.stage, a)
 	reviser.setShell(reviser)
 	reviser.setID(a.numRevisers)
-	a.revisers[name] = reviser
+	a.revisers[compName] = reviser
 	a.revisersByID[a.numRevisers] = reviser
 	a.numRevisers++
 	return reviser
 }
-func (a *Webapp) createSocklet(sign string, name string) Socklet {
-	if a.Socklet(name) != nil {
-		UseExitln("conflicting socklet with a same name in webapp")
+func (a *Webapp) createSocklet(sign string, compName string) Socklet {
+	if a.Socklet(compName) != nil {
+		UseExitln("conflicting socklet with a same component name in webapp")
 	}
 	creatorsLock.RLock()
 	create, ok := sockletCreators[sign]
@@ -312,17 +312,17 @@ func (a *Webapp) createSocklet(sign string, name string) Socklet {
 	if !ok {
 		UseExitln("unknown socklet sign: " + sign)
 	}
-	socklet := create(name, a.stage, a)
+	socklet := create(compName, a.stage, a)
 	socklet.setShell(socklet)
-	a.socklets[name] = socklet
+	a.socklets[compName] = socklet
 	return socklet
 }
-func (a *Webapp) createRule(name string) *Rule {
-	if a.Rule(name) != nil {
-		UseExitln("conflicting rule with a same name")
+func (a *Webapp) createRule(compName string) *Rule {
+	if a.Rule(compName) != nil {
+		UseExitln("conflicting rule with a same component name")
 	}
 	rule := new(Rule)
-	rule.onCreate(name, a)
+	rule.onCreate(compName, a)
 	rule.setShell(rule)
 	a.rules = append(a.rules, rule)
 	return rule
@@ -330,12 +330,12 @@ func (a *Webapp) createRule(name string) *Rule {
 
 func (a *Webapp) bindServer(server HTTPServer) { a.servers = append(a.servers, server) }
 
-func (a *Webapp) Handlet(name string) Handlet { return a.handlets[name] }
-func (a *Webapp) Reviser(name string) Reviser { return a.revisers[name] }
-func (a *Webapp) Socklet(name string) Socklet { return a.socklets[name] }
-func (a *Webapp) Rule(name string) *Rule {
+func (a *Webapp) Handlet(compName string) Handlet { return a.handlets[compName] }
+func (a *Webapp) Reviser(compName string) Reviser { return a.revisers[compName] }
+func (a *Webapp) Socklet(compName string) Socklet { return a.socklets[compName] }
+func (a *Webapp) Rule(compName string) *Rule {
 	for _, rule := range a.rules {
-		if rule.name == name {
+		if rule.compName == compName {
 			return rule
 		}
 	}
@@ -426,8 +426,8 @@ type Rule struct {
 	matcher    func(rule *Rule, req Request, value []byte) bool
 }
 
-func (r *Rule) onCreate(name string, webapp *Webapp) {
-	r.MakeComp(name)
+func (r *Rule) onCreate(compName string, webapp *Webapp) {
+	r.MakeComp(compName)
 	r.webapp = webapp
 }
 func (r *Rule) OnShutdown() {
@@ -486,12 +486,12 @@ func (r *Rule) OnConfigure() {
 		if len(r.handlets) > 0 {
 			UseExitln("specifying handlets is not allowed while there are literal handlets")
 		}
-		if names, ok := v.StringList(); ok {
-			for _, name := range names {
-				if handlet := r.webapp.Handlet(name); handlet != nil {
+		if compNames, ok := v.StringList(); ok {
+			for _, compName := range compNames {
+				if handlet := r.webapp.Handlet(compName); handlet != nil {
 					r.handlets = append(r.handlets, handlet)
 				} else {
-					UseExitf("handlet '%s' does not exist\n", name)
+					UseExitf("handlet '%s' does not exist\n", compName)
 				}
 			}
 		} else {
@@ -504,12 +504,12 @@ func (r *Rule) OnConfigure() {
 		if len(r.revisers) != 0 {
 			UseExitln("specifying revisers is not allowed while there are literal revisers")
 		}
-		if names, ok := v.StringList(); ok {
-			for _, name := range names {
-				if reviser := r.webapp.Reviser(name); reviser != nil {
+		if compNames, ok := v.StringList(); ok {
+			for _, compName := range compNames {
+				if reviser := r.webapp.Reviser(compName); reviser != nil {
 					r.revisers = append(r.revisers, reviser)
 				} else {
-					UseExitf("reviser '%s' does not exist\n", name)
+					UseExitf("reviser '%s' does not exist\n", compName)
 				}
 			}
 		} else {
@@ -525,12 +525,12 @@ func (r *Rule) OnConfigure() {
 		if len(r.socklets) > 0 {
 			UseExitln("specifying socklets is not allowed while there are literal socklets")
 		}
-		if names, ok := v.StringList(); ok {
-			for _, name := range names {
-				if socklet := r.webapp.Socklet(name); socklet != nil {
+		if compNames, ok := v.StringList(); ok {
+			for _, compName := range compNames {
+				if socklet := r.webapp.Socklet(compName); socklet != nil {
 					r.socklets = append(r.socklets, socklet)
 				} else {
-					UseExitf("socklet '%s' does not exist\n", name)
+					UseExitf("socklet '%s' does not exist\n", compName)
 				}
 			}
 		} else {
@@ -747,8 +747,8 @@ func (h *Handlet_) Dispatch(req Request, resp Response, notFound Handle) {
 			handle(req, resp)
 			return
 		}
-		if name := h.mapper.HandleName(req); name != "" {
-			if rMethod := h.rShell.MethodByName(name); rMethod.IsValid() {
+		if handleName := h.mapper.HandleName(req); handleName != "" {
+			if rMethod := h.rShell.MethodByName(handleName); rMethod.IsValid() {
 				rMethod.Call([]reflect.Value{reflect.ValueOf(req), reflect.ValueOf(resp)})
 				return
 			}

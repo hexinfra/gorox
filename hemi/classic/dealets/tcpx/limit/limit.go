@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterTCPXDealet("limitDealet", func(name string, stage *Stage, router *TCPXRouter) TCPXDealet {
+	RegisterTCPXDealet("limitDealet", func(compName string, stage *Stage, router *TCPXRouter) TCPXDealet {
 		d := new(limitDealet)
-		d.onCreate(name, stage, router)
+		d.onCreate(compName, stage, router)
 		return d
 	})
 }
@@ -29,8 +29,8 @@ type limitDealet struct {
 	// States
 }
 
-func (d *limitDealet) onCreate(name string, stage *Stage, router *TCPXRouter) {
-	d.MakeComp(name)
+func (d *limitDealet) onCreate(compName string, stage *Stage, router *TCPXRouter) {
+	d.MakeComp(compName)
 	d.stage = stage
 	d.router = router
 }

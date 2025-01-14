@@ -97,15 +97,15 @@ type UDPXRouter struct {
 	// Mixins
 	_udpxHolder_ // to carry configs used by gates
 	// Assocs
-	dealets compDict[UDPXDealet] // defined dealets. indexed by name
+	dealets compDict[UDPXDealet] // defined dealets. indexed by component name
 	cases   []*udpxCase          // defined cases. the order must be kept, so we use list. TODO: use ordered map?
 	// States
 	accessLog *LogConfig // ...
 	logger    *Logger    // router access logger
 }
 
-func (r *UDPXRouter) onCreate(name string, stage *Stage) {
-	r.Server_.OnCreate(name, stage)
+func (r *UDPXRouter) onCreate(compName string, stage *Stage) {
+	r.Server_.OnCreate(compName, stage)
 	r.dealets = make(compDict[UDPXDealet])
 }
 
@@ -137,9 +137,9 @@ func (r *UDPXRouter) OnPrepare() {
 	}
 }
 
-func (r *UDPXRouter) createDealet(sign string, name string) UDPXDealet {
-	if _, ok := r.dealets[name]; ok {
-		UseExitln("conflicting dealet with a same name in router")
+func (r *UDPXRouter) createDealet(sign string, compName string) UDPXDealet {
+	if _, ok := r.dealets[compName]; ok {
+		UseExitln("conflicting dealet with a same component name in router")
 	}
 	creatorsLock.RLock()
 	defer creatorsLock.RUnlock()
@@ -147,24 +147,24 @@ func (r *UDPXRouter) createDealet(sign string, name string) UDPXDealet {
 	if !ok {
 		UseExitln("unknown dealet sign: " + sign)
 	}
-	dealet := create(name, r.stage, r)
+	dealet := create(compName, r.stage, r)
 	dealet.setShell(dealet)
-	r.dealets[name] = dealet
+	r.dealets[compName] = dealet
 	return dealet
 }
-func (r *UDPXRouter) createCase(name string) *udpxCase {
-	if r.hasCase(name) {
-		UseExitln("conflicting case with a same name")
+func (r *UDPXRouter) createCase(compName string) *udpxCase {
+	if r.hasCase(compName) {
+		UseExitln("conflicting case with a same component name")
 	}
 	kase := new(udpxCase)
-	kase.onCreate(name, r)
+	kase.onCreate(compName, r)
 	kase.setShell(kase)
 	r.cases = append(r.cases, kase)
 	return kase
 }
-func (r *UDPXRouter) hasCase(name string) bool {
+func (r *UDPXRouter) hasCase(compName string) bool {
 	for _, kase := range r.cases {
-		if kase.Name() == name {
+		if kase.CompName() == compName {
 			return true
 		}
 	}
@@ -199,7 +199,7 @@ func (r *UDPXRouter) Serve() { // runner
 		r.logger.Close()
 	}
 	if DebugLevel() >= 2 {
-		Printf("udpxRouter=%s done\n", r.Name())
+		Printf("udpxRouter=%s done\n", r.CompName())
 	}
 	r.stage.DecSub() // router
 }
@@ -347,8 +347,8 @@ type udpxCase struct {
 	matcher  func(kase *udpxCase, conn *UDPXConn, value []byte) bool
 }
 
-func (c *udpxCase) onCreate(name string, router *UDPXRouter) {
-	c.MakeComp(name)
+func (c *udpxCase) onCreate(compName string, router *UDPXRouter) {
+	c.MakeComp(compName)
 	c.router = router
 }
 func (c *udpxCase) OnShutdown() {
@@ -466,9 +466,9 @@ type UDPXDealet_ struct {
 //////////////////////////////////////// UDPX backend implementation ////////////////////////////////////////
 
 func init() {
-	RegisterBackend("udpxBackend", func(name string, stage *Stage) Backend {
+	RegisterBackend("udpxBackend", func(compName string, stage *Stage) Backend {
 		b := new(UDPXBackend)
-		b.onCreate(name, stage)
+		b.onCreate(compName, stage)
 		return b
 	})
 }
@@ -480,8 +480,8 @@ type UDPXBackend struct {
 	// States
 }
 
-func (b *UDPXBackend) onCreate(name string, stage *Stage) {
-	b.Backend_.OnCreate(name, stage)
+func (b *UDPXBackend) onCreate(compName string, stage *Stage) {
+	b.Backend_.OnCreate(compName, stage)
 }
 
 func (b *UDPXBackend) OnConfigure() {
@@ -497,9 +497,9 @@ func (b *UDPXBackend) OnPrepare() {
 	b.PrepareNodes()
 }
 
-func (b *UDPXBackend) CreateNode(name string) Node {
+func (b *UDPXBackend) CreateNode(compName string) Node {
 	node := new(udpxNode)
-	node.onCreate(name, b.stage, b)
+	node.onCreate(compName, b.stage, b)
 	b.AddNode(node)
 	return node
 }
@@ -518,8 +518,8 @@ type udpxNode struct {
 	// States
 }
 
-func (n *udpxNode) onCreate(name string, stage *Stage, backend *UDPXBackend) {
-	n.Node_.OnCreate(name, stage, backend)
+func (n *udpxNode) onCreate(compName string, stage *Stage, backend *UDPXBackend) {
+	n.Node_.OnCreate(compName, stage, backend)
 }
 
 func (n *udpxNode) OnConfigure() {
@@ -538,7 +538,7 @@ func (n *udpxNode) Maintain() { // runner
 	n.markDown()
 	// TODO: wait for all conns
 	if DebugLevel() >= 2 {
-		Printf("udpxNode=%s done\n", n.name)
+		Printf("udpxNode=%s done\n", n.compName)
 	}
 	n.backend.DecSub() // node
 }

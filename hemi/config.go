@@ -38,7 +38,7 @@ type configurator struct {
 	// States
 	tokens  []token // the token list
 	index   int     // index of current token, for parsing
-	counter int     // used to create names for components without a name
+	counter int     // used to create component names for components without a component name
 }
 
 func (c *configurator) stageFromText(text string) (stage *Stage, err error) {
@@ -98,7 +98,7 @@ func (c *configurator) _forwardCheckEOF() {
 	}
 }
 
-func (c *configurator) makeName() string {
+func (c *configurator) makeCompName() string {
 	c.counter++
 	return strconv.Itoa(c.counter)
 }
@@ -165,7 +165,7 @@ func (c *configurator) parseFixture(sign *token, stage *Stage) { // xxxFixture {
 	c.forwardToken()
 	c._parseLeaf(fixture)
 }
-func (c *configurator) parseBackend(sign *token, stage *Stage) { // xxxBackend <name> {}
+func (c *configurator) parseBackend(sign *token, stage *Stage) { // xxxBackend <compName> {}
 	backendName := c.forwardExpectToken(tokenString)
 	backend := stage.createBackend(sign.text, backendName.text)
 	backend.setParent(stage)
@@ -190,48 +190,48 @@ func (c *configurator) parseBackend(sign *token, stage *Stage) { // xxxBackend <
 		}
 	}
 }
-func (c *configurator) parseNode(backend Backend) { // node <name> {}
+func (c *configurator) parseNode(backend Backend) { // node <compName> {}
 	var nodeName string
 	if current := c.forwardToken(); current.kind == tokenString {
 		nodeName = current.text
 		c.forwardToken()
 	} else {
-		nodeName = c.makeName()
+		nodeName = c.makeCompName()
 	}
 	node := backend.CreateNode(nodeName)
 	node.setParent(backend)
 	c._parseLeaf(node)
 }
-func (c *configurator) parseQUIXRouter(stage *Stage) { // quixRouter <name> {}
+func (c *configurator) parseQUIXRouter(stage *Stage) { // quixRouter <compName> {}
 	parseComponentR(c, stage, stage.createQUIXRouter, compQUIXDealet, c.parseQUIXDealet, c.parseQUIXCase)
 }
-func (c *configurator) parseTCPXRouter(stage *Stage) { // tcpxRouter <name> {}
+func (c *configurator) parseTCPXRouter(stage *Stage) { // tcpxRouter <compName> {}
 	parseComponentR(c, stage, stage.createTCPXRouter, compTCPXDealet, c.parseTCPXDealet, c.parseTCPXCase)
 }
-func (c *configurator) parseUDPXRouter(stage *Stage) { // udpxRouter <name> {}
+func (c *configurator) parseUDPXRouter(stage *Stage) { // udpxRouter <compName> {}
 	parseComponentR(c, stage, stage.createUDPXRouter, compUDPXDealet, c.parseUDPXDealet, c.parseUDPXCase)
 }
-func (c *configurator) parseQUIXDealet(sign *token, router *QUIXRouter, kase *quixCase) { // qqqDealet <name> {}, qqqDealet {}
+func (c *configurator) parseQUIXDealet(sign *token, router *QUIXRouter, kase *quixCase) { // qqqDealet <compName> {}, qqqDealet {}
 	parseComponent1(c, sign, router, router.createDealet, kase, kase.addDealet)
 }
-func (c *configurator) parseTCPXDealet(sign *token, router *TCPXRouter, kase *tcpxCase) { // tttDealet <name> {}, tttDealet {}
+func (c *configurator) parseTCPXDealet(sign *token, router *TCPXRouter, kase *tcpxCase) { // tttDealet <compName> {}, tttDealet {}
 	parseComponent1(c, sign, router, router.createDealet, kase, kase.addDealet)
 }
-func (c *configurator) parseUDPXDealet(sign *token, router *UDPXRouter, kase *udpxCase) { // uuuDealet <name> {}, uuuDealet {}
+func (c *configurator) parseUDPXDealet(sign *token, router *UDPXRouter, kase *udpxCase) { // uuuDealet <compName> {}, uuuDealet {}
 	parseComponent1(c, sign, router, router.createDealet, kase, kase.addDealet)
 }
-func (c *configurator) parseQUIXCase(router *QUIXRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
-	kase := router.createCase(c.makeName()) // use a temp name by default
+func (c *configurator) parseQUIXCase(router *QUIXRouter) { // case <compName> {}, case <compName> <cond> {}, case <cond> {}, case {}
+	kase := router.createCase(c.makeCompName()) // use a temp component name by default
 	kase.setParent(router)
 	c.forwardToken()
-	if !c.currentTokenIs(tokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
-		if c.currentTokenIs(tokenString) { // case <name> {}, case <name> <cond> {}
-			if caseName := c.currentToken().text; caseName != "" {
-				kase.setName(caseName) // change name
+	if !c.currentTokenIs(tokenLeftBrace) { // case <compName> {}, case <compName> <cond> {}, case <cond> {}
+		if c.currentTokenIs(tokenString) { // case <compName> {}, case <compName> <cond> {}
+			if compName := c.currentToken().text; compName != "" {
+				kase.setCompName(compName) // change component name
 			}
 			c.forwardToken()
 		}
-		if !c.currentTokenIs(tokenLeftBrace) { // case <name> <cond> {}
+		if !c.currentTokenIs(tokenLeftBrace) { // case <compName> <cond> {}
 			c.parseCaseCond(kase)
 			c.forwardExpectToken(tokenLeftBrace)
 		}
@@ -256,18 +256,18 @@ func (c *configurator) parseQUIXCase(router *QUIXRouter) { // case <name> {}, ca
 		}
 	}
 }
-func (c *configurator) parseTCPXCase(router *TCPXRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
-	kase := router.createCase(c.makeName()) // use a temp name by default
+func (c *configurator) parseTCPXCase(router *TCPXRouter) { // case <compName> {}, case <compName> <cond> {}, case <cond> {}, case {}
+	kase := router.createCase(c.makeCompName()) // use a temp component name by default
 	kase.setParent(router)
 	c.forwardToken()
-	if !c.currentTokenIs(tokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
-		if c.currentTokenIs(tokenString) { // case <name> {}, case <name> <cond> {}
-			if caseName := c.currentToken().text; caseName != "" {
-				kase.setName(caseName) // change name
+	if !c.currentTokenIs(tokenLeftBrace) { // case <compName> {}, case <compName> <cond> {}, case <cond> {}
+		if c.currentTokenIs(tokenString) { // case <compName> {}, case <compName> <cond> {}
+			if compName := c.currentToken().text; compName != "" {
+				kase.setCompName(compName) // change component name
 			}
 			c.forwardToken()
 		}
-		if !c.currentTokenIs(tokenLeftBrace) { // case <name> <cond> {}
+		if !c.currentTokenIs(tokenLeftBrace) { // case <compName> <cond> {}
 			c.parseCaseCond(kase)
 			c.forwardExpectToken(tokenLeftBrace)
 		}
@@ -292,18 +292,18 @@ func (c *configurator) parseTCPXCase(router *TCPXRouter) { // case <name> {}, ca
 		}
 	}
 }
-func (c *configurator) parseUDPXCase(router *UDPXRouter) { // case <name> {}, case <name> <cond> {}, case <cond> {}, case {}
-	kase := router.createCase(c.makeName()) // use a temp name by default
+func (c *configurator) parseUDPXCase(router *UDPXRouter) { // case <compName> {}, case <compName> <cond> {}, case <cond> {}, case {}
+	kase := router.createCase(c.makeCompName()) // use a temp component name by default
 	kase.setParent(router)
 	c.forwardToken()
-	if !c.currentTokenIs(tokenLeftBrace) { // case <name> {}, case <name> <cond> {}, case <cond> {}
-		if c.currentTokenIs(tokenString) { // case <name> {}, case <name> <cond> {}
-			if caseName := c.currentToken().text; caseName != "" {
-				kase.setName(caseName) // change name
+	if !c.currentTokenIs(tokenLeftBrace) { // case <compName> {}, case <compName> <cond> {}, case <cond> {}
+		if c.currentTokenIs(tokenString) { // case <compName> {}, case <compName> <cond> {}
+			if compName := c.currentToken().text; compName != "" {
+				kase.setCompName(compName) // change component name
 			}
 			c.forwardToken()
 		}
-		if !c.currentTokenIs(tokenLeftBrace) { // case <name> <cond> {}
+		if !c.currentTokenIs(tokenLeftBrace) { // case <compName> <cond> {}
 			c.parseCaseCond(kase)
 			c.forwardExpectToken(tokenLeftBrace)
 		}
@@ -363,20 +363,20 @@ func (c *configurator) parseCaseCond(kase interface{ setInfo(info any) }) {
 	cond.compare = compare.text
 	kase.setInfo(cond)
 }
-func (c *configurator) parseService(sign *token, stage *Stage) { // service <name> {}
+func (c *configurator) parseService(sign *token, stage *Stage) { // service <compName> {}
 	serviceName := c.forwardExpectToken(tokenString)
 	service := stage.createService(serviceName.text)
 	service.setParent(stage)
 	c.forwardToken()
 	c._parseLeaf(service)
 }
-func (c *configurator) parseStater(sign *token, stage *Stage) { // xxxStater <name> {}
+func (c *configurator) parseStater(sign *token, stage *Stage) { // xxxStater <compName> {}
 	parseComponent0(c, sign, stage, stage.createStater)
 }
-func (c *configurator) parseCacher(sign *token, stage *Stage) { // xxxCacher <name> {}
+func (c *configurator) parseCacher(sign *token, stage *Stage) { // xxxCacher <compName> {}
 	parseComponent0(c, sign, stage, stage.createCacher)
 }
-func (c *configurator) parseWebapp(sign *token, stage *Stage) { // webapp <name> {}
+func (c *configurator) parseWebapp(sign *token, stage *Stage) { // webapp <compName> {}
 	webappName := c.forwardExpectToken(tokenString)
 	webapp := stage.createWebapp(webappName.text)
 	webapp.setParent(stage)
@@ -407,27 +407,27 @@ func (c *configurator) parseWebapp(sign *token, stage *Stage) { // webapp <name>
 		}
 	}
 }
-func (c *configurator) parseHandlet(sign *token, webapp *Webapp, rule *Rule) { // xxxHandlet <name> {}, xxxHandlet {}
+func (c *configurator) parseHandlet(sign *token, webapp *Webapp, rule *Rule) { // xxxHandlet <compName> {}, xxxHandlet {}
 	parseComponent2(c, sign, webapp, webapp.createHandlet, rule, rule.addHandlet)
 }
-func (c *configurator) parseReviser(sign *token, webapp *Webapp, rule *Rule) { // xxxReviser <name> {}, xxxReviser {}
+func (c *configurator) parseReviser(sign *token, webapp *Webapp, rule *Rule) { // xxxReviser <compName> {}, xxxReviser {}
 	parseComponent2(c, sign, webapp, webapp.createReviser, rule, rule.addReviser)
 }
-func (c *configurator) parseSocklet(sign *token, webapp *Webapp, rule *Rule) { // xxxSocklet <name> {}, xxxSocklet {}
+func (c *configurator) parseSocklet(sign *token, webapp *Webapp, rule *Rule) { // xxxSocklet <compName> {}, xxxSocklet {}
 	parseComponent2(c, sign, webapp, webapp.createSocklet, rule, rule.addSocklet)
 }
-func (c *configurator) parseRule(webapp *Webapp) { // rule <name> {}, rule <name> <cond> {}, rule <cond> {}, rule {}
-	rule := webapp.createRule(c.makeName()) // use a temp name by default
+func (c *configurator) parseRule(webapp *Webapp) { // rule <compName> {}, rule <compName> <cond> {}, rule <cond> {}, rule {}
+	rule := webapp.createRule(c.makeCompName()) // use a temp component name by default
 	rule.setParent(webapp)
 	c.forwardToken()
-	if !c.currentTokenIs(tokenLeftBrace) { // rule <name> {}, rule <name> <cond> {}, rule <cond> {}
-		if c.currentTokenIs(tokenString) { // rule <name> {}, rule <name> <cond> {}
-			if ruleName := c.currentToken().text; ruleName != "" {
-				rule.setName(ruleName) // change name
+	if !c.currentTokenIs(tokenLeftBrace) { // rule <compName> {}, rule <compName> <cond> {}, rule <cond> {}
+		if c.currentTokenIs(tokenString) { // rule <compName> {}, rule <compName> <cond> {}
+			if compName := c.currentToken().text; compName != "" {
+				rule.setCompName(compName) // change component name
 			}
 			c.forwardToken()
 		}
-		if !c.currentTokenIs(tokenLeftBrace) { // rule <name> <cond> {}
+		if !c.currentTokenIs(tokenLeftBrace) { // rule <compName> <cond> {}
 			c.parseRuleCond(rule)
 			c.forwardExpectToken(tokenLeftBrace)
 		}
@@ -496,10 +496,10 @@ func (c *configurator) parseRuleCond(rule *Rule) {
 	cond.compare = compare.text
 	rule.setInfo(cond)
 }
-func (c *configurator) parseServer(sign *token, stage *Stage) { // xxxServer <name> {}
+func (c *configurator) parseServer(sign *token, stage *Stage) { // xxxServer <compName> {}
 	parseComponent0(c, sign, stage, stage.createServer)
 }
-func (c *configurator) parseCronjob(sign *token, stage *Stage) { // xxxCronjob <name> {}
+func (c *configurator) parseCronjob(sign *token, stage *Stage) { // xxxCronjob <compName> {}
 	parseComponent0(c, sign, stage, stage.createCronjob)
 }
 
@@ -687,16 +687,16 @@ func (c *configurator) _parseDict(component Component, prop string, value *Value
 	value.kind, value.value = tokenDict, dict
 }
 
-func parseComponent0[T Component](c *configurator, sign *token, stage *Stage, create func(sign string, name string) T) { // backend, stater, cacher, server, cronjob
-	name := c.forwardExpectToken(tokenString)
-	component := create(sign.text, name.text)
+func parseComponent0[T Component](c *configurator, sign *token, stage *Stage, create func(sign string, compName string) T) { // backend, stater, cacher, server, cronjob
+	compName := c.forwardExpectToken(tokenString)
+	component := create(sign.text, compName.text)
 	component.setParent(stage)
 	c.forwardToken()
 	c._parseLeaf(component)
 }
-func parseComponentR[R Component, C any](c *configurator, stage *Stage, create func(name string) R, infoDealet int16, parseDealet func(sign *token, router R, kase *C), parseCase func(router R)) { // router
-	routerName := c.forwardExpectToken(tokenString)
-	router := create(routerName.text)
+func parseComponentR[R Component, C any](c *configurator, stage *Stage, create func(compName string) R, infoDealet int16, parseDealet func(sign *token, router R, kase *C), parseCase func(router R)) { // router
+	compName := c.forwardExpectToken(tokenString)
+	router := create(compName.text)
 	router.setParent(stage)
 	c.forwardExpectToken(tokenLeftBrace) // {
 	for {
@@ -721,30 +721,30 @@ func parseComponentR[R Component, C any](c *configurator, stage *Stage, create f
 		}
 	}
 }
-func parseComponent1[R Component, T Component, C any](c *configurator, sign *token, router R, create func(sign string, name string) T, kase *C, assign func(T)) { // dealet
-	name := sign.text
+func parseComponent1[R Component, T Component, C any](c *configurator, sign *token, router R, create func(sign string, compName string) T, kase *C, assign func(T)) { // dealet
+	compName := sign.text
 	if current := c.forwardToken(); current.kind == tokenString {
-		name = current.text
+		compName = current.text
 		c.forwardToken()
 	} else if kase != nil { // in case
-		name = c.makeName()
+		compName = c.makeCompName()
 	}
-	component := create(sign.text, name)
+	component := create(sign.text, compName)
 	component.setParent(router)
 	if kase != nil { // in case
 		assign(component)
 	}
 	c._parseLeaf(component)
 }
-func parseComponent2[T Component](c *configurator, sign *token, webapp *Webapp, create func(sign string, name string) T, rule *Rule, assign func(T)) { // handlet, reviser, socklet
-	name := sign.text
+func parseComponent2[T Component](c *configurator, sign *token, webapp *Webapp, create func(sign string, compName string) T, rule *Rule, assign func(T)) { // handlet, reviser, socklet
+	compName := sign.text
 	if current := c.forwardToken(); current.kind == tokenString {
-		name = current.text
+		compName = current.text
 		c.forwardToken()
 	} else if rule != nil { // in rule
-		name = c.makeName()
+		compName = c.makeCompName()
 	}
-	component := create(sign.text, name)
+	component := create(sign.text, compName)
 	component.setParent(webapp)
 	if rule != nil { // in rule
 		assign(component)

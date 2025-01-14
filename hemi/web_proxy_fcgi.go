@@ -29,9 +29,9 @@ import (
 //////////////////////////////////////// FCGI reverse proxy implementation ////////////////////////////////////////
 
 func init() {
-	RegisterHandlet("fcgiProxy", func(name string, stage *Stage, webapp *Webapp) Handlet {
+	RegisterHandlet("fcgiProxy", func(compName string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(fcgiProxy)
-		h.onCreate(name, stage, webapp)
+		h.onCreate(compName, stage, webapp)
 		return h
 	})
 }
@@ -51,8 +51,8 @@ type fcgiProxy struct {
 	indexFile            []byte // the file that will be used as index
 }
 
-func (h *fcgiProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(name)
+func (h *fcgiProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	h.MakeComp(compName)
 	h.stage = stage
 	h.webapp = webapp
 }
@@ -63,13 +63,13 @@ func (h *fcgiProxy) OnShutdown() {
 func (h *fcgiProxy) OnConfigure() {
 	// toBackend
 	if v, ok := h.Find("toBackend"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if backend := h.stage.Backend(name); backend == nil {
-				UseExitf("unknown backend: '%s'\n", name)
+		if compName, ok := v.String(); ok && compName != "" {
+			if backend := h.stage.Backend(compName); backend == nil {
+				UseExitf("unknown backend: '%s'\n", compName)
 			} else if fcgiBackend, ok := backend.(*fcgiBackend); ok {
 				h.backend = fcgiBackend
 			} else {
-				UseExitf("incorrect backend '%s' for fcgiProxy, must be fcgiBackend\n", name)
+				UseExitf("incorrect backend '%s' for fcgiProxy, must be fcgiBackend\n", compName)
 			}
 		} else {
 			UseExitln("invalid toBackend")
@@ -80,9 +80,9 @@ func (h *fcgiProxy) OnConfigure() {
 
 	// withCacher
 	if v, ok := h.Find("withCacher"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if cacher := h.stage.Cacher(name); cacher == nil {
-				UseExitf("unknown cacher: '%s'\n", name)
+		if compName, ok := v.String(); ok && compName != "" {
+			if cacher := h.stage.Cacher(compName); cacher == nil {
+				UseExitf("unknown cacher: '%s'\n", compName)
 			} else {
 				h.cacher = cacher
 			}
@@ -212,9 +212,9 @@ func (h *fcgiProxy) Handle(httpReq Request, httpResp Response) (handled bool) {
 //////////////////////////////////////// FCGI backend implementation ////////////////////////////////////////
 
 func init() {
-	RegisterBackend("fcgiBackend", func(name string, stage *Stage) Backend {
+	RegisterBackend("fcgiBackend", func(compName string, stage *Stage) Backend {
 		b := new(fcgiBackend)
-		b.onCreate(name, stage)
+		b.onCreate(compName, stage)
 		return b
 	})
 }
@@ -226,8 +226,8 @@ type fcgiBackend struct {
 	// States
 }
 
-func (b *fcgiBackend) onCreate(name string, stage *Stage) {
-	b.Backend_.OnCreate(name, stage)
+func (b *fcgiBackend) onCreate(compName string, stage *Stage) {
+	b.Backend_.OnCreate(compName, stage)
 }
 
 func (b *fcgiBackend) OnConfigure() {
@@ -243,9 +243,9 @@ func (b *fcgiBackend) OnPrepare() {
 	b.PrepareNodes()
 }
 
-func (b *fcgiBackend) CreateNode(name string) Node {
+func (b *fcgiBackend) CreateNode(compName string) Node {
 	node := new(fcgiNode)
-	node.onCreate(name, b.stage, b)
+	node.onCreate(compName, b.stage, b)
 	b.AddNode(node)
 	return node
 }
@@ -277,13 +277,13 @@ type fcgiNode struct {
 	}
 }
 
-func (n *fcgiNode) onCreate(name string, stage *Stage, backend *fcgiBackend) {
-	n.Node_.OnCreate(name, stage, backend)
+func (n *fcgiNode) onCreate(compName string, stage *Stage, backend *fcgiBackend) {
+	n.Node_.OnCreate(compName, stage, backend)
 }
 
 func (n *fcgiNode) OnConfigure() {
 	n.Node_.OnConfigure()
-	n._contentSaver_.onConfigure(n, 0*time.Second, 0*time.Second, TmpDir()+"/web/backends/"+n.backend.name+"/"+n.name)
+	n._contentSaver_.onConfigure(n, 0*time.Second, 0*time.Second, TmpDir()+"/web/backends/"+n.backend.compName+"/"+n.compName)
 
 	// maxCumulativeExchansPerConn
 	n.ConfigureInt32("maxCumulativeExchansPerConn", &n.maxCumulativeExchansPerConn, func(value int32) error {
@@ -329,7 +329,7 @@ func (n *fcgiNode) Maintain() { // runner
 	}
 	n.WaitSubs() // conns. TODO: max timeout?
 	if DebugLevel() >= 2 {
-		Printf("fcgiNode=%s done\n", n.name)
+		Printf("fcgiNode=%s done\n", n.compName)
 	}
 	n.backend.DecSub() // node
 }
@@ -373,7 +373,7 @@ func (n *fcgiNode) storeExchan(exchan *fcgiExchan) {
 
 func (n *fcgiNode) dial() (*fcgiConn, error) {
 	if DebugLevel() >= 2 {
-		Printf("fcgiNode=%s dial %s\n", n.name, n.address)
+		Printf("fcgiNode=%s dial %s\n", n.compName, n.address)
 	}
 	var (
 		conn *fcgiConn
@@ -398,7 +398,7 @@ func (n *fcgiNode) _dialUDS() (*fcgiConn, error) {
 		return nil, err
 	}
 	if DebugLevel() >= 2 {
-		Printf("fcgiNode=%s dial %s OK!\n", n.name, n.address)
+		Printf("fcgiNode=%s dial %s OK!\n", n.compName, n.address)
 	}
 	connID := n.nextConnID()
 	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
@@ -417,7 +417,7 @@ func (n *fcgiNode) _dialTCP() (*fcgiConn, error) {
 		return nil, err
 	}
 	if DebugLevel() >= 2 {
-		Printf("fcgiNode=%s dial %s OK!\n", n.name, n.address)
+		Printf("fcgiNode=%s dial %s OK!\n", n.compName, n.address)
 	}
 	connID := n.nextConnID()
 	rawConn, err := netConn.(*net.TCPConn).SyscallConn()

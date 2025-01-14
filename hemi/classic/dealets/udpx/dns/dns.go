@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterUDPXDealet("dnsProxy", func(name string, stage *Stage, router *UDPXRouter) UDPXDealet {
+	RegisterUDPXDealet("dnsProxy", func(compName string, stage *Stage, router *UDPXRouter) UDPXDealet {
 		d := new(dnsProxy)
-		d.onCreate(name, stage, router)
+		d.onCreate(compName, stage, router)
 		return d
 	})
 }
@@ -29,8 +29,8 @@ type dnsProxy struct {
 	// States
 }
 
-func (d *dnsProxy) onCreate(name string, stage *Stage, router *UDPXRouter) {
-	d.MakeComp(name)
+func (d *dnsProxy) onCreate(compName string, stage *Stage, router *UDPXRouter) {
+	d.MakeComp(compName)
 	d.stage = stage
 	d.router = router
 }

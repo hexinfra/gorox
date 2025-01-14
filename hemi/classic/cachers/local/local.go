@@ -16,9 +16,9 @@ import (
 )
 
 func init() {
-	RegisterCacher("localCacher", func(name string, stage *Stage) Cacher {
+	RegisterCacher("localCacher", func(compName string, stage *Stage) Cacher {
 		c := new(localCacher)
-		c.onCreate(name, stage)
+		c.onCreate(compName, stage)
 		return c
 	})
 }
@@ -33,8 +33,8 @@ type localCacher struct {
 	cacheDir string // /path/to/dir
 }
 
-func (c *localCacher) onCreate(name string, stage *Stage) {
-	c.MakeComp(name)
+func (c *localCacher) onCreate(compName string, stage *Stage) {
+	c.MakeComp(compName)
 	c.stage = stage
 }
 func (c *localCacher) OnShutdown() {
@@ -48,7 +48,7 @@ func (c *localCacher) OnConfigure() {
 			return nil
 		}
 		return errors.New(".cacheDir has an invalid value")
-	}, VarDir()+"/cachers/"+c.Name())
+	}, VarDir()+"/cachers/"+c.CompName())
 }
 func (c *localCacher) OnPrepare() {
 	if err := os.MkdirAll(c.cacheDir, 0755); err != nil {
@@ -61,7 +61,7 @@ func (c *localCacher) Maintain() { // runner
 		// TODO
 	})
 	if DebugLevel() >= 2 {
-		Printf("localCacher=%s done\n", c.Name())
+		Printf("localCacher=%s done\n", c.CompName())
 	}
 	c.stage.DecSub() // cacher
 }

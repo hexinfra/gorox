@@ -25,9 +25,9 @@ import (
 //////////////////////////////////////// uwsgi reverse proxy implementation ////////////////////////////////////////
 
 func init() {
-	RegisterHandlet("uwsgiProxy", func(name string, stage *Stage, webapp *Webapp) Handlet {
+	RegisterHandlet("uwsgiProxy", func(compName string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(uwsgiProxy)
-		h.onCreate(name, stage, webapp)
+		h.onCreate(compName, stage, webapp)
 		return h
 	})
 }
@@ -45,8 +45,8 @@ type uwsgiProxy struct {
 	WebExchanProxyConfig // embeded
 }
 
-func (h *uwsgiProxy) onCreate(name string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(name)
+func (h *uwsgiProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	h.MakeComp(compName)
 	h.stage = stage
 	h.webapp = webapp
 }
@@ -57,13 +57,13 @@ func (h *uwsgiProxy) OnShutdown() {
 func (h *uwsgiProxy) OnConfigure() {
 	// toBackend
 	if v, ok := h.Find("toBackend"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if backend := h.stage.Backend(name); backend == nil {
-				UseExitf("unknown backend: '%s'\n", name)
+		if compName, ok := v.String(); ok && compName != "" {
+			if backend := h.stage.Backend(compName); backend == nil {
+				UseExitf("unknown backend: '%s'\n", compName)
 			} else if uwsgiBackend, ok := backend.(*uwsgiBackend); ok {
 				h.backend = uwsgiBackend
 			} else {
-				UseExitf("incorrect backend '%s' for uwsgiProxy, must be uwsgiBackend\n", name)
+				UseExitf("incorrect backend '%s' for uwsgiProxy, must be uwsgiBackend\n", compName)
 			}
 		} else {
 			UseExitln("invalid toBackend")
@@ -74,9 +74,9 @@ func (h *uwsgiProxy) OnConfigure() {
 
 	// withCacher
 	if v, ok := h.Find("withCacher"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if cacher := h.stage.Cacher(name); cacher == nil {
-				UseExitf("unknown cacher: '%s'\n", name)
+		if compName, ok := v.String(); ok && compName != "" {
+			if cacher := h.stage.Cacher(compName); cacher == nil {
+				UseExitf("unknown cacher: '%s'\n", compName)
 			} else {
 				h.cacher = cacher
 			}
@@ -105,9 +105,9 @@ func (h *uwsgiProxy) Handle(httpReq Request, httpResp Response) (handled bool) {
 //////////////////////////////////////// uwsgi backend implementation ////////////////////////////////////////
 
 func init() {
-	RegisterBackend("uwsgiBackend", func(name string, stage *Stage) Backend {
+	RegisterBackend("uwsgiBackend", func(compName string, stage *Stage) Backend {
 		b := new(uwsgiBackend)
-		b.onCreate(name, stage)
+		b.onCreate(compName, stage)
 		return b
 	})
 }
@@ -119,8 +119,8 @@ type uwsgiBackend struct {
 	// States
 }
 
-func (b *uwsgiBackend) onCreate(name string, stage *Stage) {
-	b.Backend_.OnCreate(name, stage)
+func (b *uwsgiBackend) onCreate(compName string, stage *Stage) {
+	b.Backend_.OnCreate(compName, stage)
 }
 
 func (b *uwsgiBackend) OnConfigure() {
@@ -136,9 +136,9 @@ func (b *uwsgiBackend) OnPrepare() {
 	b.PrepareNodes()
 }
 
-func (b *uwsgiBackend) CreateNode(name string) Node {
+func (b *uwsgiBackend) CreateNode(compName string) Node {
 	node := new(uwsgiNode)
-	node.onCreate(name, b.stage, b)
+	node.onCreate(compName, b.stage, b)
 	b.AddNode(node)
 	return node
 }
@@ -152,13 +152,13 @@ type uwsgiNode struct {
 	// States
 }
 
-func (n *uwsgiNode) onCreate(name string, stage *Stage, backend *uwsgiBackend) {
-	n.Node_.OnCreate(name, stage, backend)
+func (n *uwsgiNode) onCreate(compName string, stage *Stage, backend *uwsgiBackend) {
+	n.Node_.OnCreate(compName, stage, backend)
 }
 
 func (n *uwsgiNode) OnConfigure() {
 	n.Node_.OnConfigure()
-	n._contentSaver_.onConfigure(n, 0*time.Second, 0*time.Second, TmpDir()+"/web/backends/"+n.backend.name+"/"+n.name)
+	n._contentSaver_.onConfigure(n, 0*time.Second, 0*time.Second, TmpDir()+"/web/backends/"+n.backend.compName+"/"+n.compName)
 }
 func (n *uwsgiNode) OnPrepare() {
 	n.Node_.OnPrepare()
@@ -171,14 +171,14 @@ func (n *uwsgiNode) Maintain() { // runner
 	})
 	n.markDown()
 	if DebugLevel() >= 2 {
-		Printf("uwsgiNode=%s done\n", n.name)
+		Printf("uwsgiNode=%s done\n", n.compName)
 	}
 	n.backend.DecSub() // node
 }
 
 func (n *uwsgiNode) dial() (*uwsgiConn, error) {
 	if DebugLevel() >= 2 {
-		Printf("uwsgiNode=%s dial %s\n", n.name, n.address)
+		Printf("uwsgiNode=%s dial %s\n", n.compName, n.address)
 	}
 	var (
 		conn *uwsgiConn
@@ -203,7 +203,7 @@ func (n *uwsgiNode) _dialUDS() (*uwsgiConn, error) {
 		return nil, err
 	}
 	if DebugLevel() >= 2 {
-		Printf("uwsgiNode=%s dial %s OK!\n", n.name, n.address)
+		Printf("uwsgiNode=%s dial %s OK!\n", n.compName, n.address)
 	}
 	connID := n.nextConnID()
 	rawConn, err := netConn.(*net.UnixConn).SyscallConn()
@@ -222,7 +222,7 @@ func (n *uwsgiNode) _dialTCP() (*uwsgiConn, error) {
 		return nil, err
 	}
 	if DebugLevel() >= 2 {
-		Printf("uwsgiNode=%s dial %s OK!\n", n.name, n.address)
+		Printf("uwsgiNode=%s dial %s OK!\n", n.compName, n.address)
 	}
 	connID := n.nextConnID()
 	rawConn, err := netConn.(*net.TCPConn).SyscallConn()

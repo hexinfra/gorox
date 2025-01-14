@@ -15,9 +15,9 @@ import (
 )
 
 func init() {
-	RegisterReviser("ssiReviser", func(name string, stage *Stage, webapp *Webapp) Reviser {
+	RegisterReviser("ssiReviser", func(compName string, stage *Stage, webapp *Webapp) Reviser {
 		r := new(ssiReviser)
-		r.onCreate(name, stage, webapp)
+		r.onCreate(compName, stage, webapp)
 		return r
 	})
 }
@@ -33,8 +33,8 @@ type ssiReviser struct {
 	rank int8
 }
 
-func (r *ssiReviser) onCreate(name string, stage *Stage, webapp *Webapp) {
-	r.MakeComp(name)
+func (r *ssiReviser) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	r.MakeComp(compName)
 	r.stage = stage
 	r.webapp = webapp
 }

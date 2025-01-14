@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterSocklet("helloSocklet", func(name string, stage *Stage, webapp *Webapp) Socklet {
+	RegisterSocklet("helloSocklet", func(compName string, stage *Stage, webapp *Webapp) Socklet {
 		s := new(helloSocklet)
-		s.onCreate(name, stage, webapp)
+		s.onCreate(compName, stage, webapp)
 		return s
 	})
 }
@@ -29,8 +29,8 @@ type helloSocklet struct {
 	// States
 }
 
-func (s *helloSocklet) onCreate(name string, stage *Stage, webapp *Webapp) {
-	s.MakeComp(name)
+func (s *helloSocklet) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	s.MakeComp(compName)
 	s.stage = stage
 	s.webapp = webapp
 }

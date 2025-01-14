@@ -16,9 +16,9 @@ import (
 )
 
 func init() {
-	RegisterStater("localStater", func(name string, stage *Stage) Stater {
+	RegisterStater("localStater", func(compName string, stage *Stage) Stater {
 		s := new(localStater)
-		s.onCreate(name, stage)
+		s.onCreate(compName, stage)
 		return s
 	})
 }
@@ -33,8 +33,8 @@ type localStater struct {
 	stateDir string // /path/to/dir
 }
 
-func (s *localStater) onCreate(name string, stage *Stage) {
-	s.MakeComp(name)
+func (s *localStater) onCreate(compName string, stage *Stage) {
+	s.MakeComp(compName)
 	s.stage = stage
 }
 func (s *localStater) OnShutdown() {
@@ -48,7 +48,7 @@ func (s *localStater) OnConfigure() {
 			return nil
 		}
 		return errors.New(".stateDir has an invalid value")
-	}, VarDir()+"/staters/"+s.Name())
+	}, VarDir()+"/staters/"+s.CompName())
 }
 func (s *localStater) OnPrepare() {
 	if err := os.MkdirAll(s.stateDir, 0755); err != nil {
@@ -61,7 +61,7 @@ func (s *localStater) Maintain() { // runner
 		// TODO
 	})
 	if DebugLevel() >= 2 {
-		Printf("localStater=%s done\n", s.Name())
+		Printf("localStater=%s done\n", s.CompName())
 	}
 	s.stage.DecSub() // stater
 }

@@ -21,9 +21,9 @@ import (
 )
 
 func init() {
-	RegisterServer("socksServer", func(name string, stage *Stage) Server {
+	RegisterServer("socksServer", func(compName string, stage *Stage) Server {
 		s := new(socksServer)
-		s.onCreate(name, stage)
+		s.onCreate(compName, stage)
 		return s
 	})
 }
@@ -36,8 +36,8 @@ type socksServer struct {
 	// States
 }
 
-func (s *socksServer) onCreate(name string, stage *Stage) {
-	s.Server_.OnCreate(name, stage)
+func (s *socksServer) onCreate(compName string, stage *Stage) {
+	s.Server_.OnCreate(compName, stage)
 }
 
 func (s *socksServer) OnConfigure() {
@@ -60,7 +60,7 @@ func (s *socksServer) Serve() { // runner
 	}
 	s.WaitSubs() // gates
 	if DebugLevel() >= 2 {
-		Printf("socksServer=%s done\n", s.Name())
+		Printf("socksServer=%s done\n", s.CompName())
 	}
 	s.Stage().DecSub() // server
 }

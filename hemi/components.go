@@ -44,7 +44,7 @@ const ( // list of components
 	compCronjob               // cleanCronjob, statCronjob, ...
 )
 
-var signedComps = map[string]int16{ // static comps. more dynamic comps are signed using signComp() below
+var signedComps = map[string]int16{ // signed comps. more dynamic comps are signed using signComp() below
 	"stage":      compStage,
 	"node":       compNode,
 	"quixRouter": compQUIXRouter,
@@ -66,17 +66,17 @@ func signComp(sign string, comp int16) {
 var ( // fixture signs, component creators, and initializers of services & webapps
 	fixtureSigns       = make(map[string]bool) // we guarantee this is not manipulated concurrently, so no lock is required
 	creatorsLock       sync.RWMutex
-	backendCreators    = make(map[string]func(name string, stage *Stage) Backend) // indexed by sign, same below.
-	staterCreators     = make(map[string]func(name string, stage *Stage) Stater)
-	cacherCreators     = make(map[string]func(name string, stage *Stage) Cacher)
-	serverCreators     = make(map[string]func(name string, stage *Stage) Server)
-	cronjobCreators    = make(map[string]func(name string, stage *Stage) Cronjob)
-	quixDealetCreators = make(map[string]func(name string, stage *Stage, router *QUIXRouter) QUIXDealet)
-	tcpxDealetCreators = make(map[string]func(name string, stage *Stage, router *TCPXRouter) TCPXDealet)
-	udpxDealetCreators = make(map[string]func(name string, stage *Stage, router *UDPXRouter) UDPXDealet)
-	handletCreators    = make(map[string]func(name string, stage *Stage, webapp *Webapp) Handlet)
-	reviserCreators    = make(map[string]func(name string, stage *Stage, webapp *Webapp) Reviser)
-	sockletCreators    = make(map[string]func(name string, stage *Stage, webapp *Webapp) Socklet)
+	backendCreators    = make(map[string]func(compName string, stage *Stage) Backend) // indexed by sign, same below.
+	staterCreators     = make(map[string]func(compName string, stage *Stage) Stater)
+	cacherCreators     = make(map[string]func(compName string, stage *Stage) Cacher)
+	serverCreators     = make(map[string]func(compName string, stage *Stage) Server)
+	cronjobCreators    = make(map[string]func(compName string, stage *Stage) Cronjob)
+	quixDealetCreators = make(map[string]func(compName string, stage *Stage, router *QUIXRouter) QUIXDealet)
+	tcpxDealetCreators = make(map[string]func(compName string, stage *Stage, router *TCPXRouter) TCPXDealet)
+	udpxDealetCreators = make(map[string]func(compName string, stage *Stage, router *UDPXRouter) UDPXDealet)
+	handletCreators    = make(map[string]func(compName string, stage *Stage, webapp *Webapp) Handlet)
+	reviserCreators    = make(map[string]func(compName string, stage *Stage, webapp *Webapp) Reviser)
+	sockletCreators    = make(map[string]func(compName string, stage *Stage, webapp *Webapp) Socklet)
 	initsLock          sync.RWMutex
 	serviceInits       = make(map[string]func(service *Service) error) // indexed by service name.
 	webappInits        = make(map[string]func(webapp *Webapp) error)   // indexed by webapp name.
@@ -89,37 +89,37 @@ func registerFixture(sign string) {
 	fixtureSigns[sign] = true
 	signComp(sign, compFixture)
 }
-func RegisterBackend(sign string, create func(name string, stage *Stage) Backend) {
+func RegisterBackend(sign string, create func(compName string, stage *Stage) Backend) {
 	_registerComponent0(sign, compBackend, backendCreators, create)
 }
-func RegisterStater(sign string, create func(name string, stage *Stage) Stater) {
+func RegisterStater(sign string, create func(compName string, stage *Stage) Stater) {
 	_registerComponent0(sign, compStater, staterCreators, create)
 }
-func RegisterCacher(sign string, create func(name string, stage *Stage) Cacher) {
+func RegisterCacher(sign string, create func(compName string, stage *Stage) Cacher) {
 	_registerComponent0(sign, compCacher, cacherCreators, create)
 }
-func RegisterServer(sign string, create func(name string, stage *Stage) Server) {
+func RegisterServer(sign string, create func(compName string, stage *Stage) Server) {
 	_registerComponent0(sign, compServer, serverCreators, create)
 }
-func RegisterCronjob(sign string, create func(name string, stage *Stage) Cronjob) {
+func RegisterCronjob(sign string, create func(compName string, stage *Stage) Cronjob) {
 	_registerComponent0(sign, compCronjob, cronjobCreators, create)
 }
-func RegisterQUIXDealet(sign string, create func(name string, stage *Stage, router *QUIXRouter) QUIXDealet) {
+func RegisterQUIXDealet(sign string, create func(compName string, stage *Stage, router *QUIXRouter) QUIXDealet) {
 	_registerComponent1(sign, compQUIXDealet, quixDealetCreators, create)
 }
-func RegisterTCPXDealet(sign string, create func(name string, stage *Stage, router *TCPXRouter) TCPXDealet) {
+func RegisterTCPXDealet(sign string, create func(compName string, stage *Stage, router *TCPXRouter) TCPXDealet) {
 	_registerComponent1(sign, compTCPXDealet, tcpxDealetCreators, create)
 }
-func RegisterUDPXDealet(sign string, create func(name string, stage *Stage, router *UDPXRouter) UDPXDealet) {
+func RegisterUDPXDealet(sign string, create func(compName string, stage *Stage, router *UDPXRouter) UDPXDealet) {
 	_registerComponent1(sign, compUDPXDealet, udpxDealetCreators, create)
 }
-func RegisterHandlet(sign string, create func(name string, stage *Stage, webapp *Webapp) Handlet) {
+func RegisterHandlet(sign string, create func(compName string, stage *Stage, webapp *Webapp) Handlet) {
 	_registerComponent1(sign, compHandlet, handletCreators, create)
 }
-func RegisterReviser(sign string, create func(name string, stage *Stage, webapp *Webapp) Reviser) {
+func RegisterReviser(sign string, create func(compName string, stage *Stage, webapp *Webapp) Reviser) {
 	_registerComponent1(sign, compReviser, reviserCreators, create)
 }
-func RegisterSocklet(sign string, create func(name string, stage *Stage, webapp *Webapp) Socklet) {
+func RegisterSocklet(sign string, create func(compName string, stage *Stage, webapp *Webapp) Socklet) {
 	_registerComponent1(sign, compSocklet, sockletCreators, create)
 }
 func _registerComponent0[T Component](sign string, comp int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // backend, stater, cacher, server, cronjob
@@ -142,49 +142,49 @@ func _registerComponent1[T Component, C Component](sign string, comp int16, crea
 	creators[sign] = create
 	signComp(sign, comp)
 }
-func RegisterServiceInit(name string, init func(service *Service) error) {
+func RegisterServiceInit(compName string, init func(service *Service) error) {
 	initsLock.Lock()
-	serviceInits[name] = init
+	serviceInits[compName] = init
 	initsLock.Unlock()
 }
-func RegisterWebappInit(name string, init func(webapp *Webapp) error) {
+func RegisterWebappInit(compName string, init func(webapp *Webapp) error) {
 	initsLock.Lock()
-	webappInits[name] = init
+	webappInits[compName] = init
 	initsLock.Unlock()
 }
 
 // Component is the interface for all components.
 type Component interface {
-	MakeComp(name string)
-	Name() string
+	MakeComp(compName string)
+	CompName() string
 
 	OnConfigure()
-	Find(name string) (value Value, ok bool)
-	Prop(name string) (value Value, ok bool)
-	ConfigureBool(name string, prop *bool, defaultValue bool)
-	ConfigureInt64(name string, prop *int64, check func(value int64) error, defaultValue int64)
-	ConfigureInt32(name string, prop *int32, check func(value int32) error, defaultValue int32)
-	ConfigureInt16(name string, prop *int16, check func(value int16) error, defaultValue int16)
-	ConfigureInt8(name string, prop *int8, check func(value int8) error, defaultValue int8)
-	ConfigureInt(name string, prop *int, check func(value int) error, defaultValue int)
-	ConfigureString(name string, prop *string, check func(value string) error, defaultValue string)
-	ConfigureBytes(name string, prop *[]byte, check func(value []byte) error, defaultValue []byte)
-	ConfigureDuration(name string, prop *time.Duration, check func(value time.Duration) error, defaultValue time.Duration)
-	ConfigureStringList(name string, prop *[]string, check func(value []string) error, defaultValue []string)
-	ConfigureBytesList(name string, prop *[][]byte, check func(value [][]byte) error, defaultValue [][]byte)
-	ConfigureStringDict(name string, prop *map[string]string, check func(value map[string]string) error, defaultValue map[string]string)
+	Find(propName string) (value Value, ok bool)
+	Prop(propName string) (value Value, ok bool)
+	ConfigureBool(propName string, prop *bool, defaultValue bool)
+	ConfigureInt64(propName string, prop *int64, check func(value int64) error, defaultValue int64)
+	ConfigureInt32(propName string, prop *int32, check func(value int32) error, defaultValue int32)
+	ConfigureInt16(propName string, prop *int16, check func(value int16) error, defaultValue int16)
+	ConfigureInt8(propName string, prop *int8, check func(value int8) error, defaultValue int8)
+	ConfigureInt(propName string, prop *int, check func(value int) error, defaultValue int)
+	ConfigureString(propName string, prop *string, check func(value string) error, defaultValue string)
+	ConfigureBytes(propName string, prop *[]byte, check func(value []byte) error, defaultValue []byte)
+	ConfigureDuration(propName string, prop *time.Duration, check func(value time.Duration) error, defaultValue time.Duration)
+	ConfigureStringList(propName string, prop *[]string, check func(value []string) error, defaultValue []string)
+	ConfigureBytesList(propName string, prop *[][]byte, check func(value [][]byte) error, defaultValue [][]byte)
+	ConfigureStringDict(propName string, prop *map[string]string, check func(value map[string]string) error, defaultValue map[string]string)
 
 	OnPrepare()
 
 	OnShutdown()
 	DecSub() // called by sub components or objects of this component
 
-	setName(name string)
+	setCompName(compName string)
 	setShell(shell Component)
 	setParent(parent Component)
 	getParent() Component
 	setInfo(info any)
-	setProp(name string, value Value)
+	setProp(propName string, propValue Value)
 }
 
 // Component_ is the parent for all components.
@@ -193,71 +193,71 @@ type Component_ struct {
 	shell  Component // the concrete Component
 	parent Component // the parent component, used by configurator
 	// States
-	name     string           // main, proxy1, ...
+	compName string           // main, proxy1, ...
 	props    map[string]Value // name1=value1, ...
 	info     any              // extra info about this component, used by configurator
 	subs     sync.WaitGroup   // sub components or objects to wait for
 	ShutChan chan struct{}    // used to notify shutdown
 }
 
-func (c *Component_) MakeComp(name string) {
-	c.name = name
+func (c *Component_) MakeComp(compName string) {
+	c.compName = compName
 	c.props = make(map[string]Value)
 	c.ShutChan = make(chan struct{})
 }
-func (c *Component_) Name() string { return c.name }
+func (c *Component_) CompName() string { return c.compName }
 
-func (c *Component_) Find(name string) (value Value, ok bool) {
+func (c *Component_) Find(propName string) (value Value, ok bool) {
 	for component := c.shell; component != nil; component = component.getParent() {
-		if value, ok = component.Prop(name); ok {
+		if value, ok = component.Prop(propName); ok {
 			break
 		}
 	}
 	return
 }
-func (c *Component_) Prop(name string) (value Value, ok bool) {
-	value, ok = c.props[name]
+func (c *Component_) Prop(propName string) (value Value, ok bool) {
+	value, ok = c.props[propName]
 	return
 }
 
-func (c *Component_) ConfigureBool(name string, prop *bool, defaultValue bool) {
-	_configureProp(c, name, prop, (*Value).Bool, nil, defaultValue)
+func (c *Component_) ConfigureBool(propName string, prop *bool, defaultValue bool) {
+	_configureProp(c, propName, prop, (*Value).Bool, nil, defaultValue)
 }
-func (c *Component_) ConfigureInt64(name string, prop *int64, check func(value int64) error, defaultValue int64) {
-	_configureProp(c, name, prop, (*Value).Int64, check, defaultValue)
+func (c *Component_) ConfigureInt64(propName string, prop *int64, check func(value int64) error, defaultValue int64) {
+	_configureProp(c, propName, prop, (*Value).Int64, check, defaultValue)
 }
-func (c *Component_) ConfigureInt32(name string, prop *int32, check func(value int32) error, defaultValue int32) {
-	_configureProp(c, name, prop, (*Value).Int32, check, defaultValue)
+func (c *Component_) ConfigureInt32(propName string, prop *int32, check func(value int32) error, defaultValue int32) {
+	_configureProp(c, propName, prop, (*Value).Int32, check, defaultValue)
 }
-func (c *Component_) ConfigureInt16(name string, prop *int16, check func(value int16) error, defaultValue int16) {
-	_configureProp(c, name, prop, (*Value).Int16, check, defaultValue)
+func (c *Component_) ConfigureInt16(propName string, prop *int16, check func(value int16) error, defaultValue int16) {
+	_configureProp(c, propName, prop, (*Value).Int16, check, defaultValue)
 }
-func (c *Component_) ConfigureInt8(name string, prop *int8, check func(value int8) error, defaultValue int8) {
-	_configureProp(c, name, prop, (*Value).Int8, check, defaultValue)
+func (c *Component_) ConfigureInt8(propName string, prop *int8, check func(value int8) error, defaultValue int8) {
+	_configureProp(c, propName, prop, (*Value).Int8, check, defaultValue)
 }
-func (c *Component_) ConfigureInt(name string, prop *int, check func(value int) error, defaultValue int) {
-	_configureProp(c, name, prop, (*Value).Int, check, defaultValue)
+func (c *Component_) ConfigureInt(propName string, prop *int, check func(value int) error, defaultValue int) {
+	_configureProp(c, propName, prop, (*Value).Int, check, defaultValue)
 }
-func (c *Component_) ConfigureString(name string, prop *string, check func(value string) error, defaultValue string) {
-	_configureProp(c, name, prop, (*Value).String, check, defaultValue)
+func (c *Component_) ConfigureString(propName string, prop *string, check func(value string) error, defaultValue string) {
+	_configureProp(c, propName, prop, (*Value).String, check, defaultValue)
 }
-func (c *Component_) ConfigureBytes(name string, prop *[]byte, check func(value []byte) error, defaultValue []byte) {
-	_configureProp(c, name, prop, (*Value).Bytes, check, defaultValue)
+func (c *Component_) ConfigureBytes(propName string, prop *[]byte, check func(value []byte) error, defaultValue []byte) {
+	_configureProp(c, propName, prop, (*Value).Bytes, check, defaultValue)
 }
-func (c *Component_) ConfigureDuration(name string, prop *time.Duration, check func(value time.Duration) error, defaultValue time.Duration) {
-	_configureProp(c, name, prop, (*Value).Duration, check, defaultValue)
+func (c *Component_) ConfigureDuration(propName string, prop *time.Duration, check func(value time.Duration) error, defaultValue time.Duration) {
+	_configureProp(c, propName, prop, (*Value).Duration, check, defaultValue)
 }
-func (c *Component_) ConfigureStringList(name string, prop *[]string, check func(value []string) error, defaultValue []string) {
-	_configureProp(c, name, prop, (*Value).StringList, check, defaultValue)
+func (c *Component_) ConfigureStringList(propName string, prop *[]string, check func(value []string) error, defaultValue []string) {
+	_configureProp(c, propName, prop, (*Value).StringList, check, defaultValue)
 }
-func (c *Component_) ConfigureBytesList(name string, prop *[][]byte, check func(value [][]byte) error, defaultValue [][]byte) {
-	_configureProp(c, name, prop, (*Value).BytesList, check, defaultValue)
+func (c *Component_) ConfigureBytesList(propName string, prop *[][]byte, check func(value [][]byte) error, defaultValue [][]byte) {
+	_configureProp(c, propName, prop, (*Value).BytesList, check, defaultValue)
 }
-func (c *Component_) ConfigureStringDict(name string, prop *map[string]string, check func(value map[string]string) error, defaultValue map[string]string) {
-	_configureProp(c, name, prop, (*Value).StringDict, check, defaultValue)
+func (c *Component_) ConfigureStringDict(propName string, prop *map[string]string, check func(value map[string]string) error, defaultValue map[string]string) {
+	_configureProp(c, propName, prop, (*Value).StringDict, check, defaultValue)
 }
-func _configureProp[T any](c *Component_, name string, prop *T, conv func(*Value) (T, bool), check func(value T) error, defaultValue T) {
-	if v, ok := c.Find(name); ok {
+func _configureProp[T any](c *Component_, propName string, prop *T, conv func(*Value) (T, bool), check func(value T) error, defaultValue T) {
+	if v, ok := c.Find(propName); ok {
 		if value, ok := conv(&v); ok && check == nil {
 			*prop = value
 		} else if ok && check != nil {
@@ -265,10 +265,10 @@ func _configureProp[T any](c *Component_, name string, prop *T, conv func(*Value
 				*prop = value
 			} else {
 				// TODO: line number
-				UseExitln(fmt.Sprintf("%s is error in %s: %s", name, c.name, err.Error()))
+				UseExitln(fmt.Sprintf("%s is error in %s: %s", propName, c.compName, err.Error()))
 			}
 		} else {
-			UseExitln(fmt.Sprintf("invalid %s in %s", name, c.name))
+			UseExitln(fmt.Sprintf("invalid %s in %s", propName, c.compName))
 		}
 	} else {
 		*prop = defaultValue
@@ -294,12 +294,12 @@ func (c *Component_) LoopRun(interval time.Duration, callback func(now time.Time
 	}
 }
 
-func (c *Component_) setName(name string)              { c.name = name }
-func (c *Component_) setShell(shell Component)         { c.shell = shell }
-func (c *Component_) setParent(parent Component)       { c.parent = parent }
-func (c *Component_) getParent() Component             { return c.parent }
-func (c *Component_) setInfo(info any)                 { c.info = info }
-func (c *Component_) setProp(name string, value Value) { c.props[name] = value }
+func (c *Component_) setCompName(compName string)              { c.compName = compName }
+func (c *Component_) setShell(shell Component)                 { c.shell = shell }
+func (c *Component_) setParent(parent Component)               { c.parent = parent }
+func (c *Component_) getParent() Component                     { return c.parent }
+func (c *Component_) setInfo(info any)                         { c.info = info }
+func (c *Component_) setProp(propName string, propValue Value) { c.props[propName] = propValue }
 
 // compDict
 type compDict[T Component] map[string]T
@@ -517,136 +517,136 @@ func (s *Stage) OnPrepare() {
 	s.cronjobs.walk(Cronjob.OnPrepare)
 }
 
-func (s *Stage) createBackend(sign string, name string) Backend {
-	if s.Backend(name) != nil {
-		UseExitf("conflicting backend with a same name '%s'\n", name)
+func (s *Stage) createBackend(sign string, compName string) Backend {
+	if s.Backend(compName) != nil {
+		UseExitf("conflicting backend with a same component name '%s'\n", compName)
 	}
 	create, ok := backendCreators[sign]
 	if !ok {
 		UseExitln("unknown backend type: " + sign)
 	}
-	backend := create(name, s)
+	backend := create(compName, s)
 	backend.setShell(backend)
-	s.backends[name] = backend
+	s.backends[compName] = backend
 	return backend
 }
-func (s *Stage) createQUIXRouter(name string) *QUIXRouter {
-	if s.QUIXRouter(name) != nil {
-		UseExitf("conflicting quixRouter with a same name '%s'\n", name)
+func (s *Stage) createQUIXRouter(compName string) *QUIXRouter {
+	if s.QUIXRouter(compName) != nil {
+		UseExitf("conflicting quixRouter with a same component name '%s'\n", compName)
 	}
 	router := new(QUIXRouter)
-	router.onCreate(name, s)
+	router.onCreate(compName, s)
 	router.setShell(router)
-	s.quixRouters[name] = router
+	s.quixRouters[compName] = router
 	return router
 }
-func (s *Stage) createTCPXRouter(name string) *TCPXRouter {
-	if s.TCPXRouter(name) != nil {
-		UseExitf("conflicting tcpxRouter with a same name '%s'\n", name)
+func (s *Stage) createTCPXRouter(compName string) *TCPXRouter {
+	if s.TCPXRouter(compName) != nil {
+		UseExitf("conflicting tcpxRouter with a same component name '%s'\n", compName)
 	}
 	router := new(TCPXRouter)
-	router.onCreate(name, s)
+	router.onCreate(compName, s)
 	router.setShell(router)
-	s.tcpxRouters[name] = router
+	s.tcpxRouters[compName] = router
 	return router
 }
-func (s *Stage) createUDPXRouter(name string) *UDPXRouter {
-	if s.UDPXRouter(name) != nil {
-		UseExitf("conflicting udpxRouter with a same name '%s'\n", name)
+func (s *Stage) createUDPXRouter(compName string) *UDPXRouter {
+	if s.UDPXRouter(compName) != nil {
+		UseExitf("conflicting udpxRouter with a same component name '%s'\n", compName)
 	}
 	router := new(UDPXRouter)
-	router.onCreate(name, s)
+	router.onCreate(compName, s)
 	router.setShell(router)
-	s.udpxRouters[name] = router
+	s.udpxRouters[compName] = router
 	return router
 }
-func (s *Stage) createService(name string) *Service {
-	if s.Service(name) != nil {
-		UseExitf("conflicting service with a same name '%s'\n", name)
+func (s *Stage) createService(compName string) *Service {
+	if s.Service(compName) != nil {
+		UseExitf("conflicting service with a same component name '%s'\n", compName)
 	}
 	service := new(Service)
-	service.onCreate(name, s)
+	service.onCreate(compName, s)
 	service.setShell(service)
-	s.services[name] = service
+	s.services[compName] = service
 	return service
 }
-func (s *Stage) createStater(sign string, name string) Stater {
-	if s.Stater(name) != nil {
-		UseExitf("conflicting stater with a same name '%s'\n", name)
+func (s *Stage) createStater(sign string, compName string) Stater {
+	if s.Stater(compName) != nil {
+		UseExitf("conflicting stater with a same component name '%s'\n", compName)
 	}
 	create, ok := staterCreators[sign]
 	if !ok {
 		UseExitln("unknown stater type: " + sign)
 	}
-	stater := create(name, s)
+	stater := create(compName, s)
 	stater.setShell(stater)
-	s.staters[name] = stater
+	s.staters[compName] = stater
 	return stater
 }
-func (s *Stage) createCacher(sign string, name string) Cacher {
-	if s.Cacher(name) != nil {
-		UseExitf("conflicting cacher with a same name '%s'\n", name)
+func (s *Stage) createCacher(sign string, compName string) Cacher {
+	if s.Cacher(compName) != nil {
+		UseExitf("conflicting cacher with a same component name '%s'\n", compName)
 	}
 	create, ok := cacherCreators[sign]
 	if !ok {
 		UseExitln("unknown cacher type: " + sign)
 	}
-	cacher := create(name, s)
+	cacher := create(compName, s)
 	cacher.setShell(cacher)
-	s.cachers[name] = cacher
+	s.cachers[compName] = cacher
 	return cacher
 }
-func (s *Stage) createWebapp(name string) *Webapp {
-	if s.Webapp(name) != nil {
-		UseExitf("conflicting webapp with a same name '%s'\n", name)
+func (s *Stage) createWebapp(compName string) *Webapp {
+	if s.Webapp(compName) != nil {
+		UseExitf("conflicting webapp with a same component name '%s'\n", compName)
 	}
 	webapp := new(Webapp)
-	webapp.onCreate(name, s)
+	webapp.onCreate(compName, s)
 	webapp.setShell(webapp)
-	s.webapps[name] = webapp
+	s.webapps[compName] = webapp
 	return webapp
 }
-func (s *Stage) createServer(sign string, name string) Server {
-	if s.Server(name) != nil {
-		UseExitf("conflicting server with a same name '%s'\n", name)
+func (s *Stage) createServer(sign string, compName string) Server {
+	if s.Server(compName) != nil {
+		UseExitf("conflicting server with a same component name '%s'\n", compName)
 	}
 	create, ok := serverCreators[sign]
 	if !ok {
 		UseExitln("unknown server type: " + sign)
 	}
-	server := create(name, s)
+	server := create(compName, s)
 	server.setShell(server)
-	s.servers[name] = server
+	s.servers[compName] = server
 	return server
 }
-func (s *Stage) createCronjob(sign string, name string) Cronjob {
-	if s.Cronjob(name) != nil {
-		UseExitf("conflicting cronjob with a same name '%s'\n", name)
+func (s *Stage) createCronjob(sign string, compName string) Cronjob {
+	if s.Cronjob(compName) != nil {
+		UseExitf("conflicting cronjob with a same component name '%s'\n", compName)
 	}
 	create, ok := cronjobCreators[sign]
 	if !ok {
 		UseExitln("unknown cronjob type: " + sign)
 	}
-	cronjob := create(name, s)
+	cronjob := create(compName, s)
 	cronjob.setShell(cronjob)
-	s.cronjobs[name] = cronjob
+	s.cronjobs[compName] = cronjob
 	return cronjob
 }
 
-func (s *Stage) Clock() *clockFixture               { return s.clock }
-func (s *Stage) Fcache() *fcacheFixture             { return s.fcache }
-func (s *Stage) Resolv() *resolvFixture             { return s.resolv }
-func (s *Stage) Fixture(sign string) fixture        { return s.fixtures[sign] }
-func (s *Stage) Backend(name string) Backend        { return s.backends[name] }
-func (s *Stage) QUIXRouter(name string) *QUIXRouter { return s.quixRouters[name] }
-func (s *Stage) TCPXRouter(name string) *TCPXRouter { return s.tcpxRouters[name] }
-func (s *Stage) UDPXRouter(name string) *UDPXRouter { return s.udpxRouters[name] }
-func (s *Stage) Service(name string) *Service       { return s.services[name] }
-func (s *Stage) Stater(name string) Stater          { return s.staters[name] }
-func (s *Stage) Cacher(name string) Cacher          { return s.cachers[name] }
-func (s *Stage) Webapp(name string) *Webapp         { return s.webapps[name] }
-func (s *Stage) Server(name string) Server          { return s.servers[name] }
-func (s *Stage) Cronjob(name string) Cronjob        { return s.cronjobs[name] }
+func (s *Stage) Clock() *clockFixture                   { return s.clock }
+func (s *Stage) Fcache() *fcacheFixture                 { return s.fcache }
+func (s *Stage) Resolv() *resolvFixture                 { return s.resolv }
+func (s *Stage) Fixture(sign string) fixture            { return s.fixtures[sign] }
+func (s *Stage) Backend(compName string) Backend        { return s.backends[compName] }
+func (s *Stage) QUIXRouter(compName string) *QUIXRouter { return s.quixRouters[compName] }
+func (s *Stage) TCPXRouter(compName string) *TCPXRouter { return s.tcpxRouters[compName] }
+func (s *Stage) UDPXRouter(compName string) *UDPXRouter { return s.udpxRouters[compName] }
+func (s *Stage) Service(compName string) *Service       { return s.services[compName] }
+func (s *Stage) Stater(compName string) Stater          { return s.staters[compName] }
+func (s *Stage) Cacher(compName string) Cacher          { return s.cachers[compName] }
+func (s *Stage) Webapp(compName string) *Webapp         { return s.webapps[compName] }
+func (s *Stage) Server(compName string) Server          { return s.servers[compName] }
+func (s *Stage) Cronjob(compName string) Cronjob        { return s.cronjobs[compName] }
 
 func (s *Stage) Start(id int32) {
 	s.id = id
@@ -759,7 +759,7 @@ func (s *Stage) prepare() (err error) {
 func (s *Stage) startFixtures() {
 	for _, fixture := range s.fixtures {
 		if DebugLevel() >= 1 {
-			Printf("fixture=%s go run()\n", fixture.Name())
+			Printf("fixture=%s go run()\n", fixture.CompName())
 		}
 		go fixture.run()
 	}
@@ -767,7 +767,7 @@ func (s *Stage) startFixtures() {
 func (s *Stage) startBackends() {
 	for _, backend := range s.backends {
 		if DebugLevel() >= 1 {
-			Printf("backend=%s go maintain()\n", backend.Name())
+			Printf("backend=%s go maintain()\n", backend.CompName())
 		}
 		go backend.Maintain()
 	}
@@ -775,19 +775,19 @@ func (s *Stage) startBackends() {
 func (s *Stage) startRouters() {
 	for _, quixRouter := range s.quixRouters {
 		if DebugLevel() >= 1 {
-			Printf("quixRouter=%s go serve()\n", quixRouter.Name())
+			Printf("quixRouter=%s go serve()\n", quixRouter.CompName())
 		}
 		go quixRouter.Serve()
 	}
 	for _, tcpxRouter := range s.tcpxRouters {
 		if DebugLevel() >= 1 {
-			Printf("tcpxRouter=%s go serve()\n", tcpxRouter.Name())
+			Printf("tcpxRouter=%s go serve()\n", tcpxRouter.CompName())
 		}
 		go tcpxRouter.Serve()
 	}
 	for _, udpxRouter := range s.udpxRouters {
 		if DebugLevel() >= 1 {
-			Printf("udpxRouter=%s go serve()\n", udpxRouter.Name())
+			Printf("udpxRouter=%s go serve()\n", udpxRouter.CompName())
 		}
 		go udpxRouter.Serve()
 	}
@@ -795,7 +795,7 @@ func (s *Stage) startRouters() {
 func (s *Stage) startServices() {
 	for _, service := range s.services {
 		if DebugLevel() >= 1 {
-			Printf("service=%s go maintain()\n", service.Name())
+			Printf("service=%s go maintain()\n", service.CompName())
 		}
 		go service.maintain()
 	}
@@ -803,7 +803,7 @@ func (s *Stage) startServices() {
 func (s *Stage) startStaters() {
 	for _, stater := range s.staters {
 		if DebugLevel() >= 1 {
-			Printf("stater=%s go Maintain()\n", stater.Name())
+			Printf("stater=%s go Maintain()\n", stater.CompName())
 		}
 		go stater.Maintain()
 	}
@@ -811,7 +811,7 @@ func (s *Stage) startStaters() {
 func (s *Stage) startCachers() {
 	for _, cacher := range s.cachers {
 		if DebugLevel() >= 1 {
-			Printf("cacher=%s go Maintain()\n", cacher.Name())
+			Printf("cacher=%s go Maintain()\n", cacher.CompName())
 		}
 		go cacher.Maintain()
 	}
@@ -819,7 +819,7 @@ func (s *Stage) startCachers() {
 func (s *Stage) startWebapps() {
 	for _, webapp := range s.webapps {
 		if DebugLevel() >= 1 {
-			Printf("webapp=%s go maintain()\n", webapp.Name())
+			Printf("webapp=%s go maintain()\n", webapp.CompName())
 		}
 		go webapp.maintain()
 	}
@@ -827,7 +827,7 @@ func (s *Stage) startWebapps() {
 func (s *Stage) startServers() {
 	for _, server := range s.servers {
 		if DebugLevel() >= 1 {
-			Printf("server=%s go Serve()\n", server.Name())
+			Printf("server=%s go Serve()\n", server.CompName())
 		}
 		go server.Serve()
 	}
@@ -835,7 +835,7 @@ func (s *Stage) startServers() {
 func (s *Stage) startCronjobs() {
 	for _, cronjob := range s.cronjobs {
 		if DebugLevel() >= 1 {
-			Printf("cronjob=%s go Schedule()\n", cronjob.Name())
+			Printf("cronjob=%s go Schedule()\n", cronjob.CompName())
 		}
 		go cronjob.Schedule()
 	}

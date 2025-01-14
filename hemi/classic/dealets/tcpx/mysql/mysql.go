@@ -14,9 +14,9 @@ import (
 )
 
 func init() {
-	RegisterTCPXDealet("mysqlProxy", func(name string, stage *Stage, router *TCPXRouter) TCPXDealet {
+	RegisterTCPXDealet("mysqlProxy", func(compName string, stage *Stage, router *TCPXRouter) TCPXDealet {
 		d := new(mysqlProxy)
-		d.onCreate(name, stage, router)
+		d.onCreate(compName, stage, router)
 		return d
 	})
 }
@@ -32,8 +32,8 @@ type mysqlProxy struct {
 	// States
 }
 
-func (d *mysqlProxy) onCreate(name string, stage *Stage, router *TCPXRouter) {
-	d.MakeComp(name)
+func (d *mysqlProxy) onCreate(compName string, stage *Stage, router *TCPXRouter) {
+	d.MakeComp(compName)
 	d.stage = stage
 	d.router = router
 }
@@ -53,9 +53,9 @@ func (d *mysqlProxy) DealWith(conn *TCPXConn) (dealt bool) {
 }
 
 func init() {
-	RegisterBackend("mysqlBackend", func(name string, stage *Stage) Backend {
+	RegisterBackend("mysqlBackend", func(compName string, stage *Stage) Backend {
 		b := new(MysqlBackend)
-		b.onCreate(name, stage)
+		b.onCreate(compName, stage)
 		return b
 	})
 }
@@ -67,8 +67,8 @@ type MysqlBackend struct {
 	// States
 }
 
-func (b *MysqlBackend) onCreate(name string, stage *Stage) {
-	b.Backend_.OnCreate(name, stage)
+func (b *MysqlBackend) onCreate(compName string, stage *Stage) {
+	b.Backend_.OnCreate(compName, stage)
 }
 
 func (b *MysqlBackend) OnConfigure() {
@@ -84,9 +84,9 @@ func (b *MysqlBackend) OnPrepare() {
 	b.PrepareNodes()
 }
 
-func (b *MysqlBackend) CreateNode(name string) Node {
+func (b *MysqlBackend) CreateNode(compName string) Node {
 	node := new(mysqlNode)
-	node.onCreate(name, b.Stage(), b)
+	node.onCreate(compName, b.Stage(), b)
 	b.AddNode(node)
 	return node
 }
@@ -97,8 +97,8 @@ type mysqlNode struct {
 	Node_[*MysqlBackend]
 }
 
-func (n *mysqlNode) onCreate(name string, stage *Stage, backend *MysqlBackend) {
-	n.Node_.OnCreate(name, stage, backend)
+func (n *mysqlNode) onCreate(compName string, stage *Stage, backend *MysqlBackend) {
+	n.Node_.OnCreate(compName, stage, backend)
 }
 
 func (n *mysqlNode) OnConfigure() {

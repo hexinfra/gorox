@@ -15,9 +15,9 @@ import (
 )
 
 func init() {
-	RegisterReviser("gzipReviser", func(name string, stage *Stage, webapp *Webapp) Reviser {
+	RegisterReviser("gzipReviser", func(compName string, stage *Stage, webapp *Webapp) Reviser {
 		r := new(gzipReviser)
-		r.onCreate(name, stage, webapp)
+		r.onCreate(compName, stage, webapp)
 		return r
 	})
 }
@@ -35,8 +35,8 @@ type gzipReviser struct {
 	onContentTypes []string
 }
 
-func (r *gzipReviser) onCreate(name string, stage *Stage, webapp *Webapp) {
-	r.MakeComp(name)
+func (r *gzipReviser) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	r.MakeComp(compName)
 	r.stage = stage
 	r.webapp = webapp
 }

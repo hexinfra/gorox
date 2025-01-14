@@ -14,9 +14,9 @@ import (
 )
 
 func init() {
-	RegisterCronjob("cleanCronjob", func(name string, stage *Stage) Cronjob {
+	RegisterCronjob("cleanCronjob", func(compName string, stage *Stage) Cronjob {
 		j := new(cleanCronjob)
-		j.onCreate(name, stage)
+		j.onCreate(compName, stage)
 		return j
 	})
 }
@@ -30,8 +30,8 @@ type cleanCronjob struct {
 	// States
 }
 
-func (j *cleanCronjob) onCreate(name string, stage *Stage) {
-	j.MakeComp(name)
+func (j *cleanCronjob) onCreate(compName string, stage *Stage) {
+	j.MakeComp(compName)
 	j.stage = stage
 }
 func (j *cleanCronjob) OnShutdown() {
@@ -50,7 +50,7 @@ func (j *cleanCronjob) Schedule() { // runner
 		// TODO
 	})
 	if DebugLevel() >= 2 {
-		Printf("cleanCronjob=%s done\n", j.Name())
+		Printf("cleanCronjob=%s done\n", j.CompName())
 	}
 	j.stage.DecSub() // cronjob
 }

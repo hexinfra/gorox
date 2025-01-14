@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterHandlet("mp4Handlet", func(name string, stage *Stage, webapp *Webapp) Handlet {
+	RegisterHandlet("mp4Handlet", func(compName string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(mp4Handlet)
-		h.onCreate(name, stage, webapp)
+		h.onCreate(compName, stage, webapp)
 		return h
 	})
 }
@@ -29,8 +29,8 @@ type mp4Handlet struct {
 	// States
 }
 
-func (h *mp4Handlet) onCreate(name string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(name)
+func (h *mp4Handlet) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	h.MakeComp(compName)
 	h.stage = stage
 	h.webapp = webapp
 }

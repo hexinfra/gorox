@@ -16,9 +16,9 @@ import (
 )
 
 func init() {
-	RegisterStater("redisStater", func(name string, stage *Stage) Stater {
+	RegisterStater("redisStater", func(compName string, stage *Stage) Stater {
 		s := new(redisStater)
-		s.onCreate(name, stage)
+		s.onCreate(compName, stage)
 		return s
 	})
 }
@@ -33,8 +33,8 @@ type redisStater struct {
 	nodes []string
 }
 
-func (s *redisStater) onCreate(name string, stage *Stage) {
-	s.MakeComp(name)
+func (s *redisStater) onCreate(compName string, stage *Stage) {
+	s.MakeComp(compName)
 	s.stage = stage
 }
 func (s *redisStater) OnShutdown() {
@@ -53,7 +53,7 @@ func (s *redisStater) Maintain() { // runner
 		// TODO
 	})
 	if DebugLevel() >= 2 {
-		Printf("redisStater=%s done\n", s.Name())
+		Printf("redisStater=%s done\n", s.CompName())
 	}
 	s.stage.DecSub() // stater
 }

@@ -8,9 +8,9 @@
 package hemi
 
 func init() {
-	RegisterQUIXDealet("quixProxy", func(name string, stage *Stage, router *QUIXRouter) QUIXDealet {
+	RegisterQUIXDealet("quixProxy", func(compName string, stage *Stage, router *QUIXRouter) QUIXDealet {
 		d := new(quixProxy)
-		d.onCreate(name, stage, router)
+		d.onCreate(compName, stage, router)
 		return d
 	})
 }
@@ -27,8 +27,8 @@ type quixProxy struct {
 	QUIXProxyConfig // embeded
 }
 
-func (d *quixProxy) onCreate(name string, stage *Stage, router *QUIXRouter) {
-	d.MakeComp(name)
+func (d *quixProxy) onCreate(compName string, stage *Stage, router *QUIXRouter) {
+	d.MakeComp(compName)
 	d.stage = stage
 	d.router = router
 }
@@ -39,13 +39,13 @@ func (d *quixProxy) OnShutdown() {
 func (d *quixProxy) OnConfigure() {
 	// toBackend
 	if v, ok := d.Find("toBackend"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if backend := d.stage.Backend(name); backend == nil {
-				UseExitf("unknown backend: '%s'\n", name)
+		if compName, ok := v.String(); ok && compName != "" {
+			if backend := d.stage.Backend(compName); backend == nil {
+				UseExitf("unknown backend: '%s'\n", compName)
 			} else if quixBackend, ok := backend.(*QUIXBackend); ok {
 				d.backend = quixBackend
 			} else {
-				UseExitf("incorrect backend '%s' for quixProxy\n", name)
+				UseExitf("incorrect backend '%s' for quixProxy\n", compName)
 			}
 		} else {
 			UseExitln("invalid toBackend")

@@ -15,9 +15,9 @@ import (
 )
 
 func init() {
-	RegisterReviser("replaceReviser", func(name string, stage *Stage, webapp *Webapp) Reviser {
+	RegisterReviser("replaceReviser", func(compName string, stage *Stage, webapp *Webapp) Reviser {
 		r := new(replaceReviser)
-		r.onCreate(name, stage, webapp)
+		r.onCreate(compName, stage, webapp)
 		return r
 	})
 }
@@ -33,8 +33,8 @@ type replaceReviser struct {
 	rank int8
 }
 
-func (r *replaceReviser) onCreate(name string, stage *Stage, webapp *Webapp) {
-	r.MakeComp(name)
+func (r *replaceReviser) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	r.MakeComp(compName)
 	r.stage = stage
 	r.webapp = webapp
 }

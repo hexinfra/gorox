@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterHandlet("limitChecker", func(name string, stage *Stage, webapp *Webapp) Handlet {
+	RegisterHandlet("limitChecker", func(compName string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(limitChecker)
-		h.onCreate(name, stage, webapp)
+		h.onCreate(compName, stage, webapp)
 		return h
 	})
 }
@@ -29,8 +29,8 @@ type limitChecker struct {
 	// States
 }
 
-func (h *limitChecker) onCreate(name string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(name)
+func (h *limitChecker) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	h.MakeComp(compName)
 	h.stage = stage
 	h.webapp = webapp
 }

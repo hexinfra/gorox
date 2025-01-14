@@ -12,9 +12,9 @@ import (
 )
 
 func init() {
-	RegisterHandlet("hostnameChecker", func(name string, stage *Stage, webapp *Webapp) Handlet {
+	RegisterHandlet("hostnameChecker", func(compName string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(hostnameChecker)
-		h.onCreate(name, stage, webapp)
+		h.onCreate(compName, stage, webapp)
 		return h
 	})
 }
@@ -31,8 +31,8 @@ type hostnameChecker struct {
 	permanent bool
 }
 
-func (h *hostnameChecker) onCreate(name string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(name)
+func (h *hostnameChecker) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	h.MakeComp(compName)
 	h.stage = stage
 	h.webapp = webapp
 }

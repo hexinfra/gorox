@@ -8,9 +8,9 @@
 package hemi
 
 func init() {
-	RegisterUDPXDealet("udpxProxy", func(name string, stage *Stage, router *UDPXRouter) UDPXDealet {
+	RegisterUDPXDealet("udpxProxy", func(compName string, stage *Stage, router *UDPXRouter) UDPXDealet {
 		d := new(udpxProxy)
-		d.onCreate(name, stage, router)
+		d.onCreate(compName, stage, router)
 		return d
 	})
 }
@@ -27,8 +27,8 @@ type udpxProxy struct {
 	UDPXProxyConfig // embeded
 }
 
-func (d *udpxProxy) onCreate(name string, stage *Stage, router *UDPXRouter) {
-	d.MakeComp(name)
+func (d *udpxProxy) onCreate(compName string, stage *Stage, router *UDPXRouter) {
+	d.MakeComp(compName)
 	d.stage = stage
 	d.router = router
 }
@@ -39,13 +39,13 @@ func (d *udpxProxy) OnShutdown() {
 func (d *udpxProxy) OnConfigure() {
 	// toBackend
 	if v, ok := d.Find("toBackend"); ok {
-		if name, ok := v.String(); ok && name != "" {
-			if backend := d.stage.Backend(name); backend == nil {
-				UseExitf("unknown backend: '%s'\n", name)
+		if compName, ok := v.String(); ok && compName != "" {
+			if backend := d.stage.Backend(compName); backend == nil {
+				UseExitf("unknown backend: '%s'\n", compName)
 			} else if udpxBackend, ok := backend.(*UDPXBackend); ok {
 				d.backend = udpxBackend
 			} else {
-				UseExitf("incorrect backend '%s' for udpxProxy\n", name)
+				UseExitf("incorrect backend '%s' for udpxProxy\n", compName)
 			}
 		} else {
 			UseExitln("invalid toBackend")

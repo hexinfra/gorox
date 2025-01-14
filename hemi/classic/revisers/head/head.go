@@ -13,9 +13,9 @@ import (
 )
 
 func init() {
-	RegisterReviser("headReviser", func(name string, stage *Stage, webapp *Webapp) Reviser {
+	RegisterReviser("headReviser", func(compName string, stage *Stage, webapp *Webapp) Reviser {
 		r := new(headReviser)
-		r.onCreate(name, stage, webapp)
+		r.onCreate(compName, stage, webapp)
 		return r
 	})
 }
@@ -34,8 +34,8 @@ type headReviser struct {
 	delResponse []string
 }
 
-func (r *headReviser) onCreate(name string, stage *Stage, webapp *Webapp) {
-	r.MakeComp(name)
+func (r *headReviser) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	r.MakeComp(compName)
 	r.stage = stage
 	r.webapp = webapp
 }

@@ -19,11 +19,13 @@ import (
 
 //////////////////////////////////////// QUIX general implementation ////////////////////////////////////////
 
-// quixHolder collects shared methods between *QUIXGate and *quixNode.
+// quixHolder is the interface for _quixHolder_.
 type quixHolder interface {
+	MaxCumulativeStreamsPerConn() int32
+	MaxConcurrentStreamsPerConn() int32
 }
 
-// _quixHolder_ is mixin for QUIXRouter, QUIXGate, and quixNode.
+// _quixHolder_ is a mixin for QUIXRouter, QUIXGate, and quixNode.
 type _quixHolder_ struct {
 	// States
 	maxCumulativeStreamsPerConn int32 // max cumulative streams of one conn. 0 means infinite
@@ -62,8 +64,8 @@ type quixConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id                   int64 // the conn id
-	stageID              int32 // for convenience
+	id                   int64  // the conn id
+	stage                *Stage // current stage, for convenience
 	quicConn             *tcp2.Conn
 	udsMode              bool  // for convenience
 	tlsMode              bool  // for convenience
@@ -78,9 +80,9 @@ type quixConn_ struct {
 	concurrentStreams atomic.Int32 // how many concurrent streams?
 }
 
-func (c *quixConn_) onGet(id int64, stageID int32, quicConn *tcp2.Conn, udsMode bool, tlsMode bool, maxCumulativeStreams int32, maxConcurrentStreams int32) {
+func (c *quixConn_) onGet(id int64, stage *Stage, quicConn *tcp2.Conn, udsMode bool, tlsMode bool, maxCumulativeStreams int32, maxConcurrentStreams int32) {
 	c.id = id
-	c.stageID = stageID
+	c.stage = stage
 	c.quicConn = quicConn
 	c.udsMode = udsMode
 	c.tlsMode = tlsMode
@@ -88,6 +90,7 @@ func (c *quixConn_) onGet(id int64, stageID int32, quicConn *tcp2.Conn, udsMode 
 	c.maxConcurrentStreams = maxConcurrentStreams
 }
 func (c *quixConn_) onPut() {
+	c.stage = nil
 	c.quicConn = nil
 	c.counter.Store(0)
 	c.lastRead = time.Time{}
@@ -101,7 +104,7 @@ func (c *quixConn_) UDSMode() bool { return c.udsMode }
 func (c *quixConn_) TLSMode() bool { return c.tlsMode }
 
 func (c *quixConn_) MakeTempName(dst []byte, unixTime int64) int {
-	return makeTempName(dst, c.stageID, c.id, unixTime, c.counter.Add(1))
+	return makeTempName(dst, c.stage.ID(), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *quixConn_) markBroken()    { c.broken.Store(true) }
@@ -359,7 +362,7 @@ func putQUIXConn(conn *QUIXConn) {
 }
 
 func (c *QUIXConn) onGet(id int64, gate *quixGate, quicConn *tcp2.Conn) {
-	c.quixConn_.onGet(id, gate.Stage().ID(), quicConn, gate.UDSMode(), gate.TLSMode(), gate.MaxCumulativeStreamsPerConn(), gate.MaxConcurrentStreamsPerConn())
+	c.quixConn_.onGet(id, gate.Stage(), quicConn, gate.UDSMode(), gate.TLSMode(), gate.MaxCumulativeStreamsPerConn(), gate.MaxConcurrentStreamsPerConn())
 
 	c.gate = gate
 }
@@ -689,7 +692,7 @@ func putQConn(conn *QConn) {
 }
 
 func (c *QConn) onGet(id int64, node *quixNode, quicConn *tcp2.Conn) {
-	c.quixConn_.onGet(id, node.Stage().ID(), quicConn, node.UDSMode(), node.TLSMode(), node.MaxCumulativeStreamsPerConn(), node.MaxConcurrentStreamsPerConn())
+	c.quixConn_.onGet(id, node.Stage(), quicConn, node.UDSMode(), node.TLSMode(), node.MaxCumulativeStreamsPerConn(), node.MaxConcurrentStreamsPerConn())
 
 	c.node = node
 }

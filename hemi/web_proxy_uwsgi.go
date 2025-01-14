@@ -148,7 +148,7 @@ type uwsgiNode struct {
 	// Parent
 	Node_[*uwsgiBackend]
 	// Mixins
-	_contentSaver_ // so responses can save their large contents in local file system.
+	_contentSaver_ // so uwsgi responses can save their large contents in local file system.
 	// States
 }
 

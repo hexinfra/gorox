@@ -75,8 +75,8 @@ type _http2Conn0 struct { // for fast reset, entirely
 	contFore           uint32                                // incoming continuation part (header or payload) ends at c.inBuffer.buf[c.contFore]
 }
 
-func (c *http2Conn_) onGet(id int64, stageID int32, udsMode bool, tlsMode bool, netConn net.Conn, rawConn syscall.RawConn, readTimeout time.Duration, writeTimeout time.Duration) {
-	c.httpConn_.onGet(id, stageID, udsMode, tlsMode, readTimeout, writeTimeout)
+func (c *http2Conn_) onGet(id int64, stage *Stage, udsMode bool, tlsMode bool, netConn net.Conn, rawConn syscall.RawConn, readTimeout time.Duration, writeTimeout time.Duration) {
+	c.httpConn_.onGet(id, stage, udsMode, tlsMode, readTimeout, writeTimeout)
 
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -513,8 +513,8 @@ type http2Stream interface {
 	httpStream
 	// Methods
 	getID() uint32
-	getIndex() uint8
-	setIndex(index uint8)
+	getIndex() uint8 // at activeStreams
+	setIndex(index uint8) // at activeStreams
 }
 
 // http2Stream_ is the parent for server2Stream and backend2Stream.
@@ -1234,7 +1234,7 @@ func putServer2Conn(serverConn *server2Conn) {
 }
 
 func (c *server2Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.http2Conn_.onGet(id, gate.Stage().ID(), gate.UDSMode(), gate.TLSMode(), netConn, rawConn, gate.ReadTimeout(), gate.WriteTimeout())
+	c.http2Conn_.onGet(id, gate.Stage(), gate.UDSMode(), gate.TLSMode(), netConn, rawConn, gate.ReadTimeout(), gate.WriteTimeout())
 
 	c.gate = gate
 }
@@ -1909,7 +1909,7 @@ func putBackend2Conn(backendConn *backend2Conn) {
 }
 
 func (c *backend2Conn) onGet(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.http2Conn_.onGet(id, node.Stage().ID(), node.UDSMode(), node.TLSMode(), netConn, rawConn, node.ReadTimeout(), node.WriteTimeout())
+	c.http2Conn_.onGet(id, node.Stage(), node.UDSMode(), node.TLSMode(), netConn, rawConn, node.ReadTimeout(), node.WriteTimeout())
 
 	c.node = node
 	c.expireTime = time.Now().Add(node.idleTimeout)

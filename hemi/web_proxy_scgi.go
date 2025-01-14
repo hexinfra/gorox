@@ -148,7 +148,7 @@ type scgiNode struct {
 	// Parent
 	Node_[*scgiBackend]
 	// Mixins
-	_contentSaver_ // so responses can save their large contents in local file system.
+	_contentSaver_ // so scgi responses can save their large contents in local file system.
 	// States
 }
 

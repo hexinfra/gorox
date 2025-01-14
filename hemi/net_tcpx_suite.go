@@ -24,7 +24,7 @@ import (
 
 //////////////////////////////////////// TCPX general implementation ////////////////////////////////////////
 
-// tcpxHolder collects shared methods between *TCPXGate and *tcpxNode.
+// tcpxHolder is the interface for _tcpxHolder_.
 type tcpxHolder interface {
 }
 
@@ -51,7 +51,7 @@ type tcpxConn_ struct {
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	id           int64           // the conn id
-	stageID      int32           // for convenience
+	stage        *Stage          // current stage, for convenience
 	udsMode      bool            // for convenience
 	tlsMode      bool            // for convenience
 	readTimeout  time.Duration   // for convenience
@@ -70,9 +70,9 @@ type tcpxConn_ struct {
 	FixedVector [4][]byte    // used by Sendv()
 }
 
-func (c *tcpxConn_) onGet(id int64, stageID int32, netConn net.Conn, rawConn syscall.RawConn, udsMode bool, tlsMode bool, readTimeout time.Duration, writeTimeout time.Duration) {
+func (c *tcpxConn_) onGet(id int64, stage *Stage, netConn net.Conn, rawConn syscall.RawConn, udsMode bool, tlsMode bool, readTimeout time.Duration, writeTimeout time.Duration) {
 	c.id = id
-	c.stageID = stageID
+	c.stage = stage
 	c.netConn = netConn
 	c.rawConn = rawConn
 	c.udsMode = udsMode
@@ -84,6 +84,7 @@ func (c *tcpxConn_) onGet(id int64, stageID int32, netConn net.Conn, rawConn sys
 	c.closeSema.Store(2)
 }
 func (c *tcpxConn_) onPut() {
+	c.stage = nil
 	c.region.Free()
 	if cap(c.input) != cap(c.stockInput) {
 		PutNK(c.input)
@@ -104,7 +105,7 @@ func (c *tcpxConn_) UDSMode() bool { return c.udsMode }
 func (c *tcpxConn_) TLSMode() bool { return c.tlsMode }
 
 func (c *tcpxConn_) MakeTempName(dst []byte, unixTime int64) int {
-	return makeTempName(dst, c.stageID, c.id, unixTime, c.counter.Add(1))
+	return makeTempName(dst, c.stage.ID(), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *tcpxConn_) markBroken()    { c.broken.Store(true) }
@@ -495,7 +496,7 @@ func putTCPXConn(conn *TCPXConn) {
 }
 
 func (c *TCPXConn) onGet(id int64, gate *tcpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.tcpxConn_.onGet(id, gate.Stage().ID(), netConn, rawConn, gate.UDSMode(), gate.TLSMode(), gate.ReadTimeout(), gate.WriteTimeout())
+	c.tcpxConn_.onGet(id, gate.Stage(), netConn, rawConn, gate.UDSMode(), gate.TLSMode(), gate.ReadTimeout(), gate.WriteTimeout())
 
 	c.gate = gate
 }
@@ -866,7 +867,7 @@ func putTConn(conn *TConn) {
 }
 
 func (c *TConn) onGet(id int64, node *tcpxNode, netConn net.Conn, rawConn syscall.RawConn) {
-	c.tcpxConn_.onGet(id, node.Stage().ID(), netConn, rawConn, node.UDSMode(), node.TLSMode(), node.ReadTimeout(), node.WriteTimeout())
+	c.tcpxConn_.onGet(id, node.Stage(), netConn, rawConn, node.UDSMode(), node.TLSMode(), node.ReadTimeout(), node.WriteTimeout())
 
 	c.node = node
 }

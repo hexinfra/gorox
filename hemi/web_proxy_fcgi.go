@@ -263,7 +263,7 @@ type fcgiNode struct {
 	// Parent
 	Node_[*fcgiBackend]
 	// Mixins
-	_contentSaver_ // so responses can save their large contents in local file system.
+	_contentSaver_ // so fcgi responses can save their large contents in local file system.
 	// States
 	maxCumulativeExchansPerConn int32         // max exchans of one conn. 0 means infinite
 	idleTimeout                 time.Duration // conn idle timeout

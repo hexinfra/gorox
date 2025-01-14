@@ -25,7 +25,7 @@ import (
 
 //////////////////////////////////////// HTTP general implementation ////////////////////////////////////////
 
-// httpHolder collects shared methods between *http[x3]Gate and *http[1-3]Node.
+// httpHolder is the interface for _httpHolder_.
 type httpHolder interface {
 	// Imports
 	contentSaver
@@ -37,7 +37,7 @@ type httpHolder interface {
 // _httpHolder_ is a mixin for httpServer_, httpGate_, and httpNode_.
 type _httpHolder_ struct {
 	// Mixins
-	_contentSaver_ // so responses can save their large contents in local file system.
+	_contentSaver_ // so http messages can save their large contents in local file system.
 	// States
 	maxCumulativeStreamsPerConn int32 // max cumulative streams of one conn. 0 means infinite
 	maxMemoryContentSize        int32 // max content size that can be loaded into memory directly
@@ -84,7 +84,7 @@ type httpConn interface {
 type httpConn_ struct {
 	// Conn states (non-zeros)
 	id           int64         // the conn id
-	stageID      int32         // current stage id, for convenience
+	stage        *Stage        // current stage, for convenience
 	udsMode      bool          // for convenience
 	tlsMode      bool          // for convenience
 	readTimeout  time.Duration // for convenience
@@ -97,15 +97,16 @@ type httpConn_ struct {
 	lastRead          time.Time    // deadline of last read operation
 }
 
-func (c *httpConn_) onGet(id int64, stageID int32, udsMode bool, tlsMode bool, readTimeout time.Duration, writeTimeout time.Duration) {
+func (c *httpConn_) onGet(id int64, stage *Stage, udsMode bool, tlsMode bool, readTimeout time.Duration, writeTimeout time.Duration) {
 	c.id = id
-	c.stageID = stageID
+	c.stage = stage
 	c.udsMode = udsMode
 	c.tlsMode = tlsMode
 	c.readTimeout = readTimeout
 	c.writeTimeout = writeTimeout
 }
 func (c *httpConn_) onPut() {
+	c.stage = nil
 	c.cumulativeStreams.Store(0)
 	c.broken.Store(false)
 	c.counter.Store(0)
@@ -119,7 +120,7 @@ func (c *httpConn_) UDSMode() bool { return c.udsMode }
 func (c *httpConn_) TLSMode() bool { return c.tlsMode }
 
 func (c *httpConn_) MakeTempName(dst []byte, unixTime int64) int {
-	return makeTempName(dst, c.stageID, c.id, unixTime, c.counter.Add(1))
+	return makeTempName(dst, c.stage.ID(), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *httpConn_) markBroken()    { c.broken.Store(true) }

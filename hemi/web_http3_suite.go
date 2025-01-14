@@ -48,8 +48,8 @@ type _http3Conn0 struct { // for fast reset, entirely
 	partFore     uint32 // incoming frame part (header or payload) ends at c.inBuffer.buf[c.partFore]
 }
 
-func (c *http3Conn_) onGet(id int64, stageID int32, udsMode bool, tlsMode bool, quicConn *tcp2.Conn, readTimeout time.Duration, writeTimeout time.Duration) {
-	c.httpConn_.onGet(id, stageID, udsMode, tlsMode, readTimeout, writeTimeout)
+func (c *http3Conn_) onGet(id int64, stage *Stage, udsMode bool, tlsMode bool, quicConn *tcp2.Conn, readTimeout time.Duration, writeTimeout time.Duration) {
+	c.httpConn_.onGet(id, stage, udsMode, tlsMode, readTimeout, writeTimeout)
 
 	c.quicConn = quicConn
 	if c.inBuffer == nil {
@@ -415,7 +415,7 @@ func putServer3Conn(serverConn *server3Conn) {
 }
 
 func (c *server3Conn) onGet(id int64, gate *http3Gate, quicConn *tcp2.Conn) {
-	c.http3Conn_.onGet(id, gate.Stage().ID(), gate.UDSMode(), gate.TLSMode(), quicConn, gate.ReadTimeout(), gate.WriteTimeout())
+	c.http3Conn_.onGet(id, gate.Stage(), gate.UDSMode(), gate.TLSMode(), quicConn, gate.ReadTimeout(), gate.WriteTimeout())
 
 	c.gate = gate
 }
@@ -780,7 +780,7 @@ func putBackend3Conn(backendConn *backend3Conn) {
 }
 
 func (c *backend3Conn) onGet(id int64, node *http3Node, quicConn *tcp2.Conn) {
-	c.http3Conn_.onGet(id, node.Stage().ID(), node.UDSMode(), node.TLSMode(), quicConn, node.ReadTimeout(), node.WriteTimeout())
+	c.http3Conn_.onGet(id, node.Stage(), node.UDSMode(), node.TLSMode(), quicConn, node.ReadTimeout(), node.WriteTimeout())
 
 	c.node = node
 	c.expireTime = time.Now().Add(node.idleTimeout)

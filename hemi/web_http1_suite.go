@@ -49,12 +49,12 @@ type http1Conn_ struct {
 	// Conn states (zeros)
 }
 
-func (c *http1Conn_) onGet(id int64, stageID int32, udsMode bool, tlsMode bool, netConn net.Conn, rawConn syscall.RawConn, readTimeout time.Duration, writeTimeout time.Duration, persistent bool) {
-	c.httpConn_.onGet(id, stageID, udsMode, tlsMode, readTimeout, writeTimeout)
+func (c *http1Conn_) onGet(id int64, stage *Stage, udsMode bool, tlsMode bool, netConn net.Conn, rawConn syscall.RawConn, readTimeout time.Duration, writeTimeout time.Duration) {
+	c.httpConn_.onGet(id, stage, udsMode, tlsMode, readTimeout, writeTimeout)
 
 	c.netConn = netConn
 	c.rawConn = rawConn
-	c.persistent = persistent
+	c.persistent = true
 }
 func (c *http1Conn_) onPut() {
 	c.netConn = nil
@@ -1093,7 +1093,7 @@ func putServer1Conn(serverConn *server1Conn) {
 }
 
 func (c *server1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.http1Conn_.onGet(id, gate.Stage().ID(), gate.UDSMode(), gate.TLSMode(), netConn, rawConn, gate.ReadTimeout(), gate.WriteTimeout(), true)
+	c.http1Conn_.onGet(id, gate.Stage(), gate.UDSMode(), gate.TLSMode(), netConn, rawConn, gate.ReadTimeout(), gate.WriteTimeout())
 
 	c.gate = gate
 	c.closeSafe = true
@@ -2338,7 +2338,7 @@ func putBackend1Conn(backendConn *backend1Conn) {
 }
 
 func (c *backend1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.http1Conn_.onGet(id, node.Stage().ID(), node.UDSMode(), node.TLSMode(), netConn, rawConn, node.ReadTimeout(), node.WriteTimeout(), true)
+	c.http1Conn_.onGet(id, node.Stage(), node.UDSMode(), node.TLSMode(), netConn, rawConn, node.ReadTimeout(), node.WriteTimeout())
 
 	c.node = node
 	c.expireTime = time.Now().Add(node.idleTimeout)

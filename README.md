@@ -89,7 +89,7 @@ server gracefully:
 
 Or exit it immediately:
 
-    shell> ./gorox exit
+    shell> ./gorox stop
 
 For more actions and options:
 

@@ -18,7 +18,7 @@ import (
 
 //////////////////////////////////////// UDPX general implementation ////////////////////////////////////////
 
-// udpxHolder collects shared methods between *UDPXGate and *udpxNode.
+// udpxHolder is the interface for _udpxHolder_.
 type udpxHolder interface {
 }
 
@@ -43,9 +43,9 @@ type udpxConn_ struct {
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id      int64 // the conn id
-	stageID int32 // for convenience
-	udsMode bool  // for convenience
+	id      int64  // the conn id
+	stage   *Stage // current stage, for convenience
+	udsMode bool   // for convenience
 	pktConn net.PacketConn
 	rawConn syscall.RawConn // for syscall
 	// Conn states (zeros)
@@ -55,14 +55,15 @@ type udpxConn_ struct {
 	broken    atomic.Bool
 }
 
-func (c *udpxConn_) onGet(id int64, stageID int32, pktConn net.PacketConn, rawConn syscall.RawConn, udsMode bool) {
+func (c *udpxConn_) onGet(id int64, stage *Stage, pktConn net.PacketConn, rawConn syscall.RawConn, udsMode bool) {
 	c.id = id
-	c.stageID = stageID
+	c.stage = stage
 	c.pktConn = pktConn
 	c.rawConn = rawConn
 	c.udsMode = udsMode
 }
 func (c *udpxConn_) onPut() {
+	c.stage = nil
 	c.pktConn = nil
 	c.rawConn = nil
 	c.counter.Store(0)
@@ -74,7 +75,7 @@ func (c *udpxConn_) onPut() {
 func (c *udpxConn_) UDSMode() bool { return c.udsMode }
 
 func (c *udpxConn_) MakeTempName(dst []byte, unixTime int64) int {
-	return makeTempName(dst, c.stageID, c.id, unixTime, c.counter.Add(1))
+	return makeTempName(dst, c.stage.ID(), c.id, unixTime, c.counter.Add(1))
 }
 
 func (c *udpxConn_) markBroken()    { c.broken.Store(true) }
@@ -302,7 +303,7 @@ func putUDPXConn(conn *UDPXConn) {
 }
 
 func (c *UDPXConn) onGet(id int64, gate *udpxGate, pktConn net.PacketConn, rawConn syscall.RawConn) {
-	c.udpxConn_.onGet(id, gate.Stage().ID(), pktConn, rawConn, gate.UDSMode())
+	c.udpxConn_.onGet(id, gate.Stage(), pktConn, rawConn, gate.UDSMode())
 
 	c.gate = gate
 }
@@ -574,7 +575,7 @@ func putUConn(conn *UConn) {
 }
 
 func (c *UConn) onGet(id int64, node *udpxNode, pktConn net.PacketConn, rawConn syscall.RawConn) {
-	c.udpxConn_.onGet(id, node.Stage().ID(), pktConn, rawConn, node.UDSMode())
+	c.udpxConn_.onGet(id, node.Stage(), pktConn, rawConn, node.UDSMode())
 
 	c.node = node
 }

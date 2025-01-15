@@ -142,8 +142,8 @@ func (c *configurator) parseStage(stage *Stage) { // stage {}
 			c.parseService(current, stage)
 		case compTypeStater:
 			c.parseStater(current, stage)
-		case compTypeCacher:
-			c.parseCacher(current, stage)
+		case compTypeHcache:
+			c.parseHcache(current, stage)
 		case compTypeWebapp:
 			c.parseWebapp(current, stage)
 		case compTypeServer:
@@ -373,8 +373,8 @@ func (c *configurator) parseService(compSign *token, stage *Stage) { // service 
 func (c *configurator) parseStater(compSign *token, stage *Stage) { // xxxStater <compName> {}
 	parseComponent0(c, compSign, stage, stage.createStater)
 }
-func (c *configurator) parseCacher(compSign *token, stage *Stage) { // xxxCacher <compName> {}
-	parseComponent0(c, compSign, stage, stage.createCacher)
+func (c *configurator) parseHcache(compSign *token, stage *Stage) { // xxxHcache <compName> {}
+	parseComponent0(c, compSign, stage, stage.createHcache)
 }
 func (c *configurator) parseWebapp(compSign *token, stage *Stage) { // webapp <compName> {}
 	compName := c.forwardExpectToken(tokenString)
@@ -687,7 +687,7 @@ func (c *configurator) _parseDict(comp Component, prop string, value *Value) {
 	value.kind, value.value = tokenDict, dict
 }
 
-func parseComponent0[T Component](c *configurator, compSign *token, stage *Stage, create func(compSign string, compName string) T) { // backend, stater, cacher, server, cronjob
+func parseComponent0[T Component](c *configurator, compSign *token, stage *Stage, create func(compSign string, compName string) T) { // backend, stater, hcache, server, cronjob
 	compName := c.forwardExpectToken(tokenString)
 	component := create(compSign.text, compName.text)
 	component.setParent(stage)

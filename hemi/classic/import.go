@@ -8,9 +8,9 @@
 package classic
 
 import ( // preload all
-	_ "github.com/hexinfra/gorox/hemi/classic/cachers/local"
-	_ "github.com/hexinfra/gorox/hemi/classic/cachers/mem"
-	_ "github.com/hexinfra/gorox/hemi/classic/cachers/redis"
+	_ "github.com/hexinfra/gorox/hemi/classic/hcaches/local"
+	_ "github.com/hexinfra/gorox/hemi/classic/hcaches/mem"
+	_ "github.com/hexinfra/gorox/hemi/classic/hcaches/redis"
 	_ "github.com/hexinfra/gorox/hemi/classic/cronjobs/clean"
 	_ "github.com/hexinfra/gorox/hemi/classic/cronjobs/stat"
 	_ "github.com/hexinfra/gorox/hemi/classic/dealets/tcpx/access"

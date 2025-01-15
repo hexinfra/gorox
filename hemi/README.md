@@ -59,7 +59,7 @@ The logical architecture of a stage in Hemi Engine looks like this:
    |     | e |        |              | handlet reviser |     |
    |     | r |  case  |  service(*)  |     socklet     |     |
    |     |(*)| dealet |              +------+   +------+     |
-   |     |   |        |              |stater|   |cacher|     |
+   |     |   |        |              |stater|   |hcache|     |
    |     +---+--------+--------------+------+---+------+     |
    |     |                  backend                    |     |
    |     |                   node                      |     |
@@ -109,7 +109,7 @@ TODO
 * webSocket implementation.
 * http/2 implementation.
 * quic and http/3 implementation.
-* cacher implementation.
+* hcache implementation.
 * http tunnel proxy (tcp, udp, ip) implementation.
 * web application framework implementation.
 * documentation.

@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// Memory HTTP cacher implementation.
+// Memory HTTP hcache implementation.
 
 package mem
 
@@ -14,55 +14,55 @@ import (
 )
 
 func init() {
-	RegisterCacher("memCacher", func(compName string, stage *Stage) Cacher {
-		c := new(memCacher)
+	RegisterHcache("memHcache", func(compName string, stage *Stage) Hcache {
+		c := new(memHcache)
 		c.onCreate(compName, stage)
 		return c
 	})
 }
 
-// memCacher
-type memCacher struct {
+// memHcache
+type memHcache struct {
 	// Parent
-	Cacher_
+	Hcache_
 	// Assocs
 	stage *Stage // current stage
 	// States
 }
 
-func (c *memCacher) onCreate(compName string, stage *Stage) {
+func (c *memHcache) onCreate(compName string, stage *Stage) {
 	c.MakeComp(compName)
 	c.stage = stage
 }
-func (c *memCacher) OnShutdown() {
+func (c *memHcache) OnShutdown() {
 	close(c.ShutChan) // notifies Maintain()
 }
 
-func (c *memCacher) OnConfigure() {
+func (c *memHcache) OnConfigure() {
 	// TODO
 }
-func (c *memCacher) OnPrepare() {
+func (c *memHcache) OnPrepare() {
 	// TODO
 }
 
-func (c *memCacher) Maintain() { // runner
+func (c *memHcache) Maintain() { // runner
 	c.LoopRun(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if DebugLevel() >= 2 {
-		Printf("memCacher=%s done\n", c.CompName())
+		Printf("memHcache=%s done\n", c.CompName())
 	}
-	c.stage.DecSub() // cacher
+	c.stage.DecSub() // hcache
 }
 
-func (c *memCacher) Set(key []byte, hobject *Hobject) {
+func (c *memHcache) Set(key []byte, hobject *Hobject) {
 	// TODO
 }
-func (c *memCacher) Get(key []byte) (hobject *Hobject) {
+func (c *memHcache) Get(key []byte) (hobject *Hobject) {
 	// TODO
 	return
 }
-func (c *memCacher) Del(key []byte) bool {
+func (c *memHcache) Del(key []byte) bool {
 	// TODO
 	return false
 }

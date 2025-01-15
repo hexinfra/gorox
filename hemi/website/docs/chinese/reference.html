@@ -122,8 +122,8 @@ article table.none tr td {
 		<li><a href="#stage-service">stage &gt; service</a></li>
 		<li>stage &gt; localStater</li>
 		<li>stage &gt; redisStater</li>
-		<li><a href="#stage-localCacher">stage &gt; localCacher</a></li>
-		<li><a href="#stage-redisCacher">stage &gt; redisCacher</a></li>
+		<li><a href="#stage-localHcache">stage &gt; localHcache</a></li>
+		<li><a href="#stage-redisHcache">stage &gt; redisHcache</a></li>
 		<li><a href="#stage-webapp">stage &gt; webapp</a></li>
 		<li><a href="#stage-webapp-rule">stage &gt; webapp &gt; rule</a></li>
 		<li><a href="#stage-webapp-access1Checker">stage &gt; webapp &gt; [rule &gt;] access1Checker</a></li>
@@ -457,23 +457,23 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 			<h4>stage &gt; service </h4>
 		</li>
 
-		<li id="stage-localCacher">
-			<h4>stage &gt; localCacher</h4>
-			<p>localCacher：本地 HTTP 缓存，根据 HTTP 的 header 信息把远端的数据缓存在本地。</p>
+		<li id="stage-localHcache">
+			<h4>stage &gt; localHcache</h4>
+			<p>localHcache：本地 HTTP 缓存，根据 HTTP 的 header 信息把远端的数据缓存在本地。</p>
 			<ul>
 				<li>
 					<p>.cacheDir 缓存目录</p>
 					<code>语法：.cacheDir = "path"
-					默认值： %varDir + "/cachers/cacherName"
+					默认值： %varDir + "/hcaches/hcacheName"
 					取值范围：-
 				</code>
 				</li>
 			</ul>
 		</li>
 
-		<li id="stage-redisCacher">
-			<h4>stage &gt; redisCacher</h4>
-			<p>redisCacher：根据 HTTP 的 header 信息把远端的数据缓存在 redis 中。</p>
+		<li id="stage-redisHcache">
+			<h4>stage &gt; redisHcache</h4>
+			<p>redisHcache：根据 HTTP 的 header 信息把远端的数据缓存在 redis 中。</p>
 		</li>
 
 		<li id="stage-webapp">
@@ -971,8 +971,8 @@ stage {
 					</code>
 				</li>
 				<li>
-					<p>.withCacher 选择使用 cacher 的名字。</p>
-					<code>语法： .withCacher = "cacherName"
+					<p>.withHcache 选择使用 hcache 的名字。</p>
+					<code>语法： .withHcache = "hcacheName"
 						默认值： -  
 						取值范围：-
 					</code>
@@ -1060,8 +1060,8 @@ httpProxy {
 					</code>
 				</li>
 				<li>
-					<p>.withCacher 选择使用 cacher 的名字。</p>
-					<code>语法： .withCacher = "cacherName"
+					<p>.withHcache 选择使用 hcache 的名字。</p>
+					<code>语法： .withHcache = "hcacheName"
 						默认值： -  
 						取值范围：-
 					</code>

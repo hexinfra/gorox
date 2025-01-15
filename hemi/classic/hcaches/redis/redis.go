@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// Redis HTTP cacher implementation.
+// Redis HTTP hcache implementation.
 
 package redis
 
@@ -16,56 +16,56 @@ import (
 )
 
 func init() {
-	RegisterCacher("redisCacher", func(compName string, stage *Stage) Cacher {
-		c := new(redisCacher)
+	RegisterHcache("redisHcache", func(compName string, stage *Stage) Hcache {
+		c := new(redisHcache)
 		c.onCreate(compName, stage)
 		return c
 	})
 }
 
-// redisCacher
-type redisCacher struct {
+// redisHcache
+type redisHcache struct {
 	// Parent
-	Cacher_
+	Hcache_
 	// Assocs
 	stage *Stage // current stage
 	// States
 	nodes []string
 }
 
-func (c *redisCacher) onCreate(compName string, stage *Stage) {
+func (c *redisHcache) onCreate(compName string, stage *Stage) {
 	c.MakeComp(compName)
 	c.stage = stage
 }
-func (c *redisCacher) OnShutdown() {
+func (c *redisHcache) OnShutdown() {
 	close(c.ShutChan) // notifies Maintain()
 }
 
-func (c *redisCacher) OnConfigure() {
+func (c *redisHcache) OnConfigure() {
 	// TODO
 }
-func (c *redisCacher) OnPrepare() {
+func (c *redisHcache) OnPrepare() {
 	// TODO
 }
 
-func (c *redisCacher) Maintain() { // runner
+func (c *redisHcache) Maintain() { // runner
 	c.LoopRun(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if DebugLevel() >= 2 {
-		Printf("redisCacher=%s done\n", c.CompName())
+		Printf("redisHcache=%s done\n", c.CompName())
 	}
-	c.stage.DecSub() // cacher
+	c.stage.DecSub() // hcache
 }
 
-func (c *redisCacher) Set(key []byte, hobject *Hobject) {
+func (c *redisHcache) Set(key []byte, hobject *Hobject) {
 	// TODO
 }
-func (c *redisCacher) Get(key []byte) (hobject *Hobject) {
+func (c *redisHcache) Get(key []byte) (hobject *Hobject) {
 	// TODO
 	return
 }
-func (c *redisCacher) Del(key []byte) bool {
+func (c *redisHcache) Del(key []byte) bool {
 	// TODO
 	return false
 }

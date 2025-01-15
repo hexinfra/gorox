@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// Local HTTP cacher implementation.
+// Local HTTP hcache implementation.
 
 package local
 
@@ -16,64 +16,64 @@ import (
 )
 
 func init() {
-	RegisterCacher("localCacher", func(compName string, stage *Stage) Cacher {
-		c := new(localCacher)
+	RegisterHcache("localHcache", func(compName string, stage *Stage) Hcache {
+		c := new(localHcache)
 		c.onCreate(compName, stage)
 		return c
 	})
 }
 
-// localCacher
-type localCacher struct {
+// localHcache
+type localHcache struct {
 	// Parent
-	Cacher_
+	Hcache_
 	// Assocs
 	stage *Stage // current stage
 	// States
 	cacheDir string // /path/to/dir
 }
 
-func (c *localCacher) onCreate(compName string, stage *Stage) {
+func (c *localHcache) onCreate(compName string, stage *Stage) {
 	c.MakeComp(compName)
 	c.stage = stage
 }
-func (c *localCacher) OnShutdown() {
+func (c *localHcache) OnShutdown() {
 	close(c.ShutChan) // notifies Maintain()
 }
 
-func (c *localCacher) OnConfigure() {
+func (c *localHcache) OnConfigure() {
 	// cacheDir
 	c.ConfigureString("cacheDir", &c.cacheDir, func(value string) error {
 		if value != "" {
 			return nil
 		}
 		return errors.New(".cacheDir has an invalid value")
-	}, VarDir()+"/cachers/"+c.CompName())
+	}, VarDir()+"/hcaches/"+c.CompName())
 }
-func (c *localCacher) OnPrepare() {
+func (c *localHcache) OnPrepare() {
 	if err := os.MkdirAll(c.cacheDir, 0755); err != nil {
 		EnvExitln(err.Error())
 	}
 }
 
-func (c *localCacher) Maintain() { // runner
+func (c *localHcache) Maintain() { // runner
 	c.LoopRun(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if DebugLevel() >= 2 {
-		Printf("localCacher=%s done\n", c.CompName())
+		Printf("localHcache=%s done\n", c.CompName())
 	}
-	c.stage.DecSub() // cacher
+	c.stage.DecSub() // hcache
 }
 
-func (c *localCacher) Set(key []byte, hobject *Hobject) {
+func (c *localHcache) Set(key []byte, hobject *Hobject) {
 	// TODO
 }
-func (c *localCacher) Get(key []byte) (hobject *Hobject) {
+func (c *localHcache) Get(key []byte) (hobject *Hobject) {
 	// TODO
 	return
 }
-func (c *localCacher) Del(key []byte) bool {
+func (c *localHcache) Del(key []byte) bool {
 	// TODO
 	return false
 }

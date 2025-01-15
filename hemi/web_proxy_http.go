@@ -11,8 +11,8 @@ import (
 	"strings"
 )
 
-// Cacher component is the interface to storages of HTTP caching.
-type Cacher interface {
+// Hcache component is the interface to storages of HTTP caching.
+type Hcache interface {
 	// Imports
 	Component
 	// Methods
@@ -22,18 +22,18 @@ type Cacher interface {
 	Del(key []byte) bool
 }
 
-// Cacher_ is the parent for all cachers.
-type Cacher_ struct {
+// Hcache_ is the parent for all hcaches.
+type Hcache_ struct {
 	// Parent
 	Component_
 	// Assocs
 	// States
 }
 
-func (c *Cacher_) todo() {
+func (c *Hcache_) todo() {
 }
 
-// Hobject represents an HTTP object in Cacher.
+// Hobject represents an HTTP object in Hcache.
 type Hobject struct {
 	// TODO
 	uri      []byte
@@ -62,7 +62,7 @@ type httpProxy struct {
 	stage   *Stage      // current stage
 	webapp  *Webapp     // the webapp to which the proxy belongs
 	backend HTTPBackend // the *HTTP[1-3]Backend to pass to
-	cacher  Cacher      // the cacher which is used by this proxy
+	hcache  Hcache      // the hcache which is used by this proxy
 	// States
 	WebExchanProxyConfig // embeded
 }
@@ -92,16 +92,16 @@ func (h *httpProxy) OnConfigure() {
 		UseExitln("toBackend is required for http proxy")
 	}
 
-	// withCacher
-	if v, ok := h.Find("withCacher"); ok {
+	// withHcache
+	if v, ok := h.Find("withHcache"); ok {
 		if compName, ok := v.String(); ok && compName != "" {
-			if cacher := h.stage.Cacher(compName); cacher == nil {
-				UseExitf("unknown cacher: '%s'\n", compName)
+			if hcache := h.stage.Hcache(compName); hcache == nil {
+				UseExitf("unknown hcache: '%s'\n", compName)
 			} else {
-				h.cacher = cacher
+				h.hcache = hcache
 			}
 		} else {
-			UseExitln("invalid withCacher")
+			UseExitln("invalid withHcache")
 		}
 	}
 
@@ -151,10 +151,10 @@ func (h *httpProxy) OnPrepare() {
 }
 
 func (h *httpProxy) IsProxy() bool { return true }
-func (h *httpProxy) IsCache() bool { return h.cacher != nil }
+func (h *httpProxy) IsCache() bool { return h.hcache != nil }
 
 func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
-	WebExchanReverseProxy(req, resp, h.cacher, h.backend, &h.WebExchanProxyConfig)
+	WebExchanReverseProxy(req, resp, h.hcache, h.backend, &h.WebExchanProxyConfig)
 	return true
 }
 
@@ -176,7 +176,7 @@ type WebExchanProxyConfig struct {
 }
 
 // WebExchanReverseProxy
-func WebExchanReverseProxy(foreReq Request, foreResp Response, cacher Cacher, backend HTTPBackend, proxyConfig *WebExchanProxyConfig) {
+func WebExchanReverseProxy(foreReq Request, foreResp Response, hcache Hcache, backend HTTPBackend, proxyConfig *WebExchanProxyConfig) {
 	var foreContent any // nil, []byte, tempFile
 	foreHasContent := foreReq.HasContent()
 	if foreHasContent && proxyConfig.BufferClientContent { // including size 0

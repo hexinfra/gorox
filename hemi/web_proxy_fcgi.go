@@ -44,7 +44,7 @@ type fcgiProxy struct {
 	stage   *Stage       // current stage
 	webapp  *Webapp      // the webapp to which the proxy belongs
 	backend *fcgiBackend // the backend to pass to
-	cacher  Cacher       // the cacher which is used by this proxy
+	hcache  Hcache       // the hcache which is used by this proxy
 	// States
 	WebExchanProxyConfig        // embeded
 	scriptFilename       []byte // for SCRIPT_FILENAME
@@ -78,16 +78,16 @@ func (h *fcgiProxy) OnConfigure() {
 		UseExitln("toBackend is required for fcgiProxy")
 	}
 
-	// withCacher
-	if v, ok := h.Find("withCacher"); ok {
+	// withHcache
+	if v, ok := h.Find("withHcache"); ok {
 		if compName, ok := v.String(); ok && compName != "" {
-			if cacher := h.stage.Cacher(compName); cacher == nil {
-				UseExitf("unknown cacher: '%s'\n", compName)
+			if hcache := h.stage.Hcache(compName); hcache == nil {
+				UseExitf("unknown hcache: '%s'\n", compName)
 			} else {
-				h.cacher = cacher
+				h.hcache = hcache
 			}
 		} else {
-			UseExitln("invalid withCacher")
+			UseExitln("invalid withHcache")
 		}
 	}
 
@@ -111,7 +111,7 @@ func (h *fcgiProxy) OnPrepare() {
 }
 
 func (h *fcgiProxy) IsProxy() bool { return true }
-func (h *fcgiProxy) IsCache() bool { return h.cacher != nil }
+func (h *fcgiProxy) IsCache() bool { return h.hcache != nil }
 
 func (h *fcgiProxy) Handle(httpReq Request, httpResp Response) (handled bool) {
 	handled = true

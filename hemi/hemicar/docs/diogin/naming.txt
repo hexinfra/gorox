@@ -31,7 +31,7 @@ COMPONENTS
       case [*]
     service [*]
     stater (localStater, redisStater, ...)
-    cacher (localCacher, redisCacher, ...)
+    hcache (localHcache, redisHcache, ...)
     webapp [*]
       handlet (hello, static, ...)
       reviser (gzip, head, ...)

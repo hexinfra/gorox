@@ -752,15 +752,15 @@ func (r *httpOut_) _addFixedHeader1(name []byte, value []byte) { // used by fina
 func (r *httpOut_) sendChain1() error { // TODO: if conn is TLS, don't use writev as it uses many Write() which might be slower than make+copy+write.
 	return r._sendEntireChain1()
 	// TODO
-	nContentRanges := len(r.contentRanges)
-	if nContentRanges == 0 {
+	numRanges := len(r.contentRanges)
+	if numRanges == 0 {
 		return r._sendEntireChain1()
 	}
 	// Partial content.
 	if !r.asRequest { // as response
 		r.outMessage.(Response).SetStatus(StatusPartialContent)
 	}
-	if nContentRanges == 1 {
+	if numRanges == 1 {
 		return r._sendSingleRange1()
 	} else {
 		return r._sendMultiRanges1()
@@ -777,14 +777,14 @@ func (r *httpOut_) _sendEntireChain1() error {
 		}
 		Printf("[%s%s%s]\n", vector[0], vector[1], vector[2])
 	}
-	vFrom, vEdge := 0, 3
+	vectorFrom, vectorEdge := 0, 3
 	for piece := r.chain.head; piece != nil; piece = piece.next {
 		if piece.size == 0 {
 			continue
 		}
 		if piece.IsText() { // plain text
-			vector[vEdge] = piece.Text()
-			vEdge++
+			vector[vectorEdge] = piece.Text()
+			vectorEdge++
 		} else if piece.size <= _16K { // small file, <= 16K
 			buffer := GetNK(piece.size) // 4K/16K
 			if err := piece.copyTo(buffer); err != nil {
@@ -792,30 +792,30 @@ func (r *httpOut_) _sendEntireChain1() error {
 				PutNK(buffer)
 				return err
 			}
-			vector[vEdge] = buffer[0:piece.size]
-			vEdge++
-			r.vector = vector[vFrom:vEdge]
+			vector[vectorEdge] = buffer[0:piece.size]
+			vectorEdge++
+			r.vector = vector[vectorFrom:vectorEdge]
 			if err := r.writeVector1(); err != nil {
 				PutNK(buffer)
 				return err
 			}
 			PutNK(buffer)
-			vFrom, vEdge = 0, 0
+			vectorFrom, vectorEdge = 0, 0
 		} else { // large file, > 16K
-			if vFrom < vEdge {
-				r.vector = vector[vFrom:vEdge]
+			if vectorFrom < vectorEdge {
+				r.vector = vector[vectorFrom:vectorEdge]
 				if err := r.writeVector1(); err != nil { // texts
 					return err
 				}
-				vFrom, vEdge = 0, 0
+				vectorFrom, vectorEdge = 0, 0
 			}
 			if err := r.writePiece1(piece, false); err != nil { // the file
 				return err
 			}
 		}
 	}
-	if vFrom < vEdge {
-		r.vector = vector[vFrom:vEdge]
+	if vectorFrom < vectorEdge {
+		r.vector = vector[vectorFrom:vectorEdge]
 		return r.writeVector1()
 	}
 	return nil
@@ -849,10 +849,10 @@ func (r *httpOut_) _prepareVector1() [][]byte {
 	if r.forbidContent {
 		vector = r.fixedVector[0:3]
 		r.chain.free()
-	} else if nPieces := r.chain.Qnty(); nPieces == 1 { // content chain has exactly one piece
+	} else if numPieces := r.chain.Qnty(); numPieces == 1 { // content chain has exactly one piece
 		vector = r.fixedVector[0:4]
-	} else { // nPieces >= 2
-		vector = make([][]byte, 3+nPieces) // TODO(diogin): get from pool? defer pool.put()
+	} else { // numPieces >= 2
+		vector = make([][]byte, 3+numPieces) // TODO(diogin): get from pool? defer pool.put()
 	}
 	vector[0] = r.outMessage.control()
 	vector[1] = r.outMessage.addedHeaders()

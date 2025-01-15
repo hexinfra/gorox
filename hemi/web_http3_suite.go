@@ -149,7 +149,7 @@ func (r *httpIn_) readContent3() (data []byte, err error) {
 	return
 }
 
-// http3InFrame is the server-side HTTP/3 incoming frame.
+// http3InFrame is the HTTP/3 incoming frame.
 type http3InFrame struct {
 	// TODO
 }
@@ -213,6 +213,18 @@ func (r *httpOut_) sendChain3() error {
 	// TODO
 	return nil
 }
+func (r *httpOut_) _sendEntireChain3() error {
+	// TODO
+	return nil
+}
+func (r *httpOut_) _sendSingleRange3() error {
+	// TODO
+	return nil
+}
+func (r *httpOut_) _sendMultiRanges3() error {
+	// TODO
+	return nil
+}
 
 func (r *httpOut_) echoChain3() error {
 	// TODO
@@ -251,7 +263,16 @@ func (r *httpOut_) writePiece3(piece *Piece, vague bool) error {
 	// TODO
 	return nil
 }
+func (r *httpOut_) _writeTextPiece3(piece *Piece) error {
+	// TODO
+	return nil
+}
+func (r *httpOut_) _writeFilePiece3(piece *Piece) error {
+	// TODO
+	return nil
+}
 func (r *httpOut_) writeVector3() error {
+	// TODO
 	return nil
 }
 func (r *httpOut_) writeBytes3(data []byte) error {
@@ -259,7 +280,7 @@ func (r *httpOut_) writeBytes3(data []byte) error {
 	return nil
 }
 
-// http3OutFrame is the server-side HTTP/3 outgoing frame.
+// http3OutFrame is the HTTP/3 outgoing frame.
 type http3OutFrame struct {
 	// TODO
 }

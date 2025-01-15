@@ -831,6 +831,18 @@ func (r *httpOut_) sendChain2() error {
 	// TODO
 	return nil
 }
+func (r *httpOut_) _sendEntireChain2() error {
+	// TODO
+	return nil
+}
+func (r *httpOut_) _sendSingleRange2() error {
+	// TODO
+	return nil
+}
+func (r *httpOut_) _sendMultiRanges2() error {
+	// TODO
+	return nil
+}
 
 func (r *httpOut_) echoChain2() error {
 	// TODO
@@ -869,7 +881,16 @@ func (r *httpOut_) writePiece2(piece *Piece, vague bool) error {
 	// TODO
 	return nil
 }
+func (r *httpOut_) _writeTextPiece2(piece *Piece) error {
+	// TODO
+	return nil
+}
+func (r *httpOut_) _writeFilePiece2(piece *Piece) error {
+	// TODO
+	return nil
+}
 func (r *httpOut_) writeVector2() error {
+	// TODO
 	return nil
 }
 func (r *httpOut_) writeBytes2(data []byte) error {

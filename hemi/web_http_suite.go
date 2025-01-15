@@ -1760,7 +1760,7 @@ func (r *httpOut_) _delUnixTime(pUnixTime *int64, pIndex *uint8) bool {
 	return true
 }
 
-func (r *httpOut_) pickRanges(contentRanges []Range, rangeType string) {
+func (r *httpOut_) pickOutRanges(contentRanges []Range, rangeType string) {
 	r.contentRanges = contentRanges
 	r.rangeType = rangeType
 }
@@ -3070,7 +3070,7 @@ func (r *serverRequest_) checkRange(header *pair, index uint8) bool { // Range =
 		r._delPrime(index)
 		return true
 	}
-	if r.numRanges > 0 {
+	if r.numRanges > 0 { // we have already got a valid range header
 		r.headResult, r.failReason = StatusBadRequest, "duplicated range header"
 		return false
 	}
@@ -3188,7 +3188,7 @@ badRange:
 	return false
 }
 func (r *serverRequest_) _addRange(rang Range) bool {
-	if r.numRanges == int8(cap(r.ranges)) {
+	if r.numRanges == int8(cap(r.ranges)) { // possible attack
 		r.headResult, r.failReason = StatusBadRequest, "too many ranges"
 		return false
 	}
@@ -4566,7 +4566,7 @@ type Response interface { // for *server[1-3]Response
 	header(name []byte) (value []byte, ok bool)
 	hasHeader(name []byte) bool
 	delHeader(name []byte) bool
-	pickRanges(ranges []Range, rangeType string)
+	pickOutRanges(ranges []Range, rangeType string)
 	sendText(content []byte) error
 	sendFile(content *os.File, info os.FileInfo, shut bool) error // will close content after sent
 	sendChain() error                                             // content

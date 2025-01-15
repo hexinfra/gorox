@@ -59,7 +59,7 @@ The logical architecture of a stage in Hemi Engine looks like this:
    |     | e |        |              | handlet reviser |     |
    |     | r |  case  |  service(*)  |     socklet     |     |
    |     |(*)| dealet |              +------+   +------+     |
-   |     |   |        |              |stater|   |hcache|     |
+   |     |   |        |              |hstate|   |hcache|     |
    |     +---+--------+--------------+------+---+------+     |
    |     |                  backend                    |     |
    |     |                   node                      |     |

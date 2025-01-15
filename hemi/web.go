@@ -17,8 +17,8 @@ import (
 	"time"
 )
 
-// Stater is the component interface to storages of HTTP states.
-type Stater interface {
+// Hstate is the component interface to storages of HTTP states.
+type Hstate interface {
 	// Imports
 	Component
 	// Methods
@@ -28,13 +28,13 @@ type Stater interface {
 	Del(sid []byte) error
 }
 
-// Stater_ is the parent for all staters.
-type Stater_ struct {
+// Hstate_ is the parent for all hstates.
+type Hstate_ struct {
 	// Parent
 	Component_
 }
 
-// Session is an HTTP session in stater.
+// Session is an HTTP session in hstate.
 type Session struct {
 	// TODO
 	ID      [40]byte // session id
@@ -63,7 +63,7 @@ type Webapp struct {
 	Component_
 	// Assocs
 	stage    *Stage            // current stage
-	stater   Stater            // the stater which is used by this webapp
+	hstate   Hstate            // the hstate which is used by this webapp
 	servers  []HTTPServer      // bound http servers. may be empty
 	handlets compDict[Handlet] // defined handlets. indexed by compName
 	revisers compDict[Reviser] // defined revisers. indexed by compName
@@ -190,16 +190,16 @@ func (a *Webapp) OnConfigure() {
 	// settings
 	a.ConfigureStringDict("settings", &a.settings, nil, make(map[string]string))
 
-	// withStater
-	if v, ok := a.Find("withStater"); ok {
+	// withHstate
+	if v, ok := a.Find("withHstate"); ok {
 		if compName, ok := v.String(); ok && compName != "" {
-			if stater := a.stage.Stater(compName); stater == nil {
-				UseExitf("unknown stater: '%s'\n", compName)
+			if hstate := a.stage.Hstate(compName); hstate == nil {
+				UseExitf("unknown hstate: '%s'\n", compName)
 			} else {
-				a.stater = stater
+				a.hstate = hstate
 			}
 		} else {
-			UseExitln("invalid withStater")
+			UseExitln("invalid withHstate")
 		}
 	}
 

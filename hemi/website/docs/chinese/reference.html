@@ -120,8 +120,8 @@ article table.none tr td {
 		<li>stage &gt; udpxRouter &gt; [case &gt;] dnsProxy</li>
 		<li>stage &gt; udpxRouter &gt; [case &gt;] udpxProxy</li>
 		<li><a href="#stage-service">stage &gt; service</a></li>
-		<li>stage &gt; localStater</li>
-		<li>stage &gt; redisStater</li>
+		<li>stage &gt; localHstate</li>
+		<li>stage &gt; redisHstate</li>
 		<li><a href="#stage-localHcache">stage &gt; localHcache</a></li>
 		<li><a href="#stage-redisHcache">stage &gt; redisHcache</a></li>
 		<li><a href="#stage-webapp">stage &gt; webapp</a></li>
@@ -505,7 +505,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 		]
 		.maxMultiformSize = 128M
 		.settings = []
-		.withStater = ""
+		.withHstate = ""
 		.file404 = ""
 		.tlsCertificate = ""
 		.tlsPrivateKey = ""
@@ -556,8 +556,8 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					</code>
 				</li>
 				<li>
-					<p>.withStater 使用那个 stater。</p>
-					<code>语法： .withStater = "stater-name"
+					<p>.withHstate 使用那个 hstate。</p>
+					<code>语法： .withHstate = "hstate-name"
 						默认值： -  
 						取值范围：-
 					</code>

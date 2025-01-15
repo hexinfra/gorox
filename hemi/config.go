@@ -140,8 +140,8 @@ func (c *configurator) parseStage(stage *Stage) { // stage {}
 			c.parseUDPXRouter(stage)
 		case compTypeService:
 			c.parseService(current, stage)
-		case compTypeStater:
-			c.parseStater(current, stage)
+		case compTypeHstate:
+			c.parseHstate(current, stage)
 		case compTypeHcache:
 			c.parseHcache(current, stage)
 		case compTypeWebapp:
@@ -370,8 +370,8 @@ func (c *configurator) parseService(compSign *token, stage *Stage) { // service 
 	c.forwardToken()
 	c._parseLeaf(service)
 }
-func (c *configurator) parseStater(compSign *token, stage *Stage) { // xxxStater <compName> {}
-	parseComponent0(c, compSign, stage, stage.createStater)
+func (c *configurator) parseHstate(compSign *token, stage *Stage) { // xxxHstate <compName> {}
+	parseComponent0(c, compSign, stage, stage.createHstate)
 }
 func (c *configurator) parseHcache(compSign *token, stage *Stage) { // xxxHcache <compName> {}
 	parseComponent0(c, compSign, stage, stage.createHcache)
@@ -687,7 +687,7 @@ func (c *configurator) _parseDict(comp Component, prop string, value *Value) {
 	value.kind, value.value = tokenDict, dict
 }
 
-func parseComponent0[T Component](c *configurator, compSign *token, stage *Stage, create func(compSign string, compName string) T) { // backend, stater, hcache, server, cronjob
+func parseComponent0[T Component](c *configurator, compSign *token, stage *Stage, create func(compSign string, compName string) T) { // backend, hstate, hcache, server, cronjob
 	compName := c.forwardExpectToken(tokenString)
 	component := create(compSign.text, compName.text)
 	component.setParent(stage)

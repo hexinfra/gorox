@@ -30,7 +30,7 @@ COMPONENTS
       dealet (quixProxy, tcpxProxy, udpxProxy, ...)
       case [*]
     service [*]
-    stater (localStater, redisStater, ...)
+    hstate (localHstate, redisHstate, ...)
     hcache (localHcache, redisHcache, ...)
     webapp [*]
       handlet (hello, static, ...)

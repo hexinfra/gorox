@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// Redis stater implementation.
+// Redis hstate implementation.
 
 package redis
 
@@ -16,54 +16,54 @@ import (
 )
 
 func init() {
-	RegisterStater("redisStater", func(compName string, stage *Stage) Stater {
-		s := new(redisStater)
+	RegisterHstate("redisHstate", func(compName string, stage *Stage) Hstate {
+		s := new(redisHstate)
 		s.onCreate(compName, stage)
 		return s
 	})
 }
 
-// redisStater
-type redisStater struct {
+// redisHstate
+type redisHstate struct {
 	// Parent
-	Stater_
+	Hstate_
 	// Assocs
 	stage *Stage // current stage
 	// States
 	nodes []string
 }
 
-func (s *redisStater) onCreate(compName string, stage *Stage) {
+func (s *redisHstate) onCreate(compName string, stage *Stage) {
 	s.MakeComp(compName)
 	s.stage = stage
 }
-func (s *redisStater) OnShutdown() {
+func (s *redisHstate) OnShutdown() {
 	close(s.ShutChan) // notifies Maintain()
 }
 
-func (s *redisStater) OnConfigure() {
+func (s *redisHstate) OnConfigure() {
 	// TODO
 }
-func (s *redisStater) OnPrepare() {
+func (s *redisHstate) OnPrepare() {
 	// TODO
 }
 
-func (s *redisStater) Maintain() { // runner
+func (s *redisHstate) Maintain() { // runner
 	s.LoopRun(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if DebugLevel() >= 2 {
-		Printf("redisStater=%s done\n", s.CompName())
+		Printf("redisHstate=%s done\n", s.CompName())
 	}
-	s.stage.DecSub() // stater
+	s.stage.DecSub() // hstate
 }
 
-func (s *redisStater) Set(sid []byte, session *Session) error {
+func (s *redisHstate) Set(sid []byte, session *Session) error {
 	return nil
 }
-func (s *redisStater) Get(sid []byte) (session *Session, err error) {
+func (s *redisHstate) Get(sid []byte) (session *Session, err error) {
 	return
 }
-func (s *redisStater) Del(sid []byte) error {
+func (s *redisHstate) Del(sid []byte) error {
 	return nil
 }

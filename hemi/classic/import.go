@@ -8,9 +8,6 @@
 package classic
 
 import ( // preload all
-	_ "github.com/hexinfra/gorox/hemi/classic/hcaches/local"
-	_ "github.com/hexinfra/gorox/hemi/classic/hcaches/mem"
-	_ "github.com/hexinfra/gorox/hemi/classic/hcaches/redis"
 	_ "github.com/hexinfra/gorox/hemi/classic/cronjobs/clean"
 	_ "github.com/hexinfra/gorox/hemi/classic/cronjobs/stat"
 	_ "github.com/hexinfra/gorox/hemi/classic/dealets/tcpx/access"
@@ -27,6 +24,11 @@ import ( // preload all
 	_ "github.com/hexinfra/gorox/hemi/classic/handlets/rewriter"
 	_ "github.com/hexinfra/gorox/hemi/classic/handlets/sitex"
 	_ "github.com/hexinfra/gorox/hemi/classic/handlets/webdav"
+	_ "github.com/hexinfra/gorox/hemi/classic/hcaches/local"
+	_ "github.com/hexinfra/gorox/hemi/classic/hcaches/mem"
+	_ "github.com/hexinfra/gorox/hemi/classic/hcaches/redis"
+	_ "github.com/hexinfra/gorox/hemi/classic/hstates/local"
+	_ "github.com/hexinfra/gorox/hemi/classic/hstates/redis"
 	_ "github.com/hexinfra/gorox/hemi/classic/mappers/simple"
 	_ "github.com/hexinfra/gorox/hemi/classic/revisers/gunzip"
 	_ "github.com/hexinfra/gorox/hemi/classic/revisers/gzip"
@@ -38,6 +40,4 @@ import ( // preload all
 	_ "github.com/hexinfra/gorox/hemi/classic/servers/socks"
 	_ "github.com/hexinfra/gorox/hemi/classic/servers/tunnel"
 	_ "github.com/hexinfra/gorox/hemi/classic/socklets/hello"
-	_ "github.com/hexinfra/gorox/hemi/classic/staters/local"
-	_ "github.com/hexinfra/gorox/hemi/classic/staters/redis"
 )

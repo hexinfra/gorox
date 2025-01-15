@@ -33,7 +33,7 @@ const ( // list of component types
 	compTypeUDPXDealet                  // udpxProxy, dnsProxy, ...
 	compTypeCase                        // case
 	compTypeService                     // service
-	compTypeStater                      // localStater, redisStater, ...
+	compTypeHstate                      // localHstate, redisHstate, ...
 	compTypeHcache                      // localHcache, redisHcache, ...
 	compTypeWebapp                      // webapp
 	compTypeHandlet                     // static, httpProxy, ...
@@ -68,7 +68,7 @@ var ( // fixture signs, component creators, and initializers of services & webap
 
 	creatorsLock       sync.RWMutex
 	backendCreators    = make(map[string]func(compName string, stage *Stage) Backend) // indexed by compSign, same below.
-	staterCreators     = make(map[string]func(compName string, stage *Stage) Stater)
+	hstateCreators     = make(map[string]func(compName string, stage *Stage) Hstate)
 	hcacheCreators     = make(map[string]func(compName string, stage *Stage) Hcache)
 	serverCreators     = make(map[string]func(compName string, stage *Stage) Server)
 	cronjobCreators    = make(map[string]func(compName string, stage *Stage) Cronjob)
@@ -95,8 +95,8 @@ func registerFixture(compSign string) {
 func RegisterBackend(compSign string, create func(compName string, stage *Stage) Backend) {
 	_registerComponent0(compSign, compTypeBackend, backendCreators, create)
 }
-func RegisterStater(compSign string, create func(compName string, stage *Stage) Stater) {
-	_registerComponent0(compSign, compTypeStater, staterCreators, create)
+func RegisterHstate(compSign string, create func(compName string, stage *Stage) Hstate) {
+	_registerComponent0(compSign, compTypeHstate, hstateCreators, create)
 }
 func RegisterHcache(compSign string, create func(compName string, stage *Stage) Hcache) {
 	_registerComponent0(compSign, compTypeHcache, hcacheCreators, create)
@@ -107,7 +107,7 @@ func RegisterServer(compSign string, create func(compName string, stage *Stage) 
 func RegisterCronjob(compSign string, create func(compName string, stage *Stage) Cronjob) {
 	_registerComponent0(compSign, compTypeCronjob, cronjobCreators, create)
 }
-func _registerComponent0[T Component](compSign string, compType int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // backend, stater, hcache, server, cronjob
+func _registerComponent0[T Component](compSign string, compType int16, creators map[string]func(string, *Stage) T, create func(string, *Stage) T) { // backend, hstate, hcache, server, cronjob
 	creatorsLock.Lock()
 	defer creatorsLock.Unlock()
 
@@ -338,7 +338,7 @@ type Stage struct {
 	tcpxRouters compDict[*TCPXRouter] // indexed by compName
 	udpxRouters compDict[*UDPXRouter] // indexed by compName
 	services    compDict[*Service]    // indexed by compName
-	staters     compDict[Stater]      // indexed by compName
+	hstates     compDict[Hstate]      // indexed by compName
 	hcaches     compDict[Hcache]      // indexed by compName
 	webapps     compDict[*Webapp]     // indexed by compName
 	servers     compDict[Server]      // indexed by compName
@@ -377,7 +377,7 @@ func (s *Stage) onCreate() {
 	s.tcpxRouters = make(compDict[*TCPXRouter])
 	s.udpxRouters = make(compDict[*UDPXRouter])
 	s.services = make(compDict[*Service])
-	s.staters = make(compDict[Stater])
+	s.hstates = make(compDict[Hstate])
 	s.hcaches = make(compDict[Hcache])
 	s.webapps = make(compDict[*Webapp])
 	s.servers = make(compDict[Server])
@@ -403,10 +403,10 @@ func (s *Stage) OnShutdown() {
 	s.webapps.goWalk((*Webapp).OnShutdown)
 	s.WaitSubs()
 
-	// hcaches & staters
-	s.IncSubs(len(s.hcaches) + len(s.staters))
+	// hcaches & hstates
+	s.IncSubs(len(s.hcaches) + len(s.hstates))
 	s.hcaches.goWalk(Hcache.OnShutdown)
-	s.staters.goWalk(Stater.OnShutdown)
+	s.hstates.goWalk(Hstate.OnShutdown)
 	s.WaitSubs()
 
 	// services
@@ -496,7 +496,7 @@ func (s *Stage) OnConfigure() {
 	s.tcpxRouters.walk((*TCPXRouter).OnConfigure)
 	s.udpxRouters.walk((*UDPXRouter).OnConfigure)
 	s.services.walk((*Service).OnConfigure)
-	s.staters.walk(Stater.OnConfigure)
+	s.hstates.walk(Hstate.OnConfigure)
 	s.hcaches.walk(Hcache.OnConfigure)
 	s.webapps.walk((*Webapp).OnConfigure)
 	s.servers.walk(Server.OnConfigure)
@@ -516,7 +516,7 @@ func (s *Stage) OnPrepare() {
 	s.tcpxRouters.walk((*TCPXRouter).OnPrepare)
 	s.udpxRouters.walk((*UDPXRouter).OnPrepare)
 	s.services.walk((*Service).OnPrepare)
-	s.staters.walk(Stater.OnPrepare)
+	s.hstates.walk(Hstate.OnPrepare)
 	s.hcaches.walk(Hcache.OnPrepare)
 	s.webapps.walk((*Webapp).OnPrepare)
 	s.servers.walk(Server.OnPrepare)
@@ -576,18 +576,18 @@ func (s *Stage) createService(compName string) *Service {
 	s.services[compName] = service
 	return service
 }
-func (s *Stage) createStater(compSign string, compName string) Stater {
-	if s.Stater(compName) != nil {
-		UseExitf("conflicting stater with a same component name '%s'\n", compName)
+func (s *Stage) createHstate(compSign string, compName string) Hstate {
+	if s.Hstate(compName) != nil {
+		UseExitf("conflicting hstate with a same component name '%s'\n", compName)
 	}
-	create, ok := staterCreators[compSign]
+	create, ok := hstateCreators[compSign]
 	if !ok {
-		UseExitln("unknown stater type: " + compSign)
+		UseExitln("unknown hstate type: " + compSign)
 	}
-	stater := create(compName, s)
-	stater.setShell(stater)
-	s.staters[compName] = stater
-	return stater
+	hstate := create(compName, s)
+	hstate.setShell(hstate)
+	s.hstates[compName] = hstate
+	return hstate
 }
 func (s *Stage) createHcache(compSign string, compName string) Hcache {
 	if s.Hcache(compName) != nil {
@@ -649,7 +649,7 @@ func (s *Stage) QUIXRouter(compName string) *QUIXRouter { return s.quixRouters[c
 func (s *Stage) TCPXRouter(compName string) *TCPXRouter { return s.tcpxRouters[compName] }
 func (s *Stage) UDPXRouter(compName string) *UDPXRouter { return s.udpxRouters[compName] }
 func (s *Stage) Service(compName string) *Service       { return s.services[compName] }
-func (s *Stage) Stater(compName string) Stater          { return s.staters[compName] }
+func (s *Stage) Hstate(compName string) Hstate          { return s.hstates[compName] }
 func (s *Stage) Hcache(compName string) Hcache          { return s.hcaches[compName] }
 func (s *Stage) Webapp(compName string) *Webapp         { return s.webapps[compName] }
 func (s *Stage) Server(compName string) Server          { return s.servers[compName] }
@@ -713,7 +713,7 @@ func (s *Stage) Start(id int32) {
 	s.startBackends() // go backend.maintain()
 	s.startRouters()  // go router.serve()
 	s.startServices() // go service.maintain()
-	s.startStaters()  // go stater.Maintain()
+	s.startHstates()  // go hstate.Maintain()
 	s.startHcaches()  // go hcache.Maintain()
 	s.startWebapps()  // go webapp.maintain()
 	s.startServers()  // go server.Serve()
@@ -795,12 +795,12 @@ func (s *Stage) startServices() {
 		go service.maintain()
 	}
 }
-func (s *Stage) startStaters() {
-	for _, stater := range s.staters {
+func (s *Stage) startHstates() {
+	for _, hstate := range s.hstates {
 		if DebugLevel() >= 1 {
-			Printf("stater=%s go Maintain()\n", stater.CompName())
+			Printf("hstate=%s go Maintain()\n", hstate.CompName())
 		}
-		go stater.Maintain()
+		go hstate.Maintain()
 	}
 }
 func (s *Stage) startHcaches() {

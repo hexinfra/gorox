@@ -12,7 +12,7 @@ worker 进程
     每个 router 有多个 gate.serve() 并发
       每个 gate 有多个 gate.router.serveConn(conn) 并发
   多个 service.maintain() 并发
-  多个 stater.Maintain() 并发
+  多个 hstate.Maintain() 并发
   多个 hcache.Maintain() 并发
   多个 webapp.maintain() 并发
   多个 server.Serve() 并发

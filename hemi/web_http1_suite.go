@@ -1303,7 +1303,7 @@ func (s *server1Stream) _serveAbnormal(req *server1Request, resp *server1Respons
 	s.conn.persistent = false // close anyway.
 
 	status := req.headResult
-	if status == -1 || (status == StatusRequestTimeout && !req.gotInput) {
+	if status == -1 || (status == StatusRequestTimeout && !req.gotSomeInput) {
 		return // send nothing.
 	}
 	// So we need to send something...
@@ -1424,7 +1424,7 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 		r.headResult, r.failReason = StatusBadRequest, "empty method"
 		return false
 	}
-	r.gotInput = true
+	r.gotSomeInput = true
 	r.method.set(r.elemBack, r.elemFore)
 	r.recognizeMethod(r.input[r.elemBack:r.elemFore], methodHash)
 	// Skip SP after method
@@ -2069,17 +2069,17 @@ type HTTP1Backend struct {
 }
 
 func (b *HTTP1Backend) onCreate(compName string, stage *Stage) {
-	b.httpBackend_.OnCreate(compName, stage)
+	b.httpBackend_.onCreate(compName, stage)
 }
 
 func (b *HTTP1Backend) OnConfigure() {
-	b.httpBackend_.OnConfigure()
+	b.httpBackend_.onConfigure()
 
 	// sub components
 	b.ConfigureNodes()
 }
 func (b *HTTP1Backend) OnPrepare() {
-	b.httpBackend_.OnPrepare()
+	b.httpBackend_.onPrepare()
 
 	// sub components
 	b.PrepareNodes()

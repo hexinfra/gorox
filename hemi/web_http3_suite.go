@@ -696,17 +696,17 @@ type HTTP3Backend struct {
 }
 
 func (b *HTTP3Backend) onCreate(compName string, stage *Stage) {
-	b.httpBackend_.OnCreate(compName, stage)
+	b.httpBackend_.onCreate(compName, stage)
 }
 
 func (b *HTTP3Backend) OnConfigure() {
-	b.httpBackend_.OnConfigure()
+	b.httpBackend_.onConfigure()
 
 	// sub components
 	b.ConfigureNodes()
 }
 func (b *HTTP3Backend) OnPrepare() {
-	b.httpBackend_.OnPrepare()
+	b.httpBackend_.onPrepare()
 
 	// sub components
 	b.PrepareNodes()

@@ -26,20 +26,15 @@ func init() {
 type replaceReviser struct {
 	// Parent
 	Reviser_
-	// Assocs
-	stage  *Stage // current stage
-	webapp *Webapp
 	// States
 	rank int8
 }
 
 func (r *replaceReviser) onCreate(compName string, stage *Stage, webapp *Webapp) {
-	r.MakeComp(compName)
-	r.stage = stage
-	r.webapp = webapp
+	r.Reviser_.OnCreate(compName, stage, webapp)
 }
 func (r *replaceReviser) OnShutdown() {
-	r.webapp.DecSub() // reviser
+	r.Webapp().DecSub() // reviser
 }
 
 func (r *replaceReviser) OnConfigure() {

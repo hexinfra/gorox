@@ -37,8 +37,6 @@ type scgiProxy struct {
 	// Parent
 	Handlet_
 	// Assocs
-	stage   *Stage       // current stage
-	webapp  *Webapp      // the webapp to which the proxy belongs
 	backend *scgiBackend // the backend to pass to
 	hcache  Hcache       // the hcache which is used by this proxy
 	// States
@@ -46,9 +44,7 @@ type scgiProxy struct {
 }
 
 func (h *scgiProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(compName)
-	h.stage = stage
-	h.webapp = webapp
+	h.Handlet_.OnCreate(compName, stage, webapp)
 }
 func (h *scgiProxy) OnShutdown() {
 	h.webapp.DecSub() // handlet

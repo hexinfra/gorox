@@ -32,7 +32,16 @@ type Hstate interface {
 type Hstate_ struct {
 	// Parent
 	Component_
+	// Assocs
+	stage *Stage // current stage
 }
+
+func (s *Hstate_) OnCreate(compName string, stage *Stage) {
+	s.MakeComp(compName)
+	s.stage = stage
+}
+
+func (s *Hstate_) Stage() *Stage { return s.stage }
 
 // Session is an HTTP session in hstate.
 type Session struct {
@@ -729,10 +738,21 @@ type Handlet_ struct {
 	// Parent
 	Component_
 	// Assocs
-	mapper Mapper
+	stage  *Stage  // current stage
+	webapp *Webapp // the webapp to which the handlet belongs
+	mapper Mapper  // ...
 	// States
 	rShell reflect.Value // the shell handlet
 }
+
+func (h *Handlet_) OnCreate(compName string, stage *Stage, webapp *Webapp) {
+	h.MakeComp(compName)
+	h.stage = stage
+	h.webapp = webapp
+}
+
+func (h *Handlet_) Stage() *Stage   { return h.stage }
+func (h *Handlet_) Webapp() *Webapp { return h.webapp }
 
 func (h *Handlet_) IsProxy() bool { return false } // override this for proxy handlets
 func (h *Handlet_) IsCache() bool { return false } // override this for cache handlets
@@ -797,9 +817,21 @@ type Reviser interface {
 type Reviser_ struct {
 	// Parent
 	Component_
+	// Assocs
+	stage  *Stage  // current stage
+	webapp *Webapp // the webapp to which the reviser belongs
 	// States
 	id uint8 // the reviser id
 }
+
+func (r *Reviser_) OnCreate(compName string, stage *Stage, webapp *Webapp) {
+	r.MakeComp(compName)
+	r.stage = stage
+	r.webapp = webapp
+}
+
+func (r *Reviser_) Stage() *Stage   { return r.stage }
+func (r *Reviser_) Webapp() *Webapp { return r.webapp }
 
 func (r *Reviser_) ID() uint8      { return r.id }
 func (r *Reviser_) setID(id uint8) { r.id = id }
@@ -817,7 +849,19 @@ type Socklet interface {
 type Socklet_ struct {
 	// Parent
 	Component_
+	// Assocs
+	stage  *Stage  // current stage
+	webapp *Webapp // the webapp to which the socklet belongs
 	// States
 }
+
+func (s *Socklet_) OnCreate(compName string, stage *Stage, webapp *Webapp) {
+	s.MakeComp(compName)
+	s.stage = stage
+	s.webapp = webapp
+}
+
+func (s *Socklet_) Stage() *Stage   { return s.stage }
+func (s *Socklet_) Webapp() *Webapp { return s.webapp }
 
 func (s *Socklet_) IsProxy() bool { return false } // override this for proxy socklets

@@ -25,14 +25,11 @@ func init() {
 type cleanCronjob struct {
 	// Parent
 	Cronjob_
-	// Assocs
-	stage *Stage // current stage
 	// States
 }
 
 func (j *cleanCronjob) onCreate(compName string, stage *Stage) {
-	j.MakeComp(compName)
-	j.stage = stage
+	j.Cronjob_.OnCreate(compName, stage)
 }
 func (j *cleanCronjob) OnShutdown() {
 	close(j.ShutChan) // notifies Schedule()
@@ -52,5 +49,5 @@ func (j *cleanCronjob) Schedule() { // runner
 	if DebugLevel() >= 2 {
 		Printf("cleanCronjob=%s done\n", j.CompName())
 	}
-	j.stage.DecSub() // cronjob
+	j.Stage().DecSub() // cronjob
 }

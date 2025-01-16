@@ -15,7 +15,7 @@ func main() {
 		must(e)
 		go serve(c)
 	}
-	println(time.Now().Sub(begin).String())
+	println(time.Since(begin).String())
 	l.Close()
 }
 

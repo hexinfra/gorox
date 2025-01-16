@@ -35,9 +35,6 @@ func init() {
 type access1Checker struct {
 	// Parent
 	Handlet_
-	// Assocs
-	stage  *Stage // current stage
-	webapp *Webapp
 	// States
 	allow []string // allows access for the specified network or address.
 	deny  []string // denies access for the specified network or address.
@@ -47,12 +44,10 @@ type access1Checker struct {
 }
 
 func (h *access1Checker) onCreate(compName string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(compName)
-	h.stage = stage
-	h.webapp = webapp
+	h.Handlet_.OnCreate(compName, stage, webapp)
 }
 func (h *access1Checker) OnShutdown() {
-	h.webapp.DecSub() // handlet
+	h.Webapp().DecSub() // handlet
 }
 
 func (h *access1Checker) OnConfigure() {

@@ -23,8 +23,8 @@ func DebugLevel() int32         { return _debugLevel.Load() }
 func SetDebugLevel(level int32) { _debugLevel.Store(level) }
 
 var ( // topDir
-	_topOnce sync.Once    // protects _topDir
 	_topDir  atomic.Value // directory of the executable
+	_topOnce sync.Once    // protects _topDir
 )
 
 func TopDir() string { return _topDir.Load().(string) }
@@ -35,8 +35,8 @@ func SetTopDir(dir string) { // only once!
 }
 
 var ( // logDir
-	_logOnce sync.Once    // protects _logDir
 	_logDir  atomic.Value // directory of the log files
+	_logOnce sync.Once    // protects _logDir
 )
 
 func LogDir() string { return _logDir.Load().(string) }
@@ -48,8 +48,8 @@ func SetLogDir(dir string) { // only once!
 }
 
 var ( // tmpDir
-	_tmpOnce sync.Once    // protects _tmpDir
 	_tmpDir  atomic.Value // directory of the temp files
+	_tmpOnce sync.Once    // protects _tmpDir
 )
 
 func TmpDir() string { return _tmpDir.Load().(string) }
@@ -61,8 +61,8 @@ func SetTmpDir(dir string) { // only once!
 }
 
 var ( // varDir
-	_varOnce sync.Once    // protects _varDir
 	_varDir  atomic.Value // directory of the run-time data
+	_varOnce sync.Once    // protects _varDir
 )
 
 func VarDir() string { return _varDir.Load().(string) }

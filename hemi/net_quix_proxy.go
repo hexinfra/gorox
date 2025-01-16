@@ -20,7 +20,6 @@ type quixProxy struct {
 	// Parent
 	QUIXDealet_
 	// Assocs
-	stage   *Stage       // current stage
 	router  *QUIXRouter  // the router to which the dealet belongs
 	backend *QUIXBackend // the backend to pass to
 	// States
@@ -28,8 +27,7 @@ type quixProxy struct {
 }
 
 func (d *quixProxy) onCreate(compName string, stage *Stage, router *QUIXRouter) {
-	d.MakeComp(compName)
-	d.stage = stage
+	d.QUIXDealet_.OnCreate(compName, stage)
 	d.router = router
 }
 func (d *quixProxy) OnShutdown() {

@@ -1,1 +1,1 @@
-Redis hstate stores sessions in Redis servers.
+Redis hstate stores http sessions in Redis servers.

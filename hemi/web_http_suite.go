@@ -1523,7 +1523,7 @@ func (r *httpIn_) _newTempFile(retain bool) (tempFile, error) { // to save conte
 }
 
 func (r *httpIn_) _isLongTime() bool { // reports whether the receiving of incoming content costs a long time
-	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
+	return r.recvTimeout > 0 && time.Since(r.bodyTime) >= r.recvTimeout
 }
 
 var ( // httpIn_ errors
@@ -2003,7 +2003,7 @@ func (r *httpOut_) _longTimeCheck(err error) error {
 	return err
 }
 func (r *httpOut_) _isLongTime() bool { // reports whether the sending of outgoing content costs a long time
-	return r.sendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.sendTimeout
+	return r.sendTimeout > 0 && time.Since(r.sendTime) >= r.sendTimeout
 }
 
 var ( // httpOut_ errors
@@ -2402,7 +2402,7 @@ type serverRequest_ struct { // incoming. needs parsing
 	_serverRequest0             // all values in this struct must be zero by default!
 }
 type _serverRequest0 struct { // for fast reset, entirely
-	gotInput        bool     // got some input from client? for request timeout handling
+	gotSomeInput    bool     // got some input from client? for request timeout handling
 	targetForm      int8     // request-target form. see httpTargetXXX
 	asteriskOptions bool     // true if method and uri is: OPTIONS *
 	schemeCode      uint8    // SchemeHTTP, SchemeHTTPS

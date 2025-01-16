@@ -908,5 +908,14 @@ type Cronjob interface {
 type Cronjob_ struct {
 	// Parent
 	Component_
+	// Assocs
+	stage *Stage // current stage
 	// States
 }
+
+func (j *Cronjob_) OnCreate(compName string, stage *Stage) {
+	j.MakeComp(compName)
+	j.stage = stage
+}
+
+func (j *Cronjob_) Stage() *Stage { return j.stage }

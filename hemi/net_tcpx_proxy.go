@@ -20,7 +20,6 @@ type tcpxProxy struct {
 	// Parent
 	TCPXDealet_
 	// Assocs
-	stage   *Stage       // current stage
 	router  *TCPXRouter  // the router to which the dealet belongs
 	backend *TCPXBackend // the backend to pass to
 	// States
@@ -28,8 +27,7 @@ type tcpxProxy struct {
 }
 
 func (d *tcpxProxy) onCreate(compName string, stage *Stage, router *TCPXRouter) {
-	d.MakeComp(compName)
-	d.stage = stage
+	d.TCPXDealet_.OnCreate(compName, stage)
 	d.router = router
 }
 func (d *tcpxProxy) OnShutdown() {

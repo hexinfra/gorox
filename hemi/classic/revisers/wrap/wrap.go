@@ -26,20 +26,15 @@ func init() {
 type wrapReviser struct {
 	// Parent
 	Reviser_
-	// Assocs
-	stage  *Stage // current stage
-	webapp *Webapp
 	// States
 	rank int8
 }
 
 func (r *wrapReviser) onCreate(compName string, stage *Stage, webapp *Webapp) {
-	r.MakeComp(compName)
-	r.stage = stage
-	r.webapp = webapp
+	r.Reviser_.OnCreate(compName, stage, webapp)
 }
 func (r *wrapReviser) OnShutdown() {
-	r.webapp.DecSub() // reviser
+	r.Webapp().DecSub() // reviser
 }
 
 func (r *wrapReviser) OnConfigure() {

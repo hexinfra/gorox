@@ -27,15 +27,12 @@ func init() {
 type redisHcache struct {
 	// Parent
 	Hcache_
-	// Assocs
-	stage *Stage // current stage
 	// States
 	nodes []string
 }
 
 func (c *redisHcache) onCreate(compName string, stage *Stage) {
-	c.MakeComp(compName)
-	c.stage = stage
+	c.Hcache_.OnCreate(compName, stage)
 }
 func (c *redisHcache) OnShutdown() {
 	close(c.ShutChan) // notifies Maintain()
@@ -55,7 +52,7 @@ func (c *redisHcache) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("redisHcache=%s done\n", c.CompName())
 	}
-	c.stage.DecSub() // hcache
+	c.Stage().DecSub() // hcache
 }
 
 func (c *redisHcache) Set(key []byte, hobject *Hobject) {

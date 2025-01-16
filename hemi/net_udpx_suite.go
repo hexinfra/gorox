@@ -460,8 +460,17 @@ type UDPXDealet interface {
 type UDPXDealet_ struct {
 	// Parent
 	Component_
+	// Assocs
+	stage *Stage // current stage
 	// States
 }
+
+func (d *UDPXDealet_) OnCreate(compName string, stage *Stage) {
+	d.MakeComp(compName)
+	d.stage = stage
+}
+
+func (d *UDPXDealet_) Stage() *Stage { return d.stage }
 
 //////////////////////////////////////// UDPX backend implementation ////////////////////////////////////////
 

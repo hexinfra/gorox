@@ -25,14 +25,11 @@ func init() {
 type statCronjob struct {
 	// Parent
 	Cronjob_
-	// Assocs
-	stage *Stage // current stage
 	// States
 }
 
 func (j *statCronjob) onCreate(compName string, stage *Stage) {
-	j.MakeComp(compName)
-	j.stage = stage
+	j.Cronjob_.OnCreate(compName, stage)
 }
 func (j *statCronjob) OnShutdown() {
 	close(j.ShutChan) // notifies Schedule()
@@ -52,5 +49,5 @@ func (j *statCronjob) Schedule() { // runner
 	if DebugLevel() >= 2 {
 		Printf("statCronjob=%s done\n", j.CompName())
 	}
-	j.stage.DecSub() // cronjob
+	j.Stage().DecSub() // cronjob
 }

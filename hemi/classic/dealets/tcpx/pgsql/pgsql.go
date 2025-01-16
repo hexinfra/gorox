@@ -26,15 +26,13 @@ type pgsqlProxy struct {
 	// Parent
 	TCPXDealet_
 	// Assocs
-	stage   *Stage // current stage
 	router  *TCPXRouter
 	backend *PgsqlBackend // the backend to pass to
 	// States
 }
 
 func (d *pgsqlProxy) onCreate(compName string, stage *Stage, router *TCPXRouter) {
-	d.MakeComp(compName)
-	d.stage = stage
+	d.TCPXDealet_.OnCreate(compName, stage)
 	d.router = router
 }
 func (d *pgsqlProxy) OnShutdown() {

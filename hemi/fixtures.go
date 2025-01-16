@@ -29,6 +29,19 @@ type fixture interface {
 	run() // runner
 }
 
+// fixture_
+type fixture_ struct {
+	// Parent
+	Component_
+	// Assocs
+	stage *Stage // current stage
+}
+
+func (f *fixture_) onCreate(compName string, stage *Stage) {
+	f.MakeComp(compName)
+	f.stage = stage
+}
+
 const signClock = "clock"
 
 func init() {
@@ -45,17 +58,14 @@ func createClock(stage *Stage) *clockFixture {
 // clockFixture
 type clockFixture struct {
 	// Parent
-	Component_
-	// Assocs
-	stage *Stage // current stage
+	fixture_
 	// States
 	resolution time.Duration
 	date       atomic.Int64 // 4, 4+4 4 4+4+4+4 4+4:4+4:4+4 = 56bit
 }
 
 func (f *clockFixture) onCreate(stage *Stage) {
-	f.MakeComp(signClock)
-	f.stage = stage
+	f.fixture_.onCreate(signClock, stage)
 	f.resolution = 100 * time.Millisecond
 	f.date.Store(0x7394804991b60000) // Sun, 06 Nov 1994 08:49:37
 }
@@ -377,9 +387,7 @@ func createFcache(stage *Stage) *fcacheFixture {
 // fcacheFixture caches file descriptors and contents.
 type fcacheFixture struct {
 	// Parent
-	Component_
-	// Assocs
-	stage *Stage // current stage
+	fixture_
 	// States
 	smallFileSize int64 // what size is considered as small file
 	maxSmallFiles int32 // max number of small files. for small files, contents are cached
@@ -390,8 +398,7 @@ type fcacheFixture struct {
 }
 
 func (f *fcacheFixture) onCreate(stage *Stage) {
-	f.MakeComp(signFcache)
-	f.stage = stage
+	f.fixture_.onCreate(signFcache, stage)
 	f.entries = make(map[string]*fcacheEntry)
 }
 func (f *fcacheFixture) OnShutdown() {
@@ -576,15 +583,12 @@ func createResolv(stage *Stage) *resolvFixture {
 // resolvFixture resolves names.
 type resolvFixture struct {
 	// Parent
-	Component_
-	// Assocs
-	stage *Stage // current stage
+	fixture_
 	// States
 }
 
 func (f *resolvFixture) onCreate(stage *Stage) {
-	f.MakeComp(signResolv)
-	f.stage = stage
+	f.fixture_.onCreate(signResolv, stage)
 }
 func (f *resolvFixture) OnShutdown() {
 	close(f.ShutChan) // notifies run()

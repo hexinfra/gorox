@@ -27,15 +27,12 @@ func init() {
 type redisHstate struct {
 	// Parent
 	Hstate_
-	// Assocs
-	stage *Stage // current stage
 	// States
 	nodes []string
 }
 
 func (s *redisHstate) onCreate(compName string, stage *Stage) {
-	s.MakeComp(compName)
-	s.stage = stage
+	s.Hstate_.OnCreate(compName, stage)
 }
 func (s *redisHstate) OnShutdown() {
 	close(s.ShutChan) // notifies Maintain()
@@ -55,7 +52,7 @@ func (s *redisHstate) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("redisHstate=%s done\n", s.CompName())
 	}
-	s.stage.DecSub() // hstate
+	s.Stage().DecSub() // hstate
 }
 
 func (s *redisHstate) Set(sid []byte, session *Session) error {

@@ -24,14 +24,12 @@ type dnsProxy struct {
 	// Parent
 	UDPXDealet_
 	// Assocs
-	stage  *Stage // current stage
 	router *UDPXRouter
 	// States
 }
 
 func (d *dnsProxy) onCreate(compName string, stage *Stage, router *UDPXRouter) {
-	d.MakeComp(compName)
-	d.stage = stage
+	d.UDPXDealet_.OnCreate(compName, stage)
 	d.router = router
 }
 func (d *dnsProxy) OnShutdown() {

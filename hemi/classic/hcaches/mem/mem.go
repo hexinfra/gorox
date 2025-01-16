@@ -25,14 +25,11 @@ func init() {
 type memHcache struct {
 	// Parent
 	Hcache_
-	// Assocs
-	stage *Stage // current stage
 	// States
 }
 
 func (c *memHcache) onCreate(compName string, stage *Stage) {
-	c.MakeComp(compName)
-	c.stage = stage
+	c.Hcache_.OnCreate(compName, stage)
 }
 func (c *memHcache) OnShutdown() {
 	close(c.ShutChan) // notifies Maintain()
@@ -52,7 +49,7 @@ func (c *memHcache) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("memHcache=%s done\n", c.CompName())
 	}
-	c.stage.DecSub() // hcache
+	c.Stage().DecSub() // hcache
 }
 
 func (c *memHcache) Set(key []byte, hobject *Hobject) {

@@ -560,8 +560,17 @@ type QUIXDealet interface {
 type QUIXDealet_ struct {
 	// Parent
 	Component_
+	// Assocs
+	stage *Stage // current stage
 	// States
 }
+
+func (d *QUIXDealet_) OnCreate(compName string, stage *Stage) {
+	d.MakeComp(compName)
+	d.stage = stage
+}
+
+func (d *QUIXDealet_) Stage() *Stage { return d.stage }
 
 //////////////////////////////////////// QUIX backend implementation ////////////////////////////////////////
 

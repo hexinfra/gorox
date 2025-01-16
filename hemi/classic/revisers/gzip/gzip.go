@@ -26,9 +26,6 @@ func init() {
 type gzipReviser struct {
 	// Parent
 	Reviser_
-	// Assocs
-	stage  *Stage // current stage
-	webapp *Webapp
 	// States
 	compressLevel  int
 	minLength      int64
@@ -36,12 +33,10 @@ type gzipReviser struct {
 }
 
 func (r *gzipReviser) onCreate(compName string, stage *Stage, webapp *Webapp) {
-	r.MakeComp(compName)
-	r.stage = stage
-	r.webapp = webapp
+	r.Reviser_.OnCreate(compName, stage, webapp)
 }
 func (r *gzipReviser) OnShutdown() {
-	r.webapp.DecSub() // reviser
+	r.Webapp().DecSub() // reviser
 }
 
 func (r *gzipReviser) OnConfigure() {

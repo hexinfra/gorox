@@ -24,14 +24,12 @@ type accessDealet struct {
 	// Parent
 	TCPXDealet_
 	// Assocs
-	stage  *Stage // current stage
 	router *TCPXRouter
 	// States
 }
 
 func (d *accessDealet) onCreate(compName string, stage *Stage, router *TCPXRouter) {
-	d.MakeComp(compName)
-	d.stage = stage
+	d.TCPXDealet_.OnCreate(compName, stage)
 	d.router = router
 }
 func (d *accessDealet) OnShutdown() {

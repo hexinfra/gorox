@@ -41,8 +41,6 @@ type fcgiProxy struct {
 	// Parent
 	Handlet_
 	// Assocs
-	stage   *Stage       // current stage
-	webapp  *Webapp      // the webapp to which the proxy belongs
 	backend *fcgiBackend // the backend to pass to
 	hcache  Hcache       // the hcache which is used by this proxy
 	// States
@@ -52,9 +50,7 @@ type fcgiProxy struct {
 }
 
 func (h *fcgiProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(compName)
-	h.stage = stage
-	h.webapp = webapp
+	h.Handlet_.OnCreate(compName, stage, webapp)
 }
 func (h *fcgiProxy) OnShutdown() {
 	h.webapp.DecSub() // handlet
@@ -1021,7 +1017,7 @@ func (r *fcgiRequest) _longTimeCheck(err error) error {
 	return err
 }
 func (r *fcgiRequest) _isLongTime() bool {
-	return r.sendTimeout > 0 && time.Now().Sub(r.sendTime) >= r.sendTimeout
+	return r.sendTimeout > 0 && time.Since(r.sendTime) >= r.sendTimeout
 }
 
 var ( // fcgi request errors
@@ -1620,7 +1616,7 @@ func (r *fcgiResponse) _newTempFile() (tempFile, error) { // to save content to
 }
 
 func (r *fcgiResponse) _isLongTime() bool {
-	return r.recvTimeout > 0 && time.Now().Sub(r.bodyTime) >= r.recvTimeout
+	return r.recvTimeout > 0 && time.Since(r.bodyTime) >= r.recvTimeout
 }
 
 func (r *fcgiResponse) fcgiRecvStdout() (int32, int32, error) { // r.records[from:edge] is the stdout data.

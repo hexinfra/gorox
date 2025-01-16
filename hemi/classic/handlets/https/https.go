@@ -23,21 +23,16 @@ func init() {
 type httpsChecker struct {
 	// Parent
 	Handlet_
-	// Assocs
-	stage  *Stage // current stage
-	webapp *Webapp
 	// States
 	permanent bool
 	authority string
 }
 
 func (h *httpsChecker) onCreate(compName string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(compName)
-	h.stage = stage
-	h.webapp = webapp
+	h.Handlet_.OnCreate(compName, stage, webapp)
 }
 func (h *httpsChecker) OnShutdown() {
-	h.webapp.DecSub() // handlet
+	h.Webapp().DecSub() // handlet
 }
 
 func (h *httpsChecker) OnConfigure() {

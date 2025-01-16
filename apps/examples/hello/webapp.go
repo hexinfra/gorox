@@ -20,20 +20,15 @@ func init() {
 type helloHandlet struct {
 	// Parent
 	Handlet_
-	// Assocs
-	stage  *Stage  // current stage
-	webapp *Webapp // associated webapp
 	// States
 	example string // an example config entry
 }
 
 func (h *helloHandlet) onCreate(compName string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(compName)
-	h.stage = stage
-	h.webapp = webapp
+	h.Handlet_.OnCreate(compName, stage, webapp)
 }
 func (h *helloHandlet) OnShutdown() {
-	h.webapp.DecSub() // handlet
+	h.Webapp().DecSub() // handlet
 }
 
 func (h *helloHandlet) OnConfigure() {

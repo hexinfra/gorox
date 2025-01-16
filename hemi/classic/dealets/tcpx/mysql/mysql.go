@@ -26,15 +26,13 @@ type mysqlProxy struct {
 	// Parent
 	TCPXDealet_
 	// Assocs
-	stage   *Stage // current stage
 	router  *TCPXRouter
 	backend *MysqlBackend // the backend to pass to
 	// States
 }
 
 func (d *mysqlProxy) onCreate(compName string, stage *Stage, router *TCPXRouter) {
-	d.MakeComp(compName)
-	d.stage = stage
+	d.TCPXDealet_.OnCreate(compName, stage)
 	d.router = router
 }
 func (d *mysqlProxy) OnShutdown() {

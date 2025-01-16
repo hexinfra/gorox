@@ -23,19 +23,14 @@ func init() {
 type helloSocklet struct {
 	// Parent
 	Socklet_
-	// Assocs
-	stage  *Stage // current stage
-	webapp *Webapp
 	// States
 }
 
 func (s *helloSocklet) onCreate(compName string, stage *Stage, webapp *Webapp) {
-	s.MakeComp(compName)
-	s.stage = stage
-	s.webapp = webapp
+	s.Socklet_.OnCreate(compName, stage, webapp)
 }
 func (s *helloSocklet) OnShutdown() {
-	s.webapp.DecSub() // socklet
+	s.Webapp().DecSub() // socklet
 }
 
 func (s *helloSocklet) OnConfigure() {

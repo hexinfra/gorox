@@ -27,8 +27,16 @@ type Hcache_ struct {
 	// Parent
 	Component_
 	// Assocs
+	stage *Stage // current stage
 	// States
 }
+
+func (c *Hcache_) OnCreate(compName string, stage *Stage) {
+	c.MakeComp(compName)
+	c.stage = stage
+}
+
+func (c *Hcache_) Stage() *Stage { return c.stage }
 
 func (c *Hcache_) todo() {
 }
@@ -59,8 +67,6 @@ type httpProxy struct {
 	// Parent
 	Handlet_
 	// Assocs
-	stage   *Stage      // current stage
-	webapp  *Webapp     // the webapp to which the proxy belongs
 	backend HTTPBackend // the *HTTP[1-3]Backend to pass to
 	hcache  Hcache      // the hcache which is used by this proxy
 	// States
@@ -68,9 +74,7 @@ type httpProxy struct {
 }
 
 func (h *httpProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(compName)
-	h.stage = stage
-	h.webapp = webapp
+	h.Handlet_.OnCreate(compName, stage, webapp)
 }
 func (h *httpProxy) OnShutdown() {
 	h.webapp.DecSub() // handlet
@@ -310,17 +314,13 @@ type sockProxy struct {
 	// Parent
 	Socklet_
 	// Assocs
-	stage   *Stage      // current stage
-	webapp  *Webapp     // the webapp to which the proxy belongs
 	backend HTTPBackend // the *HTTP[1-3]Backend to pass to
 	// States
 	WebSocketProxyConfig // embeded
 }
 
 func (s *sockProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
-	s.MakeComp(compName)
-	s.stage = stage
-	s.webapp = webapp
+	s.Socklet_.OnCreate(compName, stage, webapp)
 }
 func (s *sockProxy) OnShutdown() {
 	s.webapp.DecSub() // socklet

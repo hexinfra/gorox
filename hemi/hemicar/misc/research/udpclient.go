@@ -23,7 +23,7 @@ func main() {
 	n, err := clientConn.Read(p)
 	must(err)
 
-	fmt.Printf("%s, %s\n", p[:n], time.Now().Sub(beginTime).String())
+	fmt.Printf("%s, %s\n", p[:n], time.Since(beginTime).String())
 }
 
 func must(err error) {

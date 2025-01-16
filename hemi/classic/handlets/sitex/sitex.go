@@ -28,9 +28,6 @@ func init() {
 type Sitex struct {
 	// Parent
 	Handlet_
-	// Assocs
-	stage  *Stage // current stage
-	webapp *Webapp
 	// States
 	sites         map[string]*Site // name -> site
 	rdbms         string           // relational database
@@ -38,14 +35,12 @@ type Sitex struct {
 }
 
 func (h *Sitex) OnCreate(compName string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(compName)
-	h.stage = stage
-	h.webapp = webapp
+	h.Handlet_.OnCreate(compName, stage, webapp)
 	h.hostnameSites = make(map[string]*Site)
 	h.sites = make(map[string]*Site)
 }
 func (h *Sitex) OnShutdown() {
-	h.webapp.DecSub() // handlet
+	h.Webapp().DecSub() // handlet
 }
 
 func (h *Sitex) OnConfigure() {
@@ -85,7 +80,7 @@ func (h *Sitex) OnConfigure() {
 				UseExitln("viewDir must be string")
 			}
 		} else {
-			site.viewDir = TopDir() + "/apps/" + h.webapp.CompName() + "/" + name + "/view"
+			site.viewDir = TopDir() + "/apps/" + h.Webapp().CompName() + "/" + name + "/view"
 		}
 		site.settings = make(map[string]string)
 		if vSettings, ok := siteDict["settings"]; ok {
@@ -109,9 +104,6 @@ func (h *Sitex) RegisterSite(siteName string, pack any) { // called on webapp in
 		BugExitf("unknown site: %s\n", siteName)
 	}
 }
-
-func (h *Sitex) Stage() *Stage   { return h.stage }
-func (h *Sitex) Webapp() *Webapp { return h.webapp }
 
 func (h *Sitex) Handle(req Request, resp Response) (handled bool) {
 	site := h.hostnameSites[req.Hostname()]

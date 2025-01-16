@@ -20,7 +20,6 @@ type udpxProxy struct {
 	// Parent
 	UDPXDealet_
 	// Assocs
-	stage   *Stage       // current stage
 	router  *UDPXRouter  // the router to which the dealet belongs
 	backend *UDPXBackend // the backend to pass to
 	// States
@@ -28,8 +27,7 @@ type udpxProxy struct {
 }
 
 func (d *udpxProxy) onCreate(compName string, stage *Stage, router *UDPXRouter) {
-	d.MakeComp(compName)
-	d.stage = stage
+	d.UDPXDealet_.OnCreate(compName, stage)
 	d.router = router
 }
 func (d *udpxProxy) OnShutdown() {

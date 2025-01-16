@@ -24,20 +24,15 @@ func init() {
 type gunzipReviser struct {
 	// Parent
 	Reviser_
-	// Assocs
-	stage  *Stage // current stage
-	webapp *Webapp
 	// States
 	onContentTypes []string
 }
 
 func (r *gunzipReviser) onCreate(compName string, stage *Stage, webapp *Webapp) {
-	r.MakeComp(compName)
-	r.stage = stage
-	r.webapp = webapp
+	r.Reviser_.OnCreate(compName, stage, webapp)
 }
 func (r *gunzipReviser) OnShutdown() {
-	r.webapp.DecSub() // reviser
+	r.Webapp().DecSub() // reviser
 }
 
 func (r *gunzipReviser) OnConfigure() {

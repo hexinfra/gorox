@@ -32,9 +32,6 @@ func init() {
 type referer1Checker struct {
 	// Parent
 	Handlet_
-	// Assocs
-	stage  *Stage // current stage
-	webapp *Webapp
 	// States
 	serverNames     [][]byte
 	serverNameRules []*refererRule
@@ -45,12 +42,10 @@ type referer1Checker struct {
 }
 
 func (h *referer1Checker) onCreate(compName string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(compName)
-	h.stage = stage
-	h.webapp = webapp
+	h.Handlet_.OnCreate(compName, stage, webapp)
 }
 func (h *referer1Checker) OnShutdown() {
-	h.webapp.DecSub() // handlet
+	h.Webapp().DecSub() // handlet
 }
 
 func (h *referer1Checker) OnConfigure() {

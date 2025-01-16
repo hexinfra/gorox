@@ -23,19 +23,14 @@ func init() {
 type limitChecker struct {
 	// Parent
 	Handlet_
-	// Assocs
-	stage  *Stage // current stage
-	webapp *Webapp
 	// States
 }
 
 func (h *limitChecker) onCreate(compName string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(compName)
-	h.stage = stage
-	h.webapp = webapp
+	h.Handlet_.OnCreate(compName, stage, webapp)
 }
 func (h *limitChecker) OnShutdown() {
-	h.webapp.DecSub() // handlet
+	h.Webapp().DecSub() // handlet
 }
 
 func (h *limitChecker) OnConfigure() {

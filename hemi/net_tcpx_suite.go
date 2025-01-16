@@ -673,8 +673,17 @@ type TCPXDealet interface {
 type TCPXDealet_ struct {
 	// Parent
 	Component_
+	// Assocs
+	stage *Stage // current stage
 	// States
 }
+
+func (d *TCPXDealet_) OnCreate(compName string, stage *Stage) {
+	d.MakeComp(compName)
+	d.stage = stage
+}
+
+func (d *TCPXDealet_) Stage() *Stage { return d.stage }
 
 //////////////////////////////////////// TCPX backend implementation ////////////////////////////////////////
 

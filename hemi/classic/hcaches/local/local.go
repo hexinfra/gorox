@@ -27,15 +27,12 @@ func init() {
 type localHcache struct {
 	// Parent
 	Hcache_
-	// Assocs
-	stage *Stage // current stage
 	// States
 	cacheDir string // /path/to/dir
 }
 
 func (c *localHcache) onCreate(compName string, stage *Stage) {
-	c.MakeComp(compName)
-	c.stage = stage
+	c.Hcache_.OnCreate(compName, stage)
 }
 func (c *localHcache) OnShutdown() {
 	close(c.ShutChan) // notifies Maintain()
@@ -63,7 +60,7 @@ func (c *localHcache) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("localHcache=%s done\n", c.CompName())
 	}
-	c.stage.DecSub() // hcache
+	c.Stage().DecSub() // hcache
 }
 
 func (c *localHcache) Set(key []byte, hobject *Hobject) {

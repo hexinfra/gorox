@@ -27,15 +27,12 @@ func init() {
 type localHstate struct {
 	// Parent
 	Hstate_
-	// Assocs
-	stage *Stage // current stage
 	// States
 	stateDir string // /path/to/dir
 }
 
 func (s *localHstate) onCreate(compName string, stage *Stage) {
-	s.MakeComp(compName)
-	s.stage = stage
+	s.Hstate_.OnCreate(compName, stage)
 }
 func (s *localHstate) OnShutdown() {
 	close(s.ShutChan) // notifies Maintain()
@@ -63,7 +60,7 @@ func (s *localHstate) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("localHstate=%s done\n", s.CompName())
 	}
-	s.stage.DecSub() // hstate
+	s.Stage().DecSub() // hstate
 }
 
 func (s *localHstate) Set(sid []byte, session *Session) error {

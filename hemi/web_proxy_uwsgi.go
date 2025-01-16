@@ -37,8 +37,6 @@ type uwsgiProxy struct {
 	// Parent
 	Handlet_
 	// Assocs
-	stage   *Stage        // current stage
-	webapp  *Webapp       // the webapp to which the proxy belongs
 	backend *uwsgiBackend // the backend to pass to
 	hcache  Hcache        // the hcache which is used by this proxy
 	// States
@@ -46,9 +44,7 @@ type uwsgiProxy struct {
 }
 
 func (h *uwsgiProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
-	h.MakeComp(compName)
-	h.stage = stage
-	h.webapp = webapp
+	h.Handlet_.OnCreate(compName, stage, webapp)
 }
 func (h *uwsgiProxy) OnShutdown() {
 	h.webapp.DecSub() // handlet

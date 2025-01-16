@@ -1,2 +1,3 @@
-Place cronjobs implemented by you. These cronjobs usually embed hemi.Cronjob_ and
-implement hemi.Cronjob, and are registered to hemi through hemi.RegisterCronjob.
+Place cronjobs implemented by you. These cronjobs extend the hemi.Cronjob_
+struct and implement the hemi.Cronjob interface, and are registered to the Hemi
+Engine through hemi.RegisterCronjob.

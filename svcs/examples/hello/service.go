@@ -1,5 +1,3 @@
-// This is a hello service showing how to use Gorox RPC Framework to host a service.
-
 package hello
 
 import (
@@ -7,7 +5,6 @@ import (
 )
 
 func init() {
-	// Register service initializer.
 	RegisterServiceInit("hello", func(service *Service) error {
 		return nil
 	})

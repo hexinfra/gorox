@@ -63,9 +63,17 @@ func signComp(compSign string, compType int16) {
 	signedComps[compSign] = compType
 }
 
-var ( // fixture signs, component creators, and initializers of services & webapps
-	fixtureSigns = make(map[string]bool) // we guarantee this is not manipulated concurrently, so no lock is required
+var fixtureSigns = make(map[string]bool) // we guarantee this is not manipulated concurrently, so no lock is required
 
+func registerFixture(compSign string) {
+	if _, ok := fixtureSigns[compSign]; ok {
+		BugExitln("fixture sign conflicted")
+	}
+	fixtureSigns[compSign] = true
+	signComp(compSign, compTypeFixture)
+}
+
+var ( // component creators
 	creatorsLock       sync.RWMutex
 	backendCreators    = make(map[string]func(compName string, stage *Stage) Backend) // indexed by compSign, same below.
 	hstateCreators     = make(map[string]func(compName string, stage *Stage) Hstate)
@@ -78,19 +86,7 @@ var ( // fixture signs, component creators, and initializers of services & webap
 	handletCreators    = make(map[string]func(compName string, stage *Stage, webapp *Webapp) Handlet)
 	reviserCreators    = make(map[string]func(compName string, stage *Stage, webapp *Webapp) Reviser)
 	sockletCreators    = make(map[string]func(compName string, stage *Stage, webapp *Webapp) Socklet)
-
-	initsLock    sync.RWMutex
-	serviceInits = make(map[string]func(service *Service) error) // indexed by compName, same below.
-	webappInits  = make(map[string]func(webapp *Webapp) error)
 )
-
-func registerFixture(compSign string) {
-	if _, ok := fixtureSigns[compSign]; ok {
-		BugExitln("fixture sign conflicted")
-	}
-	fixtureSigns[compSign] = true
-	signComp(compSign, compTypeFixture)
-}
 
 func RegisterBackend(compSign string, create func(compName string, stage *Stage) Backend) {
 	_registerComponent0(compSign, compTypeBackend, backendCreators, create)
@@ -146,6 +142,12 @@ func _registerComponent1[T Component, C Component](compSign string, compType int
 	creators[compSign] = create
 	signComp(compSign, compType)
 }
+
+var ( // initializers of services & webapps
+	initsLock    sync.RWMutex
+	serviceInits = make(map[string]func(service *Service) error) // indexed by compName, same below.
+	webappInits  = make(map[string]func(webapp *Webapp) error)
+)
 
 func RegisterServiceInit(compName string, init func(service *Service) error) {
 	initsLock.Lock()
@@ -639,6 +641,9 @@ func (s *Stage) createCronjob(compSign string, compName string) Cronjob {
 	return cronjob
 }
 
+func (s *Stage) ID() int32     { return s.id }
+func (s *Stage) NumCPU() int32 { return s.numCPU }
+
 func (s *Stage) Clock() *clockFixture            { return s.clock }
 func (s *Stage) Fcache() *fcacheFixture          { return s.fcache }
 func (s *Stage) Resolv() *resolvFixture          { return s.resolv }
@@ -836,9 +841,6 @@ func (s *Stage) startCronjobs() {
 	}
 }
 
-func (s *Stage) ID() int32     { return s.id }
-func (s *Stage) NumCPU() int32 { return s.numCPU }
-
 func (s *Stage) ProfCPU() {
 	file, err := os.Create(s.cpuFile)
 	if err != nil {
@@ -895,27 +897,3 @@ func (s *Stage) Quit() {
 		Printf("stage id=%d: quit.\n", s.id)
 	}
 }
-
-// Cronjob component
-type Cronjob interface {
-	// Imports
-	Component
-	// Methods
-	Schedule() // runner
-}
-
-// Cronjob_ is the parent for all cronjobs.
-type Cronjob_ struct {
-	// Parent
-	Component_
-	// Assocs
-	stage *Stage // current stage
-	// States
-}
-
-func (j *Cronjob_) OnCreate(compName string, stage *Stage) {
-	j.MakeComp(compName)
-	j.stage = stage
-}
-
-func (j *Cronjob_) Stage() *Stage { return j.stage }

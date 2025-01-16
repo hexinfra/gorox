@@ -1,5 +1,3 @@
-// This is a hello webapp showing how to use Gorox Webapp Server to host a webapp.
-
 package hello
 
 import (
@@ -7,6 +5,12 @@ import (
 
 	. "github.com/hexinfra/gorox/hemi"
 )
+
+func init() {
+	RegisterWebappInit("hello", func(webapp *Webapp) error {
+		return nil
+	})
+}
 
 func init() {
 	RegisterHandlet("helloHandlet", func(compName string, stage *Stage, webapp *Webapp) Handlet {

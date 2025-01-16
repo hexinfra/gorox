@@ -9,7 +9,6 @@ package classic
 
 import ( // preload all
 	_ "github.com/hexinfra/gorox/hemi/classic/cronjobs/clean"
-	_ "github.com/hexinfra/gorox/hemi/classic/cronjobs/stat"
 	_ "github.com/hexinfra/gorox/hemi/classic/dealets/tcpx/access"
 	_ "github.com/hexinfra/gorox/hemi/classic/dealets/tcpx/limit"
 	_ "github.com/hexinfra/gorox/hemi/classic/dealets/tcpx/mysql"

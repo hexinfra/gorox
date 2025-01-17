@@ -42,10 +42,59 @@ the Hemi Engine, we also have these sub directories that supplement Hemi:
 Architecture
 ============
 
-Logical
+Program dependencies
+--------------------
+
+A program (like Gorox) using Hemi Engine typically has these dependencies:
+
+```
+  +-------------------------------------------------------------+
+  |                           <program>                         |
+  +-------------+-------------------------------+----------+----+
+                |                               |          |
+                v                               v          v
+  +------+   +---------------------------+   +------+ +---------+
+  | libs |<--+        apps & svcs        +-->| exts | |<procmgr>|
+  +------+   +--+---------------------+--+   +--+---+ +----+----+
+                |                     |         |          |
+                v                     v         v          v
+  +-----------------------+   +---------------------------------+
+  | <classic> & <contrib> |-->+              <hemi>             |
+  +-----------------------+   +---------------------------------+
+```
+
+Process
 -------
 
-The logical architecture of a stage in Hemi Engine looks like this:
+A program instance has two processes: a leader process, and a worker process:
+
+```
+                  +----------------+         +----------------+ business traffic
+         cmdConn  |                | admConn |                |<===============>
+operator--------->| leader process |<------->| worker process |<===============>
+                  |                |         |                |<===============>
+                  +----------------+         +----------------+
+```
+
+The leader process manages the worker process, which do the real and heavy work.
+
+A program instance can be controlled by operators through the cmdui interface of
+the leader process. Operators connect to the leader, send commands, and the
+leader executes the commands. Some commands are delivered to the worker process
+through admConn.
+
+Alternatively, program instances can connect to a Myrox instance and delegate
+their administration to Myrox. In this way, the cmdui interface in the leader
+process is disabled.
+
+Stages
+------
+
+The worker process has one stage most of the time. When an old stage is about to
+retire and a new stage is about to start, there may be many stages running at
+the same time. This happens when you have changed the config and is telling the
+server to reload the config. The logical architecture of a stage in the worker
+process might looks like this:
 
 ```
    ^     +---------------------------------------------+  shutdown
@@ -69,27 +118,6 @@ The logical architecture of a stage in Hemi Engine looks like this:
 prepare  +-----------+---------------+-----------------+     v
                               stage
 
-```
-
-Dependencies
-------------
-
-A program (like Gorox) using Hemi Engine typically has these dependencies:
-
-```
-  +-------------------------------------------------------------+
-  |                           <program>                         |
-  +-------------+-------------------------------+----------+----+
-                |                               |          |
-                v                               v          v
-  +------+   +---------------------------+   +------+ +---------+
-  | libs |<--+        apps & svcs        +-->| exts | |<procmgr>|
-  +------+   +--+---------------------+--+   +--+---+ +----+----+
-                |                     |         |          |
-                v                     v         v          v
-  +-----------------------+   +---------------------------------+
-  | <classic> & <contrib> |-->+              <hemi>             |
-  +-----------------------+   +---------------------------------+
 ```
 
 

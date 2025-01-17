@@ -167,11 +167,8 @@ After Gorox is started, an extra directory called "data/" will be created, with
   * data/var/ - Place dynamic data files used by Gorox.
 
 
-Architecture
-============
-
 Deployment
-----------
+==========
 
 A typical deployment architecture using Gorox might looks like this:
 
@@ -229,30 +226,6 @@ of the roles in "gorox cluster":
 The whole Gorox cluster can alternatively be managed by a Myrox instance, which
 behaves like the control plane in Service Mesh. In this configuration, all Gorox
 instances in the cluster connect to Myrox and are under its control.
-
-Process
--------
-
-A Gorox instance has two processes: a leader process, and a worker process:
-
-```
-                  +----------------+         +----------------+ business traffic
-         cmdConn  |                | admConn |                |<===============>
-operator--------->| leader process |<------->| worker process |<===============>
-                  |                |         |                |<===============>
-                  +----------------+         +----------------+
-```
-
-The leader process manages the worker process, which do the real and heavy work.
-
-A Gorox instance can be controlled by operators through the cmdui interface of
-the leader process. Operators connect to the leader, send commands, and the
-leader executes the commands. Some commands are delivered to the worker process
-through admConn.
-
-Alternatively, Gorox instances can connect to a Myrox instance and delegate
-their administration to Myrox. In this way, the cmdui interface in the leader
-process is disabled.
 
 
 Community

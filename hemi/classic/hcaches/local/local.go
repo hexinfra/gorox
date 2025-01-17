@@ -23,7 +23,7 @@ func init() {
 	})
 }
 
-// localHcache
+// localHcache caches hobjects in local file system.
 type localHcache struct {
 	// Parent
 	Hcache_

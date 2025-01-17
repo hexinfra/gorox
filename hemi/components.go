@@ -44,7 +44,7 @@ const ( // list of component types
 	compTypeCronjob                     // statCronjob, cleanCronjob, ...
 )
 
-var signedComps = map[string]int16{ // signed comps. more dynamic comps are signed using signComp() below
+var signedComps = map[string]int16{ // signed comps. more dynamic comps are signed using _signComp() below
 	"stage":      compTypeStage,
 	"node":       compTypeNode,
 	"quixRouter": compTypeQUIXRouter,
@@ -56,7 +56,7 @@ var signedComps = map[string]int16{ // signed comps. more dynamic comps are sign
 	"rule":       compTypeRule,
 }
 
-func signComp(compSign string, compType int16) {
+func _signComp(compSign string, compType int16) {
 	if signedType, ok := signedComps[compSign]; ok {
 		BugExitf("conflicting component sign: compType=%d compSign=%s\n", signedType, compSign)
 	}
@@ -70,7 +70,7 @@ func registerFixture(compSign string) {
 		BugExitln("fixture sign conflicted")
 	}
 	fixtureSigns[compSign] = true
-	signComp(compSign, compTypeFixture)
+	_signComp(compSign, compTypeFixture)
 }
 
 var ( // component creators
@@ -111,7 +111,7 @@ func _registerComponent0[T Component](compSign string, compType int16, creators 
 		BugExitln("component0 sign conflicted")
 	}
 	creators[compSign] = create
-	signComp(compSign, compType)
+	_signComp(compSign, compType)
 }
 
 func RegisterQUIXDealet(compSign string, create func(compName string, stage *Stage, router *QUIXRouter) QUIXDealet) {
@@ -140,7 +140,7 @@ func _registerComponent1[T Component, C Component](compSign string, compType int
 		BugExitln("component1 sign conflicted")
 	}
 	creators[compSign] = create
-	signComp(compSign, compType)
+	_signComp(compSign, compType)
 }
 
 var ( // initializers of services & webapps
@@ -202,9 +202,9 @@ type Component_ struct {
 	// States
 	compName string           // main, proxy1, ...
 	props    map[string]Value // name1=value1, ...
-	info     any              // extra info about this component, used by configurator
-	subs     sync.WaitGroup   // sub components or objects to wait for
-	ShutChan chan struct{}    // used to notify shutdown
+	ShutChan chan struct{}    // used to notify the component to shutdown
+	subs     sync.WaitGroup   // sub components/objects to wait for
+	info     any              // hold extra info about this component, used by configurator
 }
 
 func (c *Component_) MakeComp(compName string) {
@@ -301,12 +301,12 @@ func (c *Component_) LoopRun(interval time.Duration, callback func(now time.Time
 	}
 }
 
-func (c *Component_) setName(compName string)                  { c.compName = compName }
 func (c *Component_) setShell(shell Component)                 { c.shell = shell }
 func (c *Component_) setParent(parent Component)               { c.parent = parent }
 func (c *Component_) getParent() Component                     { return c.parent }
-func (c *Component_) setInfo(info any)                         { c.info = info }
+func (c *Component_) setName(compName string)                  { c.compName = compName }
 func (c *Component_) setProp(propName string, propValue Value) { c.props[propName] = propValue }
+func (c *Component_) setInfo(info any)                         { c.info = info }
 
 // compDict
 type compDict[T Component] map[string]T
@@ -322,7 +322,7 @@ func (d compDict[T]) goWalk(method func(T)) {
 	}
 }
 
-// Stage represents a running stage in worker process.
+// Stage represents a running stage in the worker process.
 //
 // A worker process may have many stages in its lifetime, especially
 // when new configuration is applied, a new stage is created, or the
@@ -390,45 +390,45 @@ func (s *Stage) OnShutdown() {
 		Printf("stage id=%d shutdown start!!\n", s.id)
 	}
 
-	// cronjobs
+	// Cronjobs
 	s.IncSubs(len(s.cronjobs))
 	s.cronjobs.goWalk(Cronjob.OnShutdown)
 	s.WaitSubs()
 
-	// servers
+	// Servers
 	s.IncSubs(len(s.servers))
 	s.servers.goWalk(Server.OnShutdown)
 	s.WaitSubs()
 
-	// webapps
+	// Webapps
 	s.IncSubs(len(s.webapps))
 	s.webapps.goWalk((*Webapp).OnShutdown)
 	s.WaitSubs()
 
-	// hcaches & hstates
+	// Hcaches & Hstates
 	s.IncSubs(len(s.hcaches) + len(s.hstates))
 	s.hcaches.goWalk(Hcache.OnShutdown)
 	s.hstates.goWalk(Hstate.OnShutdown)
 	s.WaitSubs()
 
-	// services
+	// Services
 	s.IncSubs(len(s.services))
 	s.services.goWalk((*Service).OnShutdown)
 	s.WaitSubs()
 
-	// routers
+	// Routers
 	s.IncSubs(len(s.udpxRouters) + len(s.tcpxRouters) + len(s.quixRouters))
 	s.udpxRouters.goWalk((*UDPXRouter).OnShutdown)
 	s.tcpxRouters.goWalk((*TCPXRouter).OnShutdown)
 	s.quixRouters.goWalk((*QUIXRouter).OnShutdown)
 	s.WaitSubs()
 
-	// backends
+	// Backends
 	s.IncSubs(len(s.backends))
 	s.backends.goWalk(Backend.OnShutdown)
 	s.WaitSubs()
 
-	// fixtures, manually one by one
+	// Fixtures, manually one by one. Mind the order!
 
 	s.IncSub() // fcache
 	s.fcache.OnShutdown()
@@ -442,8 +442,9 @@ func (s *Stage) OnShutdown() {
 	s.clock.OnShutdown()
 	s.WaitSubs()
 
-	// stage
+	// Stage
 	if DebugLevel() >= 2 {
+		// TODO
 		Println("stage close log file")
 	}
 }

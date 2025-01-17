@@ -5,7 +5,7 @@
 
 // Memory Hcache implementation.
 
-package mem
+package memory
 
 import (
 	"time"
@@ -14,52 +14,52 @@ import (
 )
 
 func init() {
-	RegisterHcache("memHcache", func(compName string, stage *Stage) Hcache {
-		c := new(memHcache)
+	RegisterHcache("memoryHcache", func(compName string, stage *Stage) Hcache {
+		c := new(memoryHcache)
 		c.onCreate(compName, stage)
 		return c
 	})
 }
 
-// memHcache
-type memHcache struct {
+// memoryHcache caches hobjects in memory.
+type memoryHcache struct {
 	// Parent
 	Hcache_
 	// States
 }
 
-func (c *memHcache) onCreate(compName string, stage *Stage) {
+func (c *memoryHcache) onCreate(compName string, stage *Stage) {
 	c.Hcache_.OnCreate(compName, stage)
 }
-func (c *memHcache) OnShutdown() {
+func (c *memoryHcache) OnShutdown() {
 	close(c.ShutChan) // notifies Maintain()
 }
 
-func (c *memHcache) OnConfigure() {
+func (c *memoryHcache) OnConfigure() {
 	// TODO
 }
-func (c *memHcache) OnPrepare() {
+func (c *memoryHcache) OnPrepare() {
 	// TODO
 }
 
-func (c *memHcache) Maintain() { // runner
+func (c *memoryHcache) Maintain() { // runner
 	c.LoopRun(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if DebugLevel() >= 2 {
-		Printf("memHcache=%s done\n", c.CompName())
+		Printf("memoryHcache=%s done\n", c.CompName())
 	}
 	c.Stage().DecSub() // hcache
 }
 
-func (c *memHcache) Set(key []byte, hobject *Hobject) {
+func (c *memoryHcache) Set(key []byte, hobject *Hobject) {
 	// TODO
 }
-func (c *memHcache) Get(key []byte) (hobject *Hobject) {
+func (c *memoryHcache) Get(key []byte) (hobject *Hobject) {
 	// TODO
 	return
 }
-func (c *memHcache) Del(key []byte) bool {
+func (c *memoryHcache) Del(key []byte) bool {
 	// TODO
 	return false
 }

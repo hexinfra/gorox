@@ -23,7 +23,7 @@ func init() {
 	})
 }
 
-// redisHcache
+// redisHcache caches hobjects in Redis server.
 type redisHcache struct {
 	// Parent
 	Hcache_

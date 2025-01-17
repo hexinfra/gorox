@@ -24,7 +24,7 @@ import ( // preload all
 	_ "github.com/hexinfra/gorox/hemi/classic/handlets/sitex"
 	_ "github.com/hexinfra/gorox/hemi/classic/handlets/webdav"
 	_ "github.com/hexinfra/gorox/hemi/classic/hcaches/local"
-	_ "github.com/hexinfra/gorox/hemi/classic/hcaches/mem"
+	_ "github.com/hexinfra/gorox/hemi/classic/hcaches/memory"
 	_ "github.com/hexinfra/gorox/hemi/classic/hcaches/redis"
 	_ "github.com/hexinfra/gorox/hemi/classic/hstates/local"
 	_ "github.com/hexinfra/gorox/hemi/classic/hstates/redis"

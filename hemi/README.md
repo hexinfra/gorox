@@ -1,8 +1,8 @@
 Hemi
 ====
 
-Hemi is the engine of Gorox. It's a Go module that only depends on Go's standard
-library and can be used independently.
+Hemi is the engine of Gorox. It's a common Go module that only depends on Go's
+standard library. It can be used as a module by your programs.
 
 
 How to use
@@ -32,11 +32,17 @@ the Hemi Engine, we also have these sub directories that supplement Hemi:
 
   * classic/  - Place standard Hemi components,
   * contrib/  - Place community contributed Hemi components,
-  * hemicar/  - A prototype program that is used to develop and test Hemi,
   * library/  - Place general purpose libraries,
-  * procmgr/  - A process manager for programs using Hemi,
-  * toolkit/  - Place useful commands,
-  * website/  - A program that hosts the Gorox official website.
+  * procmgr/  - A process manager for programs using Hemi.
+
+The following sub directories are programs that use the Hemi Engine:
+
+  * hemicar/  - A prototype program that is used to develop and test Hemi,
+  * hemiweb/  - A program that hosts the Gorox official website.
+
+And something useful:
+
+  * toolkit/  - Place useful commands.
 
 
 Architecture
@@ -71,7 +77,7 @@ A program instance has two processes: a leader process, and a worker process:
 ```
                   +----------------+         +----------------+ business traffic
          cmdConn  |                | admConn |                |<===============>
-operator--------->| leader process |<------->| worker process |<===============>
+operator<-------->| leader process |<------->| worker process |<===============>
                   |                |         |                |<===============>
                   +----------------+         +----------------+
 ```
@@ -141,7 +147,7 @@ TODO
 * http tunnel proxy (tcp, udp, ip) implementation.
 * web application framework implementation.
 * documentation.
-* official websites.
+* hemiweb.
 * logger implementation.
 * rperf design and implementation.
 * more unit tests.

@@ -983,7 +983,7 @@ func (s *httpxServer) OnConfigure() {
 	s.httpServer_.onConfigure()
 
 	if DebugLevel() >= 2 { // remove this condition after http/2 server has been fully implemented
-		// httpMode
+		// .httpMode
 		var mode string
 		s.ConfigureString("httpMode", &mode, func(value string) error {
 			value = strings.ToLower(value)

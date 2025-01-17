@@ -57,7 +57,7 @@ func (h *fcgiProxy) OnShutdown() {
 }
 
 func (h *fcgiProxy) OnConfigure() {
-	// toBackend
+	// .toBackend
 	if v, ok := h.Find("toBackend"); ok {
 		if compName, ok := v.String(); ok && compName != "" {
 			if backend := h.stage.Backend(compName); backend == nil {
@@ -74,7 +74,7 @@ func (h *fcgiProxy) OnConfigure() {
 		UseExitln("toBackend is required for fcgiProxy")
 	}
 
-	// withHcache
+	// .withHcache
 	if v, ok := h.Find("withHcache"); ok {
 		if compName, ok := v.String(); ok && compName != "" {
 			if hcache := h.stage.Hcache(compName); hcache == nil {
@@ -87,15 +87,15 @@ func (h *fcgiProxy) OnConfigure() {
 		}
 	}
 
-	// bufferClientContent
+	// .bufferClientContent
 	h.ConfigureBool("bufferClientContent", &h.BufferClientContent, true)
-	// bufferServerContent
+	// .bufferServerContent
 	h.ConfigureBool("bufferServerContent", &h.BufferServerContent, true)
 
-	// scriptFilename
+	// .scriptFilename
 	h.ConfigureBytes("scriptFilename", &h.scriptFilename, nil, nil)
 
-	// indexFile
+	// .indexFile
 	h.ConfigureBytes("indexFile", &h.indexFile, func(value []byte) error {
 		if len(value) > 0 {
 			return nil
@@ -281,7 +281,7 @@ func (n *fcgiNode) OnConfigure() {
 	n.Node_.OnConfigure()
 	n._contentSaver_.onConfigure(n, 0*time.Second, 0*time.Second, TmpDir()+"/web/backends/"+n.backend.compName+"/"+n.compName)
 
-	// maxCumulativeExchansPerConn
+	// .maxCumulativeExchansPerConn
 	n.ConfigureInt32("maxCumulativeExchansPerConn", &n.maxCumulativeExchansPerConn, func(value int32) error {
 		if value >= 0 {
 			return nil
@@ -289,7 +289,7 @@ func (n *fcgiNode) OnConfigure() {
 		return errors.New(".maxCumulativeExchansPerConn has an invalid value")
 	}, 1000)
 
-	// idleTimeout
+	// .idleTimeout
 	n.ConfigureDuration("idleTimeout", &n.idleTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
@@ -297,7 +297,7 @@ func (n *fcgiNode) OnConfigure() {
 		return errors.New(".idleTimeout has an invalid value")
 	}, 2*time.Second)
 
-	// maxLifetime
+	// .maxLifetime
 	n.ConfigureDuration("maxLifetime", &n.maxLifetime, func(value time.Duration) error {
 		if value > 0 {
 			return nil
@@ -305,7 +305,7 @@ func (n *fcgiNode) OnConfigure() {
 		return errors.New(".maxLifetime has an invalid value")
 	}, 1*time.Minute)
 
-	// keepConn
+	// .keepConn
 	n.ConfigureBool("keepConn", &n.keepConn, false)
 }
 func (n *fcgiNode) OnPrepare() {

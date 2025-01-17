@@ -36,7 +36,7 @@ func (r *gunzipReviser) OnShutdown() {
 }
 
 func (r *gunzipReviser) OnConfigure() {
-	// onContentTypes
+	// .onContentTypes
 	r.ConfigureStringList("onContentTypes", &r.onContentTypes, nil, []string{"text/html"})
 }
 func (r *gunzipReviser) OnPrepare() {

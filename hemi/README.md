@@ -16,7 +16,7 @@ Here, x.y.z is the version of Gorox. Then import it to your "main.go":
 
     import . "github.com/hexinfra/gorox/hemi"
 
-If you would like to use the standard components, import them with:
+If you would like to use the standard components too, import them with:
 
     import _ "github.com/hexinfra/gorox/hemi/classic"
 
@@ -37,12 +37,12 @@ the Hemi Engine, we also have these sub directories that supplement Hemi:
 
 The following sub directories are programs that use the Hemi Engine:
 
-  * hemicar/  - A prototype program that is used to develop and test Hemi,
-  * hemiweb/  - A program that implements the Gorox official website.
+  * hemicar/  - A prototype program that is used to develop Hemi itself,
+  * hemiweb/  - A program that implements the official website of Gorox.
 
 And something useful:
 
-  * toolkit/  - Place useful commands.
+  * toolkit/  - Place auxiliary commands that are sometimes useful.
 
 
 Architecture
@@ -69,8 +69,8 @@ A program (like Gorox) using Hemi Engine typically has these dependencies:
   +-----------------------+   +---------------------------------+
 ```
 
-Process
--------
+Program processes
+-----------------
 
 A program instance has two processes: a leader process, and a worker process:
 

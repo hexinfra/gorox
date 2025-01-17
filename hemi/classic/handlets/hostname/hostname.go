@@ -36,7 +36,7 @@ func (h *hostnameChecker) OnShutdown() {
 }
 
 func (h *hostnameChecker) OnConfigure() {
-	// hostname
+	// .hostname
 	if v, ok := h.Find("hostname"); ok {
 		if hostname, ok := v.String(); ok {
 			h.hostname = hostname
@@ -47,7 +47,7 @@ func (h *hostnameChecker) OnConfigure() {
 		UseExitln("hostname is required for hostnameChecker")
 	}
 
-	// permanent
+	// .permanent
 	h.ConfigureBool("permanent", &h.permanent, false)
 }
 func (h *hostnameChecker) OnPrepare() {

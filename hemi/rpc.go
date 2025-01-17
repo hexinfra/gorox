@@ -47,7 +47,7 @@ func (s *Service) OnShutdown() {
 }
 
 func (s *Service) OnConfigure() {
-	// maxContentSize
+	// .maxContentSize
 	s.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
 		if value > 0 && value <= _1G {
 			return nil

@@ -15,7 +15,7 @@ used as a:
   * Forward Proxy (SOCKS, HTTP Tunnel)
   * ... and more through its highly extensible compoments design!
 
-Gorox is currently under heavy development, ALL FEATURES ARE EXPERIMENTAL! For
+Gorox is currently under heavy development, *ALL FEATURES ARE EXPERIMENTAL!* For
 more details about Gorox, please see our project site: https://gorox.org/.
 
 

@@ -46,7 +46,7 @@ type _httpHolder_ struct {
 func (h *_httpHolder_) onConfigure(comp Component, defaultRecv time.Duration, defaultSend time.Duration, defaultDir string) {
 	h._contentSaver_.onConfigure(comp, defaultRecv, defaultSend, defaultDir)
 
-	// maxCumulativeStreamsPerConn
+	// .maxCumulativeStreamsPerConn
 	comp.ConfigureInt32("maxCumulativeStreamsPerConn", &h.maxCumulativeStreamsPerConn, func(value int32) error {
 		if value >= 0 {
 			return nil
@@ -54,7 +54,7 @@ func (h *_httpHolder_) onConfigure(comp Component, defaultRecv time.Duration, de
 		return errors.New(".maxCumulativeStreamsPerConn has an invalid value")
 	}, 1000)
 
-	// maxMemoryContentSize
+	// .maxMemoryContentSize
 	comp.ConfigureInt32("maxMemoryContentSize", &h.maxMemoryContentSize, func(value int32) error {
 		if value > 0 && value <= _1G { // DO NOT CHANGE THIS, otherwise integer overflow may occur
 			return nil
@@ -2094,10 +2094,10 @@ func (s *httpServer_[G]) onConfigure() {
 	s.Server_.OnConfigure()
 	s._httpHolder_.onConfigure(s, 0*time.Second, 0*time.Second, TmpDir()+"/web/servers/"+s.compName)
 
-	// webapps
+	// .webapps
 	s.ConfigureStringList("webapps", &s.webapps, nil, []string{})
 
-	// forceScheme
+	// .forceScheme
 	var scheme string
 	s.ConfigureString("forceScheme", &scheme, func(value string) error {
 		if value != "http" && value != "https" {
@@ -2112,10 +2112,10 @@ func (s *httpServer_[G]) onConfigure() {
 		s.forceScheme = SchemeHTTPS
 	}
 
-	// alignScheme
+	// .alignScheme
 	s.ConfigureBool("alignScheme", &s.alignScheme, true)
 
-	// maxConcurrentConnsPerGate
+	// .maxConcurrentConnsPerGate
 	s.ConfigureInt32("maxConcurrentConnsPerGate", &s.maxConcurrentConnsPerGate, func(value int32) error {
 		if value > 0 {
 			return nil
@@ -5007,7 +5007,7 @@ func (n *httpNode_[B]) onConfigure() {
 	n.Node_.OnConfigure()
 	n._httpHolder_.onConfigure(n, 0*time.Second, 0*time.Second, TmpDir()+"/web/backends/"+n.backend.CompName()+"/"+n.compName)
 
-	// keepAliveConns
+	// .keepAliveConns
 	n.ConfigureInt32("keepAliveConns", &n.keepAliveConns, func(value int32) error {
 		if value > 0 {
 			return nil
@@ -5015,7 +5015,7 @@ func (n *httpNode_[B]) onConfigure() {
 		return errors.New("bad keepAliveConns in node")
 	}, 10)
 
-	// idleTimeout
+	// .idleTimeout
 	n.ConfigureDuration("idleTimeout", &n.idleTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
@@ -5023,7 +5023,7 @@ func (n *httpNode_[B]) onConfigure() {
 		return errors.New(".idleTimeout has an invalid value")
 	}, 2*time.Second)
 
-	// maxLifetime
+	// .maxLifetime
 	n.ConfigureDuration("maxLifetime", &n.maxLifetime, func(value time.Duration) error {
 		if value > 0 {
 			return nil

@@ -44,7 +44,7 @@ func (h *Sitex) OnShutdown() {
 }
 
 func (h *Sitex) OnConfigure() {
-	// sites
+	// .sites
 	v, ok := h.Find("sites")
 	if !ok {
 		UseExitln("sites must be defined")
@@ -90,7 +90,7 @@ func (h *Sitex) OnConfigure() {
 		}
 	}
 
-	// rdbms
+	// .rdbms
 	h.ConfigureString("rdbms", &h.rdbms, nil, "")
 }
 func (h *Sitex) OnPrepare() {

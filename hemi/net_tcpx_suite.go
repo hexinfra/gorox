@@ -170,7 +170,7 @@ func (r *TCPXRouter) OnConfigure() {
 	r.Server_.OnConfigure()
 	r._tcpxHolder_.onConfigure(r)
 
-	// maxConcurrentConnsPerGate
+	// .maxConcurrentConnsPerGate
 	r.ConfigureInt32("maxConcurrentConnsPerGate", &r.maxConcurrentConnsPerGate, func(value int32) error {
 		if value > 0 {
 			return nil

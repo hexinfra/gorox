@@ -51,7 +51,7 @@ func (h *scgiProxy) OnShutdown() {
 }
 
 func (h *scgiProxy) OnConfigure() {
-	// toBackend
+	// .toBackend
 	if v, ok := h.Find("toBackend"); ok {
 		if compName, ok := v.String(); ok && compName != "" {
 			if backend := h.stage.Backend(compName); backend == nil {
@@ -68,7 +68,7 @@ func (h *scgiProxy) OnConfigure() {
 		UseExitln("toBackend is required for scgiProxy")
 	}
 
-	// withHcache
+	// .withHcache
 	if v, ok := h.Find("withHcache"); ok {
 		if compName, ok := v.String(); ok && compName != "" {
 			if hcache := h.stage.Hcache(compName); hcache == nil {
@@ -81,9 +81,9 @@ func (h *scgiProxy) OnConfigure() {
 		}
 	}
 
-	// bufferClientContent
+	// .bufferClientContent
 	h.ConfigureBool("bufferClientContent", &h.BufferClientContent, true)
-	// bufferServerContent
+	// .bufferServerContent
 	h.ConfigureBool("bufferServerContent", &h.BufferServerContent, true)
 }
 func (h *scgiProxy) OnPrepare() {

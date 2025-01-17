@@ -49,11 +49,11 @@ func (h *referer1Checker) OnShutdown() {
 }
 
 func (h *referer1Checker) OnConfigure() {
-	// allow
+	// .allow
 	h.ConfigureBytesList("serverNames", &h.serverNames, func(rules [][]byte) error { return checkRule(rules) }, nil)
-	// none
+	// .none
 	h.ConfigureBool("none", &h.NoneReferer, false)
-	// blocked
+	// .blocked
 	h.ConfigureBool("blocked", &h.IsBlocked, false)
 
 }

@@ -44,7 +44,7 @@ func (h *staticHandlet) OnShutdown() {
 }
 
 func (h *staticHandlet) OnConfigure() {
-	// webRoot
+	// .webRoot
 	if v, ok := h.Find("webRoot"); ok {
 		if dir, ok := v.String(); ok && dir != "" {
 			h.webRoot = dir
@@ -64,7 +64,7 @@ func (h *staticHandlet) OnConfigure() {
 		}
 	}
 
-	// aliasTo
+	// .aliasTo
 	if v, ok := h.Find("aliasTo"); ok {
 		if fromTo, ok := v.StringListN(2); ok {
 			h.aliasTo = fromTo
@@ -75,7 +75,7 @@ func (h *staticHandlet) OnConfigure() {
 		h.aliasTo = nil
 	}
 
-	// indexFile
+	// .indexFile
 	h.ConfigureString("indexFile", &h.indexFile, func(value string) error {
 		if value != "" {
 			return nil
@@ -83,7 +83,7 @@ func (h *staticHandlet) OnConfigure() {
 		return errors.New(".indexFile has an invalid value")
 	}, "index.html")
 
-	// mimeTypes
+	// .mimeTypes
 	if v, ok := h.Find("mimeTypes"); ok {
 		if mimeTypes, ok := v.StringDict(); ok {
 			h.mimeTypes = make(map[string]string)
@@ -100,7 +100,7 @@ func (h *staticHandlet) OnConfigure() {
 		h.mimeTypes = staticDefaultMimeTypes
 	}
 
-	// defaultType
+	// .defaultType
 	h.ConfigureString("defaultType", &h.defaultType, func(value string) error {
 		if value != "" {
 			return nil
@@ -108,7 +108,7 @@ func (h *staticHandlet) OnConfigure() {
 		return errors.New(".indexFile has an invalid value")
 	}, "application/octet-stream")
 
-	// autoIndex
+	// .autoIndex
 	h.ConfigureBool("autoIndex", &h.autoIndex, false)
 }
 func (h *staticHandlet) OnPrepare() {

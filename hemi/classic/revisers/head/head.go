@@ -39,13 +39,13 @@ func (r *headReviser) OnShutdown() {
 }
 
 func (r *headReviser) OnConfigure() {
-	// addRequest
+	// .addRequest
 	r.ConfigureStringDict("addRequest", &r.addRequest, nil, map[string]string{"date": "Mon, 14 Sep 2015 03:19:14 GMT"})
-	// delRequest
+	// .delRequest
 	r.ConfigureStringList("delRequest", &r.delRequest, nil, []string{})
-	// addResponse
+	// .addResponse
 	r.ConfigureStringDict("addResponse", &r.addResponse, nil, map[string]string{"date": "Mon, 14 Sep 2015 03:19:14 GMT"})
-	// delResponse
+	// .delResponse
 	r.ConfigureStringList("delResponse", &r.delResponse, nil, []string{})
 }
 func (r *headReviser) OnPrepare() {

@@ -81,7 +81,7 @@ func (h *httpProxy) OnShutdown() {
 }
 
 func (h *httpProxy) OnConfigure() {
-	// toBackend
+	// .toBackend
 	if v, ok := h.Find("toBackend"); ok {
 		if compName, ok := v.String(); ok && compName != "" {
 			if backend := h.stage.Backend(compName); backend == nil {
@@ -96,7 +96,7 @@ func (h *httpProxy) OnConfigure() {
 		UseExitln("toBackend is required for http proxy")
 	}
 
-	// withHcache
+	// .withHcache
 	if v, ok := h.Find("withHcache"); ok {
 		if compName, ok := v.String(); ok && compName != "" {
 			if hcache := h.stage.Hcache(compName); hcache == nil {
@@ -109,7 +109,7 @@ func (h *httpProxy) OnConfigure() {
 		}
 	}
 
-	// addRequestHeaders
+	// .addRequestHeaders
 	if v, ok := h.Find("addRequestHeaders"); ok {
 		addedHeaders := make(map[string]Value)
 		if vHeaders, ok := v.Dict(); ok {
@@ -131,23 +131,23 @@ func (h *httpProxy) OnConfigure() {
 		}
 	}
 
-	// bufferClientContent
+	// .bufferClientContent
 	h.ConfigureBool("bufferClientContent", &h.BufferClientContent, true)
-	// hostname
+	// .hostname
 	h.ConfigureBytes("hostname", &h.Hostname, nil, nil)
-	// colonport
+	// .colonport
 	h.ConfigureBytes("colonport", &h.Colonport, nil, nil)
-	// inboundViaName
+	// .inboundViaName
 	h.ConfigureBytes("inboundViaName", &h.InboundViaName, nil, bytesGorox)
-	// delRequestHeaders
+	// .delRequestHeaders
 	h.ConfigureBytesList("delRequestHeaders", &h.DelRequestHeaders, nil, [][]byte{})
-	// bufferServerContent
+	// .bufferServerContent
 	h.ConfigureBool("bufferServerContent", &h.BufferServerContent, true)
-	// outboundViaName
+	// .outboundViaName
 	h.ConfigureBytes("outboundViaName", &h.OutboundViaName, nil, nil)
-	// addResponseHeaders
+	// .addResponseHeaders
 	h.ConfigureStringDict("addResponseHeaders", &h.AddResponseHeaders, nil, map[string]string{})
-	// delResponseHeaders
+	// .delResponseHeaders
 	h.ConfigureBytesList("delResponseHeaders", &h.DelResponseHeaders, nil, [][]byte{})
 }
 func (h *httpProxy) OnPrepare() {
@@ -327,7 +327,7 @@ func (s *sockProxy) OnShutdown() {
 }
 
 func (s *sockProxy) OnConfigure() {
-	// toBackend
+	// .toBackend
 	if v, ok := s.Find("toBackend"); ok {
 		if compName, ok := v.String(); ok && compName != "" {
 			if backend := s.stage.Backend(compName); backend == nil {

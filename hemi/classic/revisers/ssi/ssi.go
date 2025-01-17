@@ -38,7 +38,7 @@ func (r *ssiReviser) OnShutdown() {
 }
 
 func (r *ssiReviser) OnConfigure() {
-	// rank
+	// .rank
 	r.ConfigureInt8("rank", &r.rank, func(value int8) error {
 		if value >= 6 && value < 26 {
 			return nil

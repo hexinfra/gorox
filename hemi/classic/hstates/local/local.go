@@ -39,7 +39,7 @@ func (s *localHstate) OnShutdown() {
 }
 
 func (s *localHstate) OnConfigure() {
-	// stateDir
+	// .stateDir
 	s.ConfigureString("stateDir", &s.stateDir, func(value string) error {
 		if value != "" {
 			return nil

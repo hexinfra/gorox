@@ -39,7 +39,7 @@ func (c *localHcache) OnShutdown() {
 }
 
 func (c *localHcache) OnConfigure() {
-	// cacheDir
+	// .cacheDir
 	c.ConfigureString("cacheDir", &c.cacheDir, func(value string) error {
 		if value != "" {
 			return nil

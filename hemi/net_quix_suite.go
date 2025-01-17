@@ -33,7 +33,7 @@ type _quixHolder_ struct {
 }
 
 func (h *_quixHolder_) onConfigure(comp Component) {
-	// maxCumulativeStreamsPerConn
+	// .maxCumulativeStreamsPerConn
 	comp.ConfigureInt32("maxCumulativeStreamsPerConn", &h.maxCumulativeStreamsPerConn, func(value int32) error {
 		if value >= 0 {
 			return nil
@@ -41,7 +41,7 @@ func (h *_quixHolder_) onConfigure(comp Component) {
 		return errors.New(".maxCumulativeStreamsPerConn has an invalid value")
 	}, 1000)
 
-	// maxCumulativeStreamsPerConn
+	// .maxCumulativeStreamsPerConn
 	comp.ConfigureInt32("maxConcurrentStreamsPerConn", &h.maxConcurrentStreamsPerConn, func(value int32) error {
 		if value >= 0 {
 			return nil
@@ -157,7 +157,7 @@ func (r *QUIXRouter) OnConfigure() {
 	r.Server_.OnConfigure()
 	r._quixHolder_.onConfigure(r)
 
-	// maxConcurrentConnsPerGate
+	// .maxConcurrentConnsPerGate
 	r.ConfigureInt32("maxConcurrentConnsPerGate", &r.maxConcurrentConnsPerGate, func(value int32) error {
 		if value > 0 {
 			return nil

@@ -35,7 +35,7 @@ func (d *udpxProxy) OnShutdown() {
 }
 
 func (d *udpxProxy) OnConfigure() {
-	// toBackend
+	// .toBackend
 	if v, ok := d.Find("toBackend"); ok {
 		if compName, ok := v.String(); ok && compName != "" {
 			if backend := d.stage.Backend(compName); backend == nil {

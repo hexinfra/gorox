@@ -64,10 +64,10 @@ func (s *grpcServer) onCreate(compName string, stage *Stage) {
 func (s *grpcServer) OnConfigure() {
 	s.Server_.OnConfigure()
 
-	// forServices
+	// .forServices
 	s.ConfigureStringList("forServices", &s.forServices, nil, []string{})
 
-	// recvTimeout
+	// .recvTimeout
 	s.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) error {
 		if value >= 0 {
 			return nil
@@ -75,7 +75,7 @@ func (s *grpcServer) OnConfigure() {
 		return errors.New(".recvTimeout has an invalid value")
 	}, 60*time.Second)
 
-	// sendTimeout
+	// .sendTimeout
 	s.ConfigureDuration("sendTimeout", &s.sendTimeout, func(value time.Duration) error {
 		if value >= 0 {
 			return nil
@@ -83,7 +83,7 @@ func (s *grpcServer) OnConfigure() {
 		return errors.New(".sendTimeout has an invalid value")
 	}, 60*time.Second)
 
-	// maxConcurrentConnsPerGate
+	// .maxConcurrentConnsPerGate
 	s.ConfigureInt32("maxConcurrentConnsPerGate", &s.maxConcurrentConnsPerGate, func(value int32) error {
 		if value > 0 {
 			return nil

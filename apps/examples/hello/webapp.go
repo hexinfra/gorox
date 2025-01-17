@@ -36,7 +36,7 @@ func (h *helloHandlet) OnShutdown() {
 }
 
 func (h *helloHandlet) OnConfigure() {
-	// example
+	// .example
 	h.ConfigureString("example", &h.example, nil, "this is default value for example config entry.")
 }
 func (h *helloHandlet) OnPrepare() {

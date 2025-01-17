@@ -36,9 +36,9 @@ func (h *httpsChecker) OnShutdown() {
 }
 
 func (h *httpsChecker) OnConfigure() {
-	// permanent
+	// .permanent
 	h.ConfigureBool("permanent", &h.permanent, false)
-	// authority
+	// .authority
 	h.ConfigureString("authority", &h.authority, nil, "")
 }
 func (h *httpsChecker) OnPrepare() {

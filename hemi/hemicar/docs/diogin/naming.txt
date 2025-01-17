@@ -22,20 +22,20 @@ NAMING
 COMPONENTS
 ==========
 
-  stage [*]
+  [stage]
     fixture (clock, fcache, resolv, ...)
     backend (http1Backend, tcpxBackend, ...)
-      node [*]
+      <node> (http1Node, tcpxNode, ...)
     router (quixRouter, tcpxRouter, udpxRouter)
       dealet (quixProxy, tcpxProxy, udpxProxy, ...)
-      case [*]
-    service [*]
+      [case]
+    [service]
     hstate (localHstate, redisHstate, ...)
     hcache (localHcache, redisHcache, ...)
-    webapp [*]
+    [webapp]
       handlet (hello, static, ...)
       reviser (gzip, head, ...)
       socklet (hello, ...)
-      rule [*]
-    server (httpxServer, http3Server, echoServer, ...)
-    cronjob (clean, stat, ...)
+      [rule]
+    server (httpxServer, hrpcServer, echoServer, ...)
+    cronjob (stat, clean, ...)

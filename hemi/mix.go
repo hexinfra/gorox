@@ -46,13 +46,13 @@ type _holder_ struct {
 }
 
 func (h *_holder_) onConfigure(comp Component, defaultRead time.Duration, defaultWrite time.Duration) {
-	// tlsMode
+	// .tlsMode
 	comp.ConfigureBool("tlsMode", &h.tlsMode, false)
 	if h.tlsMode {
 		h.tlsConfig = new(tls.Config)
 	}
 
-	// readTimeout
+	// .readTimeout
 	comp.ConfigureDuration("readTimeout", &h.readTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
@@ -60,7 +60,7 @@ func (h *_holder_) onConfigure(comp Component, defaultRead time.Duration, defaul
 		return errors.New(".readTimeout has an invalid value")
 	}, defaultRead)
 
-	// writeTimeout
+	// .writeTimeout
 	comp.ConfigureDuration("writeTimeout", &h.writeTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
@@ -119,7 +119,7 @@ func (s *Server_[G]) OnShutdown() {
 func (s *Server_[G]) OnConfigure() {
 	s._holder_.onConfigure(s, 60*time.Second, 60*time.Second)
 
-	// address
+	// .address
 	if v, ok := s.Find("address"); ok {
 		if address, ok := v.String(); ok && address != "" {
 			if p := strings.IndexByte(address, ':'); p == -1 {
@@ -136,11 +136,11 @@ func (s *Server_[G]) OnConfigure() {
 		UseExitln(".address is required for servers")
 	}
 
-	// udsColonport
+	// .udsColonport
 	s.ConfigureString("udsColonport", &s.udsColonport, nil, ":80")
 	s.udsColonportBytes = []byte(s.udsColonport)
 
-	// numGates
+	// .numGates
 	s.ConfigureInt32("numGates", &s.numGates, func(value int32) error {
 		if value > 0 {
 			return nil
@@ -249,7 +249,7 @@ func (b *Backend_[N]) OnShutdown() {
 }
 
 func (b *Backend_[N]) OnConfigure() {
-	// balancer
+	// .balancer
 	b.ConfigureString("balancer", &b.balancer, func(value string) error {
 		if value == "roundRobin" || value == "ipHash" || value == "random" || value == "leastUsed" {
 			return nil
@@ -366,7 +366,7 @@ func (n *Node_[B]) OnShutdown() {
 func (n *Node_[B]) OnConfigure() {
 	n._holder_.onConfigure(n, 30*time.Second, 30*time.Second)
 
-	// address
+	// .address
 	if v, ok := n.Find("address"); ok {
 		if address, ok := v.String(); ok && address != "" {
 			if address[0] == '@' { // abstract uds
@@ -382,7 +382,7 @@ func (n *Node_[B]) OnConfigure() {
 		UseExitln("address is required in node")
 	}
 
-	// dialTimeout
+	// .dialTimeout
 	n.ConfigureDuration("dialTimeout", &n.dialTimeout, func(value time.Duration) error {
 		if value >= time.Second {
 			return nil
@@ -390,7 +390,7 @@ func (n *Node_[B]) OnConfigure() {
 		return errors.New(".dialTimeout has an invalid value")
 	}, 10*time.Second)
 
-	// weight
+	// .weight
 	n.ConfigureInt32("weight", &n.weight, func(value int32) error {
 		if value > 0 {
 			return nil
@@ -430,7 +430,7 @@ type _contentSaver_ struct {
 }
 
 func (s *_contentSaver_) onConfigure(comp Component, defaultRecv time.Duration, defaultSend time.Duration, defaultDir string) {
-	// recvTimeout
+	// .recvTimeout
 	comp.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) error {
 		if value >= 0 {
 			return nil
@@ -438,7 +438,7 @@ func (s *_contentSaver_) onConfigure(comp Component, defaultRecv time.Duration, 
 		return errors.New(".recvTimeout has an invalid value")
 	}, defaultRecv)
 
-	// sendTimeout
+	// .sendTimeout
 	comp.ConfigureDuration("sendTimeout", &s.sendTimeout, func(value time.Duration) error {
 		if value >= 0 {
 			return nil
@@ -446,7 +446,7 @@ func (s *_contentSaver_) onConfigure(comp Component, defaultRecv time.Duration, 
 		return errors.New(".sendTimeout has an invalid value")
 	}, defaultSend)
 
-	// maxContentSize
+	// .maxContentSize
 	comp.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
 		if value > 0 {
 			return nil
@@ -454,7 +454,7 @@ func (s *_contentSaver_) onConfigure(comp Component, defaultRecv time.Duration, 
 		return errors.New(".maxContentSize has an invalid value")
 	}, _1T)
 
-	// saveContentFilesDir
+	// .saveContentFilesDir
 	comp.ConfigureString("saveContentFilesDir", &s.saveContentFilesDir, func(value string) error {
 		if value != "" && len(value) <= 232 {
 			return nil

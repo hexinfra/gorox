@@ -125,7 +125,7 @@ func (n *redisNode) onCreate(compName string, stage *Stage, backend *RedisBacken
 func (n *redisNode) OnConfigure() {
 	n.Node_.OnConfigure()
 
-	// idleTimeout
+	// .idleTimeout
 	n.ConfigureDuration("idleTimeout", &n.idleTimeout, func(value time.Duration) error {
 		if value > 0 {
 			return nil
@@ -133,7 +133,7 @@ func (n *redisNode) OnConfigure() {
 		return errors.New(".idleTimeout has an invalid value")
 	}, 2*time.Second)
 
-	// maxLifetime
+	// .maxLifetime
 	n.ConfigureDuration("maxLifetime", &n.maxLifetime, func(value time.Duration) error {
 		if value > 0 {
 			return nil

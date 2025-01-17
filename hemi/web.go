@@ -111,7 +111,7 @@ func (a *Webapp) OnShutdown() {
 }
 
 func (a *Webapp) OnConfigure() {
-	// hostnames
+	// .hostnames
 	if v, ok := a.Find("hostnames"); ok {
 		hostnames, ok := v.StringList()
 		if !ok || len(hostnames) == 0 {
@@ -153,7 +153,7 @@ func (a *Webapp) OnConfigure() {
 		UseExitln("webapp.hostnames is required")
 	}
 
-	// webRoot
+	// .webRoot
 	a.ConfigureString("webRoot", &a.webRoot, func(value string) error {
 		if value != "" {
 			return nil
@@ -162,7 +162,7 @@ func (a *Webapp) OnConfigure() {
 	}, "")
 	a.webRoot = strings.TrimRight(a.webRoot, "/")
 
-	// file404
+	// .file404
 	a.ConfigureString("file404", &a.file404, func(value string) error {
 		if value != "" {
 			return nil
@@ -170,7 +170,7 @@ func (a *Webapp) OnConfigure() {
 		return errors.New(".file404 has an invalid value")
 	}, "")
 
-	// tlsCertificate
+	// .tlsCertificate
 	a.ConfigureString("tlsCertificate", &a.tlsCertificate, func(value string) error {
 		if value != "" {
 			return nil
@@ -178,7 +178,7 @@ func (a *Webapp) OnConfigure() {
 		return errors.New(".tlsCertificate has an invalid value")
 	}, "")
 
-	// tlsPrivateKey
+	// .tlsPrivateKey
 	a.ConfigureString("tlsPrivateKey", &a.tlsPrivateKey, func(value string) error {
 		if value != "" {
 			return nil
@@ -188,7 +188,7 @@ func (a *Webapp) OnConfigure() {
 
 	// accessLog, TODO
 
-	// maxMultiformSize
+	// .maxMultiformSize
 	a.ConfigureInt64("maxMultiformSize", &a.maxMultiformSize, func(value int64) error {
 		if value > 0 && value <= _1T {
 			return nil
@@ -196,10 +196,10 @@ func (a *Webapp) OnConfigure() {
 		return errors.New(".maxMultiformSize has an invalid value")
 	}, _128M)
 
-	// settings
+	// .settings
 	a.ConfigureStringDict("settings", &a.settings, nil, make(map[string]string))
 
-	// withHstate
+	// .withHstate
 	if v, ok := a.Find("withHstate"); ok {
 		if compName, ok := v.String(); ok && compName != "" {
 			if hstate := a.stage.Hstate(compName); hstate == nil {
@@ -473,10 +473,10 @@ func (r *Rule) OnConfigure() {
 		}
 	}
 
-	// logAccess
+	// .logAccess
 	r.ConfigureBool("logAccess", &r.logAccess, true)
 
-	// returnCode
+	// .returnCode
 	r.ConfigureInt16("returnCode", &r.returnCode, func(value int16) error {
 		if value >= 200 && value <= 999 {
 			return nil
@@ -484,10 +484,10 @@ func (r *Rule) OnConfigure() {
 		return errors.New(".returnCode has an invalid value")
 	}, 0)
 
-	// returnText
+	// .returnText
 	r.ConfigureBytes("returnText", &r.returnText, nil, nil)
 
-	// handlets
+	// .handlets
 	if v, ok := r.Find("handlets"); ok {
 		if len(r.socklets) > 0 {
 			UseExitln("cannot mix handlets and socklets in a rule")
@@ -508,7 +508,7 @@ func (r *Rule) OnConfigure() {
 		}
 	}
 
-	// revisers
+	// .revisers
 	if v, ok := r.Find("revisers"); ok {
 		if len(r.revisers) != 0 {
 			UseExitln("specifying revisers is not allowed while there are literal revisers")
@@ -526,7 +526,7 @@ func (r *Rule) OnConfigure() {
 		}
 	}
 
-	// socklets
+	// .socklets
 	if v, ok := r.Find("socklets"); ok {
 		if len(r.handlets) > 0 {
 			UseExitln("cannot mix socklets and handlets in a rule")

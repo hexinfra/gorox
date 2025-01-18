@@ -521,7 +521,7 @@ type http2Stream_[C http2Conn] struct {
 	_http2Stream0 // all values in this struct must be zero by default!
 }
 type _http2Stream0 struct { // for fast reset, entirely
-	index uint8
+	index uint8 // the index at s.conn.activeStreams
 	state uint8 // http2StateOpen, http2StateRemoteClosed, ...
 }
 

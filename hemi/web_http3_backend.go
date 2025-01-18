@@ -67,6 +67,12 @@ type http3Node struct {
 	// Parent
 	httpNode_[*HTTP3Backend]
 	// States
+	connPool struct {
+		sync.Mutex
+		head *backend3Conn
+		tail *backend3Conn
+		qnty int
+	}
 }
 
 func (n *http3Node) onCreate(compName string, stage *Stage, backend *HTTP3Backend) {
@@ -102,15 +108,34 @@ func (n *http3Node) storeStream(stream *backend3Stream) {
 	// TODO
 }
 
+func (n *http3Node) _dialUDS() (*backend3Conn, error) {
+	return nil, nil
+}
+func (n *http3Node) _dialTLS() (*backend3Conn, error) {
+	return nil, nil
+}
+
+func (n *http3Node) pullConn() *backend3Conn {
+	return nil
+}
+func (n *http3Node) pushConn(conn *backend3Conn) {
+}
+func (n *http3Node) closeFree() int {
+	return 0
+}
+
 // backend3Conn
 type backend3Conn struct {
 	// Parent
 	http3Conn_
+	// Mixins
+	_backendConn_
+	// Assocs
+	next *backend3Conn // the linked-list
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node       *http3Node
-	expireTime time.Time // when the conn is considered expired
+	node *http3Node // the node to which the connection belongs
 	// Conn states (zeros)
 	_backend3Conn0 // all values in this struct must be zero by default!
 }
@@ -136,15 +161,15 @@ func putBackend3Conn(backendConn *backend3Conn) {
 
 func (c *backend3Conn) onGet(id int64, node *http3Node, quicConn *tcp2.Conn) {
 	c.http3Conn_.onGet(id, node.Stage(), node.UDSMode(), node.TLSMode(), quicConn, node.ReadTimeout(), node.WriteTimeout())
+	c._backendConn_.onGet(time.Now().Add(node.idleTimeout))
 
 	c.node = node
-	c.expireTime = time.Now().Add(node.idleTimeout)
 }
 func (c *backend3Conn) onPut() {
 	c._backend3Conn0 = _backend3Conn0{}
-	c.expireTime = time.Time{}
 	c.node = nil
 
+	c._backendConn_.onPut()
 	c.http3Conn_.onPut()
 }
 

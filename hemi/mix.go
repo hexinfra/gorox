@@ -359,9 +359,7 @@ func (n *Node_[B]) OnCreate(compName string, stage *Stage, backend B) {
 	n.backend = backend
 	n.health = nil // TODO
 }
-func (n *Node_[B]) OnShutdown() {
-	close(n.ShutChan) // notifies Maintain() which will close conns
-}
+func (n *Node_[B]) OnShutdown() { close(n.ShutChan) } // notifies Maintain() which will close conns
 
 func (n *Node_[B]) OnConfigure() {
 	n._holder_.onConfigure(n, 30*time.Second, 30*time.Second)

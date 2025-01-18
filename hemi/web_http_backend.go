@@ -97,6 +97,24 @@ func (n *httpNode_[B]) onPrepare() {
 	n._httpHolder_.onPrepare(n, 0755)
 }
 
+// _backendConn_
+type _backendConn_ struct {
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	expireTime time.Time // when the conn is considered expired
+	// Conn states (zeros)
+}
+
+func (c *_backendConn_) onGet(expireTime time.Time) {
+	c.expireTime = expireTime
+}
+func (c *_backendConn_) onPut() {
+	c.expireTime = time.Time{}
+}
+
+func (c *_backendConn_) isAlive() bool { return time.Now().Before(c.expireTime) }
+
 // backendStream is the backend-side http stream.
 type backendStream interface { // for *backend[1-3]Stream
 	Request() backendRequest

@@ -68,6 +68,12 @@ type http2Node struct {
 	// Parent
 	httpNode_[*HTTP2Backend]
 	// States
+	connPool struct {
+		sync.Mutex
+		head *backend2Conn
+		tail *backend2Conn
+		qnty int
+	}
 }
 
 func (n *http2Node) onCreate(compName string, stage *Stage, backend *HTTP2Backend) {
@@ -106,15 +112,37 @@ func (n *http2Node) storeStream(stream *backend2Stream) {
 	// TODO
 }
 
-// backend2Conn
+func (n *http2Node) _dialUDS() (*backend2Conn, error) {
+	return nil, nil
+}
+func (n *http2Node) _dialTLS() (*backend2Conn, error) {
+	return nil, nil
+}
+func (n *http2Node) _dialTCP() (*backend2Conn, error) {
+	return nil, nil
+}
+
+func (n *http2Node) pullConn() *backend2Conn {
+	return nil
+}
+func (n *http2Node) pushConn(conn *backend2Conn) {
+}
+func (n *http2Node) closeFree() int {
+	return 0
+}
+
+// backend2Conn is the backend-side HTTP/2 connection.
 type backend2Conn struct {
 	// Parent
 	http2Conn_
+	// Mixins
+	_backendConn_
+	// Assocs
+	next *backend2Conn // the linked-list
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node       *http2Node // the node to which the connection belongs
-	expireTime time.Time  // when the conn is considered expired
+	node *http2Node // the node to which the connection belongs
 	// Conn states (zeros)
 	_backend2Conn0 // all values in this struct must be zero by default!
 }
@@ -140,15 +168,15 @@ func putBackend2Conn(backendConn *backend2Conn) {
 
 func (c *backend2Conn) onGet(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
 	c.http2Conn_.onGet(id, node.Stage(), node.UDSMode(), node.TLSMode(), netConn, rawConn, node.ReadTimeout(), node.WriteTimeout())
+	c._backendConn_.onGet(time.Now().Add(node.idleTimeout))
 
 	c.node = node
-	c.expireTime = time.Now().Add(node.idleTimeout)
 }
 func (c *backend2Conn) onPut() {
 	c._backend2Conn0 = _backend2Conn0{}
-	c.expireTime = time.Time{}
 	c.node = nil
 
+	c._backendConn_.onPut()
 	c.http2Conn_.onPut()
 }
 

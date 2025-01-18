@@ -252,8 +252,12 @@ func (n *http1Node) closeFree() int {
 	list.Lock()
 	defer list.Unlock()
 
-	for conn := list.head; conn != nil; conn = conn.next {
+	conn := list.head
+	for conn != nil {
+		next := conn.next
+		conn.next = nil
 		conn.Close()
+		conn = next
 	}
 	qnty := list.qnty
 	list.qnty = 0
@@ -266,14 +270,15 @@ func (n *http1Node) closeFree() int {
 type backend1Conn struct {
 	// Parent
 	http1Conn_
+	// Mixins
+	_backendConn_
 	// Assocs
 	next   *backend1Conn  // the linked-list
 	stream backend1Stream // an http/1.x connection has exactly one stream
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node       *http1Node // the node to which the connection belongs
-	expireTime time.Time  // when the conn is considered expired
+	node *http1Node // the node to which the connection belongs
 	// Conn states (zeros)
 }
 
@@ -304,18 +309,16 @@ func putBackend1Conn(backendConn *backend1Conn) {
 
 func (c *backend1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
 	c.http1Conn_.onGet(id, node.Stage(), node.UDSMode(), node.TLSMode(), netConn, rawConn, node.ReadTimeout(), node.WriteTimeout())
+	c._backendConn_.onGet(time.Now().Add(node.idleTimeout))
 
 	c.node = node
-	c.expireTime = time.Now().Add(node.idleTimeout)
 }
 func (c *backend1Conn) onPut() {
-	c.expireTime = time.Time{}
 	c.node = nil
 
+	c._backendConn_.onPut()
 	c.http1Conn_.onPut()
 }
-
-func (c *backend1Conn) isAlive() bool { return time.Now().Before(c.expireTime) }
 
 func (c *backend1Conn) ranOut() bool {
 	return c.cumulativeStreams.Add(1) > c.node.MaxCumulativeStreamsPerConn()

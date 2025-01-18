@@ -319,8 +319,8 @@ func (c *UDPXConn) Close() error {
 	return pktConn.Close()
 }
 
-func (c *UDPXConn) unsafeVariable(code int16, name string) (value []byte) {
-	return udpxConnVariables[code](c)
+func (c *UDPXConn) unsafeVariable(varCode int16, varName string) (varValue []byte) {
+	return udpxConnVariables[varCode](c)
 }
 
 // udpxConnVariables

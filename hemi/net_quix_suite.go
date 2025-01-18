@@ -377,8 +377,8 @@ func (c *QUIXConn) closeConn() error {
 	return nil
 }
 
-func (c *QUIXConn) unsafeVariable(code int16, name string) (value []byte) {
-	return quixConnVariables[code](c)
+func (c *QUIXConn) unsafeVariable(varCode int16, varName string) (varValue []byte) {
+	return quixConnVariables[varCode](c)
 }
 
 // quixConnVariables

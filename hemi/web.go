@@ -558,8 +558,8 @@ func (r *Rule) isMatch(req Request) bool {
 	if r.general {
 		return true
 	}
-	value := req.unsafeVariable(r.varCode, r.varName)
-	return r.matcher(r, req, value)
+	varValue := req.unsafeVariable(r.varCode, r.varName)
+	return r.matcher(r, req, varValue)
 }
 
 var ruleMatchers = map[string]struct {

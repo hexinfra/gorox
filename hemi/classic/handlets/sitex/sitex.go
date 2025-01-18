@@ -53,14 +53,14 @@ func (h *Sitex) OnConfigure() {
 	if !ok {
 		UseExitln("sites must be a dict")
 	}
-	for name, vSite := range vSites {
+	for siteName, vSite := range vSites {
 		siteDict, ok := vSite.Dict()
 		if !ok {
 			UseExitln("elements of a site must be a dict")
 		}
 		site := new(Site)
-		h.sites[name] = site
-		site.name = name
+		h.sites[siteName] = site
+		site.name = siteName
 		vHostnames, ok := siteDict["hostnames"]
 		if !ok {
 			UseExitln("hostnames is required for sites in sitex")
@@ -80,7 +80,7 @@ func (h *Sitex) OnConfigure() {
 				UseExitln("viewDir must be string")
 			}
 		} else {
-			site.viewDir = TopDir() + "/apps/" + h.Webapp().CompName() + "/" + name + "/view"
+			site.viewDir = TopDir() + "/apps/" + h.Webapp().CompName() + "/" + siteName + "/view"
 		}
 		site.settings = make(map[string]string)
 		if vSettings, ok := siteDict["settings"]; ok {

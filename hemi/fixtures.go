@@ -150,8 +150,8 @@ func (f *clockFixture) writeDate(dst []byte) int {
 	return clockHTTPDateSize
 }
 
-func clockWriteHTTPDate1(dst []byte, name []byte, unixTime int64) int {
-	i := copy(dst, name)
+func clockWriteHTTPDate1(dst []byte, fieldName []byte, unixTime int64) int {
+	i := copy(dst, fieldName)
 	dst[i] = ':'
 	dst[i+1] = ' '
 	i += 2

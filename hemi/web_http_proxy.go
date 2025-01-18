@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// HTTP and WebSocket reverse proxy implementation. See RFC 9110 and RFC 9111.
+// HTTP reverse proxy implementation. See RFC 9110 and RFC 9111.
 
 package hemi
 
@@ -113,17 +113,17 @@ func (h *httpProxy) OnConfigure() {
 	if v, ok := h.Find("addRequestHeaders"); ok {
 		addedHeaders := make(map[string]Value)
 		if vHeaders, ok := v.Dict(); ok {
-			for name, vValue := range vHeaders {
-				if vValue.IsVariable() {
-					name := vValue.name
+			for headerName, vHeaderValue := range vHeaders {
+				if vHeaderValue.IsVariable() {
+					name := vHeaderValue.name
 					if p := strings.IndexByte(name, '_'); p != -1 {
 						p++ // skip '_'
-						vValue.name = name[:p] + strings.ReplaceAll(name[p:], "_", "-")
+						vHeaderValue.name = name[:p] + strings.ReplaceAll(name[p:], "_", "-")
 					}
-				} else if _, ok := vValue.Bytes(); !ok {
+				} else if _, ok := vHeaderValue.Bytes(); !ok {
 					UseExitf("bad value in .addRequestHeaders")
 				}
-				addedHeaders[name] = vValue
+				addedHeaders[headerName] = vHeaderValue
 			}
 			h.AddRequestHeaders = addedHeaders
 		} else {

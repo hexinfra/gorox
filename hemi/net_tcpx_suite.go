@@ -529,8 +529,8 @@ func (c *TCPXConn) Close() {
 	c.gate.justClose(c.netConn)
 }
 
-func (c *TCPXConn) unsafeVariable(code int16, name string) (value []byte) {
-	return tcpxConnVariables[code](c)
+func (c *TCPXConn) unsafeVariable(varCode int16, varName string) (varValue []byte) {
+	return tcpxConnVariables[varCode](c)
 }
 
 // tcpxConnVariables

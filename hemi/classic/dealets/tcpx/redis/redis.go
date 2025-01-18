@@ -17,7 +17,7 @@ import (
 
 	. "github.com/hexinfra/gorox/hemi"
 
-	_ "github.com/hexinfra/gorox/hemi/library/drivers/redis"
+	_ "github.com/hexinfra/gorox/hemi/library/connectors/redis"
 )
 
 func init() {

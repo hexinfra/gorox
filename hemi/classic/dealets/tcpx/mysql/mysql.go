@@ -10,7 +10,7 @@ package mysql
 import (
 	. "github.com/hexinfra/gorox/hemi"
 
-	_ "github.com/hexinfra/gorox/hemi/library/drivers/rdbms/mysql"
+	_ "github.com/hexinfra/gorox/hemi/library/connectors/rdbms/mysql"
 )
 
 func init() {

@@ -351,7 +351,7 @@ type Request interface { // for *server[1-3]Request
 // serverRequest_ is the parent for server[1-3]Request.
 type serverRequest_ struct { // incoming. needs parsing
 	// Parent
-	httpIn_ // incoming http request
+	httpIn__ // incoming http request
 	// Stream states (stocks)
 	stockUpfiles [2]Upfile // for r.upfiles. 96B
 	// Stream states (controlled)
@@ -435,7 +435,7 @@ type _serverRequest0 struct { // for fast reset, entirely
 
 func (r *serverRequest_) onUse(httpVersion uint8) { // for non-zeros
 	const asResponse = false
-	r.httpIn_.onUse(httpVersion, asResponse)
+	r.httpIn__.onUse(httpVersion, asResponse)
 
 	r.upfiles = r.stockUpfiles[0:0:cap(r.stockUpfiles)] // use append()
 }
@@ -463,7 +463,7 @@ func (r *serverRequest_) onEnd() { // for zeros
 	r.formWindow = nil // if r.formWindow is fetched from pool, it's put into pool on return. so just set as nil
 	r._serverRequest0 = _serverRequest0{}
 
-	r.httpIn_.onEnd()
+	r.httpIn__.onEnd()
 }
 
 func (r *serverRequest_) Webapp() *Webapp { return r.webapp }
@@ -2551,7 +2551,7 @@ type Response interface { // for *server[1-3]Response
 // serverResponse_ is the parent for server[1-3]Response.
 type serverResponse_ struct { // outgoing. needs building
 	// Parent
-	httpOut_ // outgoing http response
+	httpOut__ // outgoing http response
 	// Assocs
 	request Request // related request
 	// Stream states (stocks)
@@ -2579,7 +2579,7 @@ type _serverResponse0 struct { // for fast reset, entirely
 
 func (r *serverResponse_) onUse(httpVersion uint8) { // for non-zeros
 	const asRequest = false
-	r.httpOut_.onUse(httpVersion, asRequest)
+	r.httpOut__.onUse(httpVersion, asRequest)
 
 	r.status = StatusOK
 	r.unixTimes.expires = -1      // not set
@@ -2589,7 +2589,7 @@ func (r *serverResponse_) onEnd() { // for zeros
 	r.webapp = nil
 	r._serverResponse0 = _serverResponse0{}
 
-	r.httpOut_.onEnd()
+	r.httpOut__.onEnd()
 }
 
 func (r *serverResponse_) Request() Request { return r.request }
@@ -2893,7 +2893,7 @@ type Socket interface { // for *server[1-3]Socket
 // serverSocket_ is the parent for server[1-3]Socket.
 type serverSocket_ struct { // incoming and outgoing
 	// Parent
-	httpSocket_
+	httpSocket__
 	// Assocs
 	// Stream states (non-zeros)
 	// Stream states (zeros)
@@ -2904,12 +2904,12 @@ type _serverSocket0 struct { // for fast reset, entirely
 
 func (s *serverSocket_) onUse() {
 	const asServer = true
-	s.httpSocket_.onUse(asServer)
+	s.httpSocket__.onUse(asServer)
 }
 func (s *serverSocket_) onEnd() {
 	s._serverSocket0 = _serverSocket0{}
 
-	s.httpSocket_.onEnd()
+	s.httpSocket__.onEnd()
 }
 
 func (s *serverSocket_) serverTodo() {

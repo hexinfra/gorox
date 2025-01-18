@@ -18,7 +18,7 @@ type HTTPBackend interface { // for *HTTP[1-3]Backend
 	// Imports
 	Backend
 	// Methods
-	FetchStream() (backendStream, error)
+	FetchStream(req Request) (backendStream, error)
 	StoreStream(stream backendStream)
 }
 
@@ -123,7 +123,7 @@ type backendRequest interface { // for *backend[1-3]Request
 // backendRequest_ is the parent for backend[1-3]Request.
 type backendRequest_ struct { // outgoing. needs building
 	// Parent
-	httpOut_ // outgoing http request
+	httpOut__ // outgoing http request
 	// Assocs
 	response backendResponse // the corresponding response
 	// Stream states (stocks)
@@ -147,7 +147,7 @@ type _backendRequest0 struct { // for fast reset, entirely
 
 func (r *backendRequest_) onUse(httpVersion uint8) { // for non-zeros
 	const asRequest = true
-	r.httpOut_.onUse(httpVersion, asRequest)
+	r.httpOut__.onUse(httpVersion, asRequest)
 
 	r.unixTimes.ifModifiedSince = -1   // not set
 	r.unixTimes.ifUnmodifiedSince = -1 // not set
@@ -155,7 +155,7 @@ func (r *backendRequest_) onUse(httpVersion uint8) { // for non-zeros
 func (r *backendRequest_) onEnd() { // for zeros
 	r._backendRequest0 = _backendRequest0{}
 
-	r.httpOut_.onEnd()
+	r.httpOut__.onEnd()
 }
 
 func (r *backendRequest_) Response() backendResponse { return r.response }
@@ -395,7 +395,7 @@ type backendResponse interface { // for *backend[1-3]Response
 // backendResponse_ is the parent for backend[1-3]Response.
 type backendResponse_ struct { // incoming. needs parsing
 	// Parent
-	httpIn_ // incoming http response
+	httpIn__ // incoming http response
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -442,12 +442,12 @@ type _backendResponse0 struct { // for fast reset, entirely
 
 func (r *backendResponse_) onUse(httpVersion uint8) { // for non-zeros
 	const asResponse = true
-	r.httpIn_.onUse(httpVersion, asResponse)
+	r.httpIn__.onUse(httpVersion, asResponse)
 }
 func (r *backendResponse_) onEnd() { // for zeros
 	r._backendResponse0 = _backendResponse0{}
 
-	r.httpIn_.onEnd()
+	r.httpIn__.onEnd()
 }
 
 func (r *backendResponse_) reuse() { // between 1xx and non-1xx responses
@@ -724,7 +724,7 @@ func (r *backendResponse_) checkTransferEncoding(pairs []pair, from uint8, edge 
 	if r.status == StatusNotModified {
 		// TODO
 	}
-	return r.httpIn_.checkTransferEncoding(pairs, from, edge)
+	return r.httpIn__.checkTransferEncoding(pairs, from, edge)
 }
 func (r *backendResponse_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { // Upgrade = #protocol
 	if r.httpVersion >= Version2 {
@@ -795,7 +795,7 @@ type backendSocket interface { // for *backend[1-3]Socket
 // backendSocket_ is the parent for backend[1-3]Socket.
 type backendSocket_ struct { // incoming and outgoing
 	// Parent
-	httpSocket_
+	httpSocket__
 	// Assocs
 	// Stream states (zeros)
 	_backendSocket0 // all values in this struct must be zero by default!
@@ -805,12 +805,12 @@ type _backendSocket0 struct { // for fast reset, entirely
 
 func (s *backendSocket_) onUse() {
 	const asServer = false
-	s.httpSocket_.onUse(asServer)
+	s.httpSocket__.onUse(asServer)
 }
 func (s *backendSocket_) onEnd() {
 	s._backendSocket0 = _backendSocket0{}
 
-	s.httpSocket_.onEnd()
+	s.httpSocket__.onEnd()
 }
 
 func (s *backendSocket_) backendTodo() {

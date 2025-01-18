@@ -54,7 +54,7 @@ func (b *HTTP2Backend) CreateNode(compName string) Node {
 	return node
 }
 
-func (b *HTTP2Backend) FetchStream() (backendStream, error) {
+func (b *HTTP2Backend) FetchStream(req Request) (backendStream, error) {
 	node := b.nodes[b.nodeIndexGet()]
 	return node.fetchStream()
 }

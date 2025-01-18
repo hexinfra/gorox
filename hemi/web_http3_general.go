@@ -30,7 +30,7 @@ type http3Conn interface {
 // http3Conn_ is the parent for server3Conn and backend3Conn.
 type http3Conn_ struct {
 	// Parent
-	httpConn_
+	httpConn__
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -48,7 +48,7 @@ type _http3Conn0 struct { // for fast reset, entirely
 }
 
 func (c *http3Conn_) onGet(id int64, stage *Stage, udsMode bool, tlsMode bool, quicConn *tcp2.Conn, readTimeout time.Duration, writeTimeout time.Duration) {
-	c.httpConn_.onGet(id, stage, udsMode, tlsMode, readTimeout, writeTimeout)
+	c.httpConn__.onGet(id, stage, udsMode, tlsMode, readTimeout, writeTimeout)
 
 	c.quicConn = quicConn
 	if c.inBuffer == nil {
@@ -62,7 +62,7 @@ func (c *http3Conn_) onPut() {
 	c.activeStreams = [http3MaxConcurrentStreams]http3Stream{}
 	c.quicConn = nil
 
-	c.httpConn_.onPut()
+	c.httpConn__.onPut()
 }
 
 func (c *http3Conn_) remoteAddr() net.Addr { return nil } // TODO
@@ -77,7 +77,7 @@ type http3Stream interface {
 // http3Stream_ is the parent for server3Stream and backend3Stream.
 type http3Stream_[C http3Conn] struct {
 	// Parent
-	httpStream_
+	httpStream__
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -90,7 +90,7 @@ type _http3Stream0 struct { // for fast reset, entirely
 }
 
 func (s *http3Stream_[C]) onUse(conn C, quicStream *tcp2.Stream) {
-	s.httpStream_.onUse()
+	s.httpStream__.onUse()
 
 	s.conn = conn
 	s.quicStream = quicStream
@@ -100,7 +100,7 @@ func (s *http3Stream_[C]) onEnd() {
 
 	// s.conn will be set as nil by upper code
 	s.quicStream = nil
-	s.httpStream_.onEnd()
+	s.httpStream__.onEnd()
 }
 
 func (s *http3Stream_[C]) Conn() httpConn       { return s.conn }
@@ -137,13 +137,13 @@ func (s *http3Stream_[C]) writev(srcVec *net.Buffers) (int64, error) {
 
 //////////////////////////////////////// HTTP/3 incoming implementation ////////////////////////////////////////
 
-func (r *httpIn_) _growHeaders3(size int32) bool {
+func (r *httpIn__) _growHeaders3(size int32) bool {
 	// TODO
 	// use r.input
 	return false
 }
 
-func (r *httpIn_) readContent3() (data []byte, err error) {
+func (r *httpIn__) readContent3() (data []byte, err error) {
 	// TODO
 	return
 }
@@ -188,64 +188,64 @@ func (b *http3InBuffer) decRef() {
 
 //////////////////////////////////////// HTTP/3 outgoing implementation ////////////////////////////////////////
 
-func (r *httpOut_) addHeader3(name []byte, value []byte) bool {
+func (r *httpOut__) addHeader3(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *httpOut_) header3(name []byte) (value []byte, ok bool) {
+func (r *httpOut__) header3(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *httpOut_) hasHeader3(name []byte) bool {
+func (r *httpOut__) hasHeader3(name []byte) bool {
 	// TODO
 	return false
 }
-func (r *httpOut_) delHeader3(name []byte) (deleted bool) {
+func (r *httpOut__) delHeader3(name []byte) (deleted bool) {
 	// TODO
 	return false
 }
-func (r *httpOut_) delHeaderAt3(i uint8) {
+func (r *httpOut__) delHeaderAt3(i uint8) {
 	// TODO
 }
 
-func (r *httpOut_) sendChain3() error {
+func (r *httpOut__) sendChain3() error {
 	// TODO
 	return nil
 }
-func (r *httpOut_) _sendEntireChain3() error {
+func (r *httpOut__) _sendEntireChain3() error {
 	// TODO
 	return nil
 }
-func (r *httpOut_) _sendSingleRange3() error {
+func (r *httpOut__) _sendSingleRange3() error {
 	// TODO
 	return nil
 }
-func (r *httpOut_) _sendMultiRanges3() error {
-	// TODO
-	return nil
-}
-
-func (r *httpOut_) echoChain3() error {
+func (r *httpOut__) _sendMultiRanges3() error {
 	// TODO
 	return nil
 }
 
-func (r *httpOut_) addTrailer3(name []byte, value []byte) bool {
+func (r *httpOut__) echoChain3() error {
+	// TODO
+	return nil
+}
+
+func (r *httpOut__) addTrailer3(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *httpOut_) trailer3(name []byte) (value []byte, ok bool) {
+func (r *httpOut__) trailer3(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *httpOut_) trailers3() []byte {
+func (r *httpOut__) trailers3() []byte {
 	// TODO
 	return nil
 }
 
-func (r *httpOut_) proxyPassBytes3(data []byte) error { return r.writeBytes3(data) }
+func (r *httpOut__) proxyPassBytes3(data []byte) error { return r.writeBytes3(data) }
 
-func (r *httpOut_) finalizeVague3() error {
+func (r *httpOut__) finalizeVague3() error {
 	// TODO
 	if r.numTrailers == 1 { // no trailers
 	} else { // with trailers
@@ -253,28 +253,28 @@ func (r *httpOut_) finalizeVague3() error {
 	return nil
 }
 
-func (r *httpOut_) writeHeaders3() error { // used by echo and pass
+func (r *httpOut__) writeHeaders3() error { // used by echo and pass
 	// TODO
 	r.fieldsEdge = 0 // now that headers are all sent, r.fields will be used by trailers (if any), so reset it.
 	return nil
 }
-func (r *httpOut_) writePiece3(piece *Piece, vague bool) error {
+func (r *httpOut__) writePiece3(piece *Piece, vague bool) error {
 	// TODO
 	return nil
 }
-func (r *httpOut_) _writeTextPiece3(piece *Piece) error {
+func (r *httpOut__) _writeTextPiece3(piece *Piece) error {
 	// TODO
 	return nil
 }
-func (r *httpOut_) _writeFilePiece3(piece *Piece) error {
+func (r *httpOut__) _writeFilePiece3(piece *Piece) error {
 	// TODO
 	return nil
 }
-func (r *httpOut_) writeVector3() error {
+func (r *httpOut__) writeVector3() error {
 	// TODO
 	return nil
 }
-func (r *httpOut_) writeBytes3(data []byte) error {
+func (r *httpOut__) writeBytes3(data []byte) error {
 	// TODO
 	return nil
 }
@@ -288,7 +288,7 @@ func (f *http3OutFrame) zero() { *f = http3OutFrame{} }
 
 //////////////////////////////////////// HTTP/3 webSocket implementation ////////////////////////////////////////
 
-func (s *httpSocket_) todo3() {
+func (s *httpSocket__) todo3() {
 }
 
 //////////////////////////////////////// HTTP/3 protocol elements ////////////////////////////////////////

@@ -193,7 +193,7 @@ func WebExchanReverseProxy(foreReq Request, foreResp Response, hcache Hcache, ba
 		}
 	}
 
-	backStream, backErr := backend.FetchStream()
+	backStream, backErr := backend.FetchStream(foreReq)
 	if backErr != nil {
 		foreResp.SendBadGateway(nil)
 		return

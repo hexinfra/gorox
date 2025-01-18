@@ -124,7 +124,7 @@ func (h *fcgiProxy) Handle(httpReq Request, httpResp Response) (handled bool) {
 		}
 	}
 
-	fcgiExchan, fcgiErr := h.backend.fetchExchan()
+	fcgiExchan, fcgiErr := h.backend.fetchExchan(httpReq)
 	if fcgiErr != nil {
 		httpResp.SendBadGateway(nil)
 		return
@@ -246,7 +246,7 @@ func (b *fcgiBackend) CreateNode(compName string) Node {
 	return node
 }
 
-func (b *fcgiBackend) fetchExchan() (*fcgiExchan, error) {
+func (b *fcgiBackend) fetchExchan(req Request) (*fcgiExchan, error) {
 	node := b.nodes[b.nodeIndexGet()]
 	return node.fetchExchan()
 }

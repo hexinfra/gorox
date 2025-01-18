@@ -2016,14 +2016,14 @@ var ( // httpOut__ errors
 
 //////////////////////////////////////// HTTP webSocket implementation ////////////////////////////////////////
 
-// httpSocket
+// httpSocket collects shared methods between *server[1-3]Socket and *backend[1-3]Socket.
 type httpSocket interface {
 	Read(dst []byte) (int, error)
 	Write(src []byte) (int, error)
 	Close() error
 }
 
-// httpSocket__
+// httpSocket__ is the parent for serverSocket_ and backendSocket_.
 type httpSocket__ struct { // incoming and outgoing
 	// Assocs
 	stream httpStream // *server[1-3]Stream, *backend[1-3]Stream

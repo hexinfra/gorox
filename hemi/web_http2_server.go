@@ -4,7 +4,6 @@
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
 // HTTP/2 server implementation. See RFC 9113 and RFC 7541.
-// NOTE: httpxServer and httpxGate are used by both HTTP/2 and HTTP/1.x.
 
 package hemi
 

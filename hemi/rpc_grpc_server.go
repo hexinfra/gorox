@@ -3,10 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// gRPC framework (server and client) implementation.
-
-// gRPC is a request/response RPC protocol designed by Google.
-// gRPC is based on HTTP/2: https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md
+// gRPC server implementation.
 
 package hemi
 
@@ -16,22 +13,6 @@ import (
 	"sync/atomic"
 	"time"
 )
-
-//////////////////////////////////////// gRPC general implementation ////////////////////////////////////////
-
-// _grpcHolder_
-type _grpcHolder_ struct {
-}
-
-// grpcConn_
-type grpcConn_ struct {
-}
-
-// grpcCall_
-type grpcCall_ struct {
-}
-
-//////////////////////////////////////// gRPC server implementation ////////////////////////////////////////
 
 func init() {
 	RegisterServer("grpcServer", func(compName string, stage *Stage) Server {
@@ -203,22 +184,4 @@ func (c *grpcConn) MakeTempName(dst []byte, unixTime int64) int {
 type grpcCall struct {
 	// request
 	// response
-}
-
-//////////////////////////////////////// gRPC client implementation ////////////////////////////////////////
-
-// grpcClient
-type grpcClient struct {
-}
-
-// grpcNode
-type grpcNode struct {
-}
-
-// gConn
-type gConn struct {
-}
-
-// gCall
-type gCall struct {
 }

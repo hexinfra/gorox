@@ -3,10 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// HRPC framework (server and client) implementation.
-
-// HRPC is a request/response RPC protocol designed for IDC.
-// HRPC is under design, its transport protocol is not determined. Maybe we can build it upon HTTP/3 without TLS?
+// HRPC server implementation.
 
 package hemi
 
@@ -16,22 +13,6 @@ import (
 	"sync/atomic"
 	"time"
 )
-
-//////////////////////////////////////// HRPC general implementation ////////////////////////////////////////
-
-// _hrpcHolder_
-type _hrpcHolder_ struct {
-}
-
-// hrpcConn_
-type hrpcConn_ struct {
-}
-
-// hrpcCall_
-type hrpcCall_ struct {
-}
-
-//////////////////////////////////////// HRPC server implementation ////////////////////////////////////////
 
 func init() {
 	RegisterServer("hrpcServer", func(compName string, stage *Stage) Server {
@@ -203,22 +184,4 @@ func (c *hrpcConn) MakeTempName(dst []byte, unixTime int64) int {
 type hrpcCall struct {
 	// request
 	// response
-}
-
-//////////////////////////////////////// HRPC client implementation ////////////////////////////////////////
-
-// hrpcClient
-type hrpcClient struct {
-}
-
-// hrpcNode
-type hrpcNode struct {
-}
-
-// hConn
-type hConn struct {
-}
-
-// hCall
-type hCall struct {
 }

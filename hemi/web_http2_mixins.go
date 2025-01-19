@@ -5,8 +5,6 @@
 
 // HTTP/2 mixins. See RFC 9113 and RFC 7541.
 
-// Server Push is not supported because it's rarely used. Chrome and Firefox even removed it.
-
 package hemi
 
 import (

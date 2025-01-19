@@ -5,6 +5,8 @@
 
 // HTTP/3 protocol elements. See RFC 9114 and RFC 9204.
 
+// Server Push is not supported because it's rarely used. Chrome and Firefox even removed it.
+
 package hemi
 
 const ( // HTTP/3 sizes and limits for both of our HTTP/3 server and HTTP/3 backend

@@ -5,6 +5,8 @@
 
 // HTTP/2 protocol elements. See RFC 9113 and RFC 7541.
 
+// Server Push is not supported because it's rarely used. Chrome and Firefox even removed it.
+
 package hemi
 
 const ( // HTTP/2 sizes and limits for both of our HTTP/2 server and HTTP/2 backend

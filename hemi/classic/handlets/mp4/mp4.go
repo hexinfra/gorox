@@ -5,7 +5,7 @@
 
 // MP4 handlets provide pseudo-streaming support for MP4 files.
 
-package favicon
+package mp4
 
 import (
 	. "github.com/hexinfra/gorox/hemi"

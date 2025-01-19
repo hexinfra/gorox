@@ -15,7 +15,6 @@ import ( // preload all
 	_ "github.com/hexinfra/gorox/hemi/classic/dealets/tcpx/pgsql"
 	_ "github.com/hexinfra/gorox/hemi/classic/dealets/tcpx/redis"
 	_ "github.com/hexinfra/gorox/hemi/classic/dealets/udpx/dns"
-	_ "github.com/hexinfra/gorox/hemi/classic/handlets/favicon"
 	_ "github.com/hexinfra/gorox/hemi/classic/handlets/hostname"
 	_ "github.com/hexinfra/gorox/hemi/classic/handlets/https"
 	_ "github.com/hexinfra/gorox/hemi/classic/handlets/limit"

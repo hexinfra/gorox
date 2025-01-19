@@ -1,0 +1,30 @@
+mix:
++------------------+  +--------------+  +-----------------+
+| Backend_         |  |              |  | Server_         |
+| Node_            |  | _holder_     |  | Gate_           |
++------------------+  +--------------+  +-----------------+
+
+===========================================================
+
+http:
++------------------+  +--------------+  +-----------------+
+| httpBackend_     |  |              |  | httpServer_     |
+| httpNode_        |  | _httpHolder_ |  | httpGate_       |
+| backendConn_     |  | _httpConn_   |  | serverConn_     |
+| backendStream_   |  | _httpStream_ |  | serverStream_   |
+| backendResponse_ |  | _httpIn_     |  | serverRequest_  |
+| backendRequest_  |  | _httpOut_    |  | serverResponse_ |
+| backendSocket_   |  | _httpSocket_ |  | serverSocket_   |
++------------------+  +--------------+  +-----------------+
+
+======================================================================================================================================================================
+
++------------------+---------------+-----------------+  +------------------+---------------+-----------------+  +------------------+---------------+-----------------+
+| HTTP1Backend     |               | httpxServer     |  | HTTP2Backend     |               | httpxServer     |  | HTTP3Backend     |               | http3Server     |
+| http1Node        | _http1Holder_ | httpxGate       |  | http2Node        | _http2Holder_ | httpxGate       |  | http3Node        | _http3Holder_ | http3Gate       |
+| backend1Conn     | _http1Conn_   | server1Conn     |  | backend2Conn     | _http2Conn_   | server2Conn     |  | backend3Conn     | _http3Conn_   | server3Conn     |
+| backend1Stream   | _http1Stream_ | server1Stream   |  | backend2Stream   | _http2Stream_ | server2Stream   |  | backend3Stream   | _http3Stream_ | server3Stream   |
+| backend1Response | _http1In_     | server1Request  |  | backend2Response | _http2In_     | server2Request  |  | backend3Response | _http3In_     | server3Request  |
+| backend1Request  | _http1Out_    | server1Response |  | backend2Request  | _http2Out_    | server2Response |  | backend3Request  | _http3Out_    | server3Response |
+| backend1Socket   | _http1Socket_ | server1Socket   |  | backend2Socket   | _http2Socket_ | server2Socket   |  | backend3Socket   | _http3Socket_ | server3Socket   |
++------------------+---------------+-----------------+  +------------------+---------------+-----------------+  +------------------+---------------+-----------------+

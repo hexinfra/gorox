@@ -993,6 +993,7 @@ func (r *server1Response) fixedHeaders() []byte { return http1BytesFixedResponse
 type server1Socket struct { // incoming and outgoing
 	// Parent
 	serverSocket_
+	// Mixins
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

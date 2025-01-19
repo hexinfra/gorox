@@ -666,6 +666,7 @@ func (r *backend1Response) readContent() (data []byte, err error) { return r.rea
 type backend1Socket struct { // incoming and outgoing
 	// Parent
 	backendSocket_
+	// Mixins
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

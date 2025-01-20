@@ -28,10 +28,10 @@ type http1Conn interface {
 	writev(srcVec *net.Buffers) (int64, error)
 }
 
-// _http1Conn_ is a mixin for server1Conn and backend1Conn.
-type _http1Conn_ struct {
+// http1Conn_ is the parent for server1Conn and backend1Conn.
+type http1Conn_ struct {
 	// Parent
-	_httpConn_
+	httpConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -41,23 +41,23 @@ type _http1Conn_ struct {
 	// Conn states (zeros)
 }
 
-func (c *_http1Conn_) onGet(id int64, stage *Stage, udsMode bool, tlsMode bool, netConn net.Conn, rawConn syscall.RawConn, readTimeout time.Duration, writeTimeout time.Duration) {
-	c._httpConn_.onGet(id, stage, udsMode, tlsMode, readTimeout, writeTimeout)
+func (c *http1Conn_) onGet(id int64, stage *Stage, udsMode bool, tlsMode bool, readTimeout time.Duration, writeTimeout time.Duration, netConn net.Conn, rawConn syscall.RawConn) {
+	c.httpConn_.onGet(id, stage, udsMode, tlsMode, readTimeout, writeTimeout)
 
 	c.netConn = netConn
 	c.rawConn = rawConn
 	c.persistent = true
 }
-func (c *_http1Conn_) onPut() {
+func (c *http1Conn_) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
 
-	c._httpConn_.onPut()
+	c.httpConn_.onPut()
 }
 
-func (c *_http1Conn_) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
+func (c *http1Conn_) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
 
-func (c *_http1Conn_) setReadDeadline() error {
+func (c *http1Conn_) setReadDeadline() error {
 	if deadline := time.Now().Add(c.readTimeout); deadline.Sub(c.lastRead) >= time.Second {
 		if err := c.netConn.SetReadDeadline(deadline); err != nil {
 			return err
@@ -66,7 +66,7 @@ func (c *_http1Conn_) setReadDeadline() error {
 	}
 	return nil
 }
-func (c *_http1Conn_) setWriteDeadline() error {
+func (c *http1Conn_) setWriteDeadline() error {
 	if deadline := time.Now().Add(c.writeTimeout); deadline.Sub(c.lastWrite) >= time.Second {
 		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
@@ -76,10 +76,10 @@ func (c *_http1Conn_) setWriteDeadline() error {
 	return nil
 }
 
-func (c *_http1Conn_) read(dst []byte) (int, error)              { return c.netConn.Read(dst) }
-func (c *_http1Conn_) readFull(dst []byte) (int, error)          { return io.ReadFull(c.netConn, dst) }
-func (c *_http1Conn_) write(src []byte) (int, error)             { return c.netConn.Write(src) }
-func (c *_http1Conn_) writev(srcVec *net.Buffers) (int64, error) { return srcVec.WriteTo(c.netConn) }
+func (c *http1Conn_) read(dst []byte) (int, error)              { return c.netConn.Read(dst) }
+func (c *http1Conn_) readFull(dst []byte) (int, error)          { return io.ReadFull(c.netConn, dst) }
+func (c *http1Conn_) write(src []byte) (int, error)             { return c.netConn.Write(src) }
+func (c *http1Conn_) writev(srcVec *net.Buffers) (int64, error) { return srcVec.WriteTo(c.netConn) }
 
 // http1Stream
 type http1Stream interface {
@@ -88,10 +88,10 @@ type http1Stream interface {
 	// Methods
 }
 
-// _http1Stream_ is a mixin for server1Stream and backend1Stream.
-type _http1Stream_[C http1Conn] struct {
+// http1Stream_ is the parent for server1Stream and backend1Stream.
+type http1Stream_[C http1Conn] struct {
 	// Parent
-	_httpStream_
+	httpStream_
 	// Assocs
 	conn C // the http/1.x connection
 	// Stream states (stocks)
@@ -100,26 +100,26 @@ type _http1Stream_[C http1Conn] struct {
 	// Stream states (zeros)
 }
 
-func (s *_http1Stream_[C]) onUse() {
-	s._httpStream_.onUse()
+func (s *http1Stream_[C]) onUse() {
+	s.httpStream_.onUse()
 }
-func (s *_http1Stream_[C]) onEnd() {
-	s._httpStream_.onEnd()
+func (s *http1Stream_[C]) onEnd() {
+	s.httpStream_.onEnd()
 }
 
-func (s *_http1Stream_[C]) Conn() httpConn       { return s.conn }
-func (s *_http1Stream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }
+func (s *http1Stream_[C]) Conn() httpConn       { return s.conn }
+func (s *http1Stream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }
 
-func (s *_http1Stream_[C]) markBroken()    { s.conn.markBroken() }
-func (s *_http1Stream_[C]) isBroken() bool { return s.conn.isBroken() }
+func (s *http1Stream_[C]) markBroken()    { s.conn.markBroken() }
+func (s *http1Stream_[C]) isBroken() bool { return s.conn.isBroken() }
 
-func (s *_http1Stream_[C]) setReadDeadline() error  { return s.conn.setReadDeadline() }
-func (s *_http1Stream_[C]) setWriteDeadline() error { return s.conn.setWriteDeadline() }
+func (s *http1Stream_[C]) setReadDeadline() error  { return s.conn.setReadDeadline() }
+func (s *http1Stream_[C]) setWriteDeadline() error { return s.conn.setWriteDeadline() }
 
-func (s *_http1Stream_[C]) read(dst []byte) (int, error)     { return s.conn.read(dst) }
-func (s *_http1Stream_[C]) readFull(dst []byte) (int, error) { return s.conn.readFull(dst) }
-func (s *_http1Stream_[C]) write(src []byte) (int, error)    { return s.conn.write(src) }
-func (s *_http1Stream_[C]) writev(srcVec *net.Buffers) (int64, error) {
+func (s *http1Stream_[C]) read(dst []byte) (int, error)     { return s.conn.read(dst) }
+func (s *http1Stream_[C]) readFull(dst []byte) (int, error) { return s.conn.readFull(dst) }
+func (s *http1Stream_[C]) write(src []byte) (int, error)    { return s.conn.write(src) }
+func (s *http1Stream_[C]) writev(srcVec *net.Buffers) (int64, error) {
 	return s.conn.writev(srcVec)
 }
 

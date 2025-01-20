@@ -63,7 +63,7 @@ func (h *_httpHolder_) onPrepare(comp Component, perm os.FileMode) {
 func (h *_httpHolder_) MaxCumulativeStreamsPerConn() int32 { return h.maxCumulativeStreamsPerConn }
 func (h *_httpHolder_) MaxMemoryContentSize() int32        { return h.maxMemoryContentSize }
 
-// httpConn collects shared methods between *server[1-3]Conn and *backend[1-3]Conn.
+// httpConn
 type httpConn interface {
 	ID() int64
 	UDSMode() bool
@@ -74,8 +74,10 @@ type httpConn interface {
 	isBroken() bool
 }
 
-// _httpConn_
-type _httpConn_ struct {
+// httpConn_ is the parent for http[1-3]Conn_.
+type httpConn_ struct {
+	// Conn states (stocks)
+	// Conn states (controlled)
 	// Conn states (non-zeros)
 	id           int64         // the conn id
 	stage        *Stage        // current stage, for convenience
@@ -91,7 +93,7 @@ type _httpConn_ struct {
 	lastRead          time.Time    // deadline of last read operation
 }
 
-func (c *_httpConn_) onGet(id int64, stage *Stage, udsMode bool, tlsMode bool, readTimeout time.Duration, writeTimeout time.Duration) {
+func (c *httpConn_) onGet(id int64, stage *Stage, udsMode bool, tlsMode bool, readTimeout time.Duration, writeTimeout time.Duration) {
 	c.id = id
 	c.stage = stage
 	c.udsMode = udsMode
@@ -99,7 +101,7 @@ func (c *_httpConn_) onGet(id int64, stage *Stage, udsMode bool, tlsMode bool, r
 	c.readTimeout = readTimeout
 	c.writeTimeout = writeTimeout
 }
-func (c *_httpConn_) onPut() {
+func (c *httpConn_) onPut() {
 	c.stage = nil
 	c.cumulativeStreams.Store(0)
 	c.broken.Store(false)
@@ -108,19 +110,19 @@ func (c *_httpConn_) onPut() {
 	c.lastRead = time.Time{}
 }
 
-func (c *_httpConn_) ID() int64 { return c.id }
+func (c *httpConn_) ID() int64 { return c.id }
 
-func (c *_httpConn_) UDSMode() bool { return c.udsMode }
-func (c *_httpConn_) TLSMode() bool { return c.tlsMode }
+func (c *httpConn_) UDSMode() bool { return c.udsMode }
+func (c *httpConn_) TLSMode() bool { return c.tlsMode }
 
-func (c *_httpConn_) MakeTempName(dst []byte, unixTime int64) int {
+func (c *httpConn_) MakeTempName(dst []byte, unixTime int64) int {
 	return makeTempName(dst, c.stage.ID(), c.id, unixTime, c.counter.Add(1))
 }
 
-func (c *_httpConn_) markBroken()    { c.broken.Store(true) }
-func (c *_httpConn_) isBroken() bool { return c.broken.Load() }
+func (c *httpConn_) markBroken()    { c.broken.Store(true) }
+func (c *httpConn_) isBroken() bool { return c.broken.Load() }
 
-// httpStream collects shared methods between *server[1-3]Stream and *backend[1-3]Stream.
+// httpStream
 type httpStream interface {
 	Holder() httpHolder
 	Conn() httpConn
@@ -138,8 +140,8 @@ type httpStream interface {
 	writev(srcVec *net.Buffers) (int64, error)
 }
 
-// _httpStream_
-type _httpStream_ struct {
+// httpStream_ is the parent for http[1-3]Stream_.
+type httpStream_ struct {
 	// Stream states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Stream states (controlled)
@@ -148,15 +150,15 @@ type _httpStream_ struct {
 	// Stream states (zeros)
 }
 
-func (s *_httpStream_) onUse() {
+func (s *httpStream_) onUse() {
 	s.region.Init()
 }
-func (s *_httpStream_) onEnd() {
+func (s *httpStream_) onEnd() {
 	s.region.Free()
 }
 
-func (s *_httpStream_) buffer256() []byte          { return s.stockBuffer[:] }
-func (s *_httpStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
+func (s *httpStream_) buffer256() []byte          { return s.stockBuffer[:] }
+func (s *httpStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 // httpIn collects shared methods between *server[1-3]Request and *backend[1-3]Response.
 type httpIn interface {

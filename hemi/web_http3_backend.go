@@ -127,9 +127,9 @@ func (n *http3Node) closeFree() int {
 // backend3Conn is the backend-side HTTP/3 connection.
 type backend3Conn struct {
 	// Parent
-	_http3Conn_
+	http3Conn_
 	// Mixins
-	backendConn_
+	_backendConn_
 	// Assocs
 	next *backend3Conn // the linked-list
 	// Conn states (stocks)
@@ -160,8 +160,8 @@ func putBackend3Conn(backendConn *backend3Conn) {
 }
 
 func (c *backend3Conn) onGet(id int64, node *http3Node, quicConn *tcp2.Conn) {
-	c._http3Conn_.onGet(id, node.Stage(), node.UDSMode(), node.TLSMode(), quicConn, node.ReadTimeout(), node.WriteTimeout())
-	c.backendConn_.onGet(time.Now().Add(node.idleTimeout))
+	c.http3Conn_.onGet(id, node.Stage(), node.UDSMode(), node.TLSMode(), node.ReadTimeout(), node.WriteTimeout(), quicConn)
+	c._backendConn_.onGet(time.Now().Add(node.idleTimeout))
 
 	c.node = node
 }
@@ -169,8 +169,8 @@ func (c *backend3Conn) onPut() {
 	c._backend3Conn0 = _backend3Conn0{}
 	c.node = nil
 
-	c.backendConn_.onPut()
-	c._http3Conn_.onPut()
+	c._backendConn_.onPut()
+	c.http3Conn_.onPut()
 }
 
 func (c *backend3Conn) ranOut() bool {
@@ -196,7 +196,9 @@ func (c *backend3Conn) Close() error {
 // backend3Stream is the backend-side HTTP/3 stream.
 type backend3Stream struct {
 	// Parent
-	_http3Stream_[*backend3Conn]
+	http3Stream_[*backend3Conn]
+	// Mixins
+	_backendStream_
 	// Assocs
 	request  backend3Request
 	response backend3Response
@@ -234,7 +236,8 @@ func putBackend3Stream(backendStream *backend3Stream) {
 }
 
 func (s *backend3Stream) onUse(conn *backend3Conn, quicStream *tcp2.Stream) { // for non-zeros
-	s._http3Stream_.onUse(conn, quicStream)
+	s.http3Stream_.onUse(conn, quicStream)
+	s._backendStream_.onUse()
 
 	s.request.onUse()
 	s.response.onUse()
@@ -248,8 +251,9 @@ func (s *backend3Stream) onEnd() { // for zeros
 	}
 	s._backend3Stream0 = _backend3Stream0{}
 
-	s._http3Stream_.onEnd()
-	s.conn = nil // we can't do this in _http3Stream_.onEnd() due to Go's limit, so put here
+	s._backendStream_.onEnd()
+	s.http3Stream_.onEnd()
+	s.conn = nil // we can't do this in http3Stream_.onEnd() due to Go's limit, so put here
 }
 
 func (s *backend3Stream) Holder() httpHolder { return s.conn.node }

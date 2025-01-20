@@ -24,10 +24,10 @@ type http2Conn interface {
 	// Methods
 }
 
-// _http2Conn_ is a mixin for server2Conn and backend2Conn.
-type _http2Conn_ struct {
+// http2Conn_ is the parent for server2Conn and backend2Conn.
+type http2Conn_ struct {
 	// Parent
-	_httpConn_
+	httpConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	outFrame http2OutFrame // used by c.manager() to send special out frames. immediately reset after use
@@ -62,8 +62,8 @@ type _http2Conn0 struct { // for fast reset, entirely
 	contFore           uint32                                // incoming continuation part (header or payload) ends at c.inBuffer.buf[c.contFore]
 }
 
-func (c *_http2Conn_) onGet(id int64, stage *Stage, udsMode bool, tlsMode bool, netConn net.Conn, rawConn syscall.RawConn, readTimeout time.Duration, writeTimeout time.Duration) {
-	c._httpConn_.onGet(id, stage, udsMode, tlsMode, readTimeout, writeTimeout)
+func (c *http2Conn_) onGet(id int64, stage *Stage, udsMode bool, tlsMode bool, readTimeout time.Duration, writeTimeout time.Duration, netConn net.Conn, rawConn syscall.RawConn) {
+	c.httpConn_.onGet(id, stage, udsMode, tlsMode, readTimeout, writeTimeout)
 
 	c.netConn = netConn
 	c.rawConn = rawConn
@@ -82,7 +82,7 @@ func (c *_http2Conn_) onGet(id int64, stage *Stage, udsMode bool, tlsMode bool, 
 		c.outgoingChan = make(chan *http2OutFrame)
 	}
 }
-func (c *_http2Conn_) onPut() {
+func (c *http2Conn_) onPut() {
 	// c.inBuffer is reserved
 	// c.table is reserved
 	// c.incomingChan is reserved
@@ -97,10 +97,10 @@ func (c *_http2Conn_) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
 
-	c._httpConn_.onPut()
+	c.httpConn_.onPut()
 }
 
-func (c *_http2Conn_) receiver() { // runner
+func (c *http2Conn_) receiver() { // runner
 	if DebugLevel() >= 1 {
 		defer Printf("conn=%d c.receiver() quit\n", c.id)
 	}
@@ -118,7 +118,7 @@ func (c *_http2Conn_) receiver() { // runner
 	}
 }
 
-func (c *_http2Conn_) recvInFrame() (*http2InFrame, error) {
+func (c *http2Conn_) recvInFrame() (*http2InFrame, error) {
 	// Receive frame header
 	c.partBack = c.partFore
 	if err := c._growInFrame(9); err != nil {
@@ -173,7 +173,7 @@ func (c *_http2Conn_) recvInFrame() (*http2InFrame, error) {
 	}
 	return inFrame, nil
 }
-func (c *_http2Conn_) _growInFrame(size uint32) error {
+func (c *http2Conn_) _growInFrame(size uint32) error {
 	c.partFore += size // size is limited, so won't overflow
 	if c.partFore <= c.inBufferEdge {
 		return nil
@@ -194,7 +194,7 @@ func (c *_http2Conn_) _growInFrame(size uint32) error {
 	}
 	return c._fillInBuffer(c.partFore - c.inBufferEdge)
 }
-func (c *_http2Conn_) _joinContinuations(headersInFrame *http2InFrame) error { // into a single headers frame
+func (c *http2Conn_) _joinContinuations(headersInFrame *http2InFrame) error { // into a single headers frame
 	headersInFrame.inBuffer = nil // will be restored at the end of continuations
 	var continuationInFrame http2InFrame
 	c.contBack, c.contFore = c.partFore, c.partFore
@@ -236,7 +236,7 @@ func (c *_http2Conn_) _joinContinuations(headersInFrame *http2InFrame) error { /
 		c.contBack = c.contFore
 	}
 }
-func (c *_http2Conn_) _growContinuation(size uint32, headersInFrame *http2InFrame) error {
+func (c *http2Conn_) _growContinuation(size uint32, headersInFrame *http2InFrame) error {
 	c.contFore += size                // won't overflow
 	if c.contFore <= c.inBufferEdge { // inBuffer is sufficient
 		return nil
@@ -270,7 +270,7 @@ func (c *_http2Conn_) _growContinuation(size uint32, headersInFrame *http2InFram
 	}
 	return c._fillInBuffer(c.contFore - c.inBufferEdge)
 }
-func (c *_http2Conn_) _fillInBuffer(size uint32) error {
+func (c *http2Conn_) _fillInBuffer(size uint32) error {
 	n, err := c.readAtLeast(c.inBuffer.buf[c.inBufferEdge:], int(size))
 	if DebugLevel() >= 2 {
 		Printf("--------------------- conn=%d CALL READ=%d -----------------------\n", c.id, n)
@@ -282,7 +282,7 @@ func (c *_http2Conn_) _fillInBuffer(size uint32) error {
 	return err
 }
 
-func (c *_http2Conn_) sendOutFrame(outFrame *http2OutFrame) error {
+func (c *http2Conn_) sendOutFrame(outFrame *http2OutFrame) error {
 	frameHeader := outFrame.encodeHeader()
 	if len(outFrame.payload) > 0 {
 		c.vector = c.fixedVector[0:2]
@@ -299,7 +299,7 @@ func (c *_http2Conn_) sendOutFrame(outFrame *http2OutFrame) error {
 	return err
 }
 
-func (c *_http2Conn_) _decodeFields(fields []byte, join func(p []byte) bool) bool {
+func (c *http2Conn_) _decodeFields(fields []byte, join func(p []byte) bool) bool {
 	var (
 		I  uint32
 		j  int
@@ -398,7 +398,7 @@ func (c *_http2Conn_) _decodeFields(fields []byte, join func(p []byte) bool) boo
 }
 
 /*
-func (c *_http2Conn_) _decodeString(src []byte, req *server2Request) (int, bool) {
+func (c *http2Conn_) _decodeString(src []byte, req *server2Request) (int, bool) {
 	I, j, ok := http2DecodeInteger(src, 7, _16K)
 	if !ok {
 		return 0, false
@@ -419,7 +419,7 @@ func (c *_http2Conn_) _decodeString(src []byte, req *server2Request) (int, bool)
 }
 */
 
-func (c *_http2Conn_) findStream(streamID uint32) http2Stream {
+func (c *http2Conn_) findStream(streamID uint32) http2Stream {
 	c.activeStreamIDs[http2MaxConcurrentStreams] = streamID // the stream id to search for
 	index := uint8(0)
 	for c.activeStreamIDs[index] != streamID { // searching for stream id
@@ -434,7 +434,7 @@ func (c *_http2Conn_) findStream(streamID uint32) http2Stream {
 		return nil
 	}
 }
-func (c *_http2Conn_) joinStream(stream http2Stream) {
+func (c *http2Conn_) joinStream(stream http2Stream) {
 	c.activeStreamIDs[http2MaxConcurrentStreams] = 0
 	index := uint8(0)
 	for c.activeStreamIDs[index] != 0 { // searching a free slot
@@ -451,7 +451,7 @@ func (c *_http2Conn_) joinStream(stream http2Stream) {
 		BugExitln("joinStream cannot find an empty slot")
 	}
 }
-func (c *_http2Conn_) quitStream(streamID uint32) {
+func (c *http2Conn_) quitStream(streamID uint32) {
 	stream := c.findStream(streamID)
 	if stream != nil {
 		index := stream.getIndex()
@@ -465,9 +465,9 @@ func (c *_http2Conn_) quitStream(streamID uint32) {
 	}
 }
 
-func (c *_http2Conn_) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
+func (c *http2Conn_) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
 
-func (c *_http2Conn_) setReadDeadline() error {
+func (c *http2Conn_) setReadDeadline() error {
 	if deadline := time.Now().Add(c.readTimeout); deadline.Sub(c.lastRead) >= time.Second {
 		if err := c.netConn.SetReadDeadline(deadline); err != nil {
 			return err
@@ -476,7 +476,7 @@ func (c *_http2Conn_) setReadDeadline() error {
 	}
 	return nil
 }
-func (c *_http2Conn_) setWriteDeadline() error {
+func (c *http2Conn_) setWriteDeadline() error {
 	if deadline := time.Now().Add(c.writeTimeout); deadline.Sub(c.lastWrite) >= time.Second {
 		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
@@ -486,11 +486,11 @@ func (c *_http2Conn_) setWriteDeadline() error {
 	return nil
 }
 
-func (c *_http2Conn_) readAtLeast(dst []byte, min int) (int, error) {
+func (c *http2Conn_) readAtLeast(dst []byte, min int) (int, error) {
 	return io.ReadAtLeast(c.netConn, dst, min)
 }
-func (c *_http2Conn_) write(src []byte) (int, error) { return c.netConn.Write(src) }
-func (c *_http2Conn_) writev(srcVec *net.Buffers) (int64, error) {
+func (c *http2Conn_) write(src []byte) (int, error) { return c.netConn.Write(src) }
+func (c *http2Conn_) writev(srcVec *net.Buffers) (int64, error) {
 	return srcVec.WriteTo(c.netConn)
 }
 
@@ -504,10 +504,10 @@ type http2Stream interface {
 	setIndex(index uint8) // at activeStreams
 }
 
-// _http2Stream_ is a mixin for server2Stream and backend2Stream.
-type _http2Stream_[C http2Conn] struct {
+// http2Stream_ is the parent for server2Stream and backend2Stream.
+type http2Stream_[C http2Conn] struct {
 	// Parent
-	_httpStream_
+	httpStream_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -521,52 +521,52 @@ type _http2Stream0 struct { // for fast reset, entirely
 	state uint8 // http2StateOpen, http2StateRemoteClosed, ...
 }
 
-func (s *_http2Stream_[C]) onUse(id uint32, conn C) {
-	s._httpStream_.onUse()
+func (s *http2Stream_[C]) onUse(id uint32, conn C) {
+	s.httpStream_.onUse()
 
 	s.id = id
 	s.conn = conn
 }
-func (s *_http2Stream_[C]) onEnd() {
+func (s *http2Stream_[C]) onEnd() {
 	s._http2Stream0 = _http2Stream0{}
 
 	// s.conn will be set as nil by upper code
-	s._httpStream_.onEnd()
+	s.httpStream_.onEnd()
 }
 
-func (s *_http2Stream_[C]) getID() uint32 { return s.id }
+func (s *http2Stream_[C]) getID() uint32 { return s.id }
 
-func (s *_http2Stream_[C]) getIndex() uint8      { return s.index }
-func (s *_http2Stream_[C]) setIndex(index uint8) { s.index = index }
+func (s *http2Stream_[C]) getIndex() uint8      { return s.index }
+func (s *http2Stream_[C]) setIndex(index uint8) { s.index = index }
 
-func (s *_http2Stream_[C]) Conn() httpConn       { return s.conn }
-func (s *_http2Stream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }
+func (s *http2Stream_[C]) Conn() httpConn       { return s.conn }
+func (s *http2Stream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }
 
-func (s *_http2Stream_[C]) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream?
-func (s *_http2Stream_[C]) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream?
+func (s *http2Stream_[C]) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream?
+func (s *http2Stream_[C]) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream?
 
-func (s *_http2Stream_[C]) setReadDeadline() error { // for content i/o only
+func (s *http2Stream_[C]) setReadDeadline() error { // for content i/o only
 	// TODO
 	return nil
 }
-func (s *_http2Stream_[C]) setWriteDeadline() error { // for content i/o only
+func (s *http2Stream_[C]) setWriteDeadline() error { // for content i/o only
 	// TODO
 	return nil
 }
 
-func (s *_http2Stream_[C]) read(dst []byte) (int, error) { // for content i/o only
+func (s *http2Stream_[C]) read(dst []byte) (int, error) { // for content i/o only
 	// TODO
 	return 0, nil
 }
-func (s *_http2Stream_[C]) readFull(dst []byte) (int, error) { // for content i/o only
+func (s *http2Stream_[C]) readFull(dst []byte) (int, error) { // for content i/o only
 	// TODO
 	return 0, nil
 }
-func (s *_http2Stream_[C]) write(src []byte) (int, error) { // for content i/o only
+func (s *http2Stream_[C]) write(src []byte) (int, error) { // for content i/o only
 	// TODO
 	return 0, nil
 }
-func (s *_http2Stream_[C]) writev(srcVec *net.Buffers) (int64, error) { // for content i/o only
+func (s *http2Stream_[C]) writev(srcVec *net.Buffers) (int64, error) { // for content i/o only
 	// TODO
 	return 0, nil
 }

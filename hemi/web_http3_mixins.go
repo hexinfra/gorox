@@ -23,10 +23,10 @@ type http3Conn interface {
 	// Methods
 }
 
-// _http3Conn_ is a mixin for server3Conn and backend3Conn.
-type _http3Conn_ struct {
+// http3Conn_ is the parent for server3Conn and backend3Conn.
+type http3Conn_ struct {
 	// Parent
-	_httpConn_
+	httpConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -43,8 +43,8 @@ type _http3Conn0 struct { // for fast reset, entirely
 	partFore     uint32 // incoming frame part (header or payload) ends at c.inBuffer.buf[c.partFore]
 }
 
-func (c *_http3Conn_) onGet(id int64, stage *Stage, udsMode bool, tlsMode bool, quicConn *tcp2.Conn, readTimeout time.Duration, writeTimeout time.Duration) {
-	c._httpConn_.onGet(id, stage, udsMode, tlsMode, readTimeout, writeTimeout)
+func (c *http3Conn_) onGet(id int64, stage *Stage, udsMode bool, tlsMode bool, readTimeout time.Duration, writeTimeout time.Duration, quicConn *tcp2.Conn) {
+	c.httpConn_.onGet(id, stage, udsMode, tlsMode, readTimeout, writeTimeout)
 
 	c.quicConn = quicConn
 	if c.inBuffer == nil {
@@ -52,16 +52,16 @@ func (c *_http3Conn_) onGet(id int64, stage *Stage, udsMode bool, tlsMode bool, 
 		c.inBuffer.incRef()
 	}
 }
-func (c *_http3Conn_) onPut() {
+func (c *http3Conn_) onPut() {
 	// c.inBuffer is reserved
 	// c.table is reserved
 	c.activeStreams = [http3MaxConcurrentStreams]http3Stream{}
 	c.quicConn = nil
 
-	c._httpConn_.onPut()
+	c.httpConn_.onPut()
 }
 
-func (c *_http3Conn_) remoteAddr() net.Addr { return nil } // TODO
+func (c *http3Conn_) remoteAddr() net.Addr { return nil } // TODO
 
 // http3Stream
 type http3Stream interface {
@@ -71,10 +71,10 @@ type http3Stream interface {
 	getID() int64
 }
 
-// _http3Stream_ is a mixin for server3Stream and backend3Stream.
-type _http3Stream_[C http3Conn] struct {
+// http3Stream_ is the parent for server3Stream and backend3Stream.
+type http3Stream_[C http3Conn] struct {
 	// Parent
-	_httpStream_
+	httpStream_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -86,50 +86,50 @@ type _http3Stream_[C http3Conn] struct {
 type _http3Stream0 struct { // for fast reset, entirely
 }
 
-func (s *_http3Stream_[C]) onUse(conn C, quicStream *tcp2.Stream) {
-	s._httpStream_.onUse()
+func (s *http3Stream_[C]) onUse(conn C, quicStream *tcp2.Stream) {
+	s.httpStream_.onUse()
 
 	s.conn = conn
 	s.quicStream = quicStream
 }
-func (s *_http3Stream_[C]) onEnd() {
+func (s *http3Stream_[C]) onEnd() {
 	s._http3Stream0 = _http3Stream0{}
 
 	// s.conn will be set as nil by upper code
 	s.quicStream = nil
-	s._httpStream_.onEnd()
+	s.httpStream_.onEnd()
 }
 
-func (s *_http3Stream_[C]) getID() int64 { return s.quicStream.ID() }
+func (s *http3Stream_[C]) getID() int64 { return s.quicStream.ID() }
 
-func (s *_http3Stream_[C]) Conn() httpConn       { return s.conn }
-func (s *_http3Stream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }
+func (s *http3Stream_[C]) Conn() httpConn       { return s.conn }
+func (s *http3Stream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }
 
-func (s *_http3Stream_[C]) markBroken()    {}               // TODO
-func (s *_http3Stream_[C]) isBroken() bool { return false } // TODO
+func (s *http3Stream_[C]) markBroken()    {}               // TODO
+func (s *http3Stream_[C]) isBroken() bool { return false } // TODO
 
-func (s *_http3Stream_[C]) setReadDeadline() error {
+func (s *http3Stream_[C]) setReadDeadline() error {
 	// TODO
 	return nil
 }
-func (s *_http3Stream_[C]) setWriteDeadline() error {
+func (s *http3Stream_[C]) setWriteDeadline() error {
 	// TODO
 	return nil
 }
 
-func (s *_http3Stream_[C]) read(dst []byte) (int, error) {
+func (s *http3Stream_[C]) read(dst []byte) (int, error) {
 	// TODO
 	return 0, nil
 }
-func (s *_http3Stream_[C]) readFull(dst []byte) (int, error) {
+func (s *http3Stream_[C]) readFull(dst []byte) (int, error) {
 	// TODO
 	return 0, nil
 }
-func (s *_http3Stream_[C]) write(src []byte) (int, error) {
+func (s *http3Stream_[C]) write(src []byte) (int, error) {
 	// TODO
 	return 0, nil
 }
-func (s *_http3Stream_[C]) writev(srcVec *net.Buffers) (int64, error) {
+func (s *http3Stream_[C]) writev(srcVec *net.Buffers) (int64, error) {
 	// TODO
 	return 0, nil
 }

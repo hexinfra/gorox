@@ -127,7 +127,9 @@ func (g *http3Gate) justClose(quicConn *tcp2.Conn) {
 // server3Conn is the server-side HTTP/3 connection.
 type server3Conn struct {
 	// Parent
-	_http3Conn_
+	http3Conn_
+	// Mixins
+	_serverConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -156,7 +158,8 @@ func putServer3Conn(serverConn *server3Conn) {
 }
 
 func (c *server3Conn) onGet(id int64, gate *http3Gate, quicConn *tcp2.Conn) {
-	c._http3Conn_.onGet(id, gate.Stage(), gate.UDSMode(), gate.TLSMode(), quicConn, gate.ReadTimeout(), gate.WriteTimeout())
+	c.http3Conn_.onGet(id, gate.Stage(), gate.UDSMode(), gate.TLSMode(), gate.ReadTimeout(), gate.WriteTimeout(), quicConn)
+	c._serverConn_.onGet()
 
 	c.gate = gate
 }
@@ -164,7 +167,8 @@ func (c *server3Conn) onPut() {
 	c._server3Conn0 = _server3Conn0{}
 	c.gate = nil
 
-	c._http3Conn_.onPut()
+	c._serverConn_.onPut()
+	c.http3Conn_.onPut()
 }
 
 func (c *server3Conn) manager() { // runner
@@ -185,7 +189,9 @@ func (c *server3Conn) closeConn() {
 // server3Stream is the server-side HTTP/3 stream.
 type server3Stream struct {
 	// Parent
-	_http3Stream_[*server3Conn]
+	http3Stream_[*server3Conn]
+	// Mixins
+	_serverStream_
 	// Assocs
 	request  server3Request  // the http/3 request.
 	response server3Response // the http/3 response.
@@ -226,7 +232,8 @@ func putServer3Stream(serverStream *server3Stream) {
 }
 
 func (s *server3Stream) onUse(conn *server3Conn, quicStream *tcp2.Stream) { // for non-zeros
-	s._http3Stream_.onUse(conn, quicStream)
+	s.http3Stream_.onUse(conn, quicStream)
+	s._serverStream_.onUse()
 
 	s.request.onUse()
 	s.response.onUse()
@@ -240,8 +247,9 @@ func (s *server3Stream) onEnd() { // for zeros
 	}
 	s._server3Stream0 = _server3Stream0{}
 
-	s._http3Stream_.onEnd()
-	s.conn = nil // we can't do this in _http3Stream_.onEnd() due to Go's limit, so put here
+	s._serverStream_.onEnd()
+	s.http3Stream_.onEnd()
+	s.conn = nil // we can't do this in http3Stream_.onEnd() due to Go's limit, so put here
 }
 
 func (s *server3Stream) Holder() httpHolder { return s.conn.gate }

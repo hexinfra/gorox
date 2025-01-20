@@ -101,8 +101,8 @@ func (n *httpNode_[B]) onPrepare() {
 type backendConn interface {
 }
 
-// backendConn_
-type backendConn_ struct {
+// _backendConn_ is a mixin for backend[1-3]Conn.
+type _backendConn_ struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -110,16 +110,16 @@ type backendConn_ struct {
 	// Conn states (zeros)
 }
 
-func (c *backendConn_) onGet(expireTime time.Time) {
+func (c *_backendConn_) onGet(expireTime time.Time) {
 	c.expireTime = expireTime
 }
-func (c *backendConn_) onPut() {
+func (c *_backendConn_) onPut() {
 	c.expireTime = time.Time{}
 }
 
-func (c *backendConn_) isAlive() bool { return time.Now().Before(c.expireTime) }
+func (c *_backendConn_) isAlive() bool { return time.Now().Before(c.expireTime) }
 
-// backendStream is the backend-side http stream.
+// backendStream
 type backendStream interface { // for *backend[1-3]Stream
 	Request() backendRequest
 	Response() backendResponse
@@ -129,13 +129,17 @@ type backendStream interface { // for *backend[1-3]Stream
 	markBroken()
 }
 
-// backendStream_
-type backendStream_ struct {
+// _backendStream_ is a mixin for backend[1-3]Stream.
+type _backendStream_ struct {
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
 }
 
-func (s *backendStream_) onUse() {
+func (s *_backendStream_) onUse() {
 }
-func (s *backendStream_) onEnd() {
+func (s *_backendStream_) onEnd() {
 }
 
 // backendRequest is the backend-side http request.

@@ -134,9 +134,9 @@ func (n *http2Node) closeFree() int {
 // backend2Conn is the backend-side HTTP/2 connection.
 type backend2Conn struct {
 	// Parent
-	_http2Conn_
+	http2Conn_
 	// Mixins
-	backendConn_
+	_backendConn_
 	// Assocs
 	next *backend2Conn // the linked-list
 	// Conn states (stocks)
@@ -167,8 +167,8 @@ func putBackend2Conn(backendConn *backend2Conn) {
 }
 
 func (c *backend2Conn) onGet(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c._http2Conn_.onGet(id, node.Stage(), node.UDSMode(), node.TLSMode(), netConn, rawConn, node.ReadTimeout(), node.WriteTimeout())
-	c.backendConn_.onGet(time.Now().Add(node.idleTimeout))
+	c.http2Conn_.onGet(id, node.Stage(), node.UDSMode(), node.TLSMode(), node.ReadTimeout(), node.WriteTimeout(), netConn, rawConn)
+	c._backendConn_.onGet(time.Now().Add(node.idleTimeout))
 
 	c.node = node
 }
@@ -176,8 +176,8 @@ func (c *backend2Conn) onPut() {
 	c._backend2Conn0 = _backend2Conn0{}
 	c.node = nil
 
-	c.backendConn_.onPut()
-	c._http2Conn_.onPut()
+	c._backendConn_.onPut()
+	c.http2Conn_.onPut()
 }
 
 func (c *backend2Conn) ranOut() bool {
@@ -265,7 +265,9 @@ func (c *backend2Conn) Close() error {
 // backend2Stream is the backend-side HTTP/2 stream.
 type backend2Stream struct {
 	// Parent
-	_http2Stream_[*backend2Conn]
+	http2Stream_[*backend2Conn]
+	// Mixins
+	_backendStream_
 	// Assocs
 	request  backend2Request
 	response backend2Response
@@ -303,7 +305,8 @@ func putBackend2Stream(backendStream *backend2Stream) {
 }
 
 func (s *backend2Stream) onUse(id uint32, conn *backend2Conn) { // for non-zeros
-	s._http2Stream_.onUse(id, conn)
+	s.http2Stream_.onUse(id, conn)
+	s._backendStream_.onUse()
 
 	s.request.onUse()
 	s.response.onUse()
@@ -317,8 +320,9 @@ func (s *backend2Stream) onEnd() { // for zeros
 	}
 	s._backend2Stream0 = _backend2Stream0{}
 
-	s._http2Stream_.onEnd()
-	s.conn = nil // we can't do this in _http2Stream_.onEnd() due to Go's limit, so put here
+	s._backendStream_.onEnd()
+	s.http2Stream_.onEnd()
+	s.conn = nil // we can't do this in http2Stream_.onEnd() due to Go's limit, so put here
 }
 
 func (s *backend2Stream) Holder() httpHolder { return s.conn.node }

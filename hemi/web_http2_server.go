@@ -288,7 +288,9 @@ func (g *httpxGate) justClose(netConn net.Conn) {
 // server2Conn is the server-side HTTP/2 connection.
 type server2Conn struct {
 	// Parent
-	_http2Conn_
+	http2Conn_
+	// Mixins
+	_serverConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -321,7 +323,8 @@ func putServer2Conn(serverConn *server2Conn) {
 }
 
 func (c *server2Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c._http2Conn_.onGet(id, gate.Stage(), gate.UDSMode(), gate.TLSMode(), netConn, rawConn, gate.ReadTimeout(), gate.WriteTimeout())
+	c.http2Conn_.onGet(id, gate.Stage(), gate.UDSMode(), gate.TLSMode(), gate.ReadTimeout(), gate.WriteTimeout(), netConn, rawConn)
+	c._serverConn_.onGet()
 
 	c.gate = gate
 }
@@ -329,7 +332,8 @@ func (c *server2Conn) onPut() {
 	c._server2Conn0 = _server2Conn0{}
 	c.gate = nil
 
-	c._http2Conn_.onPut()
+	c._serverConn_.onPut()
+	c.http2Conn_.onPut()
 }
 
 func (c *server2Conn) manager() { // runner
@@ -639,7 +643,9 @@ func (c *server2Conn) closeConn() {
 // server2Stream is the server-side HTTP/2 stream.
 type server2Stream struct {
 	// Parent
-	_http2Stream_[*server2Conn]
+	http2Stream_[*server2Conn]
+	// Mixins
+	_serverStream_
 	// Assocs
 	request  server2Request  // the http/2 request.
 	response server2Response // the http/2 response.
@@ -680,7 +686,8 @@ func putServer2Stream(serverStream *server2Stream) {
 }
 
 func (s *server2Stream) onUse(id uint32, conn *server2Conn, outWindow int32) { // for non-zeros
-	s._http2Stream_.onUse(id, conn)
+	s.http2Stream_.onUse(id, conn)
+	s._serverStream_.onUse()
 
 	s.inWindow = _64K1 // max size of r.bodyWindow
 	s.outWindow = outWindow
@@ -696,8 +703,9 @@ func (s *server2Stream) onEnd() { // for zeros
 	}
 	s._server2Stream0 = _server2Stream0{}
 
-	s._http2Stream_.onEnd()
-	s.conn = nil // we can't do this in _http2Stream_.onEnd() due to Go's limit, so put here
+	s._serverStream_.onEnd()
+	s.http2Stream_.onEnd()
+	s.conn = nil // we can't do this in http2Stream_.onEnd() due to Go's limit, so put here
 }
 
 func (s *server2Stream) Holder() httpHolder { return s.conn.gate }

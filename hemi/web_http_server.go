@@ -192,26 +192,34 @@ func (g *httpGate_[S]) ReachLimit(concurrentConns int32) bool {
 type serverConn interface {
 }
 
-// serverConn_
-type serverConn_ struct {
+// _serverConn_ is a mixin for server[1-3]Conn.
+type _serverConn_ struct {
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	// Conn states (zeros)
 }
 
-func (c *serverConn_) onGet() {
+func (c *_serverConn_) onGet() {
 }
-func (c *serverConn_) onPut() {
+func (c *_serverConn_) onPut() {
 }
 
 // serverStream
 type serverStream interface {
 }
 
-// serverStream_
-type serverStream_ struct {
+// _serverStream_ is a mixin for server[1-3]Stream.
+type _serverStream_ struct {
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
 }
 
-func (s *serverStream_) onUse() {
+func (s *_serverStream_) onUse() {
 }
-func (s *serverStream_) onEnd() {
+func (s *_serverStream_) onEnd() {
 }
 
 // Request is the server-side http request.

@@ -2918,7 +2918,7 @@ type Socket interface { // for *server[1-3]Socket
 
 // serverSocket_ is the parent for server[1-3]Socket.
 type serverSocket_ struct { // incoming and outgoing
-	// Parent
+	// Mixins
 	_httpSocket_
 	// Assocs
 	// Stream states (non-zeros)

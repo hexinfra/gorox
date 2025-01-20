@@ -993,7 +993,8 @@ func (r *server1Response) fixedHeaders() []byte { return http1BytesFixedResponse
 type server1Socket struct { // incoming and outgoing
 	// Parent
 	serverSocket_
-	// Mixins
+	// Embeds
+	so1 _http1Socket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -1012,7 +1013,14 @@ func putServer1Socket(socket *server1Socket) {
 
 func (s *server1Socket) onUse() {
 	s.serverSocket_.onUse()
+	s.so1.onUse(&s._httpSocket_)
 }
 func (s *server1Socket) onEnd() {
 	s.serverSocket_.onEnd()
+	s.so1.onEnd()
+}
+
+func (s *server1Socket) serverTodo1() {
+	s.serverTodo()
+	s.so1.todo1()
 }

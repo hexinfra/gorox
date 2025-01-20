@@ -847,6 +847,8 @@ func (r *server2Response) fixedHeaders() []byte { return nil } // TODO
 type server2Socket struct { // incoming and outgoing
 	// Parent
 	serverSocket_
+	// Embeds
+	so2 _http2Socket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -865,7 +867,14 @@ func putServer2Socket(socket *server2Socket) {
 
 func (s *server2Socket) onUse() {
 	s.serverSocket_.onUse()
+	s.so2.onUse(&s._httpSocket_)
 }
 func (s *server2Socket) onEnd() {
 	s.serverSocket_.onEnd()
+	s.so2.onEnd()
+}
+
+func (s *server2Socket) serverTodo2() {
+	s.serverTodo()
+	s.so2.todo2()
 }

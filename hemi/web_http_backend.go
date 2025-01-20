@@ -825,9 +825,10 @@ type backendSocket interface { // for *backend[1-3]Socket
 
 // backendSocket_ is the parent for backend[1-3]Socket.
 type backendSocket_ struct { // incoming and outgoing
-	// Parent
+	// Mixins
 	_httpSocket_
 	// Assocs
+	// Stream states (non-zeros)
 	// Stream states (zeros)
 	_backendSocket0 // all values in this struct must be zero by default!
 }

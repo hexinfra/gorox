@@ -1,4 +1,10 @@
 
+    +-------------------------------------------------+
+    |                   Component_                    |
+    +-------------------------------------------------+
+         ^                                       ^
+         |                                       |
+         |                                       |
     +----------+        +----------+        +---------+
     | Backend_ |        |          |<-------| Server_ |
     +----------+        | _holder_ |        +---------+
@@ -32,5 +38,5 @@
 | backend1Stream   |->| _http1Stream_ |<-| server1Stream   |    | backend2Stream   |->| _http2Stream_ |<-| server2Stream   |    | backend3Stream   |->| _http3Stream_ |<-| server3Stream   |
 | backend1Response |->| _http1In_     |<-| server1Request  |    | backend2Response |->| _http2In_     |<-| server2Request  |    | backend3Response |->| _http3In_     |<-| server3Request  |
 | backend1Request  |->| _http1Out_    |<-| server1Response |    | backend2Request  |->| _http2Out_    |<-| server2Response |    | backend3Request  |->| _http3Out_    |<-| server3Response |
-| backend1Socket   |->| _http1Socket_ |<-| server1Socket   |    | backend2Socket   |->| _http2Socket_ |<-| server2Socket   |    | backend3Socket   |->| _http3Socket_ |<-| server3Socket   |
+| backend1Socket   |=>| _http1Socket_ |<=| server1Socket   |    | backend2Socket   |=>| _http2Socket_ |<=| server2Socket   |    | backend3Socket   |=>| _http3Socket_ |<=| server3Socket   |
 +------------------+  +---------------+  +-----------------+    +------------------+  +---------------+  +-----------------+    +------------------+  +---------------+  +-----------------+

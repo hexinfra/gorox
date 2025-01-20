@@ -666,7 +666,8 @@ func (r *backend1Response) readContent() (data []byte, err error) { return r.rea
 type backend1Socket struct { // incoming and outgoing
 	// Parent
 	backendSocket_
-	// Mixins
+	// Embeds
+	so1 _http1Socket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -685,7 +686,14 @@ func putBackend1Socket(socket *backend1Socket) {
 
 func (s *backend1Socket) onUse() {
 	s.backendSocket_.onUse()
+	s.so1.onUse(&s._httpSocket_)
 }
 func (s *backend1Socket) onEnd() {
 	s.backendSocket_.onEnd()
+	s.so1.onEnd()
+}
+
+func (s *backend1Socket) backendTodo1() {
+	s.backendTodo()
+	s.so1.todo1()
 }

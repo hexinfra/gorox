@@ -16,16 +16,14 @@ import (
 	"github.com/hexinfra/gorox/hemi/library/tcp2"
 )
 
-//////////////////////////////////////// HTTP/3 general implementation ////////////////////////////////////////
-
-// http3Conn collects shared methods between *server3Conn and *backend3Conn.
+// http3Conn
 type http3Conn interface {
 	// Imports
 	httpConn
 	// Methods
 }
 
-// _http3Conn_ is the parent for server3Conn and backend3Conn.
+// _http3Conn_ is a mixin for server3Conn and backend3Conn.
 type _http3Conn_ struct {
 	// Parent
 	_httpConn_
@@ -65,7 +63,7 @@ func (c *_http3Conn_) onPut() {
 
 func (c *_http3Conn_) remoteAddr() net.Addr { return nil } // TODO
 
-// http3Stream collects shared methods between *server3Stream and *backend3Stream.
+// http3Stream
 type http3Stream interface {
 	// Imports
 	httpStream
@@ -73,7 +71,7 @@ type http3Stream interface {
 	getID() int64
 }
 
-// _http3Stream_ is the parent for server3Stream and backend3Stream.
+// _http3Stream_ is a mixin for server3Stream and backend3Stream.
 type _http3Stream_[C http3Conn] struct {
 	// Parent
 	_httpStream_
@@ -136,9 +134,7 @@ func (s *_http3Stream_[C]) writev(srcVec *net.Buffers) (int64, error) {
 	return 0, nil
 }
 
-//////////////////////////////////////// HTTP/3 incoming implementation ////////////////////////////////////////
-
-// _http3In_
+// _http3In_ is a mixin for server3Request and backend3Response.
 type _http3In_ struct {
 }
 
@@ -191,9 +187,7 @@ func (b *http3InBuffer) decRef() {
 	}
 }
 
-//////////////////////////////////////// HTTP/3 outgoing implementation ////////////////////////////////////////
-
-// _http3Out_
+// _http3Out_ is a mixin for server3Response and backend3Request.
 type _http3Out_ struct {
 }
 
@@ -295,11 +289,23 @@ type http3OutFrame struct {
 
 func (f *http3OutFrame) zero() { *f = http3OutFrame{} }
 
-//////////////////////////////////////// HTTP/3 webSocket implementation ////////////////////////////////////////
-
-// _http3Socket_
+// _http3Socket_ is a mixin for server3Socket and backend3Socket.
 type _http3Socket_ struct {
+	// Parent
+	*_httpSocket_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
 }
 
-func (s *_httpSocket_) todo3() {
+func (s *_http3Socket_) onUse(parent *_httpSocket_) {
+	s._httpSocket_ = parent
+}
+func (s *_http3Socket_) onEnd() {
+	s._httpSocket_ = nil
+}
+
+func (s *_http3Socket_) todo3() {
+	s.todo()
 }

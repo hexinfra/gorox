@@ -17,16 +17,14 @@ import (
 	"time"
 )
 
-//////////////////////////////////////// HTTP/2 general implementation ////////////////////////////////////////
-
-// http2Conn collects shared methods between *server2Conn and *backend2Conn.
+// http2Conn
 type http2Conn interface {
 	// Imports
 	httpConn
 	// Methods
 }
 
-// _http2Conn_ is the parent for server2Conn and backend2Conn.
+// _http2Conn_ is a mixin for server2Conn and backend2Conn.
 type _http2Conn_ struct {
 	// Parent
 	_httpConn_
@@ -496,7 +494,7 @@ func (c *_http2Conn_) writev(srcVec *net.Buffers) (int64, error) {
 	return srcVec.WriteTo(c.netConn)
 }
 
-// http2Stream collects shared methods between *server2Stream and *backend2Stream.
+// http2Stream
 type http2Stream interface {
 	// Imports
 	httpStream
@@ -506,7 +504,7 @@ type http2Stream interface {
 	setIndex(index uint8) // at activeStreams
 }
 
-// _http2Stream_ is the parent for server2Stream and backend2Stream.
+// _http2Stream_ is a mixin for server2Stream and backend2Stream.
 type _http2Stream_[C http2Conn] struct {
 	// Parent
 	_httpStream_
@@ -573,9 +571,7 @@ func (s *_http2Stream_[C]) writev(srcVec *net.Buffers) (int64, error) { // for c
 	return 0, nil
 }
 
-//////////////////////////////////////// HTTP/2 incoming implementation ////////////////////////////////////////
-
-// _http2In_
+// _http2In_ is a mixin for server2Request and backend2Response.
 type _http2In_ struct {
 }
 
@@ -798,9 +794,7 @@ func (b *http2InBuffer) decRef() {
 	}
 }
 
-//////////////////////////////////////// HTTP/2 outgoing implementation ////////////////////////////////////////
-
-// _http2Out_
+// _http2Out_ is a mixin for server2Response and backend2Request.
 type _http2Out_ struct {
 }
 
@@ -947,11 +941,23 @@ func (f *http2OutFrame) encodeHeader() (frameHeader []byte) { // caller must ens
 	return
 }
 
-//////////////////////////////////////// HTTP/2 webSocket implementation ////////////////////////////////////////
-
-// _http2Socket_
+// _http2Socket_ is a mixin for server2Socket and backend2Socket.
 type _http2Socket_ struct {
+	// Parent
+	*_httpSocket_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
 }
 
-func (s *_httpSocket_) todo2() {
+func (s *_http2Socket_) onUse(parent *_httpSocket_) {
+	s._httpSocket_ = parent
+}
+func (s *_http2Socket_) onEnd() {
+	s._httpSocket_ = nil
+}
+
+func (s *_http2Socket_) todo2() {
+	s.todo()
 }

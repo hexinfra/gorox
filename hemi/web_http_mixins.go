@@ -19,8 +19,6 @@ import (
 	"time"
 )
 
-//////////////////////////////////////// HTTP general implementation ////////////////////////////////////////
-
 // httpHolder is the interface for _httpHolder_.
 type httpHolder interface {
 	// Imports
@@ -159,8 +157,6 @@ func (s *_httpStream_) onEnd() {
 
 func (s *_httpStream_) buffer256() []byte          { return s.stockBuffer[:] }
 func (s *_httpStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
-
-//////////////////////////////////////// HTTP incoming implementation ////////////////////////////////////////
 
 // httpIn collects shared methods between *server[1-3]Request and *backend[1-3]Response.
 type httpIn interface {
@@ -1527,8 +1523,6 @@ var ( // _httpIn_ errors
 	httpInLongTime = errors.New("http incoming costs a long time")
 )
 
-//////////////////////////////////////// HTTP outgoing implementation ////////////////////////////////////////
-
 // httpOut collects shared methods between *server[1-3]Response and *backend[1-3]Request.
 type httpOut interface {
 	control() []byte
@@ -2011,8 +2005,6 @@ var ( // _httpOut_ errors
 	httpOutMixedContent  = errors.New("mixed content mode")
 	httpOutTrailerFailed = errors.New("add trailer failed")
 )
-
-//////////////////////////////////////// HTTP webSocket implementation ////////////////////////////////////////
 
 // httpSocket collects shared methods between *server[1-3]Socket and *backend[1-3]Socket.
 type httpSocket interface {

@@ -15,9 +15,7 @@ import (
 	"time"
 )
 
-//////////////////////////////////////// HTTP/1.x general implementation ////////////////////////////////////////
-
-// http1Conn collects shared methods between *server1Conn and *backend1Conn.
+// http1Conn
 type http1Conn interface {
 	// Imports
 	httpConn
@@ -83,7 +81,7 @@ func (c *_http1Conn_) readFull(dst []byte) (int, error)          { return io.Rea
 func (c *_http1Conn_) write(src []byte) (int, error)             { return c.netConn.Write(src) }
 func (c *_http1Conn_) writev(srcVec *net.Buffers) (int64, error) { return srcVec.WriteTo(c.netConn) }
 
-// http1Stream collects shared methods between *server1Stream and *backend1Stream.
+// http1Stream
 type http1Stream interface {
 	// Imports
 	httpStream
@@ -125,9 +123,7 @@ func (s *_http1Stream_[C]) writev(srcVec *net.Buffers) (int64, error) {
 	return s.conn.writev(srcVec)
 }
 
-//////////////////////////////////////// HTTP/1.x incoming implementation ////////////////////////////////////////
-
-// _http1In_
+// _http1In_ is a mixin for server1Request and backend1Response.
 type _http1In_ struct {
 }
 
@@ -649,9 +645,7 @@ func (r *_httpIn_) growChunked1() bool { // HTTP/1.x is not a binary protocol, w
 	return false
 }
 
-//////////////////////////////////////// HTTP/1.x outgoing implementation ////////////////////////////////////////
-
-// _http1Out_
+// _http1Out_ is a mixin for server1Response and backend1Request.
 type _http1Out_ struct {
 }
 
@@ -1047,12 +1041,23 @@ func (r *_httpOut_) writeBytes1(data []byte) error {
 	return r._longTimeCheck(err)
 }
 
-//////////////////////////////////////// HTTP/1.x webSocket implementation ////////////////////////////////////////
-
-// _http1Socket_
+// _http1Socket_ is a mixin for server1Socket and backend1Socket.
 type _http1Socket_ struct {
+	// Parent
+	*_httpSocket_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
 }
 
-func (s *_httpSocket_) todo1() {
-	// TODO
+func (s *_http1Socket_) onUse(parent *_httpSocket_) {
+	s._httpSocket_ = parent
+}
+func (s *_http1Socket_) onEnd() {
+	s._httpSocket_ = nil
+}
+
+func (s *_http1Socket_) todo1() {
+	s.todo()
 }

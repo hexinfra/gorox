@@ -262,7 +262,7 @@ func (c *backend2Conn) Close() error {
 	return netConn.Close()
 }
 
-// backend2Stream
+// backend2Stream is the backend-side HTTP/2 stream.
 type backend2Stream struct {
 	// Parent
 	_http2Stream_[*backend2Conn]
@@ -405,6 +405,8 @@ func (r *backend2Response) readContent() (data []byte, err error) { return r.rea
 type backend2Socket struct { // incoming and outgoing
 	// Parent
 	backendSocket_
+	// Embeds
+	so2 _http2Socket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -423,7 +425,14 @@ func putBackend2Socket(socket *backend2Socket) {
 
 func (s *backend2Socket) onUse() {
 	s.backendSocket_.onUse()
+	s.so2.onUse(&s._httpSocket_)
 }
 func (s *backend2Socket) onEnd() {
 	s.backendSocket_.onEnd()
+	s.so2.onEnd()
+}
+
+func (s *backend2Socket) backendTodo2() {
+	s.backendTodo()
+	s.so2.todo2()
 }

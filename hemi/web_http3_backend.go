@@ -124,7 +124,7 @@ func (n *http3Node) closeFree() int {
 	return 0
 }
 
-// backend3Conn
+// backend3Conn is the backend-side HTTP/3 connection.
 type backend3Conn struct {
 	// Parent
 	_http3Conn_
@@ -193,7 +193,7 @@ func (c *backend3Conn) Close() error {
 	return quicConn.Close()
 }
 
-// backend3Stream
+// backend3Stream is the backend-side HTTP/3 stream.
 type backend3Stream struct {
 	// Parent
 	_http3Stream_[*backend3Conn]
@@ -336,6 +336,8 @@ func (r *backend3Response) readContent() (data []byte, err error) { return r.rea
 type backend3Socket struct { // incoming and outgoing
 	// Parent
 	backendSocket_
+	// Embeds
+	so3 _http3Socket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -354,7 +356,14 @@ func putBackend3Socket(socket *backend3Socket) {
 
 func (s *backend3Socket) onUse() {
 	s.backendSocket_.onUse()
+	s.so3.onUse(&s._httpSocket_)
 }
 func (s *backend3Socket) onEnd() {
 	s.backendSocket_.onEnd()
+	s.so3.onEnd()
+}
+
+func (s *backend3Socket) backendTodo3() {
+	s.backendTodo()
+	s.so3.todo3()
 }

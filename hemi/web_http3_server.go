@@ -375,6 +375,8 @@ func (r *server3Response) fixedHeaders() []byte { return nil }
 type server3Socket struct { // incoming and outgoing
 	// Parent
 	serverSocket_
+	// Embeds
+	so3 _http3Socket_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -393,7 +395,14 @@ func putServer3Socket(socket *server3Socket) {
 
 func (s *server3Socket) onUse() {
 	s.serverSocket_.onUse()
+	s.so3.onUse(&s._httpSocket_)
 }
 func (s *server3Socket) onEnd() {
 	s.serverSocket_.onEnd()
+	s.so3.onEnd()
+}
+
+func (s *server3Socket) serverTodo3() {
+	s.serverTodo()
+	s.so3.todo3()
 }

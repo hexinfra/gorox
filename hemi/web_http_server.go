@@ -376,7 +376,7 @@ type Request interface { // for *server[1-3]Request
 
 // serverRequest_ is the parent for server[1-3]Request.
 type serverRequest_ struct { // incoming. needs parsing
-	// Parent
+	// Mixins
 	_httpIn_ // incoming http request
 	// Stream states (stocks)
 	stockUpfiles [2]Upfile // for r.upfiles. 96B

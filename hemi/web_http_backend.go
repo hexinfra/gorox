@@ -425,7 +425,7 @@ type backendResponse interface { // for *backend[1-3]Response
 
 // backendResponse_ is the parent for backend[1-3]Response.
 type backendResponse_ struct { // incoming. needs parsing
-	// Parent
+	// Mixins
 	_httpIn_ // incoming http response
 	// Stream states (stocks)
 	// Stream states (controlled)

@@ -237,7 +237,7 @@ func (s *backend3Stream) onUse(conn *backend3Conn, quicStream *tcp2.Stream) { //
 	s._http3Stream_.onUse(conn, quicStream)
 
 	s.request.onUse()
-	s.response.onUse(Version3)
+	s.response.onUse()
 }
 func (s *backend3Stream) onEnd() { // for zeros
 	s.response.onEnd()
@@ -333,17 +333,28 @@ func (r *backend3Request) fixedHeaders() []byte { return nil } // TODO
 type backend3Response struct { // incoming. needs parsing
 	// Parent
 	backendResponse_
+	// Embeds
+	in3 _http3In_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
+func (r *backend3Response) onUse() {
+	r.backendResponse_.onUse(Version3)
+	r.in3.onUse(&r._httpIn_)
+}
+func (r *backend3Response) onEnd() {
+	r.backendResponse_.onEnd()
+	r.in3.onEnd()
+}
+
 func (r *backend3Response) recvHead() {
 	// TODO
 }
 
-func (r *backend3Response) readContent() (data []byte, err error) { return r.readContent3() }
+func (r *backend3Response) readContent() (data []byte, err error) { return r.in3.readContent3() }
 
 // backend3Socket is the backend-side HTTP/3 webSocket.
 type backend3Socket struct { // incoming and outgoing

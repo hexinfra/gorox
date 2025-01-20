@@ -684,7 +684,7 @@ func (s *server2Stream) onUse(id uint32, conn *server2Conn, outWindow int32) { /
 
 	s.inWindow = _64K1 // max size of r.bodyWindow
 	s.outWindow = outWindow
-	s.request.onUse(Version2)
+	s.request.onUse()
 	s.response.onUse()
 }
 func (s *server2Stream) onEnd() { // for zeros
@@ -729,22 +729,33 @@ func (s *server2Stream) executeSocket() { // see RFC 8441: https://datatracker.i
 type server2Request struct { // incoming. needs parsing
 	// Parent
 	serverRequest_
+	// Embeds
+	in2 _http2In_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
+func (r *server2Request) onUse() {
+	r.serverRequest_.onUse(Version2)
+	r.in2.onUse(&r._httpIn_)
+}
+func (r *server2Request) onEnd() {
+	r.serverRequest_.onEnd()
+	r.in2.onEnd()
+}
+
 func (r *server2Request) joinHeaders(p []byte) bool {
 	if len(p) > 0 {
-		if !r._growHeaders2(int32(len(p))) {
+		if !r.in2._growHeaders2(int32(len(p))) {
 			return false
 		}
 		r.inputEdge += int32(copy(r.input[r.inputEdge:], p))
 	}
 	return true
 }
-func (r *server2Request) readContent() (data []byte, err error) { return r.readContent2() }
+func (r *server2Request) readContent() (data []byte, err error) { return r.in2.readContent2() }
 func (r *server2Request) joinTrailers(p []byte) bool {
 	// TODO: to r.array
 	return false

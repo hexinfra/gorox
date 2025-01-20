@@ -142,7 +142,7 @@ type server1Stream struct {
 func (s *server1Stream) onUse() { // for non-zeros
 	s._http1Stream_.onUse()
 
-	s.request.onUse(Version1_1)
+	s.request.onUse()
 	s.response.onUse()
 }
 func (s *server1Stream) onEnd() { // for zeros
@@ -341,10 +341,21 @@ func (s *server1Stream) executeSocket() { // upgrade: websocket. See RFC 6455
 type server1Request struct { // incoming. needs parsing
 	// Parent
 	serverRequest_
+	// Embeds
+	in1 _http1In_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
+}
+
+func (r *server1Request) onUse() {
+	r.serverRequest_.onUse(Version1_1)
+	r.in1.onUse(&r._httpIn_)
+}
+func (r *server1Request) onEnd() {
+	r.serverRequest_.onEnd()
+	r.in1.onEnd()
 }
 
 func (r *server1Request) recvHead() { // request-line + headers
@@ -353,11 +364,11 @@ func (r *server1Request) recvHead() { // request-line + headers
 		r.headResult = -1
 		return
 	}
-	if r.inputEdge == 0 && !r.growHead1() { // r.inputEdge == 0 means r.input is empty, so we must fill it
+	if r.inputEdge == 0 && !r.in1.growHead1() { // r.inputEdge == 0 means r.input is empty, so we must fill it
 		// r.headResult is set.
 		return
 	}
-	if !r._recvRequestLine() || !r.recvHeaders1() || !r.examineHead() {
+	if !r._recvRequestLine() || !r.in1.recvHeaders1() || !r.examineHead() {
 		// r.headResult is set.
 		return
 	}
@@ -375,7 +386,7 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 	for {
 		if b := r.input[r.elemFore]; httpTchar[b] != 0 {
 			methodHash += uint16(b)
-			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
 				return false
 			}
 		} else if b == ' ' {
@@ -393,7 +404,7 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 	r.method.set(r.elemBack, r.elemFore)
 	r.recognizeMethod(r.input[r.elemBack:r.elemFore], methodHash)
 	// Skip SP after method
-	if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
 		return false
 	}
 
@@ -425,7 +436,7 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 					r.headResult, r.failReason = StatusBadRequest, "bad scheme"
 					return false
 				}
-				if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+				if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
 					return false
 				}
 			}
@@ -438,7 +449,7 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 				return false
 			}
 			// Skip ':'
-			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
 				return false
 			}
 			if r.input[r.elemFore] != '/' {
@@ -446,7 +457,7 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 				return false
 			}
 			// Skip '/'
-			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
 				return false
 			}
 			if r.input[r.elemFore] != '/' {
@@ -454,7 +465,7 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 				return false
 			}
 			// Skip '/'
-			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
 				return false
 			}
 			// authority = host [ ":" port ]
@@ -466,7 +477,7 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 				} else if b == '/' || b == ' ' {
 					break
 				}
-				if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+				if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
 					return false
 				}
 			}
@@ -611,7 +622,7 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 					state >>= 4 // restore previous state
 				}
 			}
-			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
 				return false
 			}
 		}
@@ -647,7 +658,7 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 			return false
 		}
 		// Skip '*'. We don't use it as uri! Instead, we use '/'. To test OPTIONS *, test r.asteriskOptions set below.
-		if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+		if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
 			return false
 		}
 		r.asteriskOptions = true
@@ -675,7 +686,7 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 			} else if b == ' ' {
 				break
 			}
-			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
 				return false
 			}
 		}
@@ -695,7 +706,7 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 
 beforeVersion: // r.elemFore is at ' '.
 	// Skip SP before HTTP-version
-	if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
 		return false
 	}
 
@@ -712,7 +723,7 @@ beforeVersion: // r.elemFore is at ' '.
 		// r.inputEdge at "TTP/1.X\n" -> after EOL
 		r.elemFore = r.inputEdge - 1
 		for i, n := int32(0), 9-have; i < n; i++ {
-			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
 				return false
 			}
 		}
@@ -726,7 +737,7 @@ beforeVersion: // r.elemFore is at ' '.
 		return false
 	}
 	if r.input[r.elemFore] == '\r' {
-		if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+		if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
 			return false
 		}
 	}
@@ -736,7 +747,7 @@ beforeVersion: // r.elemFore is at ' '.
 	}
 	r.receiving = httpSectionHeaders
 	// Skip '\n'
-	if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
 		return false
 	}
 
@@ -780,7 +791,7 @@ func (r *server1Request) cleanInput() {
 	}
 }
 
-func (r *server1Request) readContent() (data []byte, err error) { return r.readContent1() }
+func (r *server1Request) readContent() (data []byte, err error) { return r.in1.readContent1() }
 
 // server1Response is the server-side HTTP/1.x response.
 type server1Response struct { // outgoing. needs building

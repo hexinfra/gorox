@@ -573,9 +573,22 @@ func (s *_http2Stream_[C]) writev(srcVec *net.Buffers) (int64, error) { // for c
 
 // _http2In_ is a mixin for server2Request and backend2Response.
 type _http2In_ struct {
+	// Parent
+	*_httpIn_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
 }
 
-func (r *_httpIn_) _growHeaders2(size int32) bool {
+func (r *_http2In_) onUse(parent *_httpIn_) {
+	r._httpIn_ = parent
+}
+func (r *_http2In_) onEnd() {
+	r._httpIn_ = nil
+}
+
+func (r *_http2In_) _growHeaders2(size int32) bool {
 	edge := r.inputEdge + size      // size is ensured to not overflow
 	if edge < int32(cap(r.input)) { // fast path
 		return true
@@ -592,7 +605,7 @@ func (r *_httpIn_) _growHeaders2(size int32) bool {
 	return true
 }
 
-func (r *_httpIn_) readContent2() (data []byte, err error) {
+func (r *_http2In_) readContent2() (data []byte, err error) {
 	// TODO
 	return
 }

@@ -228,7 +228,7 @@ func putServer3Stream(serverStream *server3Stream) {
 func (s *server3Stream) onUse(conn *server3Conn, quicStream *tcp2.Stream) { // for non-zeros
 	s._http3Stream_.onUse(conn, quicStream)
 
-	s.request.onUse(Version3)
+	s.request.onUse()
 	s.response.onUse()
 }
 func (s *server3Stream) onEnd() { // for zeros
@@ -270,13 +270,24 @@ func (s *server3Stream) executeSocket() { // see RFC 9220
 type server3Request struct { // incoming. needs parsing
 	// Parent
 	serverRequest_
+	// Embeds
+	in3 _http3In_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
-func (r *server3Request) readContent() (data []byte, err error) { return r.readContent3() }
+func (r *server3Request) onUse() {
+	r.serverRequest_.onUse(Version3)
+	r.in3.onUse(&r._httpIn_)
+}
+func (r *server3Request) onEnd() {
+	r.serverRequest_.onEnd()
+	r.in3.onEnd()
+}
+
+func (r *server3Request) readContent() (data []byte, err error) { return r.in3.readContent3() }
 
 // server3Response is the server-side HTTP/3 response.
 type server3Response struct { // outgoing. needs building

@@ -306,7 +306,7 @@ func (s *backend2Stream) onUse(id uint32, conn *backend2Conn) { // for non-zeros
 	s._http2Stream_.onUse(id, conn)
 
 	s.request.onUse()
-	s.response.onUse(Version2)
+	s.response.onUse()
 }
 func (s *backend2Stream) onEnd() { // for zeros
 	s.response.onEnd()
@@ -402,17 +402,28 @@ func (r *backend2Request) fixedHeaders() []byte { return nil } // TODO
 type backend2Response struct { // incoming. needs parsing
 	// Parent
 	backendResponse_
+	// Embeds
+	in2 _http2In_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 
+func (r *backend2Response) onUse() {
+	r.backendResponse_.onUse(Version2)
+	r.in2.onUse(&r._httpIn_)
+}
+func (r *backend2Response) onEnd() {
+	r.backendResponse_.onEnd()
+	r.in2.onEnd()
+}
+
 func (r *backend2Response) recvHead() {
 	// TODO
 }
 
-func (r *backend2Response) readContent() (data []byte, err error) { return r.readContent2() }
+func (r *backend2Response) readContent() (data []byte, err error) { return r.in2.readContent2() }
 
 // backend2Socket is the backend-side HTTP/2 webSocket.
 type backend2Socket struct { // incoming and outgoing

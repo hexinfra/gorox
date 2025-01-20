@@ -125,9 +125,22 @@ func (s *_http1Stream_[C]) writev(srcVec *net.Buffers) (int64, error) {
 
 // _http1In_ is a mixin for server1Request and backend1Response.
 type _http1In_ struct {
+	// Parent
+	*_httpIn_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
 }
 
-func (r *_httpIn_) growHead1() bool { // HTTP/1.x is not a binary protocol, we don't know how many bytes to grow, so just grow.
+func (r *_http1In_) onUse(parent *_httpIn_) {
+	r._httpIn_ = parent
+}
+func (r *_http1In_) onEnd() {
+	r._httpIn_ = nil
+}
+
+func (r *_http1In_) growHead1() bool { // HTTP/1.x is not a binary protocol, we don't know how many bytes to grow, so just grow.
 	// Is r.input full?
 	if inputSize := int32(cap(r.input)); r.inputEdge == inputSize { // r.inputEdge reached end, so r.input is full
 		if inputSize == _16K { // max r.input size is 16K, we cannot use a larger input anymore
@@ -163,7 +176,7 @@ func (r *_httpIn_) growHead1() bool { // HTTP/1.x is not a binary protocol, we d
 	}
 	return false
 }
-func (r *_httpIn_) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS CRLF ) CRLF
+func (r *_http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS CRLF ) CRLF
 	r.headers.from = uint8(len(r.primes))
 	r.headers.edge = r.headers.from
 	header := &r.mainPair
@@ -292,14 +305,14 @@ func (r *_httpIn_) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 	return true
 }
 
-func (r *_httpIn_) readContent1() (data []byte, err error) {
+func (r *_http1In_) readContent1() (data []byte, err error) {
 	if r.contentSize >= 0 { // sized
 		return r._readSizedContent1()
 	} else { // vague. must be -2. -1 (no content) is excluded priorly
 		return r._readVagueContent1()
 	}
 }
-func (r *_httpIn_) _readSizedContent1() ([]byte, error) {
+func (r *_http1In_) _readSizedContent1() ([]byte, error) {
 	if r.receivedSize == r.contentSize { // content is entirely received
 		if r.bodyWindow == nil { // body window is not used. this means content is immediate
 			return r.contentText[:r.receivedSize], io.EOF
@@ -339,7 +352,7 @@ func (r *_httpIn_) _readSizedContent1() ([]byte, error) {
 	}
 	return nil, err
 }
-func (r *_httpIn_) _readVagueContent1() ([]byte, error) {
+func (r *_http1In_) _readVagueContent1() ([]byte, error) {
 	if r.bodyWindow == nil {
 		r.bodyWindow = Get16K() // will be freed on ends. 16K is a tradeoff between performance and memory consumption, and can fit r.imme and trailers
 	}
@@ -495,7 +508,7 @@ badRead:
 	return nil, httpInBadChunk
 }
 
-func (r *_httpIn_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
+func (r *_http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
 	copy(r.bodyWindow, r.bodyWindow[r.chunkFore:r.chunkEdge]) // slide to start, we need a clean r.bodyWindow
 	r.chunkEdge -= r.chunkFore
 	r.chunkBack, r.chunkFore = 0, 0 // setting r.chunkBack = 0 means r.bodyWindow will not slide, so the whole trailers must fit in r.bodyWindow.
@@ -616,7 +629,7 @@ func (r *_httpIn_) recvTrailers1() bool { // trailer-section = *( field-line CRL
 	r.chunkFore = r.elemFore // r.chunkFore must ends at the last '\n'
 	return true
 }
-func (r *_httpIn_) growChunked1() bool { // HTTP/1.x is not a binary protocol, we don't know how many bytes to grow, so just grow.
+func (r *_http1In_) growChunked1() bool { // HTTP/1.x is not a binary protocol, we don't know how many bytes to grow, so just grow.
 	if r.chunkEdge == int32(cap(r.bodyWindow)) && r.chunkBack == 0 { // r.bodyWindow is full and we can't slide
 		return false // element is too large
 	}

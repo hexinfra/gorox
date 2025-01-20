@@ -356,7 +356,7 @@ func (s *backend1Stream) onUse() { // for non-zeros
 	s._http1Stream_.onUse()
 
 	s.request.onUse()
-	s.response.onUse(Version1_1)
+	s.response.onUse()
 }
 func (s *backend1Stream) onEnd() { // for zeros
 	s.response.onEnd()
@@ -531,10 +531,21 @@ func (r *backend1Request) fixedHeaders() []byte { return http1BytesFixedRequestH
 type backend1Response struct { // incoming. needs parsing
 	// Parent
 	backendResponse_
+	// Embeds
+	in1 _http1In_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
+}
+
+func (r *backend1Response) onUse() {
+	r.backendResponse_.onUse(Version1_1)
+	r.in1.onUse(&r._httpIn_)
+}
+func (r *backend1Response) onEnd() {
+	r.backendResponse_.onEnd()
+	r.in1.onEnd()
 }
 
 func (r *backend1Response) recvHead() { // status-line + headers
@@ -543,11 +554,11 @@ func (r *backend1Response) recvHead() { // status-line + headers
 		r.headResult = -1
 		return
 	}
-	if !r.growHead1() { // r.input must be empty because we don't use pipelining in requests.
+	if !r.in1.growHead1() { // r.input must be empty because we don't use pipelining in requests.
 		// r.headResult is set.
 		return
 	}
-	if !r._recvStatusLine() || !r.recvHeaders1() || !r.examineHead() {
+	if !r._recvStatusLine() || !r.in1.recvHeaders1() || !r.examineHead() {
 		// r.headResult is set.
 		return
 	}
@@ -568,7 +579,7 @@ func (r *backend1Response) _recvStatusLine() bool { // status-line = HTTP-versio
 		// r.inputEdge at "TTP/1.X " -> after ' '
 		r.elemFore = r.inputEdge - 1
 		for i, n := int32(0), 9-have; i < n; i++ {
-			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
 				return false
 			}
 		}
@@ -582,7 +593,7 @@ func (r *backend1Response) _recvStatusLine() bool { // status-line = HTTP-versio
 	if r.input[r.elemFore] != ' ' {
 		goto invalid
 	}
-	if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
 		return false
 	}
 
@@ -592,7 +603,7 @@ func (r *backend1Response) _recvStatusLine() bool { // status-line = HTTP-versio
 	} else {
 		goto invalid
 	}
-	if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
 		return false
 	}
 	if b := r.input[r.elemFore]; b >= '0' && b <= '9' {
@@ -600,7 +611,7 @@ func (r *backend1Response) _recvStatusLine() bool { // status-line = HTTP-versio
 	} else {
 		goto invalid
 	}
-	if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
 		return false
 	}
 	if b := r.input[r.elemFore]; b >= '0' && b <= '9' {
@@ -608,7 +619,7 @@ func (r *backend1Response) _recvStatusLine() bool { // status-line = HTTP-versio
 	} else {
 		goto invalid
 	}
-	if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
 		return false
 	}
 
@@ -616,7 +627,7 @@ func (r *backend1Response) _recvStatusLine() bool { // status-line = HTTP-versio
 	if r.input[r.elemFore] != ' ' {
 		goto invalid
 	}
-	if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
 		return false
 	}
 
@@ -625,13 +636,13 @@ func (r *backend1Response) _recvStatusLine() bool { // status-line = HTTP-versio
 		if b := r.input[r.elemFore]; b == '\n' {
 			break
 		}
-		if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+		if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
 			return false
 		}
 	}
 	r.receiving = httpSectionHeaders
 	// Skip '\n'
-	if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
 		return false
 	}
 	return true
@@ -673,7 +684,7 @@ func (r *backend1Response) cleanInput() {
 	}
 }
 
-func (r *backend1Response) readContent() (data []byte, err error) { return r.readContent1() }
+func (r *backend1Response) readContent() (data []byte, err error) { return r.in1.readContent1() }
 
 // backend1Socket is the backend-side HTTP/1.x webSocket.
 type backend1Socket struct { // incoming and outgoing

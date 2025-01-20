@@ -136,15 +136,28 @@ func (s *_http3Stream_[C]) writev(srcVec *net.Buffers) (int64, error) {
 
 // _http3In_ is a mixin for server3Request and backend3Response.
 type _http3In_ struct {
+	// Parent
+	*_httpIn_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
 }
 
-func (r *_httpIn_) _growHeaders3(size int32) bool {
+func (r *_http3In_) onUse(parent *_httpIn_) {
+	r._httpIn_ = parent
+}
+func (r *_http3In_) onEnd() {
+	r._httpIn_ = nil
+}
+
+func (r *_http3In_) _growHeaders3(size int32) bool {
 	// TODO
 	// use r.input
 	return false
 }
 
-func (r *_httpIn_) readContent3() (data []byte, err error) {
+func (r *_http3In_) readContent3() (data []byte, err error) {
 	// TODO
 	return
 }

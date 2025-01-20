@@ -575,6 +575,10 @@ func (s *_http2Stream_[C]) writev(srcVec *net.Buffers) (int64, error) { // for c
 
 //////////////////////////////////////// HTTP/2 incoming implementation ////////////////////////////////////////
 
+// _http2In_
+type _http2In_ struct {
+}
+
 func (r *_httpIn_) _growHeaders2(size int32) bool {
 	edge := r.inputEdge + size      // size is ensured to not overflow
 	if edge < int32(cap(r.input)) { // fast path
@@ -796,6 +800,10 @@ func (b *http2InBuffer) decRef() {
 
 //////////////////////////////////////// HTTP/2 outgoing implementation ////////////////////////////////////////
 
+// _http2Out_
+type _http2Out_ struct {
+}
+
 func (r *_httpOut_) addHeader2(name []byte, value []byte) bool {
 	// TODO
 	return false
@@ -940,6 +948,10 @@ func (f *http2OutFrame) encodeHeader() (frameHeader []byte) { // caller must ens
 }
 
 //////////////////////////////////////// HTTP/2 webSocket implementation ////////////////////////////////////////
+
+// _http2Socket_
+type _http2Socket_ struct {
+}
 
 func (s *_httpSocket_) todo2() {
 }

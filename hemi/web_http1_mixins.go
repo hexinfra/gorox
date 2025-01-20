@@ -127,6 +127,10 @@ func (s *_http1Stream_[C]) writev(srcVec *net.Buffers) (int64, error) {
 
 //////////////////////////////////////// HTTP/1.x incoming implementation ////////////////////////////////////////
 
+// _http1In_
+type _http1In_ struct {
+}
+
 func (r *_httpIn_) growHead1() bool { // HTTP/1.x is not a binary protocol, we don't know how many bytes to grow, so just grow.
 	// Is r.input full?
 	if inputSize := int32(cap(r.input)); r.inputEdge == inputSize { // r.inputEdge reached end, so r.input is full
@@ -647,6 +651,10 @@ func (r *_httpIn_) growChunked1() bool { // HTTP/1.x is not a binary protocol, w
 
 //////////////////////////////////////// HTTP/1.x outgoing implementation ////////////////////////////////////////
 
+// _http1Out_
+type _http1Out_ struct {
+}
+
 func (r *_httpOut_) addHeader1(name []byte, value []byte) bool {
 	if len(name) == 0 {
 		return false
@@ -1040,6 +1048,10 @@ func (r *_httpOut_) writeBytes1(data []byte) error {
 }
 
 //////////////////////////////////////// HTTP/1.x webSocket implementation ////////////////////////////////////////
+
+// _http1Socket_
+type _http1Socket_ struct {
+}
 
 func (s *_httpSocket_) todo1() {
 	// TODO

@@ -138,6 +138,10 @@ func (s *_http3Stream_[C]) writev(srcVec *net.Buffers) (int64, error) {
 
 //////////////////////////////////////// HTTP/3 incoming implementation ////////////////////////////////////////
 
+// _http3In_
+type _http3In_ struct {
+}
+
 func (r *_httpIn_) _growHeaders3(size int32) bool {
 	// TODO
 	// use r.input
@@ -188,6 +192,10 @@ func (b *http3InBuffer) decRef() {
 }
 
 //////////////////////////////////////// HTTP/3 outgoing implementation ////////////////////////////////////////
+
+// _http3Out_
+type _http3Out_ struct {
+}
 
 func (r *_httpOut_) addHeader3(name []byte, value []byte) bool {
 	// TODO
@@ -288,6 +296,10 @@ type http3OutFrame struct {
 func (f *http3OutFrame) zero() { *f = http3OutFrame{} }
 
 //////////////////////////////////////// HTTP/3 webSocket implementation ////////////////////////////////////////
+
+// _http3Socket_
+type _http3Socket_ struct {
+}
 
 func (s *_httpSocket_) todo3() {
 }

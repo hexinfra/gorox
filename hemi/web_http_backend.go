@@ -153,7 +153,7 @@ type backendRequest interface { // for *backend[1-3]Request
 
 // backendRequest_ is the parent for backend[1-3]Request.
 type backendRequest_ struct { // outgoing. needs building
-	// Parent
+	// Mixins
 	_httpOut_ // outgoing http request
 	// Assocs
 	response backendResponse // the corresponding response

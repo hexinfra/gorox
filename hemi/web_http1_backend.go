@@ -355,7 +355,7 @@ type backend1Stream struct {
 func (s *backend1Stream) onUse() { // for non-zeros
 	s._http1Stream_.onUse()
 
-	s.request.onUse(Version1_1)
+	s.request.onUse()
 	s.response.onUse(Version1_1)
 }
 func (s *backend1Stream) onEnd() { // for zeros
@@ -379,10 +379,21 @@ func (s *backend1Stream) Socket() backendSocket     { return nil } // TODO. See 
 type backend1Request struct { // outgoing. needs building
 	// Parent
 	backendRequest_
+	// Embeds
+	out1 _http1Out_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
+}
+
+func (r *backend1Request) onUse() {
+	r.backendRequest_.onUse(Version1_1)
+	r.out1.onUse(&r._httpOut_)
+}
+func (r *backend1Request) onEnd() {
+	r.backendRequest_.onEnd()
+	r.out1.onEnd()
 }
 
 func (r *backend1Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // METHOD uri HTTP/1.1\r\n
@@ -423,18 +434,20 @@ func (r *backend1Request) proxySetAuthority(hostname []byte, colonport []byte) b
 		from += 2
 		from += copy(r.fields[from:], hostname)
 		from += copy(r.fields[from:], colonport)
-		r._addCRLFHeader1(from)
+		r.out1._addCRLFHeader1(from)
 		return true
 	} else {
 		return false
 	}
 }
 
-func (r *backend1Request) addHeader(name []byte, value []byte) bool   { return r.addHeader1(name, value) }
-func (r *backend1Request) header(name []byte) (value []byte, ok bool) { return r.header1(name) }
-func (r *backend1Request) hasHeader(name []byte) bool                 { return r.hasHeader1(name) }
-func (r *backend1Request) delHeader(name []byte) (deleted bool)       { return r.delHeader1(name) }
-func (r *backend1Request) delHeaderAt(i uint8)                        { r.delHeaderAt1(i) }
+func (r *backend1Request) addHeader(name []byte, value []byte) bool {
+	return r.out1.addHeader1(name, value)
+}
+func (r *backend1Request) header(name []byte) (value []byte, ok bool) { return r.out1.header1(name) }
+func (r *backend1Request) hasHeader(name []byte) bool                 { return r.out1.hasHeader1(name) }
+func (r *backend1Request) delHeader(name []byte) (deleted bool)       { return r.out1.delHeader1(name) }
+func (r *backend1Request) delHeaderAt(i uint8)                        { r.out1.delHeaderAt1(i) }
 
 func (r *backend1Request) AddCookie(name string, value string) bool { // cookie: foo=bar; xyz=baz
 	// TODO. need some space to place the cookie. use stream.unsafeMake()?
@@ -469,18 +482,18 @@ func (r *backend1Request) proxyCopyCookies(foreReq Request) bool { // NOTE: merg
 	}
 }
 
-func (r *backend1Request) sendChain() error { return r.sendChain1() }
+func (r *backend1Request) sendChain() error { return r.out1.sendChain1() }
 
-func (r *backend1Request) echoHeaders() error { return r.writeHeaders1() }
-func (r *backend1Request) echoChain() error   { return r.echoChain1(true) } // we always use HTTP/1.1 chunked
+func (r *backend1Request) echoHeaders() error { return r.out1.writeHeaders1() }
+func (r *backend1Request) echoChain() error   { return r.out1.echoChain1(true) } // we always use HTTP/1.1 chunked
 
 func (r *backend1Request) addTrailer(name []byte, value []byte) bool {
-	return r.addTrailer1(name, value)
+	return r.out1.addTrailer1(name, value)
 }
-func (r *backend1Request) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }
+func (r *backend1Request) trailer(name []byte) (value []byte, ok bool) { return r.out1.trailer1(name) }
 
-func (r *backend1Request) proxyPassHeaders() error          { return r.writeHeaders1() }
-func (r *backend1Request) proxyPassBytes(data []byte) error { return r.proxyPassBytes1(data) }
+func (r *backend1Request) proxyPassHeaders() error          { return r.out1.writeHeaders1() }
+func (r *backend1Request) proxyPassBytes(data []byte) error { return r.out1.proxyPassBytes1(data) }
 
 func (r *backend1Request) finalizeHeaders() { // add at most 256 bytes
 	// if-modified-since: Sun, 06 Nov 1994 08:49:37 GMT\r\n
@@ -498,7 +511,7 @@ func (r *backend1Request) finalizeHeaders() { // add at most 256 bytes
 			} else { // content-length: >=0\r\n
 				sizeBuffer := r.stream.buffer256() // enough for content-length
 				n := i64ToDec(r.contentSize, sizeBuffer)
-				r._addFixedHeader1(bytesContentLength, sizeBuffer[:n])
+				r.out1._addFixedHeader1(bytesContentLength, sizeBuffer[:n])
 			}
 		}
 		// content-type: application/octet-stream\r\n
@@ -509,7 +522,7 @@ func (r *backend1Request) finalizeHeaders() { // add at most 256 bytes
 	// connection: keep-alive\r\n
 	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
 }
-func (r *backend1Request) finalizeVague() error { return r.finalizeVague1() }
+func (r *backend1Request) finalizeVague() error { return r.out1.finalizeVague1() }
 
 func (r *backend1Request) addedHeaders() []byte { return r.fields[r.controlEdge:r.fieldsEdge] }
 func (r *backend1Request) fixedHeaders() []byte { return http1BytesFixedRequestHeaders }

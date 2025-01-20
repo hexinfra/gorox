@@ -796,66 +796,79 @@ func (b *http2InBuffer) decRef() {
 
 // _http2Out_ is a mixin for server2Response and backend2Request.
 type _http2Out_ struct {
+	// Parent
+	*_httpOut_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
 }
 
-func (r *_httpOut_) addHeader2(name []byte, value []byte) bool {
+func (r *_http2Out_) onUse(parent *_httpOut_) {
+	r._httpOut_ = parent
+}
+func (r *_http2Out_) onEnd() {
+	r._httpOut_ = nil
+}
+
+func (r *_http2Out_) addHeader2(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *_httpOut_) header2(name []byte) (value []byte, ok bool) {
+func (r *_http2Out_) header2(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *_httpOut_) hasHeader2(name []byte) bool {
+func (r *_http2Out_) hasHeader2(name []byte) bool {
 	// TODO
 	return false
 }
-func (r *_httpOut_) delHeader2(name []byte) (deleted bool) {
+func (r *_http2Out_) delHeader2(name []byte) (deleted bool) {
 	// TODO
 	return false
 }
-func (r *_httpOut_) delHeaderAt2(i uint8) {
+func (r *_http2Out_) delHeaderAt2(i uint8) {
 	// TODO
 }
 
-func (r *_httpOut_) sendChain2() error {
+func (r *_http2Out_) sendChain2() error {
 	// TODO
 	return nil
 }
-func (r *_httpOut_) _sendEntireChain2() error {
+func (r *_http2Out_) _sendEntireChain2() error {
 	// TODO
 	return nil
 }
-func (r *_httpOut_) _sendSingleRange2() error {
+func (r *_http2Out_) _sendSingleRange2() error {
 	// TODO
 	return nil
 }
-func (r *_httpOut_) _sendMultiRanges2() error {
-	// TODO
-	return nil
-}
-
-func (r *_httpOut_) echoChain2() error {
+func (r *_http2Out_) _sendMultiRanges2() error {
 	// TODO
 	return nil
 }
 
-func (r *_httpOut_) addTrailer2(name []byte, value []byte) bool {
+func (r *_http2Out_) echoChain2() error {
+	// TODO
+	return nil
+}
+
+func (r *_http2Out_) addTrailer2(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *_httpOut_) trailer2(name []byte) (value []byte, ok bool) {
+func (r *_http2Out_) trailer2(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *_httpOut_) trailers2() []byte {
+func (r *_http2Out_) trailers2() []byte {
 	// TODO
 	return nil
 }
 
-func (r *_httpOut_) proxyPassBytes2(data []byte) error { return r.writeBytes2(data) }
+func (r *_http2Out_) proxyPassBytes2(data []byte) error { return r.writeBytes2(data) }
 
-func (r *_httpOut_) finalizeVague2() error {
+func (r *_http2Out_) finalizeVague2() error {
 	// TODO
 	if r.numTrailers == 1 { // no trailers
 	} else { // with trailers
@@ -863,28 +876,28 @@ func (r *_httpOut_) finalizeVague2() error {
 	return nil
 }
 
-func (r *_httpOut_) writeHeaders2() error { // used by echo and pass
+func (r *_http2Out_) writeHeaders2() error { // used by echo and pass
 	// TODO
 	r.fieldsEdge = 0 // now that headers are all sent, r.fields will be used by trailers (if any), so reset it.
 	return nil
 }
-func (r *_httpOut_) writePiece2(piece *Piece, vague bool) error {
+func (r *_http2Out_) writePiece2(piece *Piece, vague bool) error {
 	// TODO
 	return nil
 }
-func (r *_httpOut_) _writeTextPiece2(piece *Piece) error {
+func (r *_http2Out_) _writeTextPiece2(piece *Piece) error {
 	// TODO
 	return nil
 }
-func (r *_httpOut_) _writeFilePiece2(piece *Piece) error {
+func (r *_http2Out_) _writeFilePiece2(piece *Piece) error {
 	// TODO
 	return nil
 }
-func (r *_httpOut_) writeVector2() error {
+func (r *_http2Out_) writeVector2() error {
 	// TODO
 	return nil
 }
-func (r *_httpOut_) writeBytes2(data []byte) error {
+func (r *_http2Out_) writeBytes2(data []byte) error {
 	// TODO
 	return nil
 }

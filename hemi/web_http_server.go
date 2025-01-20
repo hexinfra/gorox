@@ -2576,7 +2576,7 @@ type Response interface { // for *server[1-3]Response
 
 // serverResponse_ is the parent for server[1-3]Response.
 type serverResponse_ struct { // outgoing. needs building
-	// Parent
+	// Mixins
 	_httpOut_ // outgoing http response
 	// Assocs
 	request Request // related request

@@ -236,7 +236,7 @@ func putBackend3Stream(backendStream *backend3Stream) {
 func (s *backend3Stream) onUse(conn *backend3Conn, quicStream *tcp2.Stream) { // for non-zeros
 	s._http3Stream_.onUse(conn, quicStream)
 
-	s.request.onUse(Version3)
+	s.request.onUse()
 	s.response.onUse(Version3)
 }
 func (s *backend3Stream) onEnd() { // for zeros
@@ -262,10 +262,21 @@ func (s *backend3Stream) Socket() backendSocket     { return nil } // TODO. See 
 type backend3Request struct { // outgoing. needs building
 	// Parent
 	backendRequest_
+	// Embeds
+	out3 _http3Out_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
+}
+
+func (r *backend3Request) onUse() {
+	r.backendRequest_.onUse(Version3)
+	r.out3.onUse(&r._httpOut_)
+}
+func (r *backend3Request) onEnd() {
+	r.backendRequest_.onEnd()
+	r.out3.onEnd()
 }
 
 func (r *backend3Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // :method = method, :path = uri
@@ -277,11 +288,13 @@ func (r *backend3Request) proxySetAuthority(hostname []byte, colonport []byte) b
 	return false
 }
 
-func (r *backend3Request) addHeader(name []byte, value []byte) bool   { return r.addHeader3(name, value) }
-func (r *backend3Request) header(name []byte) (value []byte, ok bool) { return r.header3(name) }
-func (r *backend3Request) hasHeader(name []byte) bool                 { return r.hasHeader3(name) }
-func (r *backend3Request) delHeader(name []byte) (deleted bool)       { return r.delHeader3(name) }
-func (r *backend3Request) delHeaderAt(i uint8)                        { r.delHeaderAt3(i) }
+func (r *backend3Request) addHeader(name []byte, value []byte) bool {
+	return r.out3.addHeader3(name, value)
+}
+func (r *backend3Request) header(name []byte) (value []byte, ok bool) { return r.out3.header3(name) }
+func (r *backend3Request) hasHeader(name []byte) bool                 { return r.out3.hasHeader3(name) }
+func (r *backend3Request) delHeader(name []byte) (deleted bool)       { return r.out3.delHeader3(name) }
+func (r *backend3Request) delHeaderAt(i uint8)                        { r.out3.delHeaderAt3(i) }
 
 func (r *backend3Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
@@ -292,18 +305,18 @@ func (r *backend3Request) proxyCopyCookies(foreReq Request) bool { // NOTE: DO N
 	return true
 }
 
-func (r *backend3Request) sendChain() error { return r.sendChain3() }
+func (r *backend3Request) sendChain() error { return r.out3.sendChain3() }
 
-func (r *backend3Request) echoHeaders() error { return r.writeHeaders3() }
-func (r *backend3Request) echoChain() error   { return r.echoChain3() }
+func (r *backend3Request) echoHeaders() error { return r.out3.writeHeaders3() }
+func (r *backend3Request) echoChain() error   { return r.out3.echoChain3() }
 
 func (r *backend3Request) addTrailer(name []byte, value []byte) bool {
-	return r.addTrailer3(name, value)
+	return r.out3.addTrailer3(name, value)
 }
-func (r *backend3Request) trailer(name []byte) (value []byte, ok bool) { return r.trailer3(name) }
+func (r *backend3Request) trailer(name []byte) (value []byte, ok bool) { return r.out3.trailer3(name) }
 
-func (r *backend3Request) proxyPassHeaders() error          { return r.writeHeaders3() }
-func (r *backend3Request) proxyPassBytes(data []byte) error { return r.proxyPassBytes3(data) }
+func (r *backend3Request) proxyPassHeaders() error          { return r.out3.writeHeaders3() }
+func (r *backend3Request) proxyPassBytes(data []byte) error { return r.out3.proxyPassBytes3(data) }
 
 func (r *backend3Request) finalizeHeaders() { // add at most 256 bytes
 	// TODO

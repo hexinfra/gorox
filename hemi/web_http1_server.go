@@ -143,7 +143,7 @@ func (s *server1Stream) onUse() { // for non-zeros
 	s._http1Stream_.onUse()
 
 	s.request.onUse(Version1_1)
-	s.response.onUse(Version1_1)
+	s.response.onUse()
 }
 func (s *server1Stream) onEnd() { // for zeros
 	s.response.onEnd()
@@ -786,10 +786,21 @@ func (r *server1Request) readContent() (data []byte, err error) { return r.readC
 type server1Response struct { // outgoing. needs building
 	// Parent
 	serverResponse_
+	// Embeds
+	out1 _http1Out_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
+}
+
+func (r *server1Response) onUse() {
+	r.serverResponse_.onUse(Version1_1)
+	r.out1.onUse(&r._httpOut_)
+}
+func (r *server1Response) onEnd() {
+	r.serverResponse_.onEnd()
+	r.out1.onEnd()
 }
 
 func (r *server1Response) control() []byte { // HTTP/1.1 NNN X
@@ -806,11 +817,13 @@ func (r *server1Response) control() []byte { // HTTP/1.1 NNN X
 	return start
 }
 
-func (r *server1Response) addHeader(name []byte, value []byte) bool   { return r.addHeader1(name, value) }
-func (r *server1Response) header(name []byte) (value []byte, ok bool) { return r.header1(name) }
-func (r *server1Response) hasHeader(name []byte) bool                 { return r.hasHeader1(name) }
-func (r *server1Response) delHeader(name []byte) (deleted bool)       { return r.delHeader1(name) }
-func (r *server1Response) delHeaderAt(i uint8)                        { r.delHeaderAt1(i) }
+func (r *server1Response) addHeader(name []byte, value []byte) bool {
+	return r.out1.addHeader1(name, value)
+}
+func (r *server1Response) header(name []byte) (value []byte, ok bool) { return r.out1.header1(name) }
+func (r *server1Response) hasHeader(name []byte) bool                 { return r.out1.hasHeader1(name) }
+func (r *server1Response) delHeader(name []byte) (deleted bool)       { return r.out1.delHeader1(name) }
+func (r *server1Response) delHeaderAt(i uint8)                        { r.out1.delHeaderAt1(i) }
 
 func (r *server1Response) AddHTTPSRedirection(authority string) bool {
 	headerSize := len(http1BytesLocationHTTPS)
@@ -828,7 +841,7 @@ func (r *server1Response) AddHTTPSRedirection(authority string) bool {
 			from += copy(r.fields[from:], authority)
 		}
 		from += copy(r.fields[from:], r.request.UnsafeURI())
-		r._addCRLFHeader1(from)
+		r.out1._addCRLFHeader1(from)
 		return true
 	} else {
 		return false
@@ -850,7 +863,7 @@ func (r *server1Response) AddHostnameRedirection(hostname string) bool {
 		from += copy(r.fields[from:], hostname) // this is almost always configured, not client provided
 		from += copy(r.fields[from:], colonport)
 		from += copy(r.fields[from:], r.request.UnsafeURI()) // original uri, won't split the response
-		r._addCRLFHeader1(from)
+		r.out1._addCRLFHeader1(from)
 		return true
 	} else {
 		return false
@@ -875,7 +888,7 @@ func (r *server1Response) AddDirectoryRedirection() bool {
 		if len(req.UnsafeQueryString()) > 0 {
 			from += copy(r.fields[from:], req.UnsafeQueryString())
 		}
-		r._addCRLFHeader1(from)
+		r.out1._addCRLFHeader1(from)
 		return true
 	} else {
 		return false
@@ -894,25 +907,25 @@ func (r *server1Response) AddCookie(cookie *Cookie) bool {
 		r.fields[from+1] = ' '
 		from += 2
 		from += cookie.writeTo(r.fields[from:])
-		r._addCRLFHeader1(from)
+		r.out1._addCRLFHeader1(from)
 		return true
 	} else {
 		return false
 	}
 }
 
-func (r *server1Response) sendChain() error { return r.sendChain1() }
+func (r *server1Response) sendChain() error { return r.out1.sendChain1() }
 
-func (r *server1Response) echoHeaders() error { return r.writeHeaders1() }
-func (r *server1Response) echoChain() error   { return r.echoChain1(r.request.IsHTTP1_1()) } // chunked only for HTTP/1.1
+func (r *server1Response) echoHeaders() error { return r.out1.writeHeaders1() }
+func (r *server1Response) echoChain() error   { return r.out1.echoChain1(r.request.IsHTTP1_1()) } // chunked only for HTTP/1.1
 
 func (r *server1Response) addTrailer(name []byte, value []byte) bool {
 	if r.request.VersionCode() == Version1_1 {
-		return r.addTrailer1(name, value)
+		return r.out1.addTrailer1(name, value)
 	}
 	return true // HTTP/1.0 doesn't support trailer.
 }
-func (r *server1Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer1(name) }
+func (r *server1Response) trailer(name []byte) (value []byte, ok bool) { return r.out1.trailer1(name) }
 
 func (r *server1Response) proxyPass1xx(backResp backendResponse) bool {
 	backResp.proxyDelHopHeaders()
@@ -927,16 +940,16 @@ func (r *server1Response) proxyPass1xx(backResp backendResponse) bool {
 	r.vector[1] = r.addedHeaders()
 	r.vector[2] = bytesCRLF
 	// 1xx response has no content.
-	if r.writeVector1() != nil {
+	if r.out1.writeVector1() != nil {
 		return false
 	}
 	// For next use.
 	r.onEnd()
-	r.onUse(Version1_1)
+	r.onUse()
 	return true
 }
-func (r *server1Response) proxyPassHeaders() error          { return r.writeHeaders1() }
-func (r *server1Response) proxyPassBytes(data []byte) error { return r.proxyPassBytes1(data) }
+func (r *server1Response) proxyPassHeaders() error          { return r.out1.writeHeaders1() }
+func (r *server1Response) proxyPassBytes(data []byte) error { return r.out1.proxyPassBytes1(data) }
 
 func (r *server1Response) finalizeHeaders() { // add at most 256 bytes
 	// date: Sun, 06 Nov 1994 08:49:37 GMT\r\n
@@ -958,7 +971,7 @@ func (r *server1Response) finalizeHeaders() { // add at most 256 bytes
 			if !r.isVague() { // content-length: >=0\r\n
 				sizeBuffer := r.stream.buffer256() // enough for content-length
 				n := i64ToDec(r.contentSize, sizeBuffer)
-				r._addFixedHeader1(bytesContentLength, sizeBuffer[:n])
+				r.out1._addFixedHeader1(bytesContentLength, sizeBuffer[:n])
 			} else if r.request.VersionCode() == Version1_1 { // transfer-encoding: chunked\r\n
 				r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
 			} else {
@@ -981,7 +994,7 @@ func (r *server1Response) finalizeHeaders() { // add at most 256 bytes
 }
 func (r *server1Response) finalizeVague() error {
 	if r.request.VersionCode() == Version1_1 {
-		return r.finalizeVague1()
+		return r.out1.finalizeVague1()
 	}
 	return nil // HTTP/1.0 does nothing.
 }

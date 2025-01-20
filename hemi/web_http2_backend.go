@@ -305,7 +305,7 @@ func putBackend2Stream(backendStream *backend2Stream) {
 func (s *backend2Stream) onUse(id uint32, conn *backend2Conn) { // for non-zeros
 	s._http2Stream_.onUse(id, conn)
 
-	s.request.onUse(Version2)
+	s.request.onUse()
 	s.response.onUse(Version2)
 }
 func (s *backend2Stream) onEnd() { // for zeros
@@ -331,10 +331,21 @@ func (s *backend2Stream) Socket() backendSocket     { return nil } // TODO. See 
 type backend2Request struct { // outgoing. needs building
 	// Parent
 	backendRequest_
+	// Embeds
+	out2 _http2Out_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
+}
+
+func (r *backend2Request) onUse() {
+	r.backendRequest_.onUse(Version2)
+	r.out2.onUse(&r._httpOut_)
+}
+func (r *backend2Request) onEnd() {
+	r.backendRequest_.onEnd()
+	r.out2.onEnd()
 }
 
 func (r *backend2Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // :method = method, :path = uri
@@ -346,11 +357,13 @@ func (r *backend2Request) proxySetAuthority(hostname []byte, colonport []byte) b
 	return false
 }
 
-func (r *backend2Request) addHeader(name []byte, value []byte) bool   { return r.addHeader2(name, value) }
-func (r *backend2Request) header(name []byte) (value []byte, ok bool) { return r.header2(name) }
-func (r *backend2Request) hasHeader(name []byte) bool                 { return r.hasHeader2(name) }
-func (r *backend2Request) delHeader(name []byte) (deleted bool)       { return r.delHeader2(name) }
-func (r *backend2Request) delHeaderAt(i uint8)                        { r.delHeaderAt2(i) }
+func (r *backend2Request) addHeader(name []byte, value []byte) bool {
+	return r.out2.addHeader2(name, value)
+}
+func (r *backend2Request) header(name []byte) (value []byte, ok bool) { return r.out2.header2(name) }
+func (r *backend2Request) hasHeader(name []byte) bool                 { return r.out2.hasHeader2(name) }
+func (r *backend2Request) delHeader(name []byte) (deleted bool)       { return r.out2.delHeader2(name) }
+func (r *backend2Request) delHeaderAt(i uint8)                        { r.out2.delHeaderAt2(i) }
 
 func (r *backend2Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
@@ -361,18 +374,18 @@ func (r *backend2Request) proxyCopyCookies(foreReq Request) bool { // NOTE: DO N
 	return true
 }
 
-func (r *backend2Request) sendChain() error { return r.sendChain2() }
+func (r *backend2Request) sendChain() error { return r.out2.sendChain2() }
 
-func (r *backend2Request) echoHeaders() error { return r.writeHeaders2() }
-func (r *backend2Request) echoChain() error   { return r.echoChain2() }
+func (r *backend2Request) echoHeaders() error { return r.out2.writeHeaders2() }
+func (r *backend2Request) echoChain() error   { return r.out2.echoChain2() }
 
 func (r *backend2Request) addTrailer(name []byte, value []byte) bool {
-	return r.addTrailer2(name, value)
+	return r.out2.addTrailer2(name, value)
 }
-func (r *backend2Request) trailer(name []byte) (value []byte, ok bool) { return r.trailer2(name) }
+func (r *backend2Request) trailer(name []byte) (value []byte, ok bool) { return r.out2.trailer2(name) }
 
-func (r *backend2Request) proxyPassHeaders() error          { return r.writeHeaders2() }
-func (r *backend2Request) proxyPassBytes(data []byte) error { return r.proxyPassBytes2(data) }
+func (r *backend2Request) proxyPassHeaders() error          { return r.out2.writeHeaders2() }
+func (r *backend2Request) proxyPassBytes(data []byte) error { return r.out2.proxyPassBytes2(data) }
 
 func (r *backend2Request) finalizeHeaders() { // add at most 256 bytes
 	// TODO

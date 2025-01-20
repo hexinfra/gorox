@@ -685,7 +685,7 @@ func (s *server2Stream) onUse(id uint32, conn *server2Conn, outWindow int32) { /
 	s.inWindow = _64K1 // max size of r.bodyWindow
 	s.outWindow = outWindow
 	s.request.onUse(Version2)
-	s.response.onUse(Version2)
+	s.response.onUse()
 }
 func (s *server2Stream) onEnd() { // for zeros
 	s.response.onEnd()
@@ -754,10 +754,21 @@ func (r *server2Request) joinTrailers(p []byte) bool {
 type server2Response struct { // outgoing. needs building
 	// Parent
 	serverResponse_
+	// Embeds
+	out2 _http2Out_
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
+}
+
+func (r *server2Response) onUse() {
+	r.serverResponse_.onUse(Version2)
+	r.out2.onUse(&r._httpOut_)
+}
+func (r *server2Response) onEnd() {
+	r.serverResponse_.onEnd()
+	r.out2.onEnd()
 }
 
 func (r *server2Response) control() []byte { // :status NNN
@@ -774,11 +785,13 @@ func (r *server2Response) control() []byte { // :status NNN
 	return start
 }
 
-func (r *server2Response) addHeader(name []byte, value []byte) bool   { return r.addHeader2(name, value) }
-func (r *server2Response) header(name []byte) (value []byte, ok bool) { return r.header2(name) }
-func (r *server2Response) hasHeader(name []byte) bool                 { return r.hasHeader2(name) }
-func (r *server2Response) delHeader(name []byte) (deleted bool)       { return r.delHeader2(name) }
-func (r *server2Response) delHeaderAt(i uint8)                        { r.delHeaderAt2(i) }
+func (r *server2Response) addHeader(name []byte, value []byte) bool {
+	return r.out2.addHeader2(name, value)
+}
+func (r *server2Response) header(name []byte) (value []byte, ok bool) { return r.out2.header2(name) }
+func (r *server2Response) hasHeader(name []byte) bool                 { return r.out2.hasHeader2(name) }
+func (r *server2Response) delHeader(name []byte) (deleted bool)       { return r.out2.delHeader2(name) }
+func (r *server2Response) delHeaderAt(i uint8)                        { r.out2.delHeaderAt2(i) }
 
 func (r *server2Response) AddHTTPSRedirection(authority string) bool {
 	// TODO
@@ -798,15 +811,15 @@ func (r *server2Response) AddCookie(cookie *Cookie) bool {
 	return false
 }
 
-func (r *server2Response) sendChain() error { return r.sendChain2() }
+func (r *server2Response) sendChain() error { return r.out2.sendChain2() }
 
-func (r *server2Response) echoHeaders() error { return r.writeHeaders2() }
-func (r *server2Response) echoChain() error   { return r.echoChain2() }
+func (r *server2Response) echoHeaders() error { return r.out2.writeHeaders2() }
+func (r *server2Response) echoChain() error   { return r.out2.echoChain2() }
 
 func (r *server2Response) addTrailer(name []byte, value []byte) bool {
-	return r.addTrailer2(name, value)
+	return r.out2.addTrailer2(name, value)
 }
-func (r *server2Response) trailer(name []byte) (value []byte, ok bool) { return r.trailer2(name) }
+func (r *server2Response) trailer(name []byte) (value []byte, ok bool) { return r.out2.trailer2(name) }
 
 func (r *server2Response) proxyPass1xx(backResp backendResponse) bool {
 	backResp.proxyDelHopHeaders()
@@ -819,11 +832,11 @@ func (r *server2Response) proxyPass1xx(backResp backendResponse) bool {
 	// TODO
 	// For next use.
 	r.onEnd()
-	r.onUse(Version2)
+	r.onUse()
 	return false
 }
-func (r *server2Response) proxyPassHeaders() error          { return r.writeHeaders2() }
-func (r *server2Response) proxyPassBytes(data []byte) error { return r.proxyPassBytes2(data) }
+func (r *server2Response) proxyPassHeaders() error          { return r.out2.writeHeaders2() }
+func (r *server2Response) proxyPassBytes(data []byte) error { return r.out2.proxyPassBytes2(data) }
 
 func (r *server2Response) finalizeHeaders() { // add at most 256 bytes
 	// TODO

@@ -30,10 +30,10 @@ type http1Conn interface {
 	writev(srcVec *net.Buffers) (int64, error)
 }
 
-// http1Conn_ is the parent for server1Conn and backend1Conn.
-type http1Conn_ struct {
+// _http1Conn_ is a mixin for server1Conn and backend1Conn.
+type _http1Conn_ struct {
 	// Parent
-	httpConn__
+	_httpConn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -43,23 +43,23 @@ type http1Conn_ struct {
 	// Conn states (zeros)
 }
 
-func (c *http1Conn_) onGet(id int64, stage *Stage, udsMode bool, tlsMode bool, netConn net.Conn, rawConn syscall.RawConn, readTimeout time.Duration, writeTimeout time.Duration) {
-	c.httpConn__.onGet(id, stage, udsMode, tlsMode, readTimeout, writeTimeout)
+func (c *_http1Conn_) onGet(id int64, stage *Stage, udsMode bool, tlsMode bool, netConn net.Conn, rawConn syscall.RawConn, readTimeout time.Duration, writeTimeout time.Duration) {
+	c._httpConn_.onGet(id, stage, udsMode, tlsMode, readTimeout, writeTimeout)
 
 	c.netConn = netConn
 	c.rawConn = rawConn
 	c.persistent = true
 }
-func (c *http1Conn_) onPut() {
+func (c *_http1Conn_) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
 
-	c.httpConn__.onPut()
+	c._httpConn_.onPut()
 }
 
-func (c *http1Conn_) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
+func (c *_http1Conn_) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
 
-func (c *http1Conn_) setReadDeadline() error {
+func (c *_http1Conn_) setReadDeadline() error {
 	if deadline := time.Now().Add(c.readTimeout); deadline.Sub(c.lastRead) >= time.Second {
 		if err := c.netConn.SetReadDeadline(deadline); err != nil {
 			return err
@@ -68,7 +68,7 @@ func (c *http1Conn_) setReadDeadline() error {
 	}
 	return nil
 }
-func (c *http1Conn_) setWriteDeadline() error {
+func (c *_http1Conn_) setWriteDeadline() error {
 	if deadline := time.Now().Add(c.writeTimeout); deadline.Sub(c.lastWrite) >= time.Second {
 		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
@@ -78,10 +78,10 @@ func (c *http1Conn_) setWriteDeadline() error {
 	return nil
 }
 
-func (c *http1Conn_) read(dst []byte) (int, error)              { return c.netConn.Read(dst) }
-func (c *http1Conn_) readFull(dst []byte) (int, error)          { return io.ReadFull(c.netConn, dst) }
-func (c *http1Conn_) write(src []byte) (int, error)             { return c.netConn.Write(src) }
-func (c *http1Conn_) writev(srcVec *net.Buffers) (int64, error) { return srcVec.WriteTo(c.netConn) }
+func (c *_http1Conn_) read(dst []byte) (int, error)              { return c.netConn.Read(dst) }
+func (c *_http1Conn_) readFull(dst []byte) (int, error)          { return io.ReadFull(c.netConn, dst) }
+func (c *_http1Conn_) write(src []byte) (int, error)             { return c.netConn.Write(src) }
+func (c *_http1Conn_) writev(srcVec *net.Buffers) (int64, error) { return srcVec.WriteTo(c.netConn) }
 
 // http1Stream collects shared methods between *server1Stream and *backend1Stream.
 type http1Stream interface {
@@ -90,10 +90,10 @@ type http1Stream interface {
 	// Methods
 }
 
-// http1Stream_ is the parent for server1Stream and backend1Stream.
-type http1Stream_[C http1Conn] struct {
+// _http1Stream_ is a mixin for server1Stream and backend1Stream.
+type _http1Stream_[C http1Conn] struct {
 	// Parent
-	httpStream__
+	_httpStream_
 	// Assocs
 	conn C // the http/1.x connection
 	// Stream states (stocks)
@@ -102,32 +102,32 @@ type http1Stream_[C http1Conn] struct {
 	// Stream states (zeros)
 }
 
-func (s *http1Stream_[C]) onUse() {
-	s.httpStream__.onUse()
+func (s *_http1Stream_[C]) onUse() {
+	s._httpStream_.onUse()
 }
-func (s *http1Stream_[C]) onEnd() {
-	s.httpStream__.onEnd()
+func (s *_http1Stream_[C]) onEnd() {
+	s._httpStream_.onEnd()
 }
 
-func (s *http1Stream_[C]) Conn() httpConn       { return s.conn }
-func (s *http1Stream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }
+func (s *_http1Stream_[C]) Conn() httpConn       { return s.conn }
+func (s *_http1Stream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }
 
-func (s *http1Stream_[C]) markBroken()    { s.conn.markBroken() }
-func (s *http1Stream_[C]) isBroken() bool { return s.conn.isBroken() }
+func (s *_http1Stream_[C]) markBroken()    { s.conn.markBroken() }
+func (s *_http1Stream_[C]) isBroken() bool { return s.conn.isBroken() }
 
-func (s *http1Stream_[C]) setReadDeadline() error  { return s.conn.setReadDeadline() }
-func (s *http1Stream_[C]) setWriteDeadline() error { return s.conn.setWriteDeadline() }
+func (s *_http1Stream_[C]) setReadDeadline() error  { return s.conn.setReadDeadline() }
+func (s *_http1Stream_[C]) setWriteDeadline() error { return s.conn.setWriteDeadline() }
 
-func (s *http1Stream_[C]) read(dst []byte) (int, error)     { return s.conn.read(dst) }
-func (s *http1Stream_[C]) readFull(dst []byte) (int, error) { return s.conn.readFull(dst) }
-func (s *http1Stream_[C]) write(src []byte) (int, error)    { return s.conn.write(src) }
-func (s *http1Stream_[C]) writev(srcVec *net.Buffers) (int64, error) {
+func (s *_http1Stream_[C]) read(dst []byte) (int, error)     { return s.conn.read(dst) }
+func (s *_http1Stream_[C]) readFull(dst []byte) (int, error) { return s.conn.readFull(dst) }
+func (s *_http1Stream_[C]) write(src []byte) (int, error)    { return s.conn.write(src) }
+func (s *_http1Stream_[C]) writev(srcVec *net.Buffers) (int64, error) {
 	return s.conn.writev(srcVec)
 }
 
 //////////////////////////////////////// HTTP/1.x incoming implementation ////////////////////////////////////////
 
-func (r *httpIn__) growHead1() bool { // HTTP/1.x is not a binary protocol, we don't know how many bytes to grow, so just grow.
+func (r *_httpIn_) growHead1() bool { // HTTP/1.x is not a binary protocol, we don't know how many bytes to grow, so just grow.
 	// Is r.input full?
 	if inputSize := int32(cap(r.input)); r.inputEdge == inputSize { // r.inputEdge reached end, so r.input is full
 		if inputSize == _16K { // max r.input size is 16K, we cannot use a larger input anymore
@@ -163,7 +163,7 @@ func (r *httpIn__) growHead1() bool { // HTTP/1.x is not a binary protocol, we d
 	}
 	return false
 }
-func (r *httpIn__) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS CRLF ) CRLF
+func (r *_httpIn_) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS CRLF ) CRLF
 	r.headers.from = uint8(len(r.primes))
 	r.headers.edge = r.headers.from
 	header := &r.mainPair
@@ -292,14 +292,14 @@ func (r *httpIn__) recvHeaders1() bool { // *( field-name ":" OWS field-value OW
 	return true
 }
 
-func (r *httpIn__) readContent1() (data []byte, err error) {
+func (r *_httpIn_) readContent1() (data []byte, err error) {
 	if r.contentSize >= 0 { // sized
 		return r._readSizedContent1()
 	} else { // vague. must be -2. -1 (no content) is excluded priorly
 		return r._readVagueContent1()
 	}
 }
-func (r *httpIn__) _readSizedContent1() ([]byte, error) {
+func (r *_httpIn_) _readSizedContent1() ([]byte, error) {
 	if r.receivedSize == r.contentSize { // content is entirely received
 		if r.bodyWindow == nil { // body window is not used. this means content is immediate
 			return r.contentText[:r.receivedSize], io.EOF
@@ -339,7 +339,7 @@ func (r *httpIn__) _readSizedContent1() ([]byte, error) {
 	}
 	return nil, err
 }
-func (r *httpIn__) _readVagueContent1() ([]byte, error) {
+func (r *_httpIn_) _readVagueContent1() ([]byte, error) {
 	if r.bodyWindow == nil {
 		r.bodyWindow = Get16K() // will be freed on ends. 16K is a tradeoff between performance and memory consumption, and can fit r.imme and trailers
 	}
@@ -495,7 +495,7 @@ badRead:
 	return nil, httpInBadChunk
 }
 
-func (r *httpIn__) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
+func (r *_httpIn_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
 	copy(r.bodyWindow, r.bodyWindow[r.chunkFore:r.chunkEdge]) // slide to start, we need a clean r.bodyWindow
 	r.chunkEdge -= r.chunkFore
 	r.chunkBack, r.chunkFore = 0, 0 // setting r.chunkBack = 0 means r.bodyWindow will not slide, so the whole trailers must fit in r.bodyWindow.
@@ -616,7 +616,7 @@ func (r *httpIn__) recvTrailers1() bool { // trailer-section = *( field-line CRL
 	r.chunkFore = r.elemFore // r.chunkFore must ends at the last '\n'
 	return true
 }
-func (r *httpIn__) growChunked1() bool { // HTTP/1.x is not a binary protocol, we don't know how many bytes to grow, so just grow.
+func (r *_httpIn_) growChunked1() bool { // HTTP/1.x is not a binary protocol, we don't know how many bytes to grow, so just grow.
 	if r.chunkEdge == int32(cap(r.bodyWindow)) && r.chunkBack == 0 { // r.bodyWindow is full and we can't slide
 		return false // element is too large
 	}
@@ -647,7 +647,7 @@ func (r *httpIn__) growChunked1() bool { // HTTP/1.x is not a binary protocol, w
 
 //////////////////////////////////////// HTTP/1.x outgoing implementation ////////////////////////////////////////
 
-func (r *httpOut__) addHeader1(name []byte, value []byte) bool {
+func (r *_httpOut_) addHeader1(name []byte, value []byte) bool {
 	if len(name) == 0 {
 		return false
 	}
@@ -664,7 +664,7 @@ func (r *httpOut__) addHeader1(name []byte, value []byte) bool {
 		return false
 	}
 }
-func (r *httpOut__) header1(name []byte) (value []byte, ok bool) {
+func (r *_httpOut_) header1(name []byte) (value []byte, ok bool) {
 	if r.numHeaders > 1 && len(name) > 0 {
 		from := uint16(0)
 		for i := uint8(1); i < r.numHeaders; i++ {
@@ -678,7 +678,7 @@ func (r *httpOut__) header1(name []byte) (value []byte, ok bool) {
 	}
 	return
 }
-func (r *httpOut__) hasHeader1(name []byte) bool {
+func (r *_httpOut_) hasHeader1(name []byte) bool {
 	if r.numHeaders > 1 && len(name) > 0 {
 		from := uint16(0)
 		for i := uint8(1); i < r.numHeaders; i++ {
@@ -692,7 +692,7 @@ func (r *httpOut__) hasHeader1(name []byte) bool {
 	}
 	return false
 }
-func (r *httpOut__) delHeader1(name []byte) (deleted bool) {
+func (r *_httpOut_) delHeader1(name []byte) (deleted bool) {
 	from := uint16(0)
 	for i := uint8(1); i < r.numHeaders; {
 		edge := r.edges[i]
@@ -712,7 +712,7 @@ func (r *httpOut__) delHeader1(name []byte) (deleted bool) {
 	}
 	return
 }
-func (r *httpOut__) delHeaderAt1(i uint8) {
+func (r *_httpOut_) delHeaderAt1(i uint8) {
 	if i == 0 {
 		BugExitln("delHeaderAt1: i == 0 which must not happen")
 	}
@@ -726,13 +726,13 @@ func (r *httpOut__) delHeaderAt1(i uint8) {
 	r.fieldsEdge -= size
 	r.numHeaders--
 }
-func (r *httpOut__) _addCRLFHeader1(from int) {
+func (r *_httpOut_) _addCRLFHeader1(from int) {
 	r.fields[from] = '\r'
 	r.fields[from+1] = '\n'
 	r.edges[r.numHeaders] = uint16(from + 2)
 	r.numHeaders++
 }
-func (r *httpOut__) _addFixedHeader1(name []byte, value []byte) { // used by finalizeHeaders
+func (r *_httpOut_) _addFixedHeader1(name []byte, value []byte) { // used by finalizeHeaders
 	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], name))
 	r.fields[r.fieldsEdge] = ':'
 	r.fields[r.fieldsEdge+1] = ' '
@@ -743,7 +743,7 @@ func (r *httpOut__) _addFixedHeader1(name []byte, value []byte) { // used by fin
 	r.fieldsEdge += 2
 }
 
-func (r *httpOut__) sendChain1() error { // TODO: if conn is TLS, don't use writev as it uses many Write() which might be slower than make+copy+write.
+func (r *_httpOut_) sendChain1() error { // TODO: if conn is TLS, don't use writev as it uses many Write() which might be slower than make+copy+write.
 	return r._sendEntireChain1()
 	// TODO
 	numRanges := len(r.contentRanges)
@@ -760,7 +760,7 @@ func (r *httpOut__) sendChain1() error { // TODO: if conn is TLS, don't use writ
 		return r._sendMultiRanges1()
 	}
 }
-func (r *httpOut__) _sendEntireChain1() error {
+func (r *_httpOut_) _sendEntireChain1() error {
 	r.outMessage.finalizeHeaders()
 	vector := r._prepareVector1() // waiting to write
 	if DebugLevel() >= 2 {
@@ -814,7 +814,7 @@ func (r *httpOut__) _sendEntireChain1() error {
 	}
 	return nil
 }
-func (r *httpOut__) _sendSingleRange1() error {
+func (r *_httpOut_) _sendSingleRange1() error {
 	r.AddContentType(r.rangeType)
 	valueBuffer := r.stream.buffer256()
 	n := copy(valueBuffer, "bytes ")
@@ -830,7 +830,7 @@ func (r *httpOut__) _sendSingleRange1() error {
 	//return r._sendEntireChain1()
 	return nil
 }
-func (r *httpOut__) _sendMultiRanges1() error {
+func (r *_httpOut_) _sendMultiRanges1() error {
 	valueBuffer := r.stream.buffer256()
 	n := copy(valueBuffer, "multipart/byteranges; boundary=")
 	n += copy(valueBuffer[n:], "xsd3lxT9b5c")
@@ -838,7 +838,7 @@ func (r *httpOut__) _sendMultiRanges1() error {
 	// TODO
 	return nil
 }
-func (r *httpOut__) _prepareVector1() [][]byte {
+func (r *_httpOut_) _prepareVector1() [][]byte {
 	var vector [][]byte // waiting for write
 	if r.forbidContent {
 		vector = r.fixedVector[0:3]
@@ -854,7 +854,7 @@ func (r *httpOut__) _prepareVector1() [][]byte {
 	return vector
 }
 
-func (r *httpOut__) echoChain1(inChunked bool) error { // TODO: coalesce text pieces?
+func (r *_httpOut_) echoChain1(inChunked bool) error { // TODO: coalesce text pieces?
 	for piece := r.chain.head; piece != nil; piece = piece.next {
 		if err := r.writePiece1(piece, inChunked); err != nil {
 			return err
@@ -863,7 +863,7 @@ func (r *httpOut__) echoChain1(inChunked bool) error { // TODO: coalesce text pi
 	return nil
 }
 
-func (r *httpOut__) addTrailer1(name []byte, value []byte) bool {
+func (r *_httpOut_) addTrailer1(name []byte, value []byte) bool {
 	if len(name) == 0 {
 		return false
 	}
@@ -883,7 +883,7 @@ func (r *httpOut__) addTrailer1(name []byte, value []byte) bool {
 		return false
 	}
 }
-func (r *httpOut__) trailer1(name []byte) (value []byte, ok bool) {
+func (r *_httpOut_) trailer1(name []byte) (value []byte, ok bool) {
 	if r.numTrailers > 1 && len(name) > 0 {
 		from := uint16(0)
 		for i := uint8(1); i < r.numTrailers; i++ {
@@ -897,11 +897,11 @@ func (r *httpOut__) trailer1(name []byte) (value []byte, ok bool) {
 	}
 	return
 }
-func (r *httpOut__) trailers1() []byte { return r.fields[0:r.fieldsEdge] } // Headers and trailers are not manipulated at the same time, so after headers is sent, r.fields is used by trailers.
+func (r *_httpOut_) trailers1() []byte { return r.fields[0:r.fieldsEdge] } // Headers and trailers are not manipulated at the same time, so after headers is sent, r.fields is used by trailers.
 
-func (r *httpOut__) proxyPassBytes1(data []byte) error { return r.writeBytes1(data) }
+func (r *_httpOut_) proxyPassBytes1(data []byte) error { return r.writeBytes1(data) }
 
-func (r *httpOut__) finalizeVague1() error {
+func (r *_httpOut_) finalizeVague1() error {
 	if r.numTrailers == 1 { // no trailers
 		return r.writeBytes1(http1BytesZeroCRLFCRLF) // 0\r\n\r\n
 	} else { // with trailers
@@ -913,7 +913,7 @@ func (r *httpOut__) finalizeVague1() error {
 	}
 }
 
-func (r *httpOut__) writeHeaders1() error { // used by echo and pass
+func (r *_httpOut_) writeHeaders1() error { // used by echo and pass
 	r.outMessage.finalizeHeaders()
 	r.vector = r.fixedVector[0:3]
 	r.vector[0] = r.outMessage.control()
@@ -933,7 +933,7 @@ func (r *httpOut__) writeHeaders1() error { // used by echo and pass
 	r.fieldsEdge = 0 // now that headers are all sent, r.fields will be used by trailers (if any), so reset it.
 	return nil
 }
-func (r *httpOut__) writePiece1(piece *Piece, inChunked bool) error {
+func (r *_httpOut_) writePiece1(piece *Piece, inChunked bool) error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
@@ -943,7 +943,7 @@ func (r *httpOut__) writePiece1(piece *Piece, inChunked bool) error {
 		return r._writeFilePiece1(piece, inChunked)
 	}
 }
-func (r *httpOut__) _writeTextPiece1(piece *Piece, inChunked bool) error {
+func (r *_httpOut_) _writeTextPiece1(piece *Piece, inChunked bool) error {
 	if inChunked { // HTTP/1.1 chunked data
 		sizeBuffer := r.stream.buffer256() // buffer is enough for chunk size
 		n := i64ToHex(piece.size, sizeBuffer)
@@ -959,7 +959,7 @@ func (r *httpOut__) _writeTextPiece1(piece *Piece, inChunked bool) error {
 		return r.writeBytes1(piece.Text())
 	}
 }
-func (r *httpOut__) _writeFilePiece1(piece *Piece, inChunked bool) error {
+func (r *_httpOut_) _writeFilePiece1(piece *Piece, inChunked bool) error {
 	// file piece. currently we don't use sendfile(2).
 	buffer := Get16K() // 16K is a tradeoff between performance and memory consumption.
 	defer PutNK(buffer)
@@ -1004,7 +1004,7 @@ func (r *httpOut__) _writeFilePiece1(piece *Piece, inChunked bool) error {
 		}
 	}
 }
-func (r *httpOut__) writeVector1() error {
+func (r *_httpOut_) writeVector1() error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
@@ -1021,7 +1021,7 @@ func (r *httpOut__) writeVector1() error {
 	_, err := r.stream.writev(&r.vector)
 	return r._longTimeCheck(err)
 }
-func (r *httpOut__) writeBytes1(data []byte) error {
+func (r *_httpOut_) writeBytes1(data []byte) error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
@@ -1041,6 +1041,6 @@ func (r *httpOut__) writeBytes1(data []byte) error {
 
 //////////////////////////////////////// HTTP/1.x webSocket implementation ////////////////////////////////////////
 
-func (s *httpSocket__) todo1() {
+func (s *_httpSocket_) todo1() {
 	// TODO
 }

@@ -34,15 +34,15 @@ func (h *faviconHandlet) OnPrepare()   {}
 
 func (h *faviconHandlet) Handle(req Request, resp Response) (handled bool) {
 	const asOrigin = true
-	if status, normal := req.EvalPreconditions(faviconTime, etagBytes, asOrigin); normal {
+	if status, normal := req.EvalPreconditions(faviconTime, faviconETagBytes, asOrigin); normal {
 		resp.SetLastModified(faviconTime)
-		resp.AddHeader("etag", etagString)
+		resp.AddHeader("etag", faviconETagString)
 		resp.AddContentType("image/png")
 		resp.SendBytes(faviconBytes)
 	} else { // not modified, or precondition failed
 		resp.SetStatus(status)
 		if status == StatusNotModified {
-			resp.AddHeader("etag", etagString)
+			resp.AddHeader("etag", faviconETagString)
 		}
 		resp.SendBytes(nil)
 	}
@@ -50,9 +50,9 @@ func (h *faviconHandlet) Handle(req Request, resp Response) (handled bool) {
 }
 
 var (
-	faviconTime = int64(1234567890)
-	etagString  = `"favi-1134"`
-	etagBytes   = []byte(etagString)
+	faviconTime       = int64(1234567890)
+	faviconETagString = `"favi-1134"`
+	faviconETagBytes  = []byte(faviconETagString)
 )
 
 var faviconBytes = []byte{

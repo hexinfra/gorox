@@ -127,7 +127,7 @@ func (g *http3Gate) justClose(quicConn *tcp2.Conn) {
 // server3Conn is the server-side HTTP/3 connection.
 type server3Conn struct {
 	// Parent
-	http3Conn_
+	_http3Conn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -156,7 +156,7 @@ func putServer3Conn(serverConn *server3Conn) {
 }
 
 func (c *server3Conn) onGet(id int64, gate *http3Gate, quicConn *tcp2.Conn) {
-	c.http3Conn_.onGet(id, gate.Stage(), gate.UDSMode(), gate.TLSMode(), quicConn, gate.ReadTimeout(), gate.WriteTimeout())
+	c._http3Conn_.onGet(id, gate.Stage(), gate.UDSMode(), gate.TLSMode(), quicConn, gate.ReadTimeout(), gate.WriteTimeout())
 
 	c.gate = gate
 }
@@ -164,7 +164,7 @@ func (c *server3Conn) onPut() {
 	c._server3Conn0 = _server3Conn0{}
 	c.gate = nil
 
-	c.http3Conn_.onPut()
+	c._http3Conn_.onPut()
 }
 
 func (c *server3Conn) manager() { // runner
@@ -179,13 +179,13 @@ func (c *server3Conn) receiver() { // runner
 func (c *server3Conn) closeConn() {
 	c.quicConn.Close()
 	c.gate.DecConcurrentConns()
-	c.gate.DecSub()
+	c.gate.DecSub() // conn
 }
 
 // server3Stream is the server-side HTTP/3 stream.
 type server3Stream struct {
 	// Parent
-	http3Stream_[*server3Conn]
+	_http3Stream_[*server3Conn]
 	// Assocs
 	request  server3Request  // the http/3 request.
 	response server3Response // the http/3 response.
@@ -226,7 +226,7 @@ func putServer3Stream(serverStream *server3Stream) {
 }
 
 func (s *server3Stream) onUse(conn *server3Conn, quicStream *tcp2.Stream) { // for non-zeros
-	s.http3Stream_.onUse(conn, quicStream)
+	s._http3Stream_.onUse(conn, quicStream)
 
 	s.request.onUse(Version3)
 	s.response.onUse(Version3)
@@ -240,8 +240,8 @@ func (s *server3Stream) onEnd() { // for zeros
 	}
 	s._server3Stream0 = _server3Stream0{}
 
-	s.http3Stream_.onEnd()
-	s.conn = nil // we can't do this in http3Stream_.onEnd() due to Go's limit, so put here
+	s._http3Stream_.onEnd()
+	s.conn = nil // we can't do this in _http3Stream_.onEnd() due to Go's limit, so put here
 }
 
 func (s *server3Stream) Holder() httpHolder { return s.conn.gate }

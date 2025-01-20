@@ -127,9 +127,9 @@ func (n *http3Node) closeFree() int {
 // backend3Conn
 type backend3Conn struct {
 	// Parent
-	http3Conn_
+	_http3Conn_
 	// Mixins
-	_backendConn_
+	backendConn_
 	// Assocs
 	next *backend3Conn // the linked-list
 	// Conn states (stocks)
@@ -160,8 +160,8 @@ func putBackend3Conn(backendConn *backend3Conn) {
 }
 
 func (c *backend3Conn) onGet(id int64, node *http3Node, quicConn *tcp2.Conn) {
-	c.http3Conn_.onGet(id, node.Stage(), node.UDSMode(), node.TLSMode(), quicConn, node.ReadTimeout(), node.WriteTimeout())
-	c._backendConn_.onGet(time.Now().Add(node.idleTimeout))
+	c._http3Conn_.onGet(id, node.Stage(), node.UDSMode(), node.TLSMode(), quicConn, node.ReadTimeout(), node.WriteTimeout())
+	c.backendConn_.onGet(time.Now().Add(node.idleTimeout))
 
 	c.node = node
 }
@@ -169,8 +169,8 @@ func (c *backend3Conn) onPut() {
 	c._backend3Conn0 = _backend3Conn0{}
 	c.node = nil
 
-	c._backendConn_.onPut()
-	c.http3Conn_.onPut()
+	c.backendConn_.onPut()
+	c._http3Conn_.onPut()
 }
 
 func (c *backend3Conn) ranOut() bool {
@@ -196,7 +196,7 @@ func (c *backend3Conn) Close() error {
 // backend3Stream
 type backend3Stream struct {
 	// Parent
-	http3Stream_[*backend3Conn]
+	_http3Stream_[*backend3Conn]
 	// Assocs
 	request  backend3Request
 	response backend3Response
@@ -234,7 +234,7 @@ func putBackend3Stream(backendStream *backend3Stream) {
 }
 
 func (s *backend3Stream) onUse(conn *backend3Conn, quicStream *tcp2.Stream) { // for non-zeros
-	s.http3Stream_.onUse(conn, quicStream)
+	s._http3Stream_.onUse(conn, quicStream)
 
 	s.request.onUse(Version3)
 	s.response.onUse(Version3)
@@ -248,8 +248,8 @@ func (s *backend3Stream) onEnd() { // for zeros
 	}
 	s._backend3Stream0 = _backend3Stream0{}
 
-	s.http3Stream_.onEnd()
-	s.conn = nil // we can't do this in http3Stream_.onEnd() due to Go's limit, so put here
+	s._http3Stream_.onEnd()
+	s.conn = nil // we can't do this in _http3Stream_.onEnd() due to Go's limit, so put here
 }
 
 func (s *backend3Stream) Holder() httpHolder { return s.conn.node }

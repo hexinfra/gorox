@@ -288,7 +288,7 @@ func (g *httpxGate) justClose(netConn net.Conn) {
 // server2Conn is the server-side HTTP/2 connection.
 type server2Conn struct {
 	// Parent
-	http2Conn_
+	_http2Conn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -321,7 +321,7 @@ func putServer2Conn(serverConn *server2Conn) {
 }
 
 func (c *server2Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.http2Conn_.onGet(id, gate.Stage(), gate.UDSMode(), gate.TLSMode(), netConn, rawConn, gate.ReadTimeout(), gate.WriteTimeout())
+	c._http2Conn_.onGet(id, gate.Stage(), gate.UDSMode(), gate.TLSMode(), netConn, rawConn, gate.ReadTimeout(), gate.WriteTimeout())
 
 	c.gate = gate
 }
@@ -329,7 +329,7 @@ func (c *server2Conn) onPut() {
 	c._server2Conn0 = _server2Conn0{}
 	c.gate = nil
 
-	c.http2Conn_.onPut()
+	c._http2Conn_.onPut()
 }
 
 func (c *server2Conn) manager() { // runner
@@ -633,13 +633,13 @@ func (c *server2Conn) closeConn() {
 	}
 	c.netConn.Close()
 	c.gate.DecConcurrentConns()
-	c.gate.DecSub()
+	c.gate.DecSub() // conn
 }
 
 // server2Stream is the server-side HTTP/2 stream.
 type server2Stream struct {
 	// Parent
-	http2Stream_[*server2Conn]
+	_http2Stream_[*server2Conn]
 	// Assocs
 	request  server2Request  // the http/2 request.
 	response server2Response // the http/2 response.
@@ -680,7 +680,7 @@ func putServer2Stream(serverStream *server2Stream) {
 }
 
 func (s *server2Stream) onUse(id uint32, conn *server2Conn, outWindow int32) { // for non-zeros
-	s.http2Stream_.onUse(id, conn)
+	s._http2Stream_.onUse(id, conn)
 
 	s.inWindow = _64K1 // max size of r.bodyWindow
 	s.outWindow = outWindow
@@ -696,8 +696,8 @@ func (s *server2Stream) onEnd() { // for zeros
 	}
 	s._server2Stream0 = _server2Stream0{}
 
-	s.http2Stream_.onEnd()
-	s.conn = nil // we can't do this in http2Stream_.onEnd() due to Go's limit, so put here
+	s._http2Stream_.onEnd()
+	s.conn = nil // we can't do this in _http2Stream_.onEnd() due to Go's limit, so put here
 }
 
 func (s *server2Stream) Holder() httpHolder { return s.conn.gate }

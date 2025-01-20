@@ -179,5 +179,5 @@ func (c *socksConn) TLSMode() bool { return c.gate.TLSMode() }
 
 func (c *socksConn) Close() {
 	c.tcpConn.Close()
-	c.gate.DecSub()
+	c.gate.DecSub() // conn
 }

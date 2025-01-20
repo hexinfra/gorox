@@ -171,5 +171,5 @@ func (c *echoConn) TLSMode() bool { return c.gate.TLSMode() }
 
 func (c *echoConn) closeConn() {
 	c.tcpConn.Close()
-	c.gate.DecSub()
+	c.gate.DecSub() // conn
 }

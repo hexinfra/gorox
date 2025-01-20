@@ -269,9 +269,9 @@ func (n *http1Node) closeFree() int {
 // backend1Conn is the backend-side HTTP/1.x connection.
 type backend1Conn struct {
 	// Parent
-	http1Conn_
+	_http1Conn_
 	// Mixins
-	_backendConn_
+	backendConn_
 	// Assocs
 	next   *backend1Conn  // the linked-list
 	stream backend1Stream // an http/1.x connection has exactly one stream
@@ -308,16 +308,16 @@ func putBackend1Conn(backendConn *backend1Conn) {
 }
 
 func (c *backend1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.http1Conn_.onGet(id, node.Stage(), node.UDSMode(), node.TLSMode(), netConn, rawConn, node.ReadTimeout(), node.WriteTimeout())
-	c._backendConn_.onGet(time.Now().Add(node.idleTimeout))
+	c._http1Conn_.onGet(id, node.Stage(), node.UDSMode(), node.TLSMode(), netConn, rawConn, node.ReadTimeout(), node.WriteTimeout())
+	c.backendConn_.onGet(time.Now().Add(node.idleTimeout))
 
 	c.node = node
 }
 func (c *backend1Conn) onPut() {
 	c.node = nil
 
-	c._backendConn_.onPut()
-	c.http1Conn_.onPut()
+	c.backendConn_.onPut()
+	c._http1Conn_.onPut()
 }
 
 func (c *backend1Conn) ranOut() bool {
@@ -341,7 +341,7 @@ func (c *backend1Conn) Close() error {
 // backend1Stream is the backend-side HTTP/1.x stream.
 type backend1Stream struct {
 	// Parent
-	http1Stream_[*backend1Conn]
+	_http1Stream_[*backend1Conn]
 	// Assocs
 	request  backend1Request  // the backend-side http/1.x request
 	response backend1Response // the backend-side http/1.x response
@@ -353,7 +353,7 @@ type backend1Stream struct {
 }
 
 func (s *backend1Stream) onUse() { // for non-zeros
-	s.http1Stream_.onUse()
+	s._http1Stream_.onUse()
 
 	s.request.onUse(Version1_1)
 	s.response.onUse(Version1_1)
@@ -366,7 +366,7 @@ func (s *backend1Stream) onEnd() { // for zeros
 		s.socket = nil
 	}
 
-	s.http1Stream_.onEnd()
+	s._http1Stream_.onEnd()
 }
 
 func (s *backend1Stream) Holder() httpHolder { return s.conn.node }

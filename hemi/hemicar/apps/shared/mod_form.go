@@ -11,21 +11,21 @@ import (
 	. "github.com/hexinfra/gorox/hemi"
 )
 
-func (h *sharedHandlet) GET_form_urlencoded(req Request, resp Response) {
+func (h *sharedHandlet) GET_form_urlencoded(req ServerRequest, resp ServerResponse) {
 	resp.Send(`<form action="/form?a=aa&b=bb" method="post">
 	<input type="text" name="title">
 	<textarea name="content"></textarea>
 	<input type="submit" value="submit">
 	</form>`)
 }
-func (h *sharedHandlet) GET_form_multipart(req Request, resp Response) {
+func (h *sharedHandlet) GET_form_multipart(req ServerRequest, resp ServerResponse) {
 	resp.Send(`<form action="/form?a=aa&b=bb" method="post" enctype="multipart/form-data">
 	<input type="text" name="title">
 	<textarea name="content"></textarea>
 	<input type="submit" value="submit">
 	</form>`)
 }
-func (h *sharedHandlet) POST_form(req Request, resp Response) {
+func (h *sharedHandlet) POST_form(req ServerRequest, resp ServerResponse) {
 	a := req.Q("a")
 	b := req.Q("b")
 	title := req.F("title")

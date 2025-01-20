@@ -60,33 +60,33 @@ func (r *gzipReviser) OnPrepare() {
 
 func (r *gzipReviser) Rank() int8 { return RankGzip }
 
-func (r *gzipReviser) BeforeRecv(req Request, resp Response) { // sized
+func (r *gzipReviser) BeforeRecv(req ServerRequest, resp ServerResponse) { // sized
 	// TODO
 	return
 }
-func (r *gzipReviser) OnInput(req Request, resp Response, input *Chain) bool {
+func (r *gzipReviser) OnInput(req ServerRequest, resp ServerResponse, input *Chain) bool {
 	// TODO
 	return true
 }
-func (r *gzipReviser) BeforeDraw(req Request, resp Response) { // vague
+func (r *gzipReviser) BeforeDraw(req ServerRequest, resp ServerResponse) { // vague
 	// TODO
 	return
 }
-func (r *gzipReviser) FinishDraw(req Request, resp Response) { // vague
+func (r *gzipReviser) FinishDraw(req ServerRequest, resp ServerResponse) { // vague
 	// TODO
 	return
 }
 
-func (r *gzipReviser) BeforeSend(req Request, resp Response) { // sized
+func (r *gzipReviser) BeforeSend(req ServerRequest, resp ServerResponse) { // sized
 	// TODO
 }
-func (r *gzipReviser) BeforeEcho(req Request, resp Response) { // vague
+func (r *gzipReviser) BeforeEcho(req ServerRequest, resp ServerResponse) { // vague
 	// TODO
 }
-func (r *gzipReviser) OnOutput(req Request, resp Response, output *Chain) {
+func (r *gzipReviser) OnOutput(req ServerRequest, resp ServerResponse, output *Chain) {
 	// TODO
 }
-func (r *gzipReviser) FinishEcho(req Request, resp Response) { // vague
+func (r *gzipReviser) FinishEcho(req ServerRequest, resp ServerResponse) { // vague
 	// TODO
 }
 

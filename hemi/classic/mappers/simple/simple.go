@@ -48,7 +48,7 @@ func (m *simpleMapper) DELETE(path string, handle Handle) {
 	m.deletes[path] = handle
 }
 
-func (m *simpleMapper) FindHandle(req Request) Handle {
+func (m *simpleMapper) FindHandle(req ServerRequest) Handle {
 	// TODO
 	path := req.Path()
 	if handle, ok := m.mapping[path]; ok {
@@ -65,7 +65,7 @@ func (m *simpleMapper) FindHandle(req Request) Handle {
 		return nil
 	}
 }
-func (m *simpleMapper) HandleName(req Request) string {
+func (m *simpleMapper) HandleName(req ServerRequest) string {
 	method := req.UnsafeMethod()
 	path := req.UnsafePath() // always starts with '/'
 	name := req.UnsafeMake(len(method) + len(path))

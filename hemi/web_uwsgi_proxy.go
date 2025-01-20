@@ -82,7 +82,7 @@ func (h *uwsgiProxy) OnPrepare() {
 func (h *uwsgiProxy) IsProxy() bool { return true }
 func (h *uwsgiProxy) IsCache() bool { return h.hcache != nil }
 
-func (h *uwsgiProxy) Handle(httpReq Request, httpResp Response) (handled bool) {
+func (h *uwsgiProxy) Handle(httpReq ServerRequest, httpResp ServerResponse) (handled bool) {
 	// TODO: implementation
 	httpResp.Send("uwsgi")
 	return true

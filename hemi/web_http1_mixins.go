@@ -780,7 +780,7 @@ func (r *_http1Out_) sendChain1() error { // TODO: if conn is TLS, don't use wri
 	}
 	// Partial content.
 	if !r.asRequest { // as response
-		r.outMessage.(Response).SetStatus(StatusPartialContent)
+		r.outMessage.(ServerResponse).SetStatus(StatusPartialContent)
 	}
 	if numRanges == 1 {
 		return r._sendSingleRange1()

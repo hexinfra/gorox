@@ -99,7 +99,7 @@ func (h *fcgiProxy) OnPrepare() {
 func (h *fcgiProxy) IsProxy() bool { return true }
 func (h *fcgiProxy) IsCache() bool { return h.hcache != nil }
 
-func (h *fcgiProxy) Handle(httpReq Request, httpResp Response) (handled bool) {
+func (h *fcgiProxy) Handle(httpReq ServerRequest, httpResp ServerResponse) (handled bool) {
 	handled = true
 
 	var httpContent any // nil, []byte, tempFile

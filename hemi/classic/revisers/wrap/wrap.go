@@ -52,37 +52,37 @@ func (r *wrapReviser) OnPrepare() {
 
 func (r *wrapReviser) Rank() int8 { return r.rank }
 
-func (r *wrapReviser) BeforeRecv(req Request, resp Response) { // sized
+func (r *wrapReviser) BeforeRecv(req ServerRequest, resp ServerResponse) { // sized
 	// TODO
 }
-func (r *wrapReviser) BeforeDraw(req Request, resp Response) { // vague
+func (r *wrapReviser) BeforeDraw(req ServerRequest, resp ServerResponse) { // vague
 	// TODO
 }
-func (r *wrapReviser) OnInput(req Request, resp Response, input *Chain) bool {
+func (r *wrapReviser) OnInput(req ServerRequest, resp ServerResponse, input *Chain) bool {
 	// TODO
 	return true
 }
-func (r *wrapReviser) FinishDraw(req Request, resp Response) { // vague
+func (r *wrapReviser) FinishDraw(req ServerRequest, resp ServerResponse) { // vague
 	// TODO
 }
 
-func (r *wrapReviser) BeforeSend(req Request, resp Response) { // sized
+func (r *wrapReviser) BeforeSend(req ServerRequest, resp ServerResponse) { // sized
 	// TODO
 }
-func (r *wrapReviser) BeforeEcho(req Request, resp Response) { // vague
+func (r *wrapReviser) BeforeEcho(req ServerRequest, resp ServerResponse) { // vague
 	// TODO
 	if DebugLevel() >= 2 {
 		Println("BeforeEcho")
 	}
 }
-func (r *wrapReviser) OnOutput(req Request, resp Response, output *Chain) {
+func (r *wrapReviser) OnOutput(req ServerRequest, resp ServerResponse, output *Chain) {
 	if DebugLevel() >= 2 {
 		piece := GetPiece()
 		piece.SetText([]byte("d"))
 		output.PushTail(piece)
 	}
 }
-func (r *wrapReviser) FinishEcho(req Request, resp Response) { // vague
+func (r *wrapReviser) FinishEcho(req ServerRequest, resp ServerResponse) { // vague
 	// TODO
 	if DebugLevel() >= 2 {
 		Println("FinishEcho")

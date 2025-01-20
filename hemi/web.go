@@ -381,7 +381,7 @@ func (a *Webapp) Logf(format string, args ...any) {
 	}
 }
 
-func (a *Webapp) dispatchExchan(req Request, resp Response) {
+func (a *Webapp) dispatchExchan(req ServerRequest, resp ServerResponse) {
 	req.makeAbsPath() // for fs check rules, if any
 	for _, rule := range a.rules {
 		if !rule.isMatch(req) {
@@ -397,7 +397,7 @@ func (a *Webapp) dispatchExchan(req Request, resp Response) {
 	// If we reach here, it means the exchan is not handled by any rules or handlets in this webapp.
 	resp.SendNotFound(a.text404)
 }
-func (a *Webapp) dispatchSocket(req Request, sock Socket) {
+func (a *Webapp) dispatchSocket(req ServerRequest, sock ServerSocket) {
 	req.makeAbsPath() // for fs check rules, if any
 	for _, rule := range a.rules {
 		if !rule.isMatch(req) {
@@ -432,7 +432,7 @@ type Rule struct {
 	varName    string   // the variable name
 	patterns   [][]byte // condition patterns
 	regexps    []*regexp.Regexp
-	matcher    func(rule *Rule, req Request, value []byte) bool
+	matcher    func(rule *Rule, req ServerRequest, value []byte) bool
 }
 
 func (r *Rule) onCreate(compName string, webapp *Webapp) {
@@ -554,7 +554,7 @@ func (r *Rule) addHandlet(handlet Handlet) { r.handlets = append(r.handlets, han
 func (r *Rule) addReviser(reviser Reviser) { r.revisers = append(r.revisers, reviser) }
 func (r *Rule) addSocklet(socklet Socklet) { r.socklets = append(r.socklets, socklet) }
 
-func (r *Rule) isMatch(req Request) bool {
+func (r *Rule) isMatch(req ServerRequest) bool {
 	if r.general {
 		return true
 	}
@@ -563,7 +563,7 @@ func (r *Rule) isMatch(req Request) bool {
 }
 
 var ruleMatchers = map[string]struct {
-	matcher func(rule *Rule, req Request, value []byte) bool
+	matcher func(rule *Rule, req ServerRequest, value []byte) bool
 	fsCheck bool
 }{
 	"==": {(*Rule).equalMatch, false},
@@ -586,76 +586,76 @@ var ruleMatchers = map[string]struct {
 	"!e": {(*Rule).notExistMatch, true},
 }
 
-func (r *Rule) equalMatch(req Request, value []byte) bool { // value == patterns
+func (r *Rule) equalMatch(req ServerRequest, value []byte) bool { // value == patterns
 	return equalMatch(value, r.patterns)
 }
-func (r *Rule) prefixMatch(req Request, value []byte) bool { // value ^= patterns
+func (r *Rule) prefixMatch(req ServerRequest, value []byte) bool { // value ^= patterns
 	return prefixMatch(value, r.patterns)
 }
-func (r *Rule) suffixMatch(req Request, value []byte) bool { // value $= patterns
+func (r *Rule) suffixMatch(req ServerRequest, value []byte) bool { // value $= patterns
 	return suffixMatch(value, r.patterns)
 }
-func (r *Rule) containMatch(req Request, value []byte) bool { // value *= patterns
+func (r *Rule) containMatch(req ServerRequest, value []byte) bool { // value *= patterns
 	return containMatch(value, r.patterns)
 }
-func (r *Rule) regexpMatch(req Request, value []byte) bool { // value ~= patterns
+func (r *Rule) regexpMatch(req ServerRequest, value []byte) bool { // value ~= patterns
 	return regexpMatch(value, r.regexps)
 }
-func (r *Rule) fileMatch(req Request, value []byte) bool { // value -f
+func (r *Rule) fileMatch(req ServerRequest, value []byte) bool { // value -f
 	pathInfo := req.getPathInfo()
 	return pathInfo != nil && !pathInfo.IsDir()
 }
-func (r *Rule) dirMatch(req Request, value []byte) bool { // value -d
+func (r *Rule) dirMatch(req ServerRequest, value []byte) bool { // value -d
 	if len(value) == 1 && value[0] == '/' {
 		// webRoot is not included and thus not treated as dir
 		return false
 	}
 	return r.dirMatchWithWebRoot(req, value)
 }
-func (r *Rule) existMatch(req Request, value []byte) bool { // value -e
+func (r *Rule) existMatch(req ServerRequest, value []byte) bool { // value -e
 	if len(value) == 1 && value[0] == '/' {
 		// webRoot is not included and thus not treated as exist
 		return false
 	}
 	return r.existMatchWithWebRoot(req, value)
 }
-func (r *Rule) dirMatchWithWebRoot(req Request, _ []byte) bool { // value -D
+func (r *Rule) dirMatchWithWebRoot(req ServerRequest, _ []byte) bool { // value -D
 	pathInfo := req.getPathInfo()
 	return pathInfo != nil && pathInfo.IsDir()
 }
-func (r *Rule) existMatchWithWebRoot(req Request, _ []byte) bool { // value -E
+func (r *Rule) existMatchWithWebRoot(req ServerRequest, _ []byte) bool { // value -E
 	pathInfo := req.getPathInfo()
 	return pathInfo != nil
 }
-func (r *Rule) notEqualMatch(req Request, value []byte) bool { // value != patterns
+func (r *Rule) notEqualMatch(req ServerRequest, value []byte) bool { // value != patterns
 	return notEqualMatch(value, r.patterns)
 }
-func (r *Rule) notPrefixMatch(req Request, value []byte) bool { // value !^ patterns
+func (r *Rule) notPrefixMatch(req ServerRequest, value []byte) bool { // value !^ patterns
 	return notPrefixMatch(value, r.patterns)
 }
-func (r *Rule) notSuffixMatch(req Request, value []byte) bool { // value !$ patterns
+func (r *Rule) notSuffixMatch(req ServerRequest, value []byte) bool { // value !$ patterns
 	return notSuffixMatch(value, r.patterns)
 }
-func (r *Rule) notContainMatch(req Request, value []byte) bool { // value !* patterns
+func (r *Rule) notContainMatch(req ServerRequest, value []byte) bool { // value !* patterns
 	return notContainMatch(value, r.patterns)
 }
-func (r *Rule) notRegexpMatch(req Request, value []byte) bool { // value !~ patterns
+func (r *Rule) notRegexpMatch(req ServerRequest, value []byte) bool { // value !~ patterns
 	return notRegexpMatch(value, r.regexps)
 }
-func (r *Rule) notFileMatch(req Request, value []byte) bool { // value !f
+func (r *Rule) notFileMatch(req ServerRequest, value []byte) bool { // value !f
 	pathInfo := req.getPathInfo()
 	return pathInfo == nil || pathInfo.IsDir()
 }
-func (r *Rule) notDirMatch(req Request, value []byte) bool { // value !d
+func (r *Rule) notDirMatch(req ServerRequest, value []byte) bool { // value !d
 	pathInfo := req.getPathInfo()
 	return pathInfo == nil || !pathInfo.IsDir()
 }
-func (r *Rule) notExistMatch(req Request, value []byte) bool { // value !e
+func (r *Rule) notExistMatch(req ServerRequest, value []byte) bool { // value !e
 	pathInfo := req.getPathInfo()
 	return pathInfo == nil
 }
 
-func (r *Rule) executeExchan(req Request, resp Response) (handled bool) {
+func (r *Rule) executeExchan(req ServerRequest, resp ServerResponse) (handled bool) {
 	if r.returnCode != 0 {
 		resp.SetStatus(r.returnCode)
 		if len(r.returnText) == 0 {
@@ -707,7 +707,7 @@ func (r *Rule) executeExchan(req Request, resp Response) (handled bool) {
 	}
 	return false
 }
-func (r *Rule) executeSocket(req Request, sock Socket) (served bool) {
+func (r *Rule) executeSocket(req ServerRequest, sock ServerSocket) (served bool) {
 	// TODO
 	/*
 		if r.socklet == nil {
@@ -730,7 +730,7 @@ type Handlet interface {
 	// Methods
 	IsProxy() bool // proxies and origins are different, we must differentiate them
 	IsCache() bool // caches and proxies are different, we must differentiate them
-	Handle(req Request, resp Response) (handled bool)
+	Handle(req ServerRequest, resp ServerResponse) (handled bool)
 }
 
 // Handlet_ is the parent for all handlets.
@@ -761,7 +761,7 @@ func (h *Handlet_) UseMapper(handlet Handlet, mapper Mapper) {
 	h.mapper = mapper
 	h.rShell = reflect.ValueOf(handlet)
 }
-func (h *Handlet_) Dispatch(req Request, resp Response, notFound Handle) {
+func (h *Handlet_) Dispatch(req ServerRequest, resp ServerResponse, notFound Handle) {
 	if h.mapper != nil {
 		if handle := h.mapper.FindHandle(req); handle != nil {
 			handle(req, resp)
@@ -783,12 +783,12 @@ func (h *Handlet_) Dispatch(req Request, resp Response, notFound Handle) {
 }
 
 // Handle is a function which handles an http request and gives an http response.
-type Handle func(req Request, resp Response)
+type Handle func(req ServerRequest, resp ServerResponse)
 
 // Mapper performs request mapping in handlets. Mappers are not components.
 type Mapper interface {
-	FindHandle(req Request) Handle // called firstly
-	HandleName(req Request) string // called secondly
+	FindHandle(req ServerRequest) Handle // called firstly
+	HandleName(req ServerRequest) string // called secondly
 }
 
 // Reviser component revises incoming requests and outgoing responses.
@@ -801,16 +801,16 @@ type Reviser interface {
 	Rank() int8 // 0-31 (with 0-15 as tunable, 16-31 as fixed)
 
 	// For incoming requests, either sized or vague
-	BeforeRecv(req Request, resp Response)                 // for sized content
-	BeforeDraw(req Request, resp Response)                 // for vague content
-	OnInput(req Request, resp Response, input *Chain) bool // for both sized and vague
-	FinishDraw(req Request, resp Response)                 // for vague content
+	BeforeRecv(req ServerRequest, resp ServerResponse)                 // for sized content
+	BeforeDraw(req ServerRequest, resp ServerResponse)                 // for vague content
+	OnInput(req ServerRequest, resp ServerResponse, input *Chain) bool // for both sized and vague
+	FinishDraw(req ServerRequest, resp ServerResponse)                 // for vague content
 
 	// For outgoing responses, either sized or vague
-	BeforeSend(req Request, resp Response)              // for sized content
-	BeforeEcho(req Request, resp Response)              // for vague content
-	OnOutput(req Request, resp Response, output *Chain) // for both sized and vague
-	FinishEcho(req Request, resp Response)              // for vague content
+	BeforeSend(req ServerRequest, resp ServerResponse)              // for sized content
+	BeforeEcho(req ServerRequest, resp ServerResponse)              // for vague content
+	OnOutput(req ServerRequest, resp ServerResponse, output *Chain) // for both sized and vague
+	FinishEcho(req ServerRequest, resp ServerResponse)              // for vague content
 }
 
 // Reviser_ is the parent for all revisers.
@@ -842,7 +842,7 @@ type Socklet interface {
 	Component
 	// Methods
 	IsProxy() bool // proxies and origins are different, we must differentiate them
-	Serve(req Request, sock Socket)
+	Serve(req ServerRequest, sock ServerSocket)
 }
 
 // Socklet_ is the parent for all socklets.

@@ -18,7 +18,7 @@ type HTTPBackend interface { // for *HTTP[1-3]Backend
 	// Imports
 	Backend
 	// Methods
-	FetchStream(req Request) (backendStream, error)
+	FetchStream(req ServerRequest) (backendStream, error)
 	StoreStream(stream backendStream)
 }
 
@@ -146,11 +146,11 @@ func (s *_backendStream_) onEnd() {
 type backendRequest interface { // for *backend[1-3]Request
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	proxySetAuthority(hostname []byte, colonport []byte) bool
-	proxyCopyCookies(foreReq Request) bool // NOTE: HTTP 1.x/2/3 have different requirements on "cookie" header
-	proxyCopyHeaders(foreReq Request, proxyConfig *WebExchanProxyConfig) bool
-	proxyPassMessage(foreReq Request) error                       // pass content to backend directly
+	proxyCopyCookies(foreReq ServerRequest) bool // NOTE: HTTP 1.x/2/3 have different requirements on "cookie" header
+	proxyCopyHeaders(foreReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool
+	proxyPassMessage(foreReq ServerRequest) error                 // pass content to backend directly
 	proxyPostMessage(foreContent any, foreHasTrailers bool) error // post held content to backend
-	proxyCopyTrailers(foreReq Request, proxyConfig *WebExchanProxyConfig) bool
+	proxyCopyTrailers(foreReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool
 	isVague() bool
 	endVague() error
 }
@@ -301,10 +301,10 @@ func (r *backendRequest_) _removeIfUnmodifiedSince() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince)
 }
 
-func (r *backendRequest_) proxyPassMessage(foreReq Request) error {
+func (r *backendRequest_) proxyPassMessage(foreReq ServerRequest) error {
 	return r._proxyPassMessage(foreReq)
 }
-func (r *backendRequest_) proxyCopyHeaders(foreReq Request, proxyConfig *WebExchanProxyConfig) bool {
+func (r *backendRequest_) proxyCopyHeaders(foreReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool {
 	foreReq.proxyDelHopHeaders()
 
 	// copy control (:method, :path, :authority, :scheme)
@@ -402,7 +402,7 @@ func (r *backendRequest_) proxyCopyHeaders(foreReq Request, proxyConfig *WebExch
 
 	return true
 }
-func (r *backendRequest_) proxyCopyTrailers(foreReq Request, proxyConfig *WebExchanProxyConfig) bool {
+func (r *backendRequest_) proxyCopyTrailers(foreReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool {
 	return r._proxyCopyTrailers(foreReq, proxyConfig)
 }
 

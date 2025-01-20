@@ -54,7 +54,7 @@ func (h *hostnameChecker) OnPrepare() {
 	// TODO
 }
 
-func (h *hostnameChecker) Handle(req Request, resp Response) (handled bool) {
+func (h *hostnameChecker) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
 	if req.Hostname() == h.hostname {
 		return false
 	}

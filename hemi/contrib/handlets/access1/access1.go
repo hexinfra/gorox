@@ -72,7 +72,7 @@ func (h *access1Checker) OnPrepare() {
 }
 
 // priority: ip > ip/24 > ip/16 > all
-func (h *access1Checker) Handle(req Request, resp Response) (handled bool) {
+func (h *access1Checker) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
 	if len(h.denyRules) == 0 {
 		return false
 	}

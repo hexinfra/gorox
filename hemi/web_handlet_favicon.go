@@ -32,7 +32,7 @@ func (h *faviconHandlet) OnShutdown() {
 func (h *faviconHandlet) OnConfigure() {}
 func (h *faviconHandlet) OnPrepare()   {}
 
-func (h *faviconHandlet) Handle(req Request, resp Response) (handled bool) {
+func (h *faviconHandlet) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
 	const asOrigin = true
 	if status, normal := req.EvalPreconditions(faviconTime, faviconETagBytes, asOrigin); normal {
 		resp.SetLastModified(faviconTime)

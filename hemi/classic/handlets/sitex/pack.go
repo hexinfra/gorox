@@ -14,9 +14,9 @@ import (
 // Pack_
 type Pack_ struct {
 	// Assocs
-	Site     *Site    // associated site
-	Request  Request  // current request
-	Response Response // current response
+	Site     *Site          // associated site
+	Request  ServerRequest  // current request
+	Response ServerResponse // current response
 	// States
 	method    string // GET, POST, HEAD, ...
 	action    string // hello, post_new, one_two_three, ...
@@ -25,7 +25,7 @@ type Pack_ struct {
 	viewArgs  map[string]value
 }
 
-func (p *Pack_) Init(site *Site, req Request, resp Response, method string, action string) {
+func (p *Pack_) Init(site *Site, req ServerRequest, resp ServerResponse, method string, action string) {
 	p.Site = site
 	p.Request = req
 	p.Response = resp

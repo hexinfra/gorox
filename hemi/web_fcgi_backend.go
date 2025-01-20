@@ -58,7 +58,7 @@ func (b *fcgiBackend) CreateNode(compName string) Node {
 	return node
 }
 
-func (b *fcgiBackend) fetchExchan(req Request) (*fcgiExchan, error) {
+func (b *fcgiBackend) fetchExchan(req ServerRequest) (*fcgiExchan, error) {
 	node := b.nodes[b.nodeIndexGet()]
 	return node.fetchExchan()
 }
@@ -487,7 +487,7 @@ func (r *fcgiRequest) onEnd() {
 	r._fcgiRequest0 = _fcgiRequest0{}
 }
 
-func (r *fcgiRequest) proxyCopyHeaders(httpReq Request, proxy *fcgiProxy) bool {
+func (r *fcgiRequest) proxyCopyHeaders(httpReq ServerRequest, proxy *fcgiProxy) bool {
 	// Add meta params
 	if !r._addMetaParam(fcgiBytesGatewayInterface, fcgiBytesCGI1_1) { // GATEWAY_INTERFACE
 		return false
@@ -646,7 +646,7 @@ func (r *fcgiRequest) _growParams(size int) (from int, edge int, ok bool) { // t
 	return
 }
 
-func (r *fcgiRequest) proxyPassMessage(httpReq Request) error { // only for sized (>0) content. vague content must use proxyPostMessage(), as we don't use backend-side chunking
+func (r *fcgiRequest) proxyPassMessage(httpReq ServerRequest) error { // only for sized (>0) content. vague content must use proxyPostMessage(), as we don't use backend-side chunking
 	r.vector = r.fixedVector[0:4]
 	r._setBeginRequest(&r.vector[0])
 	r.vector[1] = r.paramsHeader[:]
@@ -684,7 +684,7 @@ func (r *fcgiRequest) proxyPassMessage(httpReq Request) error { // only for size
 	}
 	return r._writeBytes(fcgiEmptyStdin)
 }
-func (r *fcgiRequest) proxyPostMessage(httpContent any) error { // nil, []byte, and *os.File. for bufferClientContent or vague Request content
+func (r *fcgiRequest) proxyPostMessage(httpContent any) error { // nil, []byte, and *os.File. for bufferClientContent or vague ServerRequest content
 	if contentText, ok := httpContent.([]byte); ok { // text, <= 64K1
 		return r.sendText(contentText)
 	} else if contentFile, ok := httpContent.(*os.File); ok { // file

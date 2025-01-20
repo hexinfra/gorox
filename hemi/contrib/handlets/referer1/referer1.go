@@ -92,7 +92,7 @@ func (h *referer1Checker) OnPrepare() {
 	}
 }
 
-func (h *referer1Checker) Handle(req Request, resp Response) (handled bool) {
+func (h *referer1Checker) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
 	var (
 		hostname, path []byte
 		index          = -1

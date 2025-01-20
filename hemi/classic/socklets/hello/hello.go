@@ -40,7 +40,7 @@ func (s *helloSocklet) OnPrepare() {
 	// TODO
 }
 
-func (s *helloSocklet) Serve(req Request, sock Socket) {
+func (s *helloSocklet) Serve(req ServerRequest, sock ServerSocket) {
 	sock.Write([]byte("hello, webSocket!"))
 	sock.Close()
 }

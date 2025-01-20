@@ -117,7 +117,7 @@ func (h *staticHandlet) OnPrepare() {
 	}
 }
 
-func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
+func (h *staticHandlet) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
 	if !req.IsGET() && !req.IsHEAD() {
 		resp.SendMethodNotAllowed("GET, HEAD", nil)
 		return true
@@ -231,7 +231,7 @@ func (h *staticHandlet) Handle(req Request, resp Response) (handled bool) {
 	return true
 }
 
-func staticListDir(dir *os.File, resp Response) {
+func staticListDir(dir *os.File, resp ServerResponse) {
 	fis, err := dir.Readdir(-1)
 	if err != nil {
 		resp.SendInternalServerError([]byte("Internal Server Error 5"))

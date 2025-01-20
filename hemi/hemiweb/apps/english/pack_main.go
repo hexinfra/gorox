@@ -15,7 +15,7 @@ type Pack struct {
 	sitex.Pack_
 }
 
-func (p *Pack) OPTIONS_index(req Request, resp Response) {
+func (p *Pack) OPTIONS_index(req ServerRequest, resp ServerResponse) {
 	if req.IsAsteriskOptions() {
 		resp.Send("this is OPTIONS *")
 	} else {

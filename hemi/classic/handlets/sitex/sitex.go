@@ -105,7 +105,7 @@ func (h *Sitex) RegisterSite(siteName string, pack any) { // called on webapp in
 	}
 }
 
-func (h *Sitex) Handle(req Request, resp Response) (handled bool) {
+func (h *Sitex) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
 	site := h.hostnameSites[req.Hostname()]
 	if site == nil {
 		site = h.hostnameSites["*"]
@@ -164,14 +164,14 @@ type Site struct {
 	pack      reflect.Type
 }
 
-func (s *Site) show(req Request, resp Response, page string) {
+func (s *Site) show(req ServerRequest, resp ServerResponse, page string) {
 	if html := s.load(req, s.viewDir+"/"+page+".html"); html == nil {
 		resp.SendNotFound(nil)
 	} else {
 		resp.SendBytes(html)
 	}
 }
-func (s *Site) load(req Request, htmlFile string) []byte {
+func (s *Site) load(req ServerRequest, htmlFile string) []byte {
 	html, err := os.ReadFile(htmlFile)
 	if err != nil {
 		return nil

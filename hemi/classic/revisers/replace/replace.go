@@ -52,29 +52,29 @@ func (r *replaceReviser) OnPrepare() {
 
 func (r *replaceReviser) Rank() int8 { return r.rank }
 
-func (r *replaceReviser) BeforeRecv(req Request, resp Response) { // sized
+func (r *replaceReviser) BeforeRecv(req ServerRequest, resp ServerResponse) { // sized
 	// TODO
 }
-func (r *replaceReviser) BeforeDraw(req Request, resp Response) { // vague
+func (r *replaceReviser) BeforeDraw(req ServerRequest, resp ServerResponse) { // vague
 	// TODO
 }
-func (r *replaceReviser) OnInput(req Request, resp Response, input *Chain) bool {
+func (r *replaceReviser) OnInput(req ServerRequest, resp ServerResponse, input *Chain) bool {
 	// TODO
 	return true
 }
-func (r *replaceReviser) FinishDraw(req Request, resp Response) { // vague
+func (r *replaceReviser) FinishDraw(req ServerRequest, resp ServerResponse) { // vague
 	// TODO
 }
 
-func (r *replaceReviser) BeforeSend(req Request, resp Response) { // sized
+func (r *replaceReviser) BeforeSend(req ServerRequest, resp ServerResponse) { // sized
 	// TODO
 }
-func (r *replaceReviser) BeforeEcho(req Request, resp Response) { // vague
+func (r *replaceReviser) BeforeEcho(req ServerRequest, resp ServerResponse) { // vague
 	// TODO
 }
-func (r *replaceReviser) OnOutput(req Request, resp Response, output *Chain) {
+func (r *replaceReviser) OnOutput(req ServerRequest, resp ServerResponse, output *Chain) {
 	// TODO
 }
-func (r *replaceReviser) FinishEcho(req Request, resp Response) { // vague
+func (r *replaceReviser) FinishEcho(req ServerRequest, resp ServerResponse) { // vague
 	// TODO
 }

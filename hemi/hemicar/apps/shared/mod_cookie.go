@@ -11,7 +11,7 @@ import (
 	. "github.com/hexinfra/gorox/hemi"
 )
 
-func (h *sharedHandlet) GET_cookie_set(req Request, resp Response) {
+func (h *sharedHandlet) GET_cookie_set(req ServerRequest, resp ServerResponse) {
 	cookie1 := new(Cookie)
 	cookie1.Set("hello", "wo r,ld")
 	cookie1.SetMaxAge(99)
@@ -26,7 +26,7 @@ func (h *sharedHandlet) GET_cookie_set(req Request, resp Response) {
 
 	resp.SendBytes(nil)
 }
-func (h *sharedHandlet) GET_cookies(req Request, resp Response) {
+func (h *sharedHandlet) GET_cookies(req ServerRequest, resp ServerResponse) {
 	resp.Echo(req.C("hello"))
 	resp.Echo(req.C("world"))
 }

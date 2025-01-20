@@ -54,7 +54,7 @@ func (b *HTTP2Backend) CreateNode(compName string) Node {
 	return node
 }
 
-func (b *HTTP2Backend) FetchStream(req Request) (backendStream, error) {
+func (b *HTTP2Backend) FetchStream(req ServerRequest) (backendStream, error) {
 	node := b.nodes[b.nodeIndexGet()]
 	return node.fetchStream()
 }
@@ -373,7 +373,7 @@ func (r *backend2Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
 	return false
 }
-func (r *backend2Request) proxyCopyCookies(foreReq Request) bool { // NOTE: DO NOT merge into one "cookie" header!
+func (r *backend2Request) proxyCopyCookies(foreReq ServerRequest) bool { // NOTE: DO NOT merge into one "cookie" header!
 	// TODO: one by one?
 	return true
 }

@@ -54,29 +54,29 @@ func (r *headReviser) OnPrepare() {
 
 func (r *headReviser) Rank() int8 { return RankHead }
 
-func (r *headReviser) BeforeRecv(req Request, resp Response) { // sized
+func (r *headReviser) BeforeRecv(req ServerRequest, resp ServerResponse) { // sized
 	// TODO
 }
-func (r *headReviser) BeforeDraw(req Request, resp Response) { // vague
+func (r *headReviser) BeforeDraw(req ServerRequest, resp ServerResponse) { // vague
 	// TODO
 }
-func (r *headReviser) OnInput(req Request, resp Response, input *Chain) bool {
+func (r *headReviser) OnInput(req ServerRequest, resp ServerResponse, input *Chain) bool {
 	// TODO
 	return true
 }
-func (r *headReviser) FinishDraw(req Request, resp Response) { // vague
+func (r *headReviser) FinishDraw(req ServerRequest, resp ServerResponse) { // vague
 	// TODO
 }
 
-func (r *headReviser) BeforeSend(req Request, resp Response) { // sized
+func (r *headReviser) BeforeSend(req ServerRequest, resp ServerResponse) { // sized
 	// TODO
 }
-func (r *headReviser) BeforeEcho(req Request, resp Response) { // vague
+func (r *headReviser) BeforeEcho(req ServerRequest, resp ServerResponse) { // vague
 	// TODO
 }
-func (r *headReviser) OnOutput(req Request, resp Response, output *Chain) {
+func (r *headReviser) OnOutput(req ServerRequest, resp ServerResponse, output *Chain) {
 	// TODO
 }
-func (r *headReviser) FinishEcho(req Request, resp Response) { // vague
+func (r *headReviser) FinishEcho(req ServerRequest, resp ServerResponse) { // vague
 	// TODO
 }

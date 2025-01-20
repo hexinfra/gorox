@@ -82,7 +82,7 @@ func (h *scgiProxy) OnPrepare() {
 func (h *scgiProxy) IsProxy() bool { return true }
 func (h *scgiProxy) IsCache() bool { return h.hcache != nil }
 
-func (h *scgiProxy) Handle(httpReq Request, httpResp Response) (handled bool) {
+func (h *scgiProxy) Handle(httpReq ServerRequest, httpResp ServerResponse) (handled bool) {
 	// TODO: implementation
 	httpResp.Send("SCGI")
 	return true

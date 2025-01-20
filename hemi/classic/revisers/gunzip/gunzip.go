@@ -45,29 +45,29 @@ func (r *gunzipReviser) OnPrepare() {
 
 func (r *gunzipReviser) Rank() int8 { return RankGunzip }
 
-func (r *gunzipReviser) BeforeRecv(req Request, resp Response) { // sized
+func (r *gunzipReviser) BeforeRecv(req ServerRequest, resp ServerResponse) { // sized
 	// TODO
 }
-func (r *gunzipReviser) BeforeDraw(req Request, resp Response) { // vague
+func (r *gunzipReviser) BeforeDraw(req ServerRequest, resp ServerResponse) { // vague
 	// TODO
 }
-func (r *gunzipReviser) OnInput(req Request, resp Response, input *Chain) bool {
+func (r *gunzipReviser) OnInput(req ServerRequest, resp ServerResponse, input *Chain) bool {
 	// TODO
 	return true
 }
-func (r *gunzipReviser) FinishDraw(req Request, resp Response) { // vague
+func (r *gunzipReviser) FinishDraw(req ServerRequest, resp ServerResponse) { // vague
 	// TODO
 }
 
-func (r *gunzipReviser) BeforeSend(req Request, resp Response) { // sized
+func (r *gunzipReviser) BeforeSend(req ServerRequest, resp ServerResponse) { // sized
 	// TODO
 }
-func (r *gunzipReviser) BeforeEcho(req Request, resp Response) { // vague
+func (r *gunzipReviser) BeforeEcho(req ServerRequest, resp ServerResponse) { // vague
 	// TODO
 }
-func (r *gunzipReviser) OnOutput(req Request, resp Response, output *Chain) {
+func (r *gunzipReviser) OnOutput(req ServerRequest, resp ServerResponse, output *Chain) {
 	// TODO
 }
-func (r *gunzipReviser) FinishEcho(req Request, resp Response) { // vague
+func (r *gunzipReviser) FinishEcho(req ServerRequest, resp ServerResponse) { // vague
 	// TODO
 }

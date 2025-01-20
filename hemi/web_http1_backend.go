@@ -57,7 +57,7 @@ func (b *HTTP1Backend) CreateNode(compName string) Node {
 	return node
 }
 
-func (b *HTTP1Backend) FetchStream(req Request) (backendStream, error) {
+func (b *HTTP1Backend) FetchStream(req ServerRequest) (backendStream, error) {
 	node := b.nodes[b.nodeIndexGet()]
 	return node.fetchStream()
 }
@@ -457,7 +457,7 @@ func (r *backend1Request) AddCookie(name string, value string) bool { // cookie:
 	// TODO. need some space to place the cookie. use stream.unsafeMake()?
 	return false
 }
-func (r *backend1Request) proxyCopyCookies(foreReq Request) bool { // NOTE: merge all cookies into one "cookie" header
+func (r *backend1Request) proxyCopyCookies(foreReq ServerRequest) bool { // NOTE: merge all cookies into one "cookie" header
 	headerSize := len(bytesCookie) + len(bytesColonSpace) // `cookie: `
 	foreReq.proxyWalkCookies(func(cookie *pair, name []byte, value []byte) bool {
 		headerSize += len(name) + 1 + len(value) + 2 // `name=value; `

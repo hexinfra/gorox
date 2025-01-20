@@ -45,7 +45,7 @@ func (h *httpsChecker) OnPrepare() {
 	// TODO
 }
 
-func (h *httpsChecker) Handle(req Request, resp Response) (handled bool) {
+func (h *httpsChecker) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
 	if req.IsHTTPS() {
 		return false
 	}

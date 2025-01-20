@@ -47,10 +47,10 @@ func (h *sharedHandlet) OnPrepare() {
 	h.UseMapper(h, m)
 }
 
-func (h *sharedHandlet) Handle(req Request, resp Response) (handled bool) {
+func (h *sharedHandlet) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
 	h.Dispatch(req, resp, h.notFound)
 	return true
 }
-func (h *sharedHandlet) notFound(req Request, resp Response) {
+func (h *sharedHandlet) notFound(req ServerRequest, resp ServerResponse) {
 	resp.Send("handle not found!")
 }

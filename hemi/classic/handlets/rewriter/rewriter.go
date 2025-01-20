@@ -40,7 +40,7 @@ func (h *rewriterChecker) OnPrepare() {
 	// TODO
 }
 
-func (h *rewriterChecker) Handle(req Request, resp Response) (handled bool) {
+func (h *rewriterChecker) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
 	// TODO
 	return false
 }

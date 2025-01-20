@@ -157,7 +157,7 @@ func (h *httpProxy) OnPrepare() {
 func (h *httpProxy) IsProxy() bool { return true }
 func (h *httpProxy) IsCache() bool { return h.hcache != nil }
 
-func (h *httpProxy) Handle(req Request, resp Response) (handled bool) {
+func (h *httpProxy) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
 	WebExchanReverseProxy(req, resp, h.hcache, h.backend, &h.WebExchanProxyConfig)
 	return true
 }
@@ -180,7 +180,7 @@ type WebExchanProxyConfig struct {
 }
 
 // WebExchanReverseProxy
-func WebExchanReverseProxy(foreReq Request, foreResp Response, hcache Hcache, backend HTTPBackend, proxyConfig *WebExchanProxyConfig) {
+func WebExchanReverseProxy(foreReq ServerRequest, foreResp ServerResponse, hcache Hcache, backend HTTPBackend, proxyConfig *WebExchanProxyConfig) {
 	var foreContent any // nil, []byte, tempFile
 	foreHasContent := foreReq.HasContent()
 	if foreHasContent && proxyConfig.BufferClientContent { // including size 0
@@ -348,7 +348,7 @@ func (s *sockProxy) OnPrepare() {
 
 func (s *sockProxy) IsProxy() bool { return true }
 
-func (s *sockProxy) Serve(req Request, sock Socket) {
+func (s *sockProxy) Serve(req ServerRequest, sock ServerSocket) {
 	WebSocketReverseProxy(req, sock, s.backend, &s.WebSocketProxyConfig)
 }
 
@@ -358,7 +358,7 @@ type WebSocketProxyConfig struct {
 }
 
 // WebSocketReverseProxy
-func WebSocketReverseProxy(foreReq Request, foreSock Socket, backend HTTPBackend, proxyConfig *WebSocketProxyConfig) {
+func WebSocketReverseProxy(foreReq ServerRequest, foreSock ServerSocket, backend HTTPBackend, proxyConfig *WebSocketProxyConfig) {
 	// TODO
 	foreSock.Close()
 }

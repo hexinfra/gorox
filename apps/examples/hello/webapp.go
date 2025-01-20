@@ -48,33 +48,33 @@ func (h *helloHandlet) OnPrepare() {
 	h.UseMapper(h, m) // equip handlet with a mapper so it can call handles automatically through Dispatch()
 }
 
-func (h *helloHandlet) Handle(req Request, resp Response) (handled bool) {
+func (h *helloHandlet) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
 	h.Dispatch(req, resp, h.notFound)
 	return true
 }
-func (h *helloHandlet) notFound(req Request, resp Response) {
+func (h *helloHandlet) notFound(req ServerRequest, resp ServerResponse) {
 	resp.Send("oops, target not found!")
 }
 
-func (h *helloHandlet) index(req Request, resp Response) {
+func (h *helloHandlet) index(req ServerRequest, resp ServerResponse) {
 	resp.Send(h.example)
 }
-func (h *helloHandlet) handleFoo(req Request, resp Response) {
+func (h *helloHandlet) handleFoo(req ServerRequest, resp ServerResponse) {
 	resp.Echo(req.UserAgent())
 	resp.Echo(req.T("x"))
 	resp.AddTrailer("y", "123")
 }
 
-func (h *helloHandlet) GET_abc(req Request, resp Response) { // GET /abc
+func (h *helloHandlet) GET_abc(req ServerRequest, resp ServerResponse) { // GET /abc
 	resp.Send("this is GET /abc")
 }
-func (h *helloHandlet) GET_def(req Request, resp Response) { // GET /def
+func (h *helloHandlet) GET_def(req ServerRequest, resp ServerResponse) { // GET /def
 	resp.Send("this is GET /def")
 }
-func (h *helloHandlet) POST_def(req Request, resp Response) { // POST /def
+func (h *helloHandlet) POST_def(req ServerRequest, resp ServerResponse) { // POST /def
 	resp.Send("this is POST /def")
 }
-func (h *helloHandlet) GET_cookie(req Request, resp Response) { // GET /cookie
+func (h *helloHandlet) GET_cookie(req ServerRequest, resp ServerResponse) { // GET /cookie
 	cookie := new(Cookie)
 	cookie.Set("name1", "value1")
 	resp.AddCookie(cookie)

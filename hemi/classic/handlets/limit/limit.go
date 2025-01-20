@@ -40,7 +40,7 @@ func (h *limitChecker) OnPrepare() {
 	// TODO
 }
 
-func (h *limitChecker) Handle(req Request, resp Response) (handled bool) {
+func (h *limitChecker) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
 	// TODO
 	return false
 }

@@ -9,10 +9,10 @@ import (
 	. "github.com/hexinfra/gorox/hemi"
 )
 
-func (p *Pack) GET_example(req Request, resp Response) { // GET /example
+func (p *Pack) GET_example(req ServerRequest, resp ServerResponse) { // GET /example
 	resp.Send("get example")
 }
-func (p *Pack) POST_foo_bar(req Request, resp Response) { // POST /foo/bar
+func (p *Pack) POST_foo_bar(req ServerRequest, resp ServerResponse) { // POST /foo/bar
 	resp.Echo("foo")
 	resp.Echo("bar")
 }

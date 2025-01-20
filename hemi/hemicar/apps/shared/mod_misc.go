@@ -9,14 +9,14 @@ import (
 	. "github.com/hexinfra/gorox/hemi"
 )
 
-func (h *sharedHandlet) GET_(req Request, resp Response) { // GET empty through absolute-form, or GET /
+func (h *sharedHandlet) GET_(req ServerRequest, resp ServerResponse) { // GET empty through absolute-form, or GET /
 	if req.IsAbsoluteForm() {
 		resp.Send("absolute-form GET /")
 	} else {
 		resp.Send("origin-form GET /")
 	}
 }
-func (h *sharedHandlet) OPTIONS_(req Request, resp Response) { // OPTIONS * or OPTIONS /
+func (h *sharedHandlet) OPTIONS_(req ServerRequest, resp ServerResponse) { // OPTIONS * or OPTIONS /
 	if req.IsAsteriskOptions() {
 		if req.IsAbsoluteForm() {
 			resp.Send("absolute-form OPTIONS *")
@@ -31,14 +31,14 @@ func (h *sharedHandlet) OPTIONS_(req Request, resp Response) { // OPTIONS * or O
 		}
 	}
 }
-func (h *sharedHandlet) GET_json(req Request, resp Response) { // GET /json
+func (h *sharedHandlet) GET_json(req ServerRequest, resp ServerResponse) { // GET /json
 	user := struct {
 		Name string `json:"name"`
 		Age  int    `json:"age"`
 	}{"jack", 25}
 	resp.SendJSON(user)
 }
-func (h *sharedHandlet) PUT_file(req Request, resp Response) { // PUT /file
+func (h *sharedHandlet) PUT_file(req ServerRequest, resp ServerResponse) { // PUT /file
 	content := req.Content()
 	resp.Send(content)
 }

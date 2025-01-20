@@ -222,8 +222,8 @@ func (s *_serverStream_) onUse() {
 func (s *_serverStream_) onEnd() {
 }
 
-// Request is the server-side http request.
-type Request interface { // for *server[1-3]Request
+// ServerRequest is the server-side http request.
+type ServerRequest interface { // for *server[1-3]Request
 	RemoteAddr() net.Addr
 	Webapp() *Webapp
 
@@ -2512,9 +2512,9 @@ var serverRequestVariables = [...]func(*serverRequest_) []byte{ // keep sync wit
 	9: (*serverRequest_).UnsafeContentType, // contentType
 }
 
-// Response is the server-side http response.
-type Response interface { // for *server[1-3]Response
-	Request() Request
+// ServerResponse is the server-side http response.
+type ServerResponse interface { // for *server[1-3]Response
+	Request() ServerRequest
 
 	SetStatus(status int16) error
 	Status() int16
@@ -2587,7 +2587,7 @@ type serverResponse_ struct { // outgoing. needs building
 	// Mixins
 	_httpOut_ // outgoing http response
 	// Assocs
-	request Request // related request
+	request ServerRequest // related request
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -2626,7 +2626,7 @@ func (r *serverResponse_) onEnd() { // for zeros
 	r._httpOut_.onEnd()
 }
 
-func (r *serverResponse_) Request() Request { return r.request }
+func (r *serverResponse_) Request() ServerRequest { return r.request }
 
 func (r *serverResponse_) SetStatus(status int16) error {
 	if status >= 200 && status <= 999 {
@@ -2750,7 +2750,7 @@ footer{padding:20px;}
 }()
 
 func (r *serverResponse_) beforeSend() {
-	resp := r.outMessage.(Response)
+	resp := r.outMessage.(ServerResponse)
 	for _, id := range r.revisers {
 		if id == 0 { // id of effective reviser is ensured to be > 0
 			continue
@@ -2761,7 +2761,7 @@ func (r *serverResponse_) beforeSend() {
 }
 func (r *serverResponse_) doSend() error {
 	if r.hasRevisers {
-		resp := r.outMessage.(Response)
+		resp := r.outMessage.(ServerResponse)
 		for _, id := range r.revisers { // revise sized content
 			if id == 0 {
 				continue
@@ -2780,7 +2780,7 @@ func (r *serverResponse_) doSend() error {
 }
 
 func (r *serverResponse_) beforeEcho() {
-	resp := r.outMessage.(Response)
+	resp := r.outMessage.(ServerResponse)
 	for _, id := range r.revisers { // revise headers
 		if id == 0 { // id of effective reviser is ensured to be > 0
 			continue
@@ -2796,7 +2796,7 @@ func (r *serverResponse_) doEcho() error {
 	r.chain.PushTail(&r.piece)
 	defer r.chain.free()
 	if r.hasRevisers {
-		resp := r.outMessage.(Response)
+		resp := r.outMessage.(ServerResponse)
 		for _, id := range r.revisers { // revise vague content
 			if id == 0 { // id of effective reviser is ensured to be > 0
 				continue
@@ -2812,7 +2812,7 @@ func (r *serverResponse_) endVague() error {
 		return httpOutWriteBroken
 	}
 	if r.hasRevisers {
-		resp := r.outMessage.(Response)
+		resp := r.outMessage.(ServerResponse)
 		for _, id := range r.revisers { // finish vague content
 			if id == 0 { // id of effective reviser is ensured to be > 0
 				continue
@@ -2916,8 +2916,8 @@ func (r *serverResponse_) hookReviser(reviser Reviser) { // to revise output con
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
 }
 
-// Socket is the server-side webSocket.
-type Socket interface { // for *server[1-3]Socket
+// ServerSocket is the server-side webSocket.
+type ServerSocket interface { // for *server[1-3]Socket
 	// TODO
 	Read(dst []byte) (int, error)
 	Write(src []byte) (int, error)

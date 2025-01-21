@@ -323,22 +323,6 @@ func (r *server3Response) onEnd() {
 	r.out3.onEnd()
 }
 
-func (r *server3Response) control() []byte { // :status NNN
-	start := r.start[:len(http3Template)]
-	if r.status < int16(len(http1Controls)) && http1Controls[r.status] != nil {
-		control := http1Controls[r.status]
-		start[8] = control[9]
-		start[9] = control[10]
-		start[10] = control[11]
-	} else {
-		copy(start, http3Template[:])
-		start[8] = byte(r.status/100 + '0')
-		start[9] = byte(r.status/10%10 + '0')
-		start[10] = byte(r.status%10 + '0')
-	}
-	return start
-}
-
 func (r *server3Response) addHeader(name []byte, value []byte) bool {
 	return r.out3.addHeader3(name, value)
 }

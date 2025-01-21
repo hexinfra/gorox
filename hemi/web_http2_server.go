@@ -794,22 +794,6 @@ func (r *server2Response) onEnd() {
 	r.out2.onEnd()
 }
 
-func (r *server2Response) control() []byte { // :status NNN
-	start := r.start[:len(http2Template)]
-	if r.status < int16(len(http1Controls)) && http1Controls[r.status] != nil {
-		control := http1Controls[r.status]
-		start[8] = control[9]
-		start[9] = control[10]
-		start[10] = control[11]
-	} else {
-		copy(start, http2Template[:])
-		start[8] = byte(r.status/100 + '0')
-		start[9] = byte(r.status/10%10 + '0')
-		start[10] = byte(r.status%10 + '0')
-	}
-	return start
-}
-
 func (r *server2Response) addHeader(name []byte, value []byte) bool {
 	return r.out2.addHeader2(name, value)
 }

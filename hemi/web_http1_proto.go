@@ -7,8 +7,8 @@
 
 package hemi
 
-var http1Template = [16]byte{'H', 'T', 'T', 'P', '/', '1', '.', '1', ' ', 'N', 'N', 'N', ' ', 'X', '\r', '\n'}
-var http1Controls = [...][]byte{ // size: 512*24B=12K. keep sync with http2Control and http3Control!
+var http1Status = [16]byte{'H', 'T', 'T', 'P', '/', '1', '.', '1', ' ', 'N', 'N', 'N', ' ', 'X', '\r', '\n'}
+var http1Controls = [...][]byte{ // size: 512*24B=12K
 	// 1XX
 	StatusContinue:           []byte("HTTP/1.1 100 Continue\r\n"),
 	StatusSwitchingProtocols: []byte("HTTP/1.1 101 Switching Protocols\r\n"),

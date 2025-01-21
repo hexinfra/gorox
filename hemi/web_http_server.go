@@ -2646,6 +2646,21 @@ func (r *serverResponse_) SetStatus(status int16) error {
 	}
 }
 func (r *serverResponse_) Status() int16 { return r.status }
+func (r *serverResponse_) control() []byte { // used by http/2 and http/3. http/1.x overrides this!
+	start := r.start[:len(httpStatus)]
+	if r.status < int16(len(http1Controls)) && http1Controls[r.status] != nil {
+		control := http1Controls[r.status]
+		start[8] = control[9]
+		start[9] = control[10]
+		start[10] = control[11]
+	} else {
+		copy(start, httpStatus[:])
+		start[8] = byte(r.status/100 + '0')
+		start[9] = byte(r.status/10%10 + '0')
+		start[10] = byte(r.status%10 + '0')
+	}
+	return start
+}
 
 func (r *serverResponse_) MakeETagFrom(date int64, size int64) ([]byte, bool) { // with ""
 	if date < 0 || size < 0 {

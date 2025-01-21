@@ -130,6 +130,8 @@ var httpSchemeByteses = [...][]byte{
 	SchemeHTTPS: bytesHTTPS,
 }
 
+var httpStatus = [11]byte{':', 's', 't', 'a', 't', 'u', 's', ' ', 'n', 'n', 'n'} // used by http/2 and http/3
+
 const ( // misc http types
 	httpTargetOrigin    = 0 // must be 0
 	httpTargetAbsolute  = 1 // scheme "://" hostname [ ":" port ] path-abempty [ "?" query ]

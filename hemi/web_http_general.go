@@ -1655,7 +1655,7 @@ func (r *_httpOut_) AddHeaderBytes(name []byte, value []byte) bool {
 			return false
 		}
 	}
-	return r.outMessage.insertHeader(nameHash, lower, value) // some headers are restricted
+	return r.outMessage.insertHeader(nameHash, lower, value) // some headers (e.g. "connection") are restricted
 }
 func (r *_httpOut_) DelHeader(name string) bool {
 	return r.DelHeaderBytes(ConstBytes(name))

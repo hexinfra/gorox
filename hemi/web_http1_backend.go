@@ -345,8 +345,8 @@ type backend1Stream struct {
 	// Mixins
 	_backendStream_
 	// Assocs
-	request  backend1Request  // the backend-side http/1.x request
 	response backend1Response // the backend-side http/1.x response
+	request  backend1Request  // the backend-side http/1.x request
 	socket   *backend1Socket  // the backend-side http/1.x webSocket
 	// Stream states (stocks)
 	// Stream states (controlled)
@@ -358,12 +358,12 @@ func (s *backend1Stream) onUse() { // for non-zeros
 	s.http1Stream_.onUse()
 	s._backendStream_.onUse()
 
-	s.request.onUse()
 	s.response.onUse()
+	s.request.onUse()
 }
 func (s *backend1Stream) onEnd() { // for zeros
-	s.response.onEnd()
 	s.request.onEnd()
+	s.response.onEnd()
 	if s.socket != nil {
 		s.socket.onEnd()
 		s.socket = nil
@@ -375,161 +375,9 @@ func (s *backend1Stream) onEnd() { // for zeros
 
 func (s *backend1Stream) Holder() httpHolder { return s.conn.node }
 
-func (s *backend1Stream) Request() backendRequest   { return &s.request }
 func (s *backend1Stream) Response() backendResponse { return &s.response }
+func (s *backend1Stream) Request() backendRequest   { return &s.request }
 func (s *backend1Stream) Socket() backendSocket     { return nil } // TODO. See RFC 6455
-
-// backend1Request is the backend-side HTTP/1.x request.
-type backend1Request struct { // outgoing. needs building
-	// Parent
-	backendRequest_
-	// Embeds
-	out1 _http1Out_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
-}
-
-func (r *backend1Request) onUse() {
-	r.backendRequest_.onUse(Version1_1)
-	r.out1.onUse(&r._httpOut_)
-}
-func (r *backend1Request) onEnd() {
-	r.backendRequest_.onEnd()
-	r.out1.onEnd()
-}
-
-func (r *backend1Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // METHOD uri HTTP/1.1\r\n
-	controlSize := len(method) + 1 + len(uri) + 1 + len(bytesHTTP1_1) + len(bytesCRLF)
-	if from, edge, ok := r._growFields(controlSize); ok {
-		from += copy(r.fields[from:], method)
-		r.fields[from] = ' '
-		from++
-		from += copy(r.fields[from:], uri)
-		r.fields[from] = ' '
-		from++
-		from += copy(r.fields[from:], bytesHTTP1_1) // we always use HTTP/1.1
-		r.fields[from] = '\r'
-		r.fields[from+1] = '\n'
-		if !hasContent {
-			r.forbidContent = true
-			r.forbidFraming = true
-		}
-		r.controlEdge = uint16(edge)
-		return true
-	} else {
-		return false
-	}
-}
-func (r *backend1Request) proxySetAuthority(hostname []byte, colonport []byte) bool {
-	if r.stream.Conn().TLSMode() {
-		if bytes.Equal(colonport, bytesColonport443) {
-			colonport = nil
-		}
-	} else if bytes.Equal(colonport, bytesColonport80) {
-		colonport = nil
-	}
-	headerSize := len(bytesHost) + len(bytesColonSpace) + len(hostname) + len(colonport) + len(bytesCRLF) // host: xxx\r\n
-	if from, _, ok := r._growFields(headerSize); ok {
-		from += copy(r.fields[from:], bytesHost)
-		r.fields[from] = ':'
-		r.fields[from+1] = ' '
-		from += 2
-		from += copy(r.fields[from:], hostname)
-		from += copy(r.fields[from:], colonport)
-		r.out1._addCRLFHeader1(from)
-		return true
-	} else {
-		return false
-	}
-}
-
-func (r *backend1Request) addHeader(name []byte, value []byte) bool {
-	return r.out1.addHeader1(name, value)
-}
-func (r *backend1Request) header(name []byte) (value []byte, ok bool) { return r.out1.header1(name) }
-func (r *backend1Request) hasHeader(name []byte) bool                 { return r.out1.hasHeader1(name) }
-func (r *backend1Request) delHeader(name []byte) (deleted bool)       { return r.out1.delHeader1(name) }
-func (r *backend1Request) delHeaderAt(i uint8)                        { r.out1.delHeaderAt1(i) }
-
-func (r *backend1Request) AddCookie(name string, value string) bool { // cookie: foo=bar; xyz=baz
-	// TODO. need some space to place the cookie. use stream.unsafeMake()?
-	return false
-}
-func (r *backend1Request) proxyCopyCookies(servReq ServerRequest) bool { // NOTE: merge all cookies into one "cookie" header
-	headerSize := len(bytesCookie) + len(bytesColonSpace) // `cookie: `
-	servReq.proxyWalkCookies(func(cookie *pair, name []byte, value []byte) bool {
-		headerSize += len(name) + 1 + len(value) + 2 // `name=value; `
-		return true
-	})
-	if from, _, ok := r.growHeader(headerSize); ok {
-		from += copy(r.fields[from:], bytesCookie)
-		r.fields[from] = ':'
-		r.fields[from+1] = ' '
-		from += 2
-		servReq.proxyWalkCookies(func(cookie *pair, name []byte, value []byte) bool {
-			from += copy(r.fields[from:], name)
-			r.fields[from] = '='
-			from++
-			from += copy(r.fields[from:], value)
-			r.fields[from] = ';'
-			r.fields[from+1] = ' '
-			from += 2
-			return true
-		})
-		r.fields[from-2] = '\r'
-		r.fields[from-1] = '\n'
-		return true
-	} else {
-		return false
-	}
-}
-
-func (r *backend1Request) sendChain() error { return r.out1.sendChain1() }
-
-func (r *backend1Request) echoHeaders() error { return r.out1.writeHeaders1() }
-func (r *backend1Request) echoChain() error   { return r.out1.echoChain1(true) } // we always use HTTP/1.1 chunked
-
-func (r *backend1Request) addTrailer(name []byte, value []byte) bool {
-	return r.out1.addTrailer1(name, value)
-}
-func (r *backend1Request) trailer(name []byte) (value []byte, ok bool) { return r.out1.trailer1(name) }
-
-func (r *backend1Request) proxyPassHeaders() error          { return r.out1.writeHeaders1() }
-func (r *backend1Request) proxyPassBytes(data []byte) error { return r.out1.proxyPassBytes1(data) }
-
-func (r *backend1Request) finalizeHeaders() { // add at most 256 bytes
-	// if-modified-since: Sun, 06 Nov 1994 08:49:37 GMT\r\n
-	if r.unixTimes.ifModifiedSince >= 0 {
-		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesIfModifiedSince, r.unixTimes.ifModifiedSince))
-	}
-	// if-unmodified-since: Sun, 06 Nov 1994 08:49:37 GMT\r\n
-	if r.unixTimes.ifUnmodifiedSince >= 0 {
-		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesIfUnmodifiedSince, r.unixTimes.ifUnmodifiedSince))
-	}
-	if r.contentSize != -1 { // with content
-		if !r.forbidFraming {
-			if r.isVague() { // transfer-encoding: chunked\r\n
-				r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
-			} else { // content-length: >=0\r\n
-				sizeBuffer := r.stream.buffer256() // enough for content-length
-				n := i64ToDec(r.contentSize, sizeBuffer)
-				r.out1._addFixedHeader1(bytesContentLength, sizeBuffer[:n])
-			}
-		}
-		// content-type: application/octet-stream\r\n
-		if r.iContentType == 0 {
-			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeStream))
-		}
-	}
-	// connection: keep-alive\r\n
-	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
-}
-func (r *backend1Request) finalizeVague() error { return r.out1.finalizeVague1() }
-
-func (r *backend1Request) addedHeaders() []byte { return r.fields[r.controlEdge:r.fieldsEdge] }
-func (r *backend1Request) fixedHeaders() []byte { return http1BytesFixedRequestHeaders }
 
 // backend1Response is the backend-side HTTP/1.x response.
 type backend1Response struct { // incoming. needs parsing
@@ -689,6 +537,158 @@ func (r *backend1Response) cleanInput() {
 }
 
 func (r *backend1Response) readContent() (data []byte, err error) { return r.in1.readContent1() }
+
+// backend1Request is the backend-side HTTP/1.x request.
+type backend1Request struct { // outgoing. needs building
+	// Parent
+	backendRequest_
+	// Embeds
+	out1 _http1Out_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
+}
+
+func (r *backend1Request) onUse() {
+	r.backendRequest_.onUse(Version1_1)
+	r.out1.onUse(&r._httpOut_)
+}
+func (r *backend1Request) onEnd() {
+	r.backendRequest_.onEnd()
+	r.out1.onEnd()
+}
+
+func (r *backend1Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // METHOD uri HTTP/1.1\r\n
+	controlSize := len(method) + 1 + len(uri) + 1 + len(bytesHTTP1_1) + len(bytesCRLF)
+	if from, edge, ok := r._growFields(controlSize); ok {
+		from += copy(r.fields[from:], method)
+		r.fields[from] = ' '
+		from++
+		from += copy(r.fields[from:], uri)
+		r.fields[from] = ' '
+		from++
+		from += copy(r.fields[from:], bytesHTTP1_1) // we always use HTTP/1.1
+		r.fields[from] = '\r'
+		r.fields[from+1] = '\n'
+		if !hasContent {
+			r.forbidContent = true
+			r.forbidFraming = true
+		}
+		r.controlEdge = uint16(edge)
+		return true
+	} else {
+		return false
+	}
+}
+func (r *backend1Request) proxySetAuthority(hostname []byte, colonport []byte) bool {
+	if r.stream.Conn().TLSMode() {
+		if bytes.Equal(colonport, bytesColonport443) {
+			colonport = nil
+		}
+	} else if bytes.Equal(colonport, bytesColonport80) {
+		colonport = nil
+	}
+	headerSize := len(bytesHost) + len(bytesColonSpace) + len(hostname) + len(colonport) + len(bytesCRLF) // host: xxx\r\n
+	if from, _, ok := r._growFields(headerSize); ok {
+		from += copy(r.fields[from:], bytesHost)
+		r.fields[from] = ':'
+		r.fields[from+1] = ' '
+		from += 2
+		from += copy(r.fields[from:], hostname)
+		from += copy(r.fields[from:], colonport)
+		r.out1._addCRLFHeader1(from)
+		return true
+	} else {
+		return false
+	}
+}
+
+func (r *backend1Request) addHeader(name []byte, value []byte) bool {
+	return r.out1.addHeader1(name, value)
+}
+func (r *backend1Request) header(name []byte) (value []byte, ok bool) { return r.out1.header1(name) }
+func (r *backend1Request) hasHeader(name []byte) bool                 { return r.out1.hasHeader1(name) }
+func (r *backend1Request) delHeader(name []byte) (deleted bool)       { return r.out1.delHeader1(name) }
+func (r *backend1Request) delHeaderAt(i uint8)                        { r.out1.delHeaderAt1(i) }
+
+func (r *backend1Request) AddCookie(name string, value string) bool { // cookie: foo=bar; xyz=baz
+	// TODO. need some space to place the cookie. use stream.unsafeMake()?
+	return false
+}
+func (r *backend1Request) proxyCopyCookies(servReq ServerRequest) bool { // NOTE: merge all cookies into one "cookie" header
+	headerSize := len(bytesCookie) + len(bytesColonSpace) // `cookie: `
+	servReq.proxyWalkCookies(func(cookie *pair, name []byte, value []byte) bool {
+		headerSize += len(name) + 1 + len(value) + 2 // `name=value; `
+		return true
+	})
+	if from, _, ok := r.growHeader(headerSize); ok {
+		from += copy(r.fields[from:], bytesCookie)
+		r.fields[from] = ':'
+		r.fields[from+1] = ' '
+		from += 2
+		servReq.proxyWalkCookies(func(cookie *pair, name []byte, value []byte) bool {
+			from += copy(r.fields[from:], name)
+			r.fields[from] = '='
+			from++
+			from += copy(r.fields[from:], value)
+			r.fields[from] = ';'
+			r.fields[from+1] = ' '
+			from += 2
+			return true
+		})
+		r.fields[from-2] = '\r'
+		r.fields[from-1] = '\n'
+		return true
+	} else {
+		return false
+	}
+}
+
+func (r *backend1Request) sendChain() error { return r.out1.sendChain1() }
+
+func (r *backend1Request) echoHeaders() error { return r.out1.writeHeaders1() }
+func (r *backend1Request) echoChain() error   { return r.out1.echoChain1(true) } // we always use HTTP/1.1 chunked
+
+func (r *backend1Request) addTrailer(name []byte, value []byte) bool {
+	return r.out1.addTrailer1(name, value)
+}
+func (r *backend1Request) trailer(name []byte) (value []byte, ok bool) { return r.out1.trailer1(name) }
+
+func (r *backend1Request) proxyPassHeaders() error          { return r.out1.writeHeaders1() }
+func (r *backend1Request) proxyPassBytes(data []byte) error { return r.out1.proxyPassBytes1(data) }
+
+func (r *backend1Request) finalizeHeaders() { // add at most 256 bytes
+	// if-modified-since: Sun, 06 Nov 1994 08:49:37 GMT\r\n
+	if r.unixTimes.ifModifiedSince >= 0 {
+		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesIfModifiedSince, r.unixTimes.ifModifiedSince))
+	}
+	// if-unmodified-since: Sun, 06 Nov 1994 08:49:37 GMT\r\n
+	if r.unixTimes.ifUnmodifiedSince >= 0 {
+		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesIfUnmodifiedSince, r.unixTimes.ifUnmodifiedSince))
+	}
+	if r.contentSize != -1 { // with content
+		if !r.forbidFraming {
+			if r.isVague() { // transfer-encoding: chunked\r\n
+				r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
+			} else { // content-length: >=0\r\n
+				sizeBuffer := r.stream.buffer256() // enough for content-length
+				n := i64ToDec(r.contentSize, sizeBuffer)
+				r.out1._addFixedHeader1(bytesContentLength, sizeBuffer[:n])
+			}
+		}
+		// content-type: application/octet-stream\r\n
+		if r.iContentType == 0 {
+			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeStream))
+		}
+	}
+	// connection: keep-alive\r\n
+	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
+}
+func (r *backend1Request) finalizeVague() error { return r.out1.finalizeVague1() }
+
+func (r *backend1Request) addedHeaders() []byte { return r.fields[r.controlEdge:r.fieldsEdge] }
+func (r *backend1Request) fixedHeaders() []byte { return http1BytesFixedRequestHeaders }
 
 // backend1Socket is the backend-side HTTP/1.x webSocket.
 type backend1Socket struct { // incoming and outgoing

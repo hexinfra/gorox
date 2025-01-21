@@ -122,8 +122,8 @@ func (c *_backendConn_) isAlive() bool { return time.Now().Before(c.expireTime) 
 
 // backendStream
 type backendStream interface { // for *backend[1-3]Stream
-	Request() backendRequest
 	Response() backendResponse
+	Request() backendRequest
 	Socket() backendSocket
 
 	isBroken() bool
@@ -141,272 +141,6 @@ type _backendStream_ struct {
 func (s *_backendStream_) onUse() {
 }
 func (s *_backendStream_) onEnd() {
-}
-
-// backendRequest is the backend-side http request.
-type backendRequest interface { // for *backend[1-3]Request
-	setMethodURI(method []byte, uri []byte, hasContent bool) bool
-	proxySetAuthority(hostname []byte, colonport []byte) bool
-	proxyCopyCookies(servReq ServerRequest) bool // NOTE: HTTP 1.x/2/3 have different requirements on "cookie" header
-	proxyCopyHeaders(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool
-	proxyPassMessage(servReq ServerRequest) error                 // pass content to backend directly
-	proxyPostMessage(foreContent any, foreHasTrailers bool) error // post held content to backend
-	proxyCopyTrailers(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool
-	isVague() bool
-	endVague() error
-}
-
-// backendRequest_ is the parent for backend[1-3]Request.
-type backendRequest_ struct { // outgoing. needs building
-	// Mixins
-	_httpOut_ // outgoing http request
-	// Assocs
-	response backendResponse // the corresponding response
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	unixTimes struct { // in seconds
-		ifModifiedSince   int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
-		ifUnmodifiedSince int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
-	}
-	// Stream states (zeros)
-	_backendRequest0 // all values in this struct must be zero by default!
-}
-type _backendRequest0 struct { // for fast reset, entirely
-	indexes struct {
-		host              uint8
-		ifModifiedSince   uint8
-		ifUnmodifiedSince uint8
-		ifRange           uint8
-	}
-}
-
-func (r *backendRequest_) onUse(httpVersion uint8) { // for non-zeros
-	const asRequest = true
-	r._httpOut_.onUse(httpVersion, asRequest)
-
-	r.unixTimes.ifModifiedSince = -1   // not set
-	r.unixTimes.ifUnmodifiedSince = -1 // not set
-}
-func (r *backendRequest_) onEnd() { // for zeros
-	r._backendRequest0 = _backendRequest0{}
-
-	r._httpOut_.onEnd()
-}
-
-func (r *backendRequest_) Response() backendResponse { return r.response }
-
-func (r *backendRequest_) SetMethodURI(method string, uri string, hasContent bool) bool {
-	return r.outMessage.(backendRequest).setMethodURI(ConstBytes(method), ConstBytes(uri), hasContent)
-}
-func (r *backendRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only. HTTP/1.x doesn't use this!
-	// TODO: copy `:scheme $scheme` to r.fields
-	return false
-}
-func (r *backendRequest_) control() []byte { return r.fields[0:r.controlEdge] } // TODO: maybe we need a struct type to represent pseudo headers?
-
-func (r *backendRequest_) SetIfModifiedSince(since int64) bool {
-	return r._setUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince, since)
-}
-func (r *backendRequest_) SetIfUnmodifiedSince(since int64) bool {
-	return r._setUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, since)
-}
-
-func (r *backendRequest_) beforeSend() {} // revising is not supported in backend side.
-func (r *backendRequest_) doSend() error { // revising is not supported in backend side.
-	return r.outMessage.sendChain()
-}
-
-func (r *backendRequest_) beforeEcho() {} // revising is not supported in backend side.
-func (r *backendRequest_) doEcho() error { // revising is not supported in backend side.
-	if r.stream.isBroken() {
-		return httpOutWriteBroken
-	}
-	r.chain.PushTail(&r.piece)
-	defer r.chain.free()
-	return r.outMessage.echoChain()
-}
-func (r *backendRequest_) endVague() error { // revising is not supported in backend side.
-	if r.stream.isBroken() {
-		return httpOutWriteBroken
-	}
-	return r.outMessage.finalizeVague()
-}
-
-var ( // perfect hash table for request critical headers
-	backendRequestCriticalHeaderTable = [12]struct {
-		hash uint16
-		name []byte
-		fAdd func(*backendRequest_, []byte) (ok bool)
-		fDel func(*backendRequest_) (deleted bool)
-	}{ // connection content-length content-type cookie date host if-modified-since if-range if-unmodified-since transfer-encoding upgrade via
-		0:  {hashContentLength, bytesContentLength, nil, nil}, // restricted. added at finalizeHeaders()
-		1:  {hashConnection, bytesConnection, nil, nil},       // restricted. added at finalizeHeaders()
-		2:  {hashIfRange, bytesIfRange, (*backendRequest_)._insertIfRange, (*backendRequest_)._removeIfRange},
-		3:  {hashUpgrade, bytesUpgrade, nil, nil}, // restricted. not allowed to change the protocol. may be added if webSocket?
-		4:  {hashIfModifiedSince, bytesIfModifiedSince, (*backendRequest_)._insertIfModifiedSince, (*backendRequest_)._removeIfModifiedSince},
-		5:  {hashIfUnmodifiedSince, bytesIfUnmodifiedSince, (*backendRequest_)._insertIfUnmodifiedSince, (*backendRequest_)._removeIfUnmodifiedSince},
-		6:  {hashHost, bytesHost, (*backendRequest_)._insertHost, (*backendRequest_)._removeHost},
-		7:  {hashTransferEncoding, bytesTransferEncoding, nil, nil}, // restricted. added at finalizeHeaders() if needed
-		8:  {hashContentType, bytesContentType, (*backendRequest_)._insertContentType, (*backendRequest_)._removeContentType},
-		9:  {hashCookie, bytesCookie, nil, nil}, // restricted. added separately
-		10: {hashDate, bytesDate, (*backendRequest_)._insertDate, (*backendRequest_)._removeDate},
-		11: {hashVia, bytesVia, nil, nil}, // restricted. added if needed when acting as a proxy
-	}
-	backendRequestCriticalHeaderFind = func(nameHash uint16) int { return (645048 / int(nameHash)) % len(backendRequestCriticalHeaderTable) }
-)
-
-func (r *backendRequest_) insertHeader(nameHash uint16, name []byte, value []byte) bool {
-	h := &backendRequestCriticalHeaderTable[backendRequestCriticalHeaderFind(nameHash)]
-	if h.hash == nameHash && bytes.Equal(h.name, name) {
-		if h.fAdd == nil { // mainly because this header is restricted to insert
-			return true // pretend to be successful
-		}
-		return h.fAdd(r, value)
-	}
-	return r.outMessage.addHeader(name, value)
-}
-func (r *backendRequest_) _insertHost(host []byte) (ok bool) {
-	return r._appendSingleton(&r.indexes.host, bytesHost, host)
-}
-func (r *backendRequest_) _insertIfRange(ifRange []byte) (ok bool) {
-	return r._appendSingleton(&r.indexes.ifRange, bytesIfRange, ifRange)
-}
-func (r *backendRequest_) _insertIfModifiedSince(since []byte) (ok bool) {
-	return r._addUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince, bytesIfModifiedSince, since)
-}
-func (r *backendRequest_) _insertIfUnmodifiedSince(since []byte) (ok bool) {
-	return r._addUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, bytesIfUnmodifiedSince, since)
-}
-
-func (r *backendRequest_) removeHeader(nameHash uint16, name []byte) bool {
-	h := &backendRequestCriticalHeaderTable[backendRequestCriticalHeaderFind(nameHash)]
-	if h.hash == nameHash && bytes.Equal(h.name, name) {
-		if h.fDel == nil { // mainly because this header is restricted to remove
-			return true // pretend to be successful
-		}
-		return h.fDel(r)
-	}
-	return r.outMessage.delHeader(name)
-}
-func (r *backendRequest_) _removeHost() (deleted bool) {
-	return r._deleteSingleton(&r.indexes.host)
-}
-func (r *backendRequest_) _removeIfRange() (deleted bool) {
-	return r._deleteSingleton(&r.indexes.ifRange)
-}
-func (r *backendRequest_) _removeIfModifiedSince() (deleted bool) {
-	return r._delUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince)
-}
-func (r *backendRequest_) _removeIfUnmodifiedSince() (deleted bool) {
-	return r._delUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince)
-}
-
-func (r *backendRequest_) proxyPassMessage(servReq ServerRequest) error {
-	return r._proxyPassMessage(servReq)
-}
-func (r *backendRequest_) proxyCopyHeaders(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool {
-	servReq.proxyDelHopHeaders()
-
-	// copy control (:method, :path, :authority, :scheme)
-	uri := servReq.UnsafeURI()
-	if servReq.IsAsteriskOptions() { // OPTIONS *
-		// RFC 9112 (3.2.4):
-		// If a proxy receives an OPTIONS request with an absolute-form of request-target in which the URI has an empty path and no query component,
-		// then the last proxy on the request chain MUST send a request-target of "*" when it forwards the request to the indicated origin server.
-		uri = bytesAsterisk
-	}
-	if !r.outMessage.(backendRequest).setMethodURI(servReq.UnsafeMethod(), uri, servReq.HasContent()) {
-		return false
-	}
-	if servReq.IsAbsoluteForm() || len(proxyConfig.Hostname) != 0 || len(proxyConfig.Colonport) != 0 { // TODO: what about HTTP/2 and HTTP/3?
-		servReq.proxyUnsetHost()
-		if servReq.IsAbsoluteForm() {
-			if !r.outMessage.addHeader(bytesHost, servReq.UnsafeAuthority()) {
-				return false
-			}
-		} else { // custom authority (hostname or colonport)
-			var (
-				hostname  []byte
-				colonport []byte
-			)
-			if len(proxyConfig.Hostname) == 0 { // no custom hostname
-				hostname = servReq.UnsafeHostname()
-			} else {
-				hostname = proxyConfig.Hostname
-			}
-			if len(proxyConfig.Colonport) == 0 { // no custom colonport
-				colonport = servReq.UnsafeColonport()
-			} else {
-				colonport = proxyConfig.Colonport
-			}
-			if !r.outMessage.(backendRequest).proxySetAuthority(hostname, colonport) {
-				return false
-			}
-		}
-	}
-	if r.httpVersion >= Version2 {
-		var scheme []byte
-		if r.stream.Conn().TLSMode() {
-			scheme = bytesSchemeHTTPS
-		} else {
-			scheme = bytesSchemeHTTP
-		}
-		if !r.setScheme(scheme) {
-			return false
-		}
-	} else {
-		// we have no way to set scheme in HTTP/1.x unless we use absolute-form, which is a risk as some servers may not support it.
-	}
-
-	// copy selective forbidden headers (including cookie) from servReq
-	if servReq.HasCookies() && !r.outMessage.(backendRequest).proxyCopyCookies(servReq) {
-		return false
-	}
-	if !r.outMessage.addHeader(bytesVia, proxyConfig.InboundViaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
-		return false
-	}
-	if servReq.AcceptTrailers() {
-		// TODO: add te: trailers
-		// TODO: add connection: te
-	}
-
-	// copy added headers
-	for headerName, vHeaderValue := range proxyConfig.AddRequestHeaders {
-		var headerValue []byte
-		if vHeaderValue.IsVariable() {
-			headerValue = vHeaderValue.BytesVar(servReq)
-		} else if v, ok := vHeaderValue.Bytes(); ok {
-			headerValue = v
-		} else {
-			// Invalid values are treated as empty
-		}
-		if !r.outMessage.addHeader(ConstBytes(headerName), headerValue) {
-			return false
-		}
-	}
-
-	// copy remaining headers from servReq
-	if !servReq.proxyWalkHeaders(func(header *pair, name []byte, value []byte) bool {
-		if false { // TODO: some special headers should be copied directly?
-			return r.outMessage.addHeader(name, value)
-		} else {
-			return r.outMessage.insertHeader(header.nameHash, name, value) // some headers are restricted
-		}
-	}) {
-		return false
-	}
-
-	for _, name := range proxyConfig.DelRequestHeaders {
-		r.outMessage.delHeader(name)
-	}
-
-	return true
-}
-func (r *backendRequest_) proxyCopyTrailers(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool {
-	return servReq.proxyWalkTrailers(func(trailer *pair, name []byte, value []byte) bool {
-		return r.outMessage.addTrailer(name, value)
-	})
 }
 
 // backendResponse is the backend-side http response.
@@ -822,6 +556,272 @@ func (r *backendResponse_) applyTrailer(index uint8) bool {
 	//trailer := &r.primes[index]
 	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
+}
+
+// backendRequest is the backend-side http request.
+type backendRequest interface { // for *backend[1-3]Request
+	setMethodURI(method []byte, uri []byte, hasContent bool) bool
+	proxySetAuthority(hostname []byte, colonport []byte) bool
+	proxyCopyCookies(servReq ServerRequest) bool // NOTE: HTTP 1.x/2/3 have different requirements on "cookie" header
+	proxyCopyHeaders(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool
+	proxyPassMessage(servReq ServerRequest) error                 // pass content to backend directly
+	proxyPostMessage(foreContent any, foreHasTrailers bool) error // post held content to backend
+	proxyCopyTrailers(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool
+	isVague() bool
+	endVague() error
+}
+
+// backendRequest_ is the parent for backend[1-3]Request.
+type backendRequest_ struct { // outgoing. needs building
+	// Mixins
+	_httpOut_ // outgoing http request
+	// Assocs
+	response backendResponse // the corresponding response
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	unixTimes struct { // in seconds
+		ifModifiedSince   int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
+		ifUnmodifiedSince int64 // -1: not set, -2: set through general api, >= 0: set unix time in seconds
+	}
+	// Stream states (zeros)
+	_backendRequest0 // all values in this struct must be zero by default!
+}
+type _backendRequest0 struct { // for fast reset, entirely
+	indexes struct {
+		host              uint8
+		ifModifiedSince   uint8
+		ifUnmodifiedSince uint8
+		ifRange           uint8
+	}
+}
+
+func (r *backendRequest_) onUse(httpVersion uint8) { // for non-zeros
+	const asRequest = true
+	r._httpOut_.onUse(httpVersion, asRequest)
+
+	r.unixTimes.ifModifiedSince = -1   // not set
+	r.unixTimes.ifUnmodifiedSince = -1 // not set
+}
+func (r *backendRequest_) onEnd() { // for zeros
+	r._backendRequest0 = _backendRequest0{}
+
+	r._httpOut_.onEnd()
+}
+
+func (r *backendRequest_) Response() backendResponse { return r.response }
+
+func (r *backendRequest_) SetMethodURI(method string, uri string, hasContent bool) bool {
+	return r.outMessage.(backendRequest).setMethodURI(ConstBytes(method), ConstBytes(uri), hasContent)
+}
+func (r *backendRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only. HTTP/1.x doesn't use this!
+	// TODO: copy `:scheme $scheme` to r.fields
+	return false
+}
+func (r *backendRequest_) control() []byte { return r.fields[0:r.controlEdge] } // TODO: maybe we need a struct type to represent pseudo headers?
+
+func (r *backendRequest_) SetIfModifiedSince(since int64) bool {
+	return r._setUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince, since)
+}
+func (r *backendRequest_) SetIfUnmodifiedSince(since int64) bool {
+	return r._setUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, since)
+}
+
+func (r *backendRequest_) beforeSend() {} // revising is not supported in backend side.
+func (r *backendRequest_) doSend() error { // revising is not supported in backend side.
+	return r.outMessage.sendChain()
+}
+
+func (r *backendRequest_) beforeEcho() {} // revising is not supported in backend side.
+func (r *backendRequest_) doEcho() error { // revising is not supported in backend side.
+	if r.stream.isBroken() {
+		return httpOutWriteBroken
+	}
+	r.chain.PushTail(&r.piece)
+	defer r.chain.free()
+	return r.outMessage.echoChain()
+}
+func (r *backendRequest_) endVague() error { // revising is not supported in backend side.
+	if r.stream.isBroken() {
+		return httpOutWriteBroken
+	}
+	return r.outMessage.finalizeVague()
+}
+
+var ( // perfect hash table for request critical headers
+	backendRequestCriticalHeaderTable = [12]struct {
+		hash uint16
+		name []byte
+		fAdd func(*backendRequest_, []byte) (ok bool)
+		fDel func(*backendRequest_) (deleted bool)
+	}{ // connection content-length content-type cookie date host if-modified-since if-range if-unmodified-since transfer-encoding upgrade via
+		0:  {hashContentLength, bytesContentLength, nil, nil}, // restricted. added at finalizeHeaders()
+		1:  {hashConnection, bytesConnection, nil, nil},       // restricted. added at finalizeHeaders()
+		2:  {hashIfRange, bytesIfRange, (*backendRequest_)._insertIfRange, (*backendRequest_)._removeIfRange},
+		3:  {hashUpgrade, bytesUpgrade, nil, nil}, // restricted. not allowed to change the protocol. may be added if webSocket?
+		4:  {hashIfModifiedSince, bytesIfModifiedSince, (*backendRequest_)._insertIfModifiedSince, (*backendRequest_)._removeIfModifiedSince},
+		5:  {hashIfUnmodifiedSince, bytesIfUnmodifiedSince, (*backendRequest_)._insertIfUnmodifiedSince, (*backendRequest_)._removeIfUnmodifiedSince},
+		6:  {hashHost, bytesHost, (*backendRequest_)._insertHost, (*backendRequest_)._removeHost},
+		7:  {hashTransferEncoding, bytesTransferEncoding, nil, nil}, // restricted. added at finalizeHeaders() if needed
+		8:  {hashContentType, bytesContentType, (*backendRequest_)._insertContentType, (*backendRequest_)._removeContentType},
+		9:  {hashCookie, bytesCookie, nil, nil}, // restricted. added separately
+		10: {hashDate, bytesDate, (*backendRequest_)._insertDate, (*backendRequest_)._removeDate},
+		11: {hashVia, bytesVia, nil, nil}, // restricted. added if needed when acting as a proxy
+	}
+	backendRequestCriticalHeaderFind = func(nameHash uint16) int { return (645048 / int(nameHash)) % len(backendRequestCriticalHeaderTable) }
+)
+
+func (r *backendRequest_) insertHeader(nameHash uint16, name []byte, value []byte) bool {
+	h := &backendRequestCriticalHeaderTable[backendRequestCriticalHeaderFind(nameHash)]
+	if h.hash == nameHash && bytes.Equal(h.name, name) {
+		if h.fAdd == nil { // mainly because this header is restricted to insert
+			return true // pretend to be successful
+		}
+		return h.fAdd(r, value)
+	}
+	return r.outMessage.addHeader(name, value)
+}
+func (r *backendRequest_) _insertHost(host []byte) (ok bool) {
+	return r._appendSingleton(&r.indexes.host, bytesHost, host)
+}
+func (r *backendRequest_) _insertIfRange(ifRange []byte) (ok bool) {
+	return r._appendSingleton(&r.indexes.ifRange, bytesIfRange, ifRange)
+}
+func (r *backendRequest_) _insertIfModifiedSince(since []byte) (ok bool) {
+	return r._addUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince, bytesIfModifiedSince, since)
+}
+func (r *backendRequest_) _insertIfUnmodifiedSince(since []byte) (ok bool) {
+	return r._addUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince, bytesIfUnmodifiedSince, since)
+}
+
+func (r *backendRequest_) removeHeader(nameHash uint16, name []byte) bool {
+	h := &backendRequestCriticalHeaderTable[backendRequestCriticalHeaderFind(nameHash)]
+	if h.hash == nameHash && bytes.Equal(h.name, name) {
+		if h.fDel == nil { // mainly because this header is restricted to remove
+			return true // pretend to be successful
+		}
+		return h.fDel(r)
+	}
+	return r.outMessage.delHeader(name)
+}
+func (r *backendRequest_) _removeHost() (deleted bool) {
+	return r._deleteSingleton(&r.indexes.host)
+}
+func (r *backendRequest_) _removeIfRange() (deleted bool) {
+	return r._deleteSingleton(&r.indexes.ifRange)
+}
+func (r *backendRequest_) _removeIfModifiedSince() (deleted bool) {
+	return r._delUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince)
+}
+func (r *backendRequest_) _removeIfUnmodifiedSince() (deleted bool) {
+	return r._delUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince)
+}
+
+func (r *backendRequest_) proxyPassMessage(servReq ServerRequest) error {
+	return r._proxyPassMessage(servReq)
+}
+func (r *backendRequest_) proxyCopyHeaders(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool {
+	servReq.proxyDelHopHeaders()
+
+	// copy control (:method, :path, :authority, :scheme)
+	uri := servReq.UnsafeURI()
+	if servReq.IsAsteriskOptions() { // OPTIONS *
+		// RFC 9112 (3.2.4):
+		// If a proxy receives an OPTIONS request with an absolute-form of request-target in which the URI has an empty path and no query component,
+		// then the last proxy on the request chain MUST send a request-target of "*" when it forwards the request to the indicated origin server.
+		uri = bytesAsterisk
+	}
+	if !r.outMessage.(backendRequest).setMethodURI(servReq.UnsafeMethod(), uri, servReq.HasContent()) {
+		return false
+	}
+	if servReq.IsAbsoluteForm() || len(proxyConfig.Hostname) != 0 || len(proxyConfig.Colonport) != 0 { // TODO: what about HTTP/2 and HTTP/3?
+		servReq.proxyUnsetHost()
+		if servReq.IsAbsoluteForm() {
+			if !r.outMessage.addHeader(bytesHost, servReq.UnsafeAuthority()) {
+				return false
+			}
+		} else { // custom authority (hostname or colonport)
+			var (
+				hostname  []byte
+				colonport []byte
+			)
+			if len(proxyConfig.Hostname) == 0 { // no custom hostname
+				hostname = servReq.UnsafeHostname()
+			} else {
+				hostname = proxyConfig.Hostname
+			}
+			if len(proxyConfig.Colonport) == 0 { // no custom colonport
+				colonport = servReq.UnsafeColonport()
+			} else {
+				colonport = proxyConfig.Colonport
+			}
+			if !r.outMessage.(backendRequest).proxySetAuthority(hostname, colonport) {
+				return false
+			}
+		}
+	}
+	if r.httpVersion >= Version2 {
+		var scheme []byte
+		if r.stream.Conn().TLSMode() {
+			scheme = bytesSchemeHTTPS
+		} else {
+			scheme = bytesSchemeHTTP
+		}
+		if !r.setScheme(scheme) {
+			return false
+		}
+	} else {
+		// we have no way to set scheme in HTTP/1.x unless we use absolute-form, which is a risk as some servers may not support it.
+	}
+
+	// copy selective forbidden headers (including cookie) from servReq
+	if servReq.HasCookies() && !r.outMessage.(backendRequest).proxyCopyCookies(servReq) {
+		return false
+	}
+	if !r.outMessage.addHeader(bytesVia, proxyConfig.InboundViaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
+		return false
+	}
+	if servReq.AcceptTrailers() {
+		// TODO: add te: trailers
+		// TODO: add connection: te
+	}
+
+	// copy added headers
+	for headerName, vHeaderValue := range proxyConfig.AddRequestHeaders {
+		var headerValue []byte
+		if vHeaderValue.IsVariable() {
+			headerValue = vHeaderValue.BytesVar(servReq)
+		} else if v, ok := vHeaderValue.Bytes(); ok {
+			headerValue = v
+		} else {
+			// Invalid values are treated as empty
+		}
+		if !r.outMessage.addHeader(ConstBytes(headerName), headerValue) {
+			return false
+		}
+	}
+
+	// copy remaining headers from servReq
+	if !servReq.proxyWalkHeaders(func(header *pair, name []byte, value []byte) bool {
+		if false { // TODO: are there any special headers that should be copied directly?
+			return r.outMessage.addHeader(name, value)
+		} else {
+			return r.outMessage.insertHeader(header.nameHash, name, value) // some headers (e.g. "connection") are restricted
+		}
+	}) {
+		return false
+	}
+
+	for _, name := range proxyConfig.DelRequestHeaders {
+		r.outMessage.delHeader(name)
+	}
+
+	return true
+}
+func (r *backendRequest_) proxyCopyTrailers(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool {
+	return servReq.proxyWalkTrailers(func(trailer *pair, name []byte, value []byte) bool {
+		return r.outMessage.addTrailer(name, value)
+	})
 }
 
 // backendSocket is the backend-side webSocket.

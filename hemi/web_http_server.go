@@ -2896,7 +2896,7 @@ func (r *serverResponse_) proxyCopyHeaders(backResp backendResponse, proxyConfig
 		if header.nameHash == hashSetCookie && bytes.Equal(name, bytesSetCookie) { // set-cookie is copied directly
 			return r.outMessage.addHeader(name, value)
 		} else {
-			return r.outMessage.insertHeader(header.nameHash, name, value) // some headers are restricted
+			return r.outMessage.insertHeader(header.nameHash, name, value) // some headers (e.g. "connection") are restricted
 		}
 	}) {
 		return false

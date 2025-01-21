@@ -377,7 +377,7 @@ func (r *server3Response) proxyPass1xx(backResp backendResponse) bool {
 	backResp.proxyDelHopHeaders()
 	r.status = backResp.Status()
 	if !backResp.proxyWalkHeaders(func(header *pair, name []byte, value []byte) bool {
-		return r.insertHeader(header.nameHash, name, value) // some headers are restricted
+		return r.insertHeader(header.nameHash, name, value) // some headers (e.g. "connection") are restricted
 	}) {
 		return false
 	}

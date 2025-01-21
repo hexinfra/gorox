@@ -269,8 +269,8 @@ type backend2Stream struct {
 	// Mixins
 	_backendStream_
 	// Assocs
-	request  backend2Request
 	response backend2Response
+	request  backend2Request
 	socket   *backend2Socket
 	// Stream states (stocks)
 	// Stream states (controlled)
@@ -287,12 +287,12 @@ func getBackend2Stream(conn *backend2Conn, id uint32) *backend2Stream {
 	var backStream *backend2Stream
 	if x := poolBackend2Stream.Get(); x == nil {
 		backStream = new(backend2Stream)
-		req, resp := &backStream.request, &backStream.response
+		resp, req := &backStream.response, &backStream.request
+		resp.stream = backStream
+		resp.inMessage = resp
 		req.stream = backStream
 		req.outMessage = req
 		req.response = resp
-		resp.stream = backStream
-		resp.inMessage = resp
 	} else {
 		backStream = x.(*backend2Stream)
 	}
@@ -308,12 +308,12 @@ func (s *backend2Stream) onUse(id uint32, conn *backend2Conn) { // for non-zeros
 	s.http2Stream_.onUse(id, conn)
 	s._backendStream_.onUse()
 
-	s.request.onUse()
 	s.response.onUse()
+	s.request.onUse()
 }
 func (s *backend2Stream) onEnd() { // for zeros
-	s.response.onEnd()
 	s.request.onEnd()
+	s.response.onEnd()
 	if s.socket != nil {
 		s.socket.onEnd()
 		s.socket = nil
@@ -327,9 +327,36 @@ func (s *backend2Stream) onEnd() { // for zeros
 
 func (s *backend2Stream) Holder() httpHolder { return s.conn.node }
 
-func (s *backend2Stream) Request() backendRequest   { return &s.request }
 func (s *backend2Stream) Response() backendResponse { return &s.response }
+func (s *backend2Stream) Request() backendRequest   { return &s.request }
 func (s *backend2Stream) Socket() backendSocket     { return nil } // TODO. See RFC 8441: https://datatracker.ietf.org/doc/html/rfc8441
+
+// backend2Response is the backend-side HTTP/2 response.
+type backend2Response struct { // incoming. needs parsing
+	// Parent
+	backendResponse_
+	// Embeds
+	in2 _http2In_
+	// Stream states (stocks)
+	// Stream states (controlled)
+	// Stream states (non-zeros)
+	// Stream states (zeros)
+}
+
+func (r *backend2Response) onUse() {
+	r.backendResponse_.onUse(Version2)
+	r.in2.onUse(&r._httpIn_)
+}
+func (r *backend2Response) onEnd() {
+	r.backendResponse_.onEnd()
+	r.in2.onEnd()
+}
+
+func (r *backend2Response) recvHead() {
+	// TODO
+}
+
+func (r *backend2Response) readContent() (data []byte, err error) { return r.in2.readContent2() }
 
 // backend2Request is the backend-side HTTP/2 request.
 type backend2Request struct { // outgoing. needs building
@@ -401,33 +428,6 @@ func (r *backend2Request) finalizeVague() error {
 
 func (r *backend2Request) addedHeaders() []byte { return nil } // TODO
 func (r *backend2Request) fixedHeaders() []byte { return nil } // TODO
-
-// backend2Response is the backend-side HTTP/2 response.
-type backend2Response struct { // incoming. needs parsing
-	// Parent
-	backendResponse_
-	// Embeds
-	in2 _http2In_
-	// Stream states (stocks)
-	// Stream states (controlled)
-	// Stream states (non-zeros)
-	// Stream states (zeros)
-}
-
-func (r *backend2Response) onUse() {
-	r.backendResponse_.onUse(Version2)
-	r.in2.onUse(&r._httpIn_)
-}
-func (r *backend2Response) onEnd() {
-	r.backendResponse_.onEnd()
-	r.in2.onEnd()
-}
-
-func (r *backend2Response) recvHead() {
-	// TODO
-}
-
-func (r *backend2Response) readContent() (data []byte, err error) { return r.in2.readContent2() }
 
 // backend2Socket is the backend-side HTTP/2 webSocket.
 type backend2Socket struct { // incoming and outgoing

@@ -112,7 +112,7 @@ func (s *Server_[G]) ColonportBytes() []byte {
 	}
 }
 
-func (s *Server_[G]) holder() _holder_ { return s._holder_ }
+func (s *Server_[G]) holder() _holder_ { return s._holder_ } // copy configs
 
 // Gate is the interface for all gates. Gates are not components.
 type Gate interface {

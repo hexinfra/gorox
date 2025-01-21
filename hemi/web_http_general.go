@@ -160,7 +160,7 @@ func (s *httpStream_) onEnd() {
 func (s *httpStream_) buffer256() []byte          { return s.stockBuffer[:] }
 func (s *httpStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
 
-// httpIn collects shared methods between *server[1-3]Request and *backend[1-3]Response.
+// httpIn
 type httpIn interface {
 	ContentSize() int64
 	IsVague() bool
@@ -1525,7 +1525,7 @@ var ( // _httpIn_ errors
 	httpInLongTime = errors.New("http incoming costs a long time")
 )
 
-// httpOut collects shared methods between *server[1-3]Response and *backend[1-3]Request.
+// httpOut
 type httpOut interface {
 	control() []byte
 	addHeader(name []byte, value []byte) bool
@@ -2008,7 +2008,7 @@ var ( // _httpOut_ errors
 	httpOutTrailerFailed = errors.New("add trailer failed")
 )
 
-// httpSocket collects shared methods between *server[1-3]Socket and *backend[1-3]Socket.
+// httpSocket
 type httpSocket interface {
 	Read(dst []byte) (int, error)
 	Write(src []byte) (int, error)
@@ -2030,10 +2030,10 @@ type _httpSocket_ struct { // incoming and outgoing
 type _httpSocket0 struct { // for fast reset, entirely
 }
 
-func (s *_httpSocket_) onUse(asServer bool) {
+func (s *_httpSocket_) onUse(asServer bool) { // for non-zeros
 	s.asServer = asServer
 }
-func (s *_httpSocket_) onEnd() {
+func (s *_httpSocket_) onEnd() { // for zeros
 	s._httpSocket0 = _httpSocket0{}
 }
 

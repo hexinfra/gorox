@@ -29,7 +29,7 @@ type grpcServer struct {
 	// Assocs
 	defaultService *Service // default service if not found
 	// States
-	forServices               []string                // for what services
+	services                  []string                // for what services
 	exactServices             []*hostnameTo[*Service] // like: ("example.com")
 	suffixServices            []*hostnameTo[*Service] // like: ("*.example.com")
 	prefixServices            []*hostnameTo[*Service] // like: ("www.example.*")
@@ -45,8 +45,8 @@ func (s *grpcServer) onCreate(compName string, stage *Stage) {
 func (s *grpcServer) OnConfigure() {
 	s.Server_.OnConfigure()
 
-	// .forServices
-	s.ConfigureStringList("forServices", &s.forServices, nil, []string{})
+	// .services
+	s.ConfigureStringList("services", &s.services, nil, []string{})
 
 	// .recvTimeout
 	s.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) error {
@@ -79,7 +79,7 @@ func (s *grpcServer) OnPrepare() {
 func (s *grpcServer) MaxConcurrentConnsPerGate() int32 { return s.maxConcurrentConnsPerGate }
 
 func (s *grpcServer) BindServices() {
-	for _, serviceName := range s.forServices {
+	for _, serviceName := range s.services {
 		service := s.stage.Service(serviceName)
 		if service == nil {
 			continue

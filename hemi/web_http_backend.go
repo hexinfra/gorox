@@ -240,18 +240,18 @@ var ( // perfect hash table for request critical headers
 		fAdd func(*backendRequest_, []byte) (ok bool)
 		fDel func(*backendRequest_) (deleted bool)
 	}{ // connection content-length content-type cookie date host if-modified-since if-range if-unmodified-since transfer-encoding upgrade via
-		0:  {hashContentLength, bytesContentLength, nil, nil}, // restricted
-		1:  {hashConnection, bytesConnection, nil, nil},       // restricted
+		0:  {hashContentLength, bytesContentLength, nil, nil}, // restricted. added at finalizeHeaders()
+		1:  {hashConnection, bytesConnection, nil, nil},       // restricted. added at finalizeHeaders()
 		2:  {hashIfRange, bytesIfRange, (*backendRequest_)._insertIfRange, (*backendRequest_)._removeIfRange},
-		3:  {hashUpgrade, bytesUpgrade, nil, nil}, // restricted
+		3:  {hashUpgrade, bytesUpgrade, nil, nil}, // restricted. not allowed to change the protocol. may be added if webSocket?
 		4:  {hashIfModifiedSince, bytesIfModifiedSince, (*backendRequest_)._insertIfModifiedSince, (*backendRequest_)._removeIfModifiedSince},
 		5:  {hashIfUnmodifiedSince, bytesIfUnmodifiedSince, (*backendRequest_)._insertIfUnmodifiedSince, (*backendRequest_)._removeIfUnmodifiedSince},
 		6:  {hashHost, bytesHost, (*backendRequest_)._insertHost, (*backendRequest_)._removeHost},
-		7:  {hashTransferEncoding, bytesTransferEncoding, nil, nil}, // restricted
+		7:  {hashTransferEncoding, bytesTransferEncoding, nil, nil}, // restricted. added at finalizeHeaders() if needed
 		8:  {hashContentType, bytesContentType, (*backendRequest_)._insertContentType, (*backendRequest_)._removeContentType},
-		9:  {hashCookie, bytesCookie, nil, nil}, // restricted
+		9:  {hashCookie, bytesCookie, nil, nil}, // restricted. added separately
 		10: {hashDate, bytesDate, (*backendRequest_)._insertDate, (*backendRequest_)._removeDate},
-		11: {hashVia, bytesVia, nil, nil}, // restricted
+		11: {hashVia, bytesVia, nil, nil}, // restricted. added if needed when acting as a proxy
 	}
 	backendRequestCriticalHeaderFind = func(nameHash uint16) int { return (645048 / int(nameHash)) % len(backendRequestCriticalHeaderTable) }
 )
@@ -488,7 +488,7 @@ func (r *backendResponse_) onEnd() { // for zeros
 
 func (r *backendResponse_) reuse() { // between 1xx and non-1xx responses
 	httpVersion := r.httpVersion
-	r.onEnd()
+	r.onEnd() // this clears r.httpVersion
 	r.onUse(httpVersion)
 }
 
@@ -833,6 +833,8 @@ type backendSocket_ struct { // incoming and outgoing
 	// Mixins
 	_httpSocket_
 	// Assocs
+	// Stream states (stocks)
+	// Stream states (controlled)
 	// Stream states (non-zeros)
 	// Stream states (zeros)
 	_backendSocket0 // all values in this struct must be zero by default!

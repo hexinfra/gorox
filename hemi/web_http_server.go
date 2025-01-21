@@ -28,7 +28,7 @@ type HTTPServer interface { // for *http[x3]Server
 	// Methods
 	MaxConcurrentConnsPerGate() int32
 	bindWebapps()
-	httpHolder() _httpHolder_
+	httpHolder() _httpHolder_ // used by gates to copy the configs
 }
 
 // httpServer_ is the parent for http[x3]Server.
@@ -154,7 +154,7 @@ func (s *httpServer_[G]) findWebapp(hostname []byte) *Webapp {
 	return s.defaultWebapp // may be nil
 }
 
-func (s *httpServer_[G]) httpHolder() _httpHolder_ { return s._httpHolder_ }
+func (s *httpServer_[G]) httpHolder() _httpHolder_ { return s._httpHolder_ } // copy configs
 
 // httpGate
 type httpGate interface {
@@ -2831,15 +2831,15 @@ var ( // perfect hash table for response critical headers
 		fAdd func(*serverResponse_, []byte) (ok bool)
 		fDel func(*serverResponse_) (deleted bool)
 	}{ // connection content-length content-type date expires last-modified server set-cookie transfer-encoding upgrade
-		0: {hashServer, bytesServer, nil, nil},       // restricted
-		1: {hashSetCookie, bytesSetCookie, nil, nil}, // restricted
-		2: {hashUpgrade, bytesUpgrade, nil, nil},     // restricted
+		0: {hashServer, bytesServer, nil, nil},       // restricted. added at finalizeHeaders()
+		1: {hashSetCookie, bytesSetCookie, nil, nil}, // restricted. use specific api to add
+		2: {hashUpgrade, bytesUpgrade, nil, nil},     // restricted. not allowed to change the protocol. may be added if webSocket?
 		3: {hashDate, bytesDate, (*serverResponse_)._insertDate, (*serverResponse_)._removeDate},
-		4: {hashTransferEncoding, bytesTransferEncoding, nil, nil}, // restricted
-		5: {hashConnection, bytesConnection, nil, nil},             // restricted
+		4: {hashTransferEncoding, bytesTransferEncoding, nil, nil}, // restricted. added at finalizeHeaders() if needed
+		5: {hashConnection, bytesConnection, nil, nil},             // restricted. added at finalizeHeaders()
 		6: {hashLastModified, bytesLastModified, (*serverResponse_)._insertLastModified, (*serverResponse_)._removeLastModified},
 		7: {hashExpires, bytesExpires, (*serverResponse_)._insertExpires, (*serverResponse_)._removeExpires},
-		8: {hashContentLength, bytesContentLength, nil, nil}, // restricted
+		8: {hashContentLength, bytesContentLength, nil, nil}, // restricted. added at finalizeHeaders()
 		9: {hashContentType, bytesContentType, (*serverResponse_)._insertContentType, (*serverResponse_)._removeContentType},
 	}
 	serverResponseCriticalHeaderFind = func(nameHash uint16) int { return (113100 / int(nameHash)) % len(serverResponseCriticalHeaderTable) }

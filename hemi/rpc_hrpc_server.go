@@ -29,7 +29,7 @@ type hrpcServer struct {
 	// Assocs
 	defaultService *Service // default service if not found
 	// States
-	forServices               []string                // for what services
+	services                  []string                // for what services
 	exactServices             []*hostnameTo[*Service] // like: ("example.com")
 	suffixServices            []*hostnameTo[*Service] // like: ("*.example.com")
 	prefixServices            []*hostnameTo[*Service] // like: ("www.example.*")
@@ -45,8 +45,8 @@ func (s *hrpcServer) onCreate(compName string, stage *Stage) {
 func (s *hrpcServer) OnConfigure() {
 	s.Server_.OnConfigure()
 
-	// .forServices
-	s.ConfigureStringList("forServices", &s.forServices, nil, []string{})
+	// .services
+	s.ConfigureStringList("services", &s.services, nil, []string{})
 
 	// .recvTimeout
 	s.ConfigureDuration("recvTimeout", &s.recvTimeout, func(value time.Duration) error {
@@ -79,7 +79,7 @@ func (s *hrpcServer) OnPrepare() {
 func (s *hrpcServer) MaxConcurrentConnsPerGate() int32 { return s.maxConcurrentConnsPerGate }
 
 func (s *hrpcServer) BindServices() {
-	for _, serviceName := range s.forServices {
+	for _, serviceName := range s.services {
 		service := s.stage.Service(serviceName)
 		if service == nil {
 			continue

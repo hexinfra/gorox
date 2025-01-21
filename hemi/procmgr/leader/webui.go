@@ -15,15 +15,12 @@ import (
 	_ "github.com/hexinfra/gorox/hemi/procmgr/leader/webui"
 )
 
-var (
-	webStage *hemi.Stage
-	webChan  chan *msgx.Message
-)
+var webChan = make(chan *msgx.Message) // used to send messages to workerKeeper
 
 func webuiServer() { // runner
-	webChan = make(chan *msgx.Message)
 	if hemi.DebugLevel() >= 1 {
 		hemi.Printf("[leader] open webui interface: %s\n", common.WebUIAddr)
 	}
 	// TODO
+	//webStage := hemi.StageFromText()
 }

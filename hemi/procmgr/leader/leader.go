@@ -31,7 +31,6 @@ func Main() {
 	}
 
 	// Config check passed. Now start the worker
-	keeperChan = make(chan chan *msgx.Message)
 	go workerKeeper(configBase, configFile)
 	<-keeperChan // wait for workerKeeper() to ensure worker is started.
 
@@ -46,7 +45,7 @@ func Main() {
 	select {} // sleep forever
 }
 
-var keeperChan chan chan *msgx.Message
+var keeperChan = make(chan chan *msgx.Message)
 
 func workerKeeper(configBase string, configFile string) { // runner
 	dieChan := make(chan int) // dead worker goes through this channel
@@ -69,7 +68,7 @@ func workerKeeper(configBase string, configFile string) { // runner
 	for { // each event from cmduiServer()/webuiServer()/myroxClient() and worker process
 		select {
 		case msgChan := <-keeperChan: // a message arrives
-			req := <-msgChan
+			req := <-msgChan // get the message. msgChan might be cmdChan, webChan, and roxChan
 			if req.IsTell() {
 				switch req.Comd {
 				case common.ComdQuit:

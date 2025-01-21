@@ -155,16 +155,10 @@ func (n *fcgiNode) fetchExchan() (*fcgiExchan, error) {
 	if down {
 		return nil, errNodeDown
 	}
-	var err error
-	if n.UDSMode() {
-		conn, err = n._dialUDS()
-	} else {
-		conn, err = n._dialTCP()
-	}
+	conn, err := n.dial()
 	if err != nil {
 		return nil, errNodeDown
 	}
-	n.IncSub() // conn
 	return conn.fetchExchan()
 }
 func (n *fcgiNode) storeExchan(exchan *fcgiExchan) {

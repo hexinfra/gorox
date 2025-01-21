@@ -18,6 +18,8 @@ import (
 	"github.com/hexinfra/gorox/hemi/procmgr/common"
 )
 
+var cmdChan = make(chan *msgx.Message) // used to send messages to workerKeeper
+
 func cmduiServer() { // runner
 	if hemi.DebugLevel() >= 1 {
 		hemi.Printf("[leader] open cmdui interface: %s\n", common.CmdUIAddr)
@@ -26,7 +28,6 @@ func cmduiServer() { // runner
 	if err != nil {
 		common.Crash(err.Error())
 	}
-	cmdChan := make(chan *msgx.Message)
 	var req *msgx.Message
 	for { // each cmdConn from control client
 		cmdConn, err := cmdGate.Accept()
@@ -57,7 +58,7 @@ func cmduiServer() { // runner
 				common.Stop() // worker will stop immediately after admConn is closed
 			case common.ComdRecmd:
 				newAddr := req.Get("newAddr") // succeeding cmduiAddr
-				if newAddr == "" {
+				if newAddr == "" || newAddr == common.CmdUIAddr {
 					goto closeNext
 				}
 				if newGate, err := net.Listen("tcp", newAddr); err == nil {
@@ -66,6 +67,7 @@ func cmduiServer() { // runner
 					if hemi.DebugLevel() >= 1 {
 						hemi.Printf("[leader] cmdui re-opened to %s\n", newAddr)
 					}
+					common.CmdUIAddr = newAddr
 					goto closeNext
 				} else {
 					hemi.Errorf("[leader] recmd failed: %s\n", err.Error())

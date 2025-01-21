@@ -113,6 +113,7 @@ func (c *server1Conn) manager() { // runner
 	// response. Finally, the server fully closes the connection.
 	netConn := c.netConn
 	if !c.closeSafe {
+		// TODO: use "CloseWriter" interface?
 		if c.UDSMode() {
 			netConn.(*net.UnixConn).CloseWrite()
 		} else if c.TLSMode() {

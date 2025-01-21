@@ -12,9 +12,8 @@ import (
 	"github.com/hexinfra/gorox/hemi/library/msgx"
 )
 
+var roxChan = make(chan *msgx.Message) // used to send messages to workerKeeper
+
 func myroxClient() { // runner
-	// TODO
-	roxChan := make(chan *msgx.Message)
-	_ = roxChan
 	hemi.Println("[leader] myroxClient: TODO")
 }

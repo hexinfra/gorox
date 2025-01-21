@@ -1882,11 +1882,6 @@ func (r *_httpOut_) proxyPostMessage(content any, hasTrailers bool) error {
 		return r.outMessage.doSend()
 	}
 }
-func (r *_httpOut_) _proxyCopyTrailers(inMessage httpIn, proxyConfig *WebExchanProxyConfig) bool {
-	return inMessage.proxyWalkTrailers(func(trailer *pair, name []byte, value []byte) bool {
-		return r.outMessage.addTrailer(name, value)
-	})
-}
 
 func (r *_httpOut_) sendText(content []byte) error {
 	if err := r._beforeSend(); err != nil {

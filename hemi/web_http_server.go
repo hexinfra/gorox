@@ -2909,7 +2909,9 @@ func (r *serverResponse_) proxyCopyHeaders(backResp backendResponse, proxyConfig
 	return true
 }
 func (r *serverResponse_) proxyCopyTrailers(backResp backendResponse, proxyConfig *WebExchanProxyConfig) bool {
-	return r._proxyCopyTrailers(backResp, proxyConfig)
+	return backResp.proxyWalkTrailers(func(trailer *pair, name []byte, value []byte) bool {
+		return r.outMessage.addTrailer(name, value)
+	})
 }
 
 func (r *serverResponse_) hookReviser(reviser Reviser) { // to revise output content

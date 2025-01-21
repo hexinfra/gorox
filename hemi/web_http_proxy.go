@@ -292,8 +292,10 @@ func WebExchanReverseProxy(servReq ServerRequest, servResp ServerResponse, hcach
 			}
 			return
 		}
-		if backHasTrailers && !servResp.proxyCopyTrailers(backResp, proxyConfig) {
-			return
+		if backHasTrailers {
+			if !servResp.proxyCopyTrailers(backResp, proxyConfig) {
+				return
+			}
 		}
 	} else if err := servResp.proxyPassMessage(backResp); err != nil {
 		backStream.markBroken()

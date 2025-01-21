@@ -404,7 +404,9 @@ func (r *backendRequest_) proxyCopyHeaders(servReq ServerRequest, proxyConfig *W
 	return true
 }
 func (r *backendRequest_) proxyCopyTrailers(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool {
-	return r._proxyCopyTrailers(servReq, proxyConfig)
+	return servReq.proxyWalkTrailers(func(trailer *pair, name []byte, value []byte) bool {
+		return r.outMessage.addTrailer(name, value)
+	})
 }
 
 // backendResponse is the backend-side http response.

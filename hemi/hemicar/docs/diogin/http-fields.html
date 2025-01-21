@@ -35,6 +35,7 @@
 		<h2>通用</h2>
 		<table class="general">
 			<tr><th>字段名称</th>            <th>RFC</th><th>逐跳</th><th>值型</th><th>值可空</th><th>1.0</th><th>1.1</th><th>2</th><th>3</th><th>格式</th></tr>
+			<tr><td>accept</td>             <td>9110</td><td>✗</td><td>*</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>Accept = #( media-range [ weight ] )</td></tr>
 			<tr><td>accept-encoding</td>    <td>9110</td><td>✗</td><td>*</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>Accept-Encoding  = #( token / "identity" / "*" [ OWS ";" OWS "q=" qvalue ] )</td></tr>
 			<tr><td>cache-control</td>      <td>9111</td><td>✗</td><td>*</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>Cache-Control = #( token [ "=" ( token / quoted-string ) ] )</td></tr>
 			<tr><td>connection</td>         <td>9110</td><td>✓</td><td>*</td><td>✗</td><td>✓</td><td>✓</td><td>✗</td><td>✗</td><td>Connection = #token</td></tr>
@@ -61,7 +62,6 @@
 			<tr><td>:path</td>              <td>9113</td><td>✗</td><td>1</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>origin-form / absolute-form / authority-form / asterisk-form</td></tr>
 			<tr><td>:protocol</td>          <td>8441</td><td>?</td><td>1</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>?</td></tr>
 			<tr><td>:scheme</td>            <td>9113</td><td>✗</td><td>1</td><td>✗</td><td>✗</td><td>✗</td><td>✓</td><td>✓</td><td>"http" / "https"</td></tr>
-			<tr><td>accept</td>             <td>9110</td><td>✗</td><td>*</td><td>✗</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>Accept = #( media-range [ weight ] )</td></tr>
 			<tr><td>accept-language</td>    <td>9110</td><td>?</td><td>*</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Accept-Language = #( language-range [ weight ] )</td></tr>
 			<tr><td>authorization</td>      <td>?</td><td>?</td><td>1</td><td>?</td><td>?</td><td>?</td><td>?</td><td>?</td><td>Authorization = credentials</td></tr>
 			<tr><td>cookie</td>             <td>6265</td><td>✗</td><td>1/+</td><td>?</td><td>✓</td><td>✓</td><td>✓</td><td>✓</td><td>cookie-header = "Cookie:" OWS cookie-string OWS</td></tr>

@@ -166,9 +166,6 @@ func (c *echoConn) onPut() {
 	c.gate = nil
 }
 
-func (c *echoConn) UDSMode() bool { return c.gate.UDSMode() }
-func (c *echoConn) TLSMode() bool { return c.gate.TLSMode() }
-
 func (c *echoConn) closeConn() {
 	c.tcpConn.Close()
 	c.gate.DecSubConns()

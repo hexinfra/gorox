@@ -287,7 +287,7 @@ func (n *fcgiNode) closeFree() int {
 type fcgiConn struct {
 	// Assocs
 	next   *fcgiConn  // the linked-list
-	exchan fcgiExchan // an fcgi connection has exactly one stream
+	exchan fcgiExchan // an fcgi connection has exactly one stream. currently we don't support multiplex
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -347,8 +347,6 @@ func (c *fcgiConn) onPut() {
 	c.lastWrite = time.Time{}
 	c.lastRead = time.Time{}
 }
-
-func (c *fcgiConn) UDSMode() bool { return c.node.UDSMode() }
 
 func (c *fcgiConn) MakeTempName(dst []byte, unixTime int64) int {
 	return makeTempName(dst, c.node.Stage().ID(), c.id, unixTime, c.counter.Add(1))

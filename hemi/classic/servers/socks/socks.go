@@ -174,9 +174,6 @@ func (c *socksConn) onPut() {
 	c.gate = nil
 }
 
-func (c *socksConn) UDSMode() bool { return c.gate.UDSMode() }
-func (c *socksConn) TLSMode() bool { return c.gate.TLSMode() }
-
 func (c *socksConn) Close() {
 	c.tcpConn.Close()
 	c.gate.DecSubConns()

@@ -180,9 +180,6 @@ func (c *grpcConn) onPut() {
 	c.counter.Store(0)
 }
 
-func (c *grpcConn) UDSMode() bool { return c.gate.UDSMode() }
-func (c *grpcConn) TLSMode() bool { return c.gate.TLSMode() }
-
 func (c *grpcConn) MakeTempName(dst []byte, unixTime int64) int {
 	return makeTempName(dst, c.gate.Stage().ID(), c.id, unixTime, c.counter.Add(1))
 }

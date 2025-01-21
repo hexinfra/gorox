@@ -752,6 +752,10 @@ func (r *_httpIn_) _checkHTTPDate(header *pair, index uint8, pIndex *uint8, toTi
 	return false
 }
 
+func (r *_httpIn_) checkAccept(pairs []pair, from uint8, edge uint8) bool { // Accept = #( media-range [ weight ] )
+	// TODO
+	return true
+}
 func (r *_httpIn_) checkAcceptEncoding(pairs []pair, from uint8, edge uint8) bool { // Accept-Encoding = #( codings [ weight ] )
 	// codings = content-coding / "identity" / "*"
 	// content-coding = token

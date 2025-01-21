@@ -167,6 +167,7 @@ const ( // hashes of http fields. value is calculated by adding all ASCII values
 	hashScheme    = 687  // :scheme
 	hashStatus    = 734  // :status
 	// General fields
+	hashAccept             = 624
 	hashAcceptEncoding     = 1508
 	hashCacheControl       = 1314 // same with hashLastModified
 	hashConnection         = 1072
@@ -184,7 +185,6 @@ const ( // hashes of http fields. value is calculated by adding all ASCII values
 	hashUpgrade            = 744
 	hashVia                = 320
 	// Request fields
-	hashAccept             = 624
 	hashAcceptCharset      = 1415
 	hashAcceptLanguage     = 1505
 	hashAuthorization      = 1425
@@ -232,6 +232,7 @@ var ( // byteses of http fields.
 	bytesScheme    = []byte(":scheme")
 	bytesStatus    = []byte(":status")
 	// General fields
+	bytesAccept             = []byte("accept")
 	bytesAcceptEncoding     = []byte("accept-encoding")
 	bytesCacheControl       = []byte("cache-control")
 	bytesConnection         = []byte("connection")
@@ -249,7 +250,6 @@ var ( // byteses of http fields.
 	bytesUpgrade            = []byte("upgrade")
 	bytesVia                = []byte("via")
 	// Request fields
-	bytesAccept             = []byte("accept")
 	bytesAcceptCharset      = []byte("accept-charset")
 	bytesAcceptLanguage     = []byte("accept-language")
 	bytesAuthorization      = []byte("authorization")

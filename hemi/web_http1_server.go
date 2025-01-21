@@ -125,7 +125,7 @@ func (c *server1Conn) serve() { // runner
 	netConn.Close()
 
 	c.gate.DecConcurrentConns()
-	c.gate.DecSub() // conn
+	c.gate.DecSubConns()
 	putServer1Conn(c)
 }
 

@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// QUIX (QUIC over UDP/UDS) mixins. See RFC 8999, RFC 9000, RFC 9001, and RFC 9002.
+// QUIX (QUIC over UDP/UDS) types. See RFC 8999, RFC 9000, RFC 9001, and RFC 9002.
 
 package hemi
 

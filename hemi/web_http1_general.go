@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// HTTP/1.x mixins. See RFC 9112.
+// HTTP/1.x types. See RFC 9112.
 
 package hemi
 

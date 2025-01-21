@@ -34,9 +34,7 @@ type localHcache struct {
 func (c *localHcache) onCreate(compName string, stage *Stage) {
 	c.Hcache_.OnCreate(compName, stage)
 }
-func (c *localHcache) OnShutdown() {
-	close(c.ShutChan) // notifies Maintain()
-}
+func (c *localHcache) OnShutdown() { close(c.ShutChan) } // notifies Maintain()
 
 func (c *localHcache) OnConfigure() {
 	// .cacheDir

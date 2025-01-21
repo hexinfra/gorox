@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// UDPX (UDP/UDS) mixins. See RFC 768 and RFC 8085.
+// UDPX (UDP/UDS) types. See RFC 768 and RFC 8085.
 
 package hemi
 

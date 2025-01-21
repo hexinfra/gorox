@@ -115,12 +115,12 @@ func (g *socksGate) serve() { // runner
 				continue
 			}
 		}
-		g.IncSub() // conn
+		g.IncSubConns()
 		socksConn := getSocksConn(connID, g, tcpConn)
 		go g.Server().serveConn(socksConn) // socksConn is put to pool in serve()
 		connID++
 	}
-	g.WaitSubs() // TODO: max timeout?
+	g.WaitSubConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("socksGate=%d done\n", g.ID())
 	}
@@ -129,7 +129,7 @@ func (g *socksGate) serve() { // runner
 
 func (g *socksGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()
-	g.DecSub() // conn
+	g.DecSubConns()
 }
 
 // socksConn
@@ -179,5 +179,5 @@ func (c *socksConn) TLSMode() bool { return c.gate.TLSMode() }
 
 func (c *socksConn) Close() {
 	c.tcpConn.Close()
-	c.gate.DecSub() // conn
+	c.gate.DecSubConns()
 }

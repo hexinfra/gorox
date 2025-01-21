@@ -34,9 +34,7 @@ type redisHcache struct {
 func (c *redisHcache) onCreate(compName string, stage *Stage) {
 	c.Hcache_.OnCreate(compName, stage)
 }
-func (c *redisHcache) OnShutdown() {
-	close(c.ShutChan) // notifies Maintain()
-}
+func (c *redisHcache) OnShutdown() { close(c.ShutChan) } // notifies Maintain()
 
 func (c *redisHcache) OnConfigure() {
 	// TODO

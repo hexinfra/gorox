@@ -31,9 +31,7 @@ type cleanCronjob struct {
 func (j *cleanCronjob) onCreate(compName string, stage *Stage) {
 	j.Cronjob_.OnCreate(compName, stage)
 }
-func (j *cleanCronjob) OnShutdown() {
-	close(j.ShutChan) // notifies Schedule()
-}
+func (j *cleanCronjob) OnShutdown() { close(j.ShutChan) } // notifies Schedule()
 
 func (j *cleanCronjob) OnConfigure() {
 	// TODO

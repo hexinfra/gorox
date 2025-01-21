@@ -214,7 +214,7 @@ func (g *quixGate) serveTLS() { // runner
 
 func (g *quixGate) justClose(quicConn *tcp2.Conn) {
 	quicConn.Close()
-	g.DecSub() // conn
+	g.DecSubConns()
 }
 
 // QUIXConn is a QUIX connection coming from QUIXRouter.

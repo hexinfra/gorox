@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// HTTP/3 mixins. See RFC 9114 and RFC 9204.
+// HTTP/3 types. See RFC 9114 and RFC 9204.
 
 package hemi
 

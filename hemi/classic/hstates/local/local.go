@@ -34,9 +34,7 @@ type localHstate struct {
 func (s *localHstate) onCreate(compName string, stage *Stage) {
 	s.Hstate_.OnCreate(compName, stage)
 }
-func (s *localHstate) OnShutdown() {
-	close(s.ShutChan) // notifies Maintain()
-}
+func (s *localHstate) OnShutdown() { close(s.ShutChan) } // notifies Maintain()
 
 func (s *localHstate) OnConfigure() {
 	// .stateDir

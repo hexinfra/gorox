@@ -45,9 +45,7 @@ func (b *Backend_[N]) OnCreate(compName string, stage *Stage) {
 	b.nodeIndex.Store(-1)
 	b.healthCheck = nil // TODO
 }
-func (b *Backend_[N]) OnShutdown() {
-	close(b.ShutChan) // notifies Maintain() which will shutdown sub components
-}
+func (b *Backend_[N]) OnShutdown() { close(b.ShutChan) } // notifies Maintain() which also shutdown nodes
 
 func (b *Backend_[N]) OnConfigure() {
 	// .balancer
@@ -93,8 +91,8 @@ func (b *Backend_[N]) Maintain() { // runner
 		go node.Maintain()
 	}
 
-	<-b.ShutChan // waiting for shutdown signal
-
+	// Waiting for the shutdown signal
+	<-b.ShutChan
 	// Current backend was told to shutdown. Tell its nodes to shutdown too
 	for _, node := range b.nodes {
 		go node.OnShutdown()
@@ -108,7 +106,7 @@ func (b *Backend_[N]) Maintain() { // runner
 	b.stage.DecSub() // backend
 }
 
-func (b *Backend_[N]) AddNode(node N) {
+func (b *Backend_[N]) AddNode(node N) { // CreateNode() uses this to append nodes
 	node.setShell(node)
 	b.nodes = append(b.nodes, node)
 }
@@ -160,7 +158,7 @@ func (n *Node_[B]) OnCreate(compName string, stage *Stage, backend B) {
 	n.backend = backend
 	n.health = nil // TODO
 }
-func (n *Node_[B]) OnShutdown() { close(n.ShutChan) } // notifies Maintain() which will close conns
+func (n *Node_[B]) OnShutdown() { close(n.ShutChan) } // notifies Maintain() which also closes conns
 
 func (n *Node_[B]) OnConfigure() {
 	n._holder_.onConfigure(n, 30*time.Second, 30*time.Second)

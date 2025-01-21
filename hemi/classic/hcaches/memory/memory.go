@@ -31,9 +31,7 @@ type memoryHcache struct {
 func (c *memoryHcache) onCreate(compName string, stage *Stage) {
 	c.Hcache_.OnCreate(compName, stage)
 }
-func (c *memoryHcache) OnShutdown() {
-	close(c.ShutChan) // notifies Maintain()
-}
+func (c *memoryHcache) OnShutdown() { close(c.ShutChan) } // notifies Maintain()
 
 func (c *memoryHcache) OnConfigure() {
 	// TODO

@@ -196,7 +196,7 @@ func (g *udpxGate) serveUDP() { // runner
 
 func (g *udpxGate) justClose(pktConn net.PacketConn) {
 	pktConn.Close()
-	g.DecSub() // conn
+	g.DecSubConns()
 }
 
 // UDPXConn

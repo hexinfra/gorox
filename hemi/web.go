@@ -106,9 +106,7 @@ func (a *Webapp) onCreate(compName string, stage *Stage) {
 	a.socklets = make(compDict[Socklet])
 	a.numRevisers = 1 // position 0 is not used
 }
-func (a *Webapp) OnShutdown() {
-	close(a.ShutChan) // notifies maintain() which shutdown sub components
-}
+func (a *Webapp) OnShutdown() { close(a.ShutChan) } // notifies maintain() which shutdown sub components
 
 func (a *Webapp) OnConfigure() {
 	// .hostnames

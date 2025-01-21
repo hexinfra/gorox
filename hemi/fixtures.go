@@ -69,9 +69,7 @@ func (f *clockFixture) onCreate(stage *Stage) {
 	f.resolution = 100 * time.Millisecond
 	f.date.Store(0x7394804991b60000) // Sun, 06 Nov 1994 08:49:37
 }
-func (f *clockFixture) OnShutdown() {
-	close(f.ShutChan) // notifies run()
-}
+func (f *clockFixture) OnShutdown() { close(f.ShutChan) } // notifies run()
 
 func (f *clockFixture) OnConfigure() {
 }
@@ -401,9 +399,7 @@ func (f *fcacheFixture) onCreate(stage *Stage) {
 	f.fixture_.onCreate(signFcache, stage)
 	f.entries = make(map[string]*fcacheEntry)
 }
-func (f *fcacheFixture) OnShutdown() {
-	close(f.ShutChan) // notifies run()
-}
+func (f *fcacheFixture) OnShutdown() { close(f.ShutChan) } // notifies run()
 
 func (f *fcacheFixture) OnConfigure() {
 	// .smallFileSize
@@ -590,9 +586,7 @@ type resolvFixture struct {
 func (f *resolvFixture) onCreate(stage *Stage) {
 	f.fixture_.onCreate(signResolv, stage)
 }
-func (f *resolvFixture) OnShutdown() {
-	close(f.ShutChan) // notifies run()
-}
+func (f *resolvFixture) OnShutdown() { close(f.ShutChan) } // notifies run()
 
 func (f *resolvFixture) OnConfigure() {
 }

@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// HTTP/2 mixins. See RFC 9113 and RFC 7541.
+// HTTP/2 types. See RFC 9113 and RFC 7541.
 
 package hemi
 

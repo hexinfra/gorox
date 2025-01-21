@@ -34,9 +34,7 @@ type redisHstate struct {
 func (s *redisHstate) onCreate(compName string, stage *Stage) {
 	s.Hstate_.OnCreate(compName, stage)
 }
-func (s *redisHstate) OnShutdown() {
-	close(s.ShutChan) // notifies Maintain()
-}
+func (s *redisHstate) OnShutdown() { close(s.ShutChan) } // notifies Maintain()
 
 func (s *redisHstate) OnConfigure() {
 	// TODO

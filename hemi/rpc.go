@@ -42,9 +42,7 @@ func (s *Service) onCreate(compName string, stage *Stage) {
 	s.MakeComp(compName)
 	s.stage = stage
 }
-func (s *Service) OnShutdown() {
-	close(s.ShutChan) // notifies maintain() which shutdown sub components
-}
+func (s *Service) OnShutdown() { close(s.ShutChan) } // notifies maintain() which shutdown sub components
 
 func (s *Service) OnConfigure() {
 	// .maxContentSize

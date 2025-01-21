@@ -174,7 +174,7 @@ func (g *httpxGate) serveUDS() { // runner
 				continue
 			}
 		}
-		g.IncSub() // conn
+		g.IncSubConns()
 		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
 			g.justClose(udsConn)
 			continue
@@ -194,7 +194,7 @@ func (g *httpxGate) serveUDS() { // runner
 		}
 		connID++
 	}
-	g.WaitSubs() // TODO: max timeout?
+	g.WaitSubConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("httpxGate=%d TCP done\n", g.id)
 	}
@@ -213,7 +213,7 @@ func (g *httpxGate) serveTLS() { // runner
 				continue
 			}
 		}
-		g.IncSub() // conn
+		g.IncSubConns()
 		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
 			g.justClose(tcpConn)
 			continue
@@ -233,7 +233,7 @@ func (g *httpxGate) serveTLS() { // runner
 		}
 		connID++
 	}
-	g.WaitSubs() // TODO: max timeout?
+	g.WaitSubConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("httpxGate=%d TLS done\n", g.id)
 	}
@@ -252,7 +252,7 @@ func (g *httpxGate) serveTCP() { // runner
 				continue
 			}
 		}
-		g.IncSub() // conn
+		g.IncSubConns()
 		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
 			g.justClose(tcpConn)
 			continue
@@ -272,7 +272,7 @@ func (g *httpxGate) serveTCP() { // runner
 		}
 		connID++
 	}
-	g.WaitSubs() // TODO: max timeout?
+	g.WaitSubConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("httpxGate=%d TCP done\n", g.id)
 	}
@@ -282,7 +282,7 @@ func (g *httpxGate) serveTCP() { // runner
 func (g *httpxGate) justClose(netConn net.Conn) {
 	netConn.Close()
 	g.DecConcurrentConns()
-	g.DecSub() // conn
+	g.DecSubConns()
 }
 
 // server2Conn is the server-side HTTP/2 connection.
@@ -637,7 +637,7 @@ func (c *server2Conn) closeConn() {
 	}
 	c.netConn.Close()
 	c.gate.DecConcurrentConns()
-	c.gate.DecSub() // conn
+	c.gate.DecSubConns()
 }
 
 // server2Stream is the server-side HTTP/2 stream.

@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// gRPC mixins.
+// gRPC types.
 
 // gRPC is a request/response RPC protocol designed by Google.
 // gRPC is based on HTTP/2: https://github.com/grpc/grpc/blob/master/doc/PROTOCOL-HTTP2.md

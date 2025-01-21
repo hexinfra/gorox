@@ -21,7 +21,7 @@ type Server interface {
 	Component
 	// Methods
 	Serve()           // runner
-	holder() _holder_ // used by gates
+	holder() _holder_ // used by gates to copy the configs
 }
 
 // Server_ is the parent for all servers.
@@ -45,7 +45,7 @@ func (s *Server_[G]) OnCreate(compName string, stage *Stage) {
 	s.stage = stage
 }
 func (s *Server_[G]) OnShutdown() {
-	// We don't use close(s.ShutChan) to notify gates.
+	// We don't use close(s.ShutChan) to notify gates as gates are blocking on accept().
 	for _, gate := range s.gates {
 		gate.Shut() // this causes gate to close and return immediately
 	}
@@ -61,7 +61,6 @@ func (s *Server_[G]) OnConfigure() {
 				s.udsMode = true
 			} else {
 				s.colonport = address[p:]
-				s.colonportBytes = []byte(s.colonport)
 			}
 			s.address = address
 		} else {
@@ -72,8 +71,9 @@ func (s *Server_[G]) OnConfigure() {
 	}
 
 	// .udsColonport
-	s.ConfigureString("udsColonport", &s.udsColonport, nil, ":80")
-	s.udsColonportBytes = []byte(s.udsColonport)
+	if s.udsMode {
+		s.ConfigureString("udsColonport", &s.udsColonport, nil, ":80")
+	}
 
 	// .numGates
 	s.ConfigureInt32("numGates", &s.numGates, func(value int32) error {
@@ -86,13 +86,16 @@ func (s *Server_[G]) OnConfigure() {
 func (s *Server_[G]) OnPrepare() {
 	s._holder_.onPrepare(s)
 
-	if s.udsMode { // unix domain socket does not support reuseaddr/reuseport.
-		s.numGates = 1
+	if s.udsMode {
+		s.udsColonportBytes = []byte(s.udsColonport)
+		s.numGates = 1 // unix domain socket does not support reuseaddr/reuseport.
+	} else {
+		s.colonportBytes = []byte(s.colonport)
 	}
 }
 
 func (s *Server_[G]) NumGates() int32 { return s.numGates }
-func (s *Server_[G]) AddGate(gate G)  { s.gates = append(s.gates, gate) }
+func (s *Server_[G]) AddGate(gate G)  { s.gates = append(s.gates, gate) } // Serve() calls this to append gates
 
 func (s *Server_[G]) Colonport() string {
 	if s.udsMode {
@@ -145,6 +148,6 @@ func (g *Gate_[S]) ID() int32    { return g.id }
 func (g *Gate_[S]) MarkShut()    { g.shut.Store(true) }
 func (g *Gate_[S]) IsShut() bool { return g.shut.Load() }
 
-func (g *Gate_[S]) IncSub()   { g.subConns.Add(1) }
-func (g *Gate_[S]) WaitSubs() { g.subConns.Wait() }
-func (g *Gate_[S]) DecSub()   { g.subConns.Done() }
+func (g *Gate_[S]) IncSubConns()  { g.subConns.Add(1) }
+func (g *Gate_[S]) WaitSubConns() { g.subConns.Wait() }
+func (g *Gate_[S]) DecSubConns()  { g.subConns.Done() }

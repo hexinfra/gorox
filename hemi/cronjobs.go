@@ -53,9 +53,7 @@ type statCronjob struct {
 func (j *statCronjob) onCreate(compName string, stage *Stage) {
 	j.Cronjob_.OnCreate(compName, stage)
 }
-func (j *statCronjob) OnShutdown() {
-	close(j.ShutChan) // notifies Schedule()
-}
+func (j *statCronjob) OnShutdown() { close(j.ShutChan) } // notifies Schedule()
 
 func (j *statCronjob) OnConfigure() {
 	// TODO

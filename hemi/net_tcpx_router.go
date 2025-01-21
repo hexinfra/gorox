@@ -245,7 +245,7 @@ func (g *tcpxGate) serveUDS() { // runner
 				continue
 			}
 		}
-		g.IncSub() // conn
+		g.IncSubConns()
 		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
 			g.server.Logf("tcpxGate=%d: too many UDS connections!\n", g.id)
 			g.justClose(udsConn)
@@ -260,7 +260,7 @@ func (g *tcpxGate) serveUDS() { // runner
 		go g.server.serveConn(conn) // conn is put to pool in serveConn()
 		connID++
 	}
-	g.WaitSubs() // TODO: max timeout?
+	g.WaitSubConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TCP done\n", g.id)
 	}
@@ -278,7 +278,7 @@ func (g *tcpxGate) serveTLS() { // runner
 				continue
 			}
 		}
-		g.IncSub() // conn
+		g.IncSubConns()
 		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
 			g.server.Logf("tcpxGate=%d: too many TLS connections!\n", g.id)
 			g.justClose(tcpConn)
@@ -294,7 +294,7 @@ func (g *tcpxGate) serveTLS() { // runner
 		go g.server.serveConn(conn) // conn is put to pool in serveConn()
 		connID++
 	}
-	g.WaitSubs() // TODO: max timeout?
+	g.WaitSubConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TLS done\n", g.id)
 	}
@@ -312,7 +312,7 @@ func (g *tcpxGate) serveTCP() { // runner
 				continue
 			}
 		}
-		g.IncSub() // conn
+		g.IncSubConns()
 		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
 			g.server.Logf("tcpxGate=%d: too many TCP connections!\n", g.id)
 			g.justClose(tcpConn)
@@ -330,7 +330,7 @@ func (g *tcpxGate) serveTCP() { // runner
 		go g.server.serveConn(conn) // conn is put to pool in serveConn()
 		connID++
 	}
-	g.WaitSubs() // TODO: max timeout?
+	g.WaitSubConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TCP done\n", g.id)
 	}
@@ -340,7 +340,7 @@ func (g *tcpxGate) serveTCP() { // runner
 func (g *tcpxGate) justClose(netConn net.Conn) {
 	netConn.Close()
 	g.DecConcurrentConns()
-	g.DecSub() // conn
+	g.DecSubConns()
 }
 
 // TCPXConn is a TCPX connection coming from TCPXRouter.

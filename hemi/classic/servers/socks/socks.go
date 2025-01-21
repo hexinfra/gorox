@@ -56,7 +56,7 @@ func (s *socksServer) Serve() { // runner
 		}
 		s.AddGate(gate)
 		s.IncSub() // gate
-		go gate.serve()
+		go gate.Serve()
 	}
 	s.WaitSubs() // gates
 	if DebugLevel() >= 2 {
@@ -104,7 +104,7 @@ func (g *socksGate) Shut() error {
 	return g.listener.Close() // breaks serve()
 }
 
-func (g *socksGate) serve() { // runner
+func (g *socksGate) Serve() { // runner
 	connID := int64(0)
 	for {
 		tcpConn, err := g.listener.AcceptTCP()

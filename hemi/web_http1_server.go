@@ -85,7 +85,7 @@ func (c *server1Conn) onPut() {
 	c.http1Conn_.onPut()
 }
 
-func (c *server1Conn) serve() { // runner
+func (c *server1Conn) manager() { // runner
 	stream := &c.stream
 	for c.persistent { // each queued stream
 		stream.onUse()

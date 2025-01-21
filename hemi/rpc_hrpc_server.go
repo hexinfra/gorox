@@ -26,6 +26,8 @@ func init() {
 type hrpcServer struct {
 	// Parent
 	Server_[*hrpcGate]
+	// Mixins
+	_hrpcHolder_ // to carry configs used by gates
 	// Assocs
 	defaultService *Service // default service if not found
 	// States
@@ -44,6 +46,7 @@ func (s *hrpcServer) onCreate(compName string, stage *Stage) {
 
 func (s *hrpcServer) OnConfigure() {
 	s.Server_.OnConfigure()
+	s._hrpcHolder_.onConfigure(s)
 
 	// .services
 	s.ConfigureStringList("services", &s.services, nil, []string{})
@@ -74,6 +77,7 @@ func (s *hrpcServer) OnConfigure() {
 }
 func (s *hrpcServer) OnPrepare() {
 	s.Server_.OnPrepare()
+	s._hrpcHolder_.onPrepare(s)
 }
 
 func (s *hrpcServer) MaxConcurrentConnsPerGate() int32 { return s.maxConcurrentConnsPerGate }
@@ -125,10 +129,14 @@ func (s *hrpcServer) Serve() { // runner
 	// TODO
 }
 
+func (s *hrpcServer) hrpcHolder() _hrpcHolder_ { return s._hrpcHolder_ }
+
 // hrpcGate is a gate of hrpcServer.
 type hrpcGate struct {
 	// Parent
 	Gate_[*hrpcServer]
+	// Mixins
+	_hrpcHolder_
 	// States
 	maxConcurrentConns int32
 	concurrentConns    atomic.Int32
@@ -136,6 +144,7 @@ type hrpcGate struct {
 
 func (g *hrpcGate) onNew(server *hrpcServer, id int32) {
 	g.Gate_.OnNew(server, id)
+	g._hrpcHolder_ = server.hrpcHolder()
 	g.maxConcurrentConns = server.MaxConcurrentConnsPerGate()
 }
 
@@ -149,7 +158,7 @@ func (g *hrpcGate) Shut() error {
 	return nil
 }
 
-func (g *hrpcGate) serve() { // runner
+func (g *hrpcGate) Serve() { // runner
 	// TODO
 }
 

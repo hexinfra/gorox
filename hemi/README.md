@@ -93,13 +93,13 @@ Alternatively, program instances can connect to a Myrox instance and delegate
 their administration to Myrox. In this way, the cmdui interface in the leader
 process is disabled.
 
-Stages
-------
+Process stages
+--------------
 
-The worker process has one stage most of the time. When an old stage is about to
+A worker process has one stage most of the time. When an old stage is about to
 retire and a new stage is about to start, there may be many stages running at
 the same time. This happens when you have changed the config and is telling the
-server to reload the config. The logical architecture of a stage in the worker
+worker to reload the config. The logical architecture of a stage in a worker
 process might looks like this:
 
 ```
@@ -144,6 +144,8 @@ TODO
 * http/2 implementation.
 * quic and http/3 implementation.
 * hcache implementation.
+* hstate implementation.
+* socks 5 proxy implementation.
 * http tunnel proxy (tcp, udp, ip) implementation.
 * web application framework implementation.
 * documentation.
@@ -156,4 +158,3 @@ TODO
 * fetch config through url.
 * ktls support?
 * ...
-

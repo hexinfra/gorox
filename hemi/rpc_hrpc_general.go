@@ -14,6 +14,11 @@ package hemi
 type _hrpcHolder_ struct {
 }
 
+func (h *_hrpcHolder_) onConfigure(comp Component) {
+}
+func (h *_hrpcHolder_) onPrepare(comp Component) {
+}
+
 // hrpcConn_
 type hrpcConn_ struct {
 }

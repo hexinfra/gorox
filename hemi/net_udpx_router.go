@@ -105,11 +105,7 @@ func (r *UDPXRouter) Serve() { // runner
 		}
 		r.AddGate(gate)
 		r.IncSub() // gate
-		if r.UDSMode() {
-			go gate.serveUDS()
-		} else {
-			go gate.serveUDP()
-		}
+		go gate.Serve()
 	}
 	r.WaitSubs() // gates
 
@@ -183,10 +179,18 @@ func (g *udpxGate) Shut() error {
 	return nil
 }
 
-func (g *udpxGate) serveUDS() { // runner
+func (g *udpxGate) Serve() { // runner
+	if g.UDSMode() {
+		g.serveUDS()
+	} else {
+		g.serveUDP()
+	}
+}
+
+func (g *udpxGate) serveUDS() {
 	// TODO
 }
-func (g *udpxGate) serveUDP() { // runner
+func (g *udpxGate) serveUDP() {
 	// TODO
 	for !g.shut.Load() {
 		time.Sleep(time.Second)

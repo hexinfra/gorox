@@ -96,13 +96,7 @@ func (s *httpxServer) Serve() { // runner
 		}
 		s.AddGate(gate)
 		s.IncSub() // gate
-		if s.UDSMode() {
-			go gate.serveUDS()
-		} else if s.TLSMode() {
-			go gate.serveTLS()
-		} else {
-			go gate.serveTCP()
-		}
+		go gate.Serve()
 	}
 	s.WaitSubs() // gates
 	if DebugLevel() >= 2 {
@@ -161,7 +155,17 @@ func (g *httpxGate) Shut() error {
 	return g.listener.Close() // breaks serveXXX()
 }
 
-func (g *httpxGate) serveUDS() { // runner
+func (g *httpxGate) Serve() { // runner
+	if g.UDSMode() {
+		g.serveUDS()
+	} else if g.TLSMode() {
+		g.serveTLS()
+	} else {
+		g.serveTCP()
+	}
+}
+
+func (g *httpxGate) serveUDS() {
 	listener := g.listener.(*net.UnixListener)
 	connID := int64(0)
 	for {
@@ -190,7 +194,7 @@ func (g *httpxGate) serveUDS() { // runner
 			go servConn.manager() // servConn is put to pool in manager()
 		} else {
 			servConn := getServer1Conn(connID, g, udsConn, rawConn)
-			go servConn.serve() // servConn is put to pool in serve()
+			go servConn.manager() // servConn is put to pool in manager()
 		}
 		connID++
 	}
@@ -200,7 +204,7 @@ func (g *httpxGate) serveUDS() { // runner
 	}
 	g.server.DecSub() // gate
 }
-func (g *httpxGate) serveTLS() { // runner
+func (g *httpxGate) serveTLS() {
 	listener := g.listener.(*net.TCPListener)
 	connID := int64(0)
 	for {
@@ -229,7 +233,7 @@ func (g *httpxGate) serveTLS() { // runner
 			go servConn.manager() // servConn is put to pool in manager()
 		} else {
 			servConn := getServer1Conn(connID, g, tlsConn, nil)
-			go servConn.serve() // servConn is put to pool in serve()
+			go servConn.manager() // servConn is put to pool in manager()
 		}
 		connID++
 	}
@@ -239,7 +243,7 @@ func (g *httpxGate) serveTLS() { // runner
 	}
 	g.server.DecSub() // gate
 }
-func (g *httpxGate) serveTCP() { // runner
+func (g *httpxGate) serveTCP() {
 	listener := g.listener.(*net.TCPListener)
 	connID := int64(0)
 	for {
@@ -268,7 +272,7 @@ func (g *httpxGate) serveTCP() { // runner
 			go servConn.manager() // servConn is put to pool in manager()
 		} else {
 			servConn := getServer1Conn(connID, g, tcpConn, rawConn)
-			go servConn.serve() // servConn is put to pool in serve()
+			go servConn.manager() // servConn is put to pool in manager()
 		}
 		connID++
 	}

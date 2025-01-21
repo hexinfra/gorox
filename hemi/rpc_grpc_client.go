@@ -11,10 +11,6 @@ package hemi
 type grpcClient struct {
 }
 
-// grpcNode
-type grpcNode struct {
-}
-
 // gConn
 type gConn struct {
 }

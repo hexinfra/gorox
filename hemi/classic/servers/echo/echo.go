@@ -55,7 +55,7 @@ func (s *echoServer) Serve() { // runner
 		}
 		s.AddGate(gate)
 		s.IncSub() // gate
-		go gate.serve()
+		go gate.Serve()
 	}
 	s.WaitSubs() // gates
 	if DebugLevel() >= 2 {
@@ -99,7 +99,7 @@ func (g *echoGate) Shut() error {
 	return g.listener.Close() // breaks serve()
 }
 
-func (g *echoGate) serve() { // runner
+func (g *echoGate) Serve() { // runner
 	connID := int64(0)
 	for {
 		tcpConn, err := g.listener.AcceptTCP()

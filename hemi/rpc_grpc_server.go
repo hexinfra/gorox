@@ -26,6 +26,8 @@ func init() {
 type grpcServer struct {
 	// Parent
 	Server_[*grpcGate]
+	// Mixins
+	_grpcHolder_ // to carry configs used by gates
 	// Assocs
 	defaultService *Service // default service if not found
 	// States
@@ -44,6 +46,7 @@ func (s *grpcServer) onCreate(compName string, stage *Stage) {
 
 func (s *grpcServer) OnConfigure() {
 	s.Server_.OnConfigure()
+	s._grpcHolder_.onConfigure(s)
 
 	// .services
 	s.ConfigureStringList("services", &s.services, nil, []string{})
@@ -74,6 +77,7 @@ func (s *grpcServer) OnConfigure() {
 }
 func (s *grpcServer) OnPrepare() {
 	s.Server_.OnPrepare()
+	s._grpcHolder_.onPrepare(s)
 }
 
 func (s *grpcServer) MaxConcurrentConnsPerGate() int32 { return s.maxConcurrentConnsPerGate }
@@ -125,10 +129,14 @@ func (s *grpcServer) Serve() { // runner
 	// TODO
 }
 
+func (s *grpcServer) grpcHolder() _grpcHolder_ { return s._grpcHolder_ }
+
 // grpcGate is a gate of grpcServer.
 type grpcGate struct {
 	// Parent
 	Gate_[*grpcServer]
+	// Mixins
+	_grpcHolder_
 	// States
 	maxConcurrentConns int32
 	concurrentConns    atomic.Int32
@@ -136,6 +144,7 @@ type grpcGate struct {
 
 func (g *grpcGate) onNew(server *grpcServer, id int32) {
 	g.Gate_.OnNew(server, id)
+	g._grpcHolder_ = server.grpcHolder()
 	g.maxConcurrentConns = server.MaxConcurrentConnsPerGate()
 }
 
@@ -149,7 +158,7 @@ func (g *grpcGate) Shut() error {
 	return nil
 }
 
-func (g *grpcGate) serve() { // runner
+func (g *grpcGate) Serve() { // runner
 	// TODO
 }
 

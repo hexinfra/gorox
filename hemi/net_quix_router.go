@@ -116,7 +116,7 @@ func (r *QUIXRouter) Serve() { // runner
 		}
 		r.AddGate(gate)
 		r.IncSub() // gate
-		go gate.serveTLS()
+		go gate.Serve()
 	}
 	r.WaitSubs() // gates
 
@@ -201,10 +201,18 @@ func (g *quixGate) Shut() error {
 	return g.listener.Close() // breaks serveXXX()
 }
 
-func (g *quixGate) serveUDS() { // runner
+func (g *quixGate) Serve() { // runner
+	if g.UDSMode() {
+		g.serveUDS()
+	} else {
+		g.serveTLS()
+	}
+}
+
+func (g *quixGate) serveUDS() {
 	// TODO
 }
-func (g *quixGate) serveTLS() { // runner
+func (g *quixGate) serveTLS() {
 	// TODO
 	for !g.IsShut() {
 		time.Sleep(time.Second)

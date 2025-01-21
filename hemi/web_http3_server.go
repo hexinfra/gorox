@@ -50,11 +50,7 @@ func (s *http3Server) Serve() { // runner
 		}
 		s.AddGate(gate)
 		s.IncSub() // gate
-		if s.UDSMode() {
-			go gate.serveUDS()
-		} else {
-			go gate.serveTLS()
-		}
+		go gate.Serve()
 	}
 	s.WaitSubs() // gates
 	if DebugLevel() >= 2 {
@@ -76,6 +72,7 @@ func (g *http3Gate) onNew(server *http3Server, id int32) {
 }
 
 func (g *http3Gate) Open() error {
+	// TODO: udsMode or tlsMode?
 	listener := tcp2.NewListener(g.Address())
 	if err := listener.Open(); err != nil {
 		return err
@@ -88,10 +85,18 @@ func (g *http3Gate) Shut() error {
 	return g.listener.Close() // breaks serveXXX()
 }
 
-func (g *http3Gate) serveUDS() { // runner
+func (g *http3Gate) Serve() { // runner
+	if g.UDSMode() {
+		g.serveUDS()
+	} else {
+		g.serveTLS()
+	}
+}
+
+func (g *http3Gate) serveUDS() {
 	// TODO
 }
-func (g *http3Gate) serveTLS() { // runner
+func (g *http3Gate) serveTLS() {
 	connID := int64(0)
 	for {
 		quicConn, err := g.listener.Accept()

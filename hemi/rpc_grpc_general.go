@@ -14,6 +14,11 @@ package hemi
 type _grpcHolder_ struct {
 }
 
+func (h *_grpcHolder_) onConfigure(comp Component) {
+}
+func (h *_grpcHolder_) onPrepare(comp Component) {
+}
+
 // grpcConn_
 type grpcConn_ struct {
 }

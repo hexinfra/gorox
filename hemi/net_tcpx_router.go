@@ -122,13 +122,7 @@ func (r *TCPXRouter) Serve() { // runner
 		}
 		r.AddGate(gate)
 		r.IncSub() // gate
-		if r.UDSMode() {
-			go gate.serveUDS()
-		} else if r.TLSMode() {
-			go gate.serveTLS()
-		} else {
-			go gate.serveTCP()
-		}
+		go gate.Serve()
 	}
 	r.WaitSubs() // gates
 
@@ -233,7 +227,17 @@ func (g *tcpxGate) Shut() error {
 	return g.listener.Close() // breaks serveXXX()
 }
 
-func (g *tcpxGate) serveUDS() { // runner
+func (g *tcpxGate) Serve() { // runner
+	if g.UDSMode() {
+		g.serveUDS()
+	} else if g.TLSMode() {
+		g.serveTLS()
+	} else {
+		g.serveTCP()
+	}
+}
+
+func (g *tcpxGate) serveUDS() {
 	listener := g.listener.(*net.UnixListener)
 	connID := int64(0)
 	for {
@@ -266,7 +270,7 @@ func (g *tcpxGate) serveUDS() { // runner
 	}
 	g.server.DecSub() // gate
 }
-func (g *tcpxGate) serveTLS() { // runner
+func (g *tcpxGate) serveTLS() {
 	listener := g.listener.(*net.TCPListener)
 	connID := int64(0)
 	for {
@@ -300,7 +304,7 @@ func (g *tcpxGate) serveTLS() { // runner
 	}
 	g.server.DecSub() // gate
 }
-func (g *tcpxGate) serveTCP() { // runner
+func (g *tcpxGate) serveTCP() {
 	listener := g.listener.(*net.TCPListener)
 	connID := int64(0)
 	for {

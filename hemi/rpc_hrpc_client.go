@@ -11,10 +11,6 @@ package hemi
 type hrpcClient struct {
 }
 
-// hrpcNode
-type hrpcNode struct {
-}
-
 // hConn
 type hConn struct {
 }

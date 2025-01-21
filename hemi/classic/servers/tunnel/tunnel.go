@@ -39,7 +39,7 @@ func (g *tunnelGate) Shut() error {
 	return nil
 }
 
-func (g *tunnelGate) serve() { // runner
+func (g *tunnelGate) Serve() { // runner
 }
 
 // tunnelConn

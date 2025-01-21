@@ -324,15 +324,17 @@ func (r *server3Response) onEnd() {
 }
 
 func (r *server3Response) control() []byte { // :status NNN
-	var start []byte
-	if r.status >= int16(len(http3Controls)) || http3Controls[r.status] == nil {
-		copy(r.start[:], http3Template[:])
-		r.start[8] = byte(r.status/100 + '0')
-		r.start[9] = byte(r.status/10%10 + '0')
-		r.start[10] = byte(r.status%10 + '0')
-		start = r.start[:len(http3Template)]
+	start := r.start[:len(http3Template)]
+	if r.status < int16(len(http1Controls)) && http1Controls[r.status] != nil {
+		control := http1Controls[r.status]
+		start[8] = control[9]
+		start[9] = control[10]
+		start[10] = control[11]
 	} else {
-		start = http3Controls[r.status]
+		copy(start, http3Template[:])
+		start[8] = byte(r.status/100 + '0')
+		start[9] = byte(r.status/10%10 + '0')
+		start[10] = byte(r.status%10 + '0')
 	}
 	return start
 }

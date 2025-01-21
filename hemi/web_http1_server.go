@@ -824,14 +824,14 @@ func (r *server1Response) onEnd() {
 
 func (r *server1Response) control() []byte { // HTTP/1.1 NNN X
 	var start []byte
-	if r.status >= int16(len(http1Controls)) || http1Controls[r.status] == nil {
+	if r.status < int16(len(http1Controls)) && http1Controls[r.status] != nil {
+		start = http1Controls[r.status]
+	} else {
 		r.start = http1Template
 		r.start[9] = byte(r.status/100 + '0')
 		r.start[10] = byte(r.status/10%10 + '0')
 		r.start[11] = byte(r.status%10 + '0')
 		start = r.start[:]
-	} else {
-		start = http1Controls[r.status]
 	}
 	return start
 }

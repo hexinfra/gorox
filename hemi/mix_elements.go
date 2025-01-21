@@ -63,7 +63,7 @@ func (r *Region) Free() {
 	}
 }
 
-// tempFile is used to temporarily save request/response content in local file system.
+// tempFile is used to temporarily save incoming content in local file system.
 type tempFile interface {
 	Name() string // used by os.Remove()
 	Write(src []byte) (n int, err error)

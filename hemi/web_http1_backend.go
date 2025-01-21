@@ -285,11 +285,11 @@ type backend1Conn struct {
 var poolBackend1Conn sync.Pool
 
 func getBackend1Conn(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) *backend1Conn {
-	var backendConn *backend1Conn
+	var backConn *backend1Conn
 	if x := poolBackend1Conn.Get(); x == nil {
-		backendConn = new(backend1Conn)
-		stream := &backendConn.stream
-		stream.conn = backendConn
+		backConn = new(backend1Conn)
+		stream := &backConn.stream
+		stream.conn = backConn
 		req, resp := &stream.request, &stream.response
 		req.stream = stream
 		req.outMessage = req
@@ -297,14 +297,14 @@ func getBackend1Conn(id int64, node *http1Node, netConn net.Conn, rawConn syscal
 		resp.stream = stream
 		resp.inMessage = resp
 	} else {
-		backendConn = x.(*backend1Conn)
+		backConn = x.(*backend1Conn)
 	}
-	backendConn.onGet(id, node, netConn, rawConn)
-	return backendConn
+	backConn.onGet(id, node, netConn, rawConn)
+	return backConn
 }
-func putBackend1Conn(backendConn *backend1Conn) {
-	backendConn.onPut()
-	poolBackend1Conn.Put(backendConn)
+func putBackend1Conn(backConn *backend1Conn) {
+	backConn.onPut()
+	poolBackend1Conn.Put(backConn)
 }
 
 func (c *backend1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawConn syscall.RawConn) {
@@ -457,9 +457,9 @@ func (r *backend1Request) AddCookie(name string, value string) bool { // cookie:
 	// TODO. need some space to place the cookie. use stream.unsafeMake()?
 	return false
 }
-func (r *backend1Request) proxyCopyCookies(foreReq ServerRequest) bool { // NOTE: merge all cookies into one "cookie" header
+func (r *backend1Request) proxyCopyCookies(servReq ServerRequest) bool { // NOTE: merge all cookies into one "cookie" header
 	headerSize := len(bytesCookie) + len(bytesColonSpace) // `cookie: `
-	foreReq.proxyWalkCookies(func(cookie *pair, name []byte, value []byte) bool {
+	servReq.proxyWalkCookies(func(cookie *pair, name []byte, value []byte) bool {
 		headerSize += len(name) + 1 + len(value) + 2 // `name=value; `
 		return true
 	})
@@ -468,7 +468,7 @@ func (r *backend1Request) proxyCopyCookies(foreReq ServerRequest) bool { // NOTE
 		r.fields[from] = ':'
 		r.fields[from+1] = ' '
 		from += 2
-		foreReq.proxyWalkCookies(func(cookie *pair, name []byte, value []byte) bool {
+		servReq.proxyWalkCookies(func(cookie *pair, name []byte, value []byte) bool {
 			from += copy(r.fields[from:], name)
 			r.fields[from] = '='
 			from++

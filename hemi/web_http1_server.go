@@ -37,11 +37,11 @@ type server1Conn struct {
 var poolServer1Conn sync.Pool
 
 func getServer1Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) *server1Conn {
-	var serverConn *server1Conn
+	var servConn *server1Conn
 	if x := poolServer1Conn.Get(); x == nil {
-		serverConn = new(server1Conn)
-		stream := &serverConn.stream
-		stream.conn = serverConn
+		servConn = new(server1Conn)
+		stream := &servConn.stream
+		stream.conn = servConn
 		req, resp := &stream.request, &stream.response
 		req.stream = stream
 		req.inMessage = req
@@ -49,14 +49,14 @@ func getServer1Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall
 		resp.outMessage = resp
 		resp.request = req
 	} else {
-		serverConn = x.(*server1Conn)
+		servConn = x.(*server1Conn)
 	}
-	serverConn.onGet(id, gate, netConn, rawConn)
-	return serverConn
+	servConn.onGet(id, gate, netConn, rawConn)
+	return servConn
 }
-func putServer1Conn(serverConn *server1Conn) {
-	serverConn.onPut()
-	poolServer1Conn.Put(serverConn)
+func putServer1Conn(servConn *server1Conn) {
+	servConn.onPut()
+	poolServer1Conn.Put(servConn)
 }
 
 func (c *server1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {

@@ -152,18 +152,18 @@ type _backend2Conn0 struct { // for fast reset, entirely
 var poolBackend2Conn sync.Pool
 
 func getBackend2Conn(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) *backend2Conn {
-	var backendConn *backend2Conn
+	var backConn *backend2Conn
 	if x := poolBackend2Conn.Get(); x == nil {
-		backendConn = new(backend2Conn)
+		backConn = new(backend2Conn)
 	} else {
-		backendConn = x.(*backend2Conn)
+		backConn = x.(*backend2Conn)
 	}
-	backendConn.onGet(id, node, netConn, rawConn)
-	return backendConn
+	backConn.onGet(id, node, netConn, rawConn)
+	return backConn
 }
-func putBackend2Conn(backendConn *backend2Conn) {
-	backendConn.onPut()
-	poolBackend2Conn.Put(backendConn)
+func putBackend2Conn(backConn *backend2Conn) {
+	backConn.onPut()
+	poolBackend2Conn.Put(backConn)
 }
 
 func (c *backend2Conn) onGet(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
@@ -284,24 +284,24 @@ type _backend2Stream0 struct { // for fast reset, entirely
 var poolBackend2Stream sync.Pool
 
 func getBackend2Stream(conn *backend2Conn, id uint32) *backend2Stream {
-	var backendStream *backend2Stream
+	var backStream *backend2Stream
 	if x := poolBackend2Stream.Get(); x == nil {
-		backendStream = new(backend2Stream)
-		req, resp := &backendStream.request, &backendStream.response
-		req.stream = backendStream
+		backStream = new(backend2Stream)
+		req, resp := &backStream.request, &backStream.response
+		req.stream = backStream
 		req.outMessage = req
 		req.response = resp
-		resp.stream = backendStream
+		resp.stream = backStream
 		resp.inMessage = resp
 	} else {
-		backendStream = x.(*backend2Stream)
+		backStream = x.(*backend2Stream)
 	}
-	backendStream.onUse(id, conn)
-	return backendStream
+	backStream.onUse(id, conn)
+	return backStream
 }
-func putBackend2Stream(backendStream *backend2Stream) {
-	backendStream.onEnd()
-	poolBackend2Stream.Put(backendStream)
+func putBackend2Stream(backStream *backend2Stream) {
+	backStream.onEnd()
+	poolBackend2Stream.Put(backStream)
 }
 
 func (s *backend2Stream) onUse(id uint32, conn *backend2Conn) { // for non-zeros
@@ -373,7 +373,7 @@ func (r *backend2Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
 	return false
 }
-func (r *backend2Request) proxyCopyCookies(foreReq ServerRequest) bool { // NOTE: DO NOT merge into one "cookie" header!
+func (r *backend2Request) proxyCopyCookies(servReq ServerRequest) bool { // NOTE: DO NOT merge into one "cookie" header!
 	// TODO: one by one?
 	return true
 }

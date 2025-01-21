@@ -143,18 +143,18 @@ type _server3Conn0 struct { // for fast reset, entirely
 var poolServer3Conn sync.Pool
 
 func getServer3Conn(id int64, gate *http3Gate, quicConn *tcp2.Conn) *server3Conn {
-	var serverConn *server3Conn
+	var servConn *server3Conn
 	if x := poolServer3Conn.Get(); x == nil {
-		serverConn = new(server3Conn)
+		servConn = new(server3Conn)
 	} else {
-		serverConn = x.(*server3Conn)
+		servConn = x.(*server3Conn)
 	}
-	serverConn.onGet(id, gate, quicConn)
-	return serverConn
+	servConn.onGet(id, gate, quicConn)
+	return servConn
 }
-func putServer3Conn(serverConn *server3Conn) {
-	serverConn.onPut()
-	poolServer3Conn.Put(serverConn)
+func putServer3Conn(servConn *server3Conn) {
+	servConn.onPut()
+	poolServer3Conn.Put(servConn)
 }
 
 func (c *server3Conn) onGet(id int64, gate *http3Gate, quicConn *tcp2.Conn) {
@@ -211,24 +211,24 @@ type _server3Stream0 struct { // for fast reset, entirely
 var poolServer3Stream sync.Pool
 
 func getServer3Stream(conn *server3Conn, quicStream *tcp2.Stream) *server3Stream {
-	var serverStream *server3Stream
+	var servStream *server3Stream
 	if x := poolServer3Stream.Get(); x == nil {
-		serverStream = new(server3Stream)
-		req, resp := &serverStream.request, &serverStream.response
-		req.stream = serverStream
+		servStream = new(server3Stream)
+		req, resp := &servStream.request, &servStream.response
+		req.stream = servStream
 		req.inMessage = req
-		resp.stream = serverStream
+		resp.stream = servStream
 		resp.outMessage = resp
 		resp.request = req
 	} else {
-		serverStream = x.(*server3Stream)
+		servStream = x.(*server3Stream)
 	}
-	serverStream.onUse(conn, quicStream)
-	return serverStream
+	servStream.onUse(conn, quicStream)
+	return servStream
 }
-func putServer3Stream(serverStream *server3Stream) {
-	serverStream.onEnd()
-	poolServer3Stream.Put(serverStream)
+func putServer3Stream(servStream *server3Stream) {
+	servStream.onEnd()
+	poolServer3Stream.Put(servStream)
 }
 
 func (s *server3Stream) onUse(conn *server3Conn, quicStream *tcp2.Stream) { // for non-zeros

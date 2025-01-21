@@ -66,6 +66,6 @@ type UDPXProxyConfig struct {
 }
 
 // UDPXReverseProxy
-func UDPXReverseProxy(foreConn *UDPXConn, backend *UDPXBackend, proxyConfig *UDPXProxyConfig) {
+func UDPXReverseProxy(servConn *UDPXConn, backend *UDPXBackend, proxyConfig *UDPXProxyConfig) {
 	// TODO
 }

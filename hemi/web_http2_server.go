@@ -186,11 +186,11 @@ func (g *httpxGate) serveUDS() { // runner
 			continue
 		}
 		if g.server.httpMode == 2 {
-			serverConn := getServer2Conn(connID, g, udsConn, rawConn)
-			go serverConn.manager() // serverConn is put to pool in manager()
+			servConn := getServer2Conn(connID, g, udsConn, rawConn)
+			go servConn.manager() // servConn is put to pool in manager()
 		} else {
-			serverConn := getServer1Conn(connID, g, udsConn, rawConn)
-			go serverConn.serve() // serverConn is put to pool in serve()
+			servConn := getServer1Conn(connID, g, udsConn, rawConn)
+			go servConn.serve() // servConn is put to pool in serve()
 		}
 		connID++
 	}
@@ -225,11 +225,11 @@ func (g *httpxGate) serveTLS() { // runner
 			continue
 		}
 		if connState := tlsConn.ConnectionState(); connState.NegotiatedProtocol == "h2" {
-			serverConn := getServer2Conn(connID, g, tlsConn, nil)
-			go serverConn.manager() // serverConn is put to pool in manager()
+			servConn := getServer2Conn(connID, g, tlsConn, nil)
+			go servConn.manager() // servConn is put to pool in manager()
 		} else {
-			serverConn := getServer1Conn(connID, g, tlsConn, nil)
-			go serverConn.serve() // serverConn is put to pool in serve()
+			servConn := getServer1Conn(connID, g, tlsConn, nil)
+			go servConn.serve() // servConn is put to pool in serve()
 		}
 		connID++
 	}
@@ -264,11 +264,11 @@ func (g *httpxGate) serveTCP() { // runner
 			continue
 		}
 		if g.server.httpMode == 2 {
-			serverConn := getServer2Conn(connID, g, tcpConn, rawConn)
-			go serverConn.manager() // serverConn is put to pool in manager()
+			servConn := getServer2Conn(connID, g, tcpConn, rawConn)
+			go servConn.manager() // servConn is put to pool in manager()
 		} else {
-			serverConn := getServer1Conn(connID, g, tcpConn, rawConn)
-			go serverConn.serve() // serverConn is put to pool in serve()
+			servConn := getServer1Conn(connID, g, tcpConn, rawConn)
+			go servConn.serve() // servConn is put to pool in serve()
 		}
 		connID++
 	}
@@ -308,18 +308,18 @@ type _server2Conn0 struct { // for fast reset, entirely
 var poolServer2Conn sync.Pool
 
 func getServer2Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) *server2Conn {
-	var serverConn *server2Conn
+	var servConn *server2Conn
 	if x := poolServer2Conn.Get(); x == nil {
-		serverConn = new(server2Conn)
+		servConn = new(server2Conn)
 	} else {
-		serverConn = x.(*server2Conn)
+		servConn = x.(*server2Conn)
 	}
-	serverConn.onGet(id, gate, netConn, rawConn)
-	return serverConn
+	servConn.onGet(id, gate, netConn, rawConn)
+	return servConn
 }
-func putServer2Conn(serverConn *server2Conn) {
-	serverConn.onPut()
-	poolServer2Conn.Put(serverConn)
+func putServer2Conn(servConn *server2Conn) {
+	servConn.onPut()
+	poolServer2Conn.Put(servConn)
 }
 
 func (c *server2Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
@@ -665,24 +665,24 @@ type _server2Stream0 struct { // for fast reset, entirely
 var poolServer2Stream sync.Pool
 
 func getServer2Stream(conn *server2Conn, id uint32, outWindow int32) *server2Stream {
-	var serverStream *server2Stream
+	var servStream *server2Stream
 	if x := poolServer2Stream.Get(); x == nil {
-		serverStream = new(server2Stream)
-		req, resp := &serverStream.request, &serverStream.response
-		req.stream = serverStream
+		servStream = new(server2Stream)
+		req, resp := &servStream.request, &servStream.response
+		req.stream = servStream
 		req.inMessage = req
-		resp.stream = serverStream
+		resp.stream = servStream
 		resp.outMessage = resp
 		resp.request = req
 	} else {
-		serverStream = x.(*server2Stream)
+		servStream = x.(*server2Stream)
 	}
-	serverStream.onUse(id, conn, outWindow)
-	return serverStream
+	servStream.onUse(id, conn, outWindow)
+	return servStream
 }
-func putServer2Stream(serverStream *server2Stream) {
-	serverStream.onEnd()
-	poolServer2Stream.Put(serverStream)
+func putServer2Stream(servStream *server2Stream) {
+	servStream.onEnd()
+	poolServer2Stream.Put(servStream)
 }
 
 func (s *server2Stream) onUse(id uint32, conn *server2Conn, outWindow int32) { // for non-zeros

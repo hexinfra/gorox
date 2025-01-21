@@ -180,47 +180,47 @@ type WebExchanProxyConfig struct {
 }
 
 // WebExchanReverseProxy
-func WebExchanReverseProxy(foreReq ServerRequest, foreResp ServerResponse, hcache Hcache, backend HTTPBackend, proxyConfig *WebExchanProxyConfig) {
-	var foreContent any // nil, []byte, tempFile
-	foreHasContent := foreReq.HasContent()
-	if foreHasContent && proxyConfig.BufferClientContent { // including size 0
-		foreContent = foreReq.proxyTakeContent()
-		if foreContent == nil { // take failed
-			// foreStream was marked as broken
-			foreResp.SetStatus(StatusBadRequest)
-			foreResp.SendBytes(nil)
+func WebExchanReverseProxy(servReq ServerRequest, servResp ServerResponse, hcache Hcache, backend HTTPBackend, proxyConfig *WebExchanProxyConfig) {
+	var servContent any // nil, []byte, tempFile
+	servHasContent := servReq.HasContent()
+	if servHasContent && proxyConfig.BufferClientContent { // including size 0
+		servContent = servReq.proxyTakeContent()
+		if servContent == nil { // take failed
+			// servStream was marked as broken
+			servResp.SetStatus(StatusBadRequest)
+			servResp.SendBytes(nil)
 			return
 		}
 	}
 
-	backStream, backErr := backend.FetchStream(foreReq)
+	backStream, backErr := backend.FetchStream(servReq)
 	if backErr != nil {
-		foreResp.SendBadGateway(nil)
+		servResp.SendBadGateway(nil)
 		return
 	}
 	defer backend.StoreStream(backStream)
 
 	backReq := backStream.Request()
-	if !backReq.proxyCopyHeaders(foreReq, proxyConfig) {
+	if !backReq.proxyCopyHeaders(servReq, proxyConfig) {
 		backStream.markBroken()
-		foreResp.SendBadGateway(nil)
+		servResp.SendBadGateway(nil)
 		return
 	}
 
-	if !foreHasContent || proxyConfig.BufferClientContent {
-		foreHasTrailers := foreReq.HasTrailers()
-		backErr = backReq.proxyPostMessage(foreContent, foreHasTrailers)
-		if backErr == nil && foreHasTrailers {
-			if !backReq.proxyCopyTrailers(foreReq, proxyConfig) {
+	if !servHasContent || proxyConfig.BufferClientContent {
+		servHasTrailers := servReq.HasTrailers()
+		backErr = backReq.proxyPostMessage(servContent, servHasTrailers)
+		if backErr == nil && servHasTrailers {
+			if !backReq.proxyCopyTrailers(servReq, proxyConfig) {
 				backStream.markBroken()
 				backErr = httpOutTrailerFailed
 			} else if backErr = backReq.endVague(); backErr != nil {
 				backStream.markBroken()
 			}
-		} else if foreHasTrailers {
+		} else if servHasTrailers {
 			backStream.markBroken()
 		}
-	} else if backErr = backReq.proxyPassMessage(foreReq); backErr != nil {
+	} else if backErr = backReq.proxyPassMessage(servReq); backErr != nil {
 		backStream.markBroken()
 	} else if backReq.isVague() { // must write the last chunk and trailers (if exist)
 		if backErr = backReq.endVague(); backErr != nil {
@@ -228,7 +228,7 @@ func WebExchanReverseProxy(foreReq ServerRequest, foreResp ServerResponse, hcach
 		}
 	}
 	if backErr != nil {
-		foreResp.SendBadGateway(nil)
+		servResp.SendBadGateway(nil)
 		return
 	}
 
@@ -238,9 +238,9 @@ func WebExchanReverseProxy(foreReq ServerRequest, foreResp ServerResponse, hcach
 		if backResp.HeadResult() != StatusOK || backResp.Status() == StatusSwitchingProtocols { // webSocket is not served in handlets.
 			backStream.markBroken()
 			if backResp.HeadResult() == StatusRequestTimeout {
-				foreResp.SendGatewayTimeout(nil)
+				servResp.SendGatewayTimeout(nil)
 			} else {
-				foreResp.SendBadGateway(nil)
+				servResp.SendBadGateway(nil)
 			}
 			return
 		}
@@ -251,15 +251,15 @@ func WebExchanReverseProxy(foreReq ServerRequest, foreResp ServerResponse, hcach
 			break
 		}
 		// We got a 1xx response.
-		if foreReq.VersionCode() == Version1_0 { // 1xx response is not supported by HTTP/1.0
+		if servReq.VersionCode() == Version1_0 { // 1xx response is not supported by HTTP/1.0
 			backStream.markBroken()
-			foreResp.SendBadGateway(nil)
+			servResp.SendBadGateway(nil)
 			return
 		}
 		// A proxy MUST forward 1xx responses unless the proxy itself requested the generation of the 1xx response.
 		// For example, if a proxy adds an "Expect: 100-continue" header field when it forwards a request, then it
 		// need not forward the corresponding 100 (Continue) response(s).
-		if !foreResp.proxyPass1xx(backResp) {
+		if !servResp.proxyPass1xx(backResp) {
 			backStream.markBroken()
 			return
 		}
@@ -268,34 +268,34 @@ func WebExchanReverseProxy(foreReq ServerRequest, foreResp ServerResponse, hcach
 
 	var backContent any // nil, []byte, tempFile
 	backHasContent := false
-	if !foreReq.IsHEAD() {
+	if !servReq.IsHEAD() {
 		backHasContent = backResp.HasContent()
 	}
 	if backHasContent && proxyConfig.BufferServerContent { // including size 0
 		backContent = backResp.proxyTakeContent()
 		if backContent == nil { // take failed
 			// backStream was marked as broken
-			foreResp.SendBadGateway(nil)
+			servResp.SendBadGateway(nil)
 			return
 		}
 	}
 
-	if !foreResp.proxyCopyHeaders(backResp, proxyConfig) {
+	if !servResp.proxyCopyHeaders(backResp, proxyConfig) {
 		backStream.markBroken()
 		return
 	}
 	if !backHasContent || proxyConfig.BufferServerContent {
 		backHasTrailers := backResp.HasTrailers()
-		if foreResp.proxyPostMessage(backContent, backHasTrailers) != nil {
+		if servResp.proxyPostMessage(backContent, backHasTrailers) != nil {
 			if backHasTrailers {
 				backStream.markBroken()
 			}
 			return
 		}
-		if backHasTrailers && !foreResp.proxyCopyTrailers(backResp, proxyConfig) {
+		if backHasTrailers && !servResp.proxyCopyTrailers(backResp, proxyConfig) {
 			return
 		}
-	} else if err := foreResp.proxyPassMessage(backResp); err != nil {
+	} else if err := servResp.proxyPassMessage(backResp); err != nil {
 		backStream.markBroken()
 		return
 	}
@@ -358,7 +358,7 @@ type WebSocketProxyConfig struct {
 }
 
 // WebSocketReverseProxy
-func WebSocketReverseProxy(foreReq ServerRequest, foreSock ServerSocket, backend HTTPBackend, proxyConfig *WebSocketProxyConfig) {
+func WebSocketReverseProxy(servReq ServerRequest, servSock ServerSocket, backend HTTPBackend, proxyConfig *WebSocketProxyConfig) {
 	// TODO
-	foreSock.Close()
+	servSock.Close()
 }

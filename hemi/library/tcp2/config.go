@@ -6,3 +6,7 @@
 // QUIC config.
 
 package tcp2
+
+// Config
+type Config struct {
+}

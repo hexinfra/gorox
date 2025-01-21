@@ -99,6 +99,7 @@ func (n *httpNode_[B]) onPrepare() {
 
 // backendConn
 type backendConn interface {
+	isAlive() bool
 }
 
 // _backendConn_ is a mixin for backend[1-3]Conn.
@@ -146,11 +147,11 @@ func (s *_backendStream_) onEnd() {
 type backendRequest interface { // for *backend[1-3]Request
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	proxySetAuthority(hostname []byte, colonport []byte) bool
-	proxyCopyCookies(foreReq ServerRequest) bool // NOTE: HTTP 1.x/2/3 have different requirements on "cookie" header
-	proxyCopyHeaders(foreReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool
-	proxyPassMessage(foreReq ServerRequest) error                 // pass content to backend directly
+	proxyCopyCookies(servReq ServerRequest) bool // NOTE: HTTP 1.x/2/3 have different requirements on "cookie" header
+	proxyCopyHeaders(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool
+	proxyPassMessage(servReq ServerRequest) error                 // pass content to backend directly
 	proxyPostMessage(foreContent any, foreHasTrailers bool) error // post held content to backend
-	proxyCopyTrailers(foreReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool
+	proxyCopyTrailers(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool
 	isVague() bool
 	endVague() error
 }
@@ -301,27 +302,27 @@ func (r *backendRequest_) _removeIfUnmodifiedSince() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.ifUnmodifiedSince, &r.indexes.ifUnmodifiedSince)
 }
 
-func (r *backendRequest_) proxyPassMessage(foreReq ServerRequest) error {
-	return r._proxyPassMessage(foreReq)
+func (r *backendRequest_) proxyPassMessage(servReq ServerRequest) error {
+	return r._proxyPassMessage(servReq)
 }
-func (r *backendRequest_) proxyCopyHeaders(foreReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool {
-	foreReq.proxyDelHopHeaders()
+func (r *backendRequest_) proxyCopyHeaders(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool {
+	servReq.proxyDelHopHeaders()
 
 	// copy control (:method, :path, :authority, :scheme)
-	uri := foreReq.UnsafeURI()
-	if foreReq.IsAsteriskOptions() { // OPTIONS *
+	uri := servReq.UnsafeURI()
+	if servReq.IsAsteriskOptions() { // OPTIONS *
 		// RFC 9112 (3.2.4):
 		// If a proxy receives an OPTIONS request with an absolute-form of request-target in which the URI has an empty path and no query component,
 		// then the last proxy on the request chain MUST send a request-target of "*" when it forwards the request to the indicated origin server.
 		uri = bytesAsterisk
 	}
-	if !r.outMessage.(backendRequest).setMethodURI(foreReq.UnsafeMethod(), uri, foreReq.HasContent()) {
+	if !r.outMessage.(backendRequest).setMethodURI(servReq.UnsafeMethod(), uri, servReq.HasContent()) {
 		return false
 	}
-	if foreReq.IsAbsoluteForm() || len(proxyConfig.Hostname) != 0 || len(proxyConfig.Colonport) != 0 { // TODO: what about HTTP/2 and HTTP/3?
-		foreReq.proxyUnsetHost()
-		if foreReq.IsAbsoluteForm() {
-			if !r.outMessage.addHeader(bytesHost, foreReq.UnsafeAuthority()) {
+	if servReq.IsAbsoluteForm() || len(proxyConfig.Hostname) != 0 || len(proxyConfig.Colonport) != 0 { // TODO: what about HTTP/2 and HTTP/3?
+		servReq.proxyUnsetHost()
+		if servReq.IsAbsoluteForm() {
+			if !r.outMessage.addHeader(bytesHost, servReq.UnsafeAuthority()) {
 				return false
 			}
 		} else { // custom authority (hostname or colonport)
@@ -330,12 +331,12 @@ func (r *backendRequest_) proxyCopyHeaders(foreReq ServerRequest, proxyConfig *W
 				colonport []byte
 			)
 			if len(proxyConfig.Hostname) == 0 { // no custom hostname
-				hostname = foreReq.UnsafeHostname()
+				hostname = servReq.UnsafeHostname()
 			} else {
 				hostname = proxyConfig.Hostname
 			}
 			if len(proxyConfig.Colonport) == 0 { // no custom colonport
-				colonport = foreReq.UnsafeColonport()
+				colonport = servReq.UnsafeColonport()
 			} else {
 				colonport = proxyConfig.Colonport
 			}
@@ -358,14 +359,14 @@ func (r *backendRequest_) proxyCopyHeaders(foreReq ServerRequest, proxyConfig *W
 		// we have no way to set scheme in HTTP/1.x unless we use absolute-form, which is a risk as some servers may not support it.
 	}
 
-	// copy selective forbidden headers (including cookie) from foreReq
-	if foreReq.HasCookies() && !r.outMessage.(backendRequest).proxyCopyCookies(foreReq) {
+	// copy selective forbidden headers (including cookie) from servReq
+	if servReq.HasCookies() && !r.outMessage.(backendRequest).proxyCopyCookies(servReq) {
 		return false
 	}
 	if !r.outMessage.addHeader(bytesVia, proxyConfig.InboundViaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
 		return false
 	}
-	if foreReq.AcceptTrailers() {
+	if servReq.AcceptTrailers() {
 		// TODO: add te: trailers
 		// TODO: add connection: te
 	}
@@ -374,7 +375,7 @@ func (r *backendRequest_) proxyCopyHeaders(foreReq ServerRequest, proxyConfig *W
 	for headerName, vHeaderValue := range proxyConfig.AddRequestHeaders {
 		var headerValue []byte
 		if vHeaderValue.IsVariable() {
-			headerValue = vHeaderValue.BytesVar(foreReq)
+			headerValue = vHeaderValue.BytesVar(servReq)
 		} else if v, ok := vHeaderValue.Bytes(); ok {
 			headerValue = v
 		} else {
@@ -385,8 +386,8 @@ func (r *backendRequest_) proxyCopyHeaders(foreReq ServerRequest, proxyConfig *W
 		}
 	}
 
-	// copy remaining headers from foreReq
-	if !foreReq.proxyWalkHeaders(func(header *pair, name []byte, value []byte) bool {
+	// copy remaining headers from servReq
+	if !servReq.proxyWalkHeaders(func(header *pair, name []byte, value []byte) bool {
 		if false { // TODO: some special headers should be copied directly?
 			return r.outMessage.addHeader(name, value)
 		} else {
@@ -402,8 +403,8 @@ func (r *backendRequest_) proxyCopyHeaders(foreReq ServerRequest, proxyConfig *W
 
 	return true
 }
-func (r *backendRequest_) proxyCopyTrailers(foreReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool {
-	return r._proxyCopyTrailers(foreReq, proxyConfig)
+func (r *backendRequest_) proxyCopyTrailers(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool {
+	return r._proxyCopyTrailers(servReq, proxyConfig)
 }
 
 // backendResponse is the backend-side http response.

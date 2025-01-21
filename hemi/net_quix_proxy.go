@@ -66,6 +66,6 @@ type QUIXProxyConfig struct {
 }
 
 // QUIXReverseProxy
-func QUIXReverseProxy(foreConn *QUIXConn, foreStream *QUIXStream, backend *QUIXBackend, proxyConfig *QUIXProxyConfig) {
+func QUIXReverseProxy(servConn *QUIXConn, servStream *QUIXStream, backend *QUIXBackend, proxyConfig *QUIXProxyConfig) {
 	// TODO
 }

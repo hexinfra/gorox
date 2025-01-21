@@ -145,18 +145,18 @@ type _backend3Conn0 struct { // for fast reset, entirely
 var poolBackend3Conn sync.Pool
 
 func getBackend3Conn(id int64, node *http3Node, quicConn *tcp2.Conn) *backend3Conn {
-	var backendConn *backend3Conn
+	var backConn *backend3Conn
 	if x := poolBackend3Conn.Get(); x == nil {
-		backendConn = new(backend3Conn)
+		backConn = new(backend3Conn)
 	} else {
-		backendConn = x.(*backend3Conn)
+		backConn = x.(*backend3Conn)
 	}
-	backendConn.onGet(id, node, quicConn)
-	return backendConn
+	backConn.onGet(id, node, quicConn)
+	return backConn
 }
-func putBackend3Conn(backendConn *backend3Conn) {
-	backendConn.onPut()
-	poolBackend3Conn.Put(backendConn)
+func putBackend3Conn(backConn *backend3Conn) {
+	backConn.onPut()
+	poolBackend3Conn.Put(backConn)
 }
 
 func (c *backend3Conn) onGet(id int64, node *http3Node, quicConn *tcp2.Conn) {
@@ -215,24 +215,24 @@ type _backend3Stream0 struct { // for fast reset, entirely
 var poolBackend3Stream sync.Pool
 
 func getBackend3Stream(conn *backend3Conn, quicStream *tcp2.Stream) *backend3Stream {
-	var backendStream *backend3Stream
+	var backStream *backend3Stream
 	if x := poolBackend3Stream.Get(); x == nil {
-		backendStream = new(backend3Stream)
-		req, resp := &backendStream.request, &backendStream.response
-		req.stream = backendStream
+		backStream = new(backend3Stream)
+		req, resp := &backStream.request, &backStream.response
+		req.stream = backStream
 		req.outMessage = req
 		req.response = resp
-		resp.stream = backendStream
+		resp.stream = backStream
 		resp.inMessage = resp
 	} else {
-		backendStream = x.(*backend3Stream)
+		backStream = x.(*backend3Stream)
 	}
-	backendStream.onUse(conn, quicStream)
-	return backendStream
+	backStream.onUse(conn, quicStream)
+	return backStream
 }
-func putBackend3Stream(backendStream *backend3Stream) {
-	backendStream.onEnd()
-	poolBackend3Stream.Put(backendStream)
+func putBackend3Stream(backStream *backend3Stream) {
+	backStream.onEnd()
+	poolBackend3Stream.Put(backStream)
 }
 
 func (s *backend3Stream) onUse(conn *backend3Conn, quicStream *tcp2.Stream) { // for non-zeros
@@ -304,7 +304,7 @@ func (r *backend3Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
 	return false
 }
-func (r *backend3Request) proxyCopyCookies(foreReq ServerRequest) bool { // NOTE: DO NOT merge into one "cookie" header!
+func (r *backend3Request) proxyCopyCookies(servReq ServerRequest) bool { // NOTE: DO NOT merge into one "cookie" header!
 	// TODO: one by one?
 	return true
 }

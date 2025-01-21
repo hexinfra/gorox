@@ -233,7 +233,8 @@ type _httpIn0 struct { // for fast reset, entirely
 	iContentRange     uint8   // index of content-range header in r.primes
 	iContentType      uint8   // index of content-type header in r.primes
 	iDate             uint8   // index of date header in r.primes
-	_                 [3]byte // padding
+	_                 byte    // padding
+	zAccept           zone    // zone of accept headers in r.primes. may not be continuous
 	zConnection       zone    // zone of connection headers in r.primes. may not be continuous
 	zContentLanguage  zone    // zone of content-language headers in r.primes. may not be continuous
 	zTrailer          zone    // zone of trailer headers in r.primes. may not be continuous
@@ -753,7 +754,13 @@ func (r *_httpIn_) _checkHTTPDate(header *pair, index uint8, pIndex *uint8, toTi
 }
 
 func (r *_httpIn_) checkAccept(pairs []pair, from uint8, edge uint8) bool { // Accept = #( media-range [ weight ] )
-	// TODO
+	if r.zAccept.isEmpty() {
+		r.zAccept.from = from
+	}
+	r.zAccept.edge = edge
+	for i := from; i < edge; i++ {
+		// TODO: check syntax
+	}
 	return true
 }
 func (r *_httpIn_) checkAcceptEncoding(pairs []pair, from uint8, edge uint8) bool { // Accept-Encoding = #( codings [ weight ] )

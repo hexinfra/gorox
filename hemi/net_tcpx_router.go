@@ -376,7 +376,7 @@ func putTCPXConn(conn *TCPXConn) {
 }
 
 func (c *TCPXConn) onGet(id int64, gate *tcpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.tcpxConn_.onGet(id, gate.Stage(), netConn, rawConn, gate.UDSMode(), gate.TLSMode(), gate.ReadTimeout(), gate.WriteTimeout())
+	c.tcpxConn_.onGet(id, gate, netConn, rawConn)
 
 	c.gate = gate
 }

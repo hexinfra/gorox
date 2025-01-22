@@ -37,13 +37,11 @@ func (b *HTTP2Backend) onCreate(compName string, stage *Stage) {
 func (b *HTTP2Backend) OnConfigure() {
 	b.httpBackend_.onConfigure()
 
-	// sub components
 	b.ConfigureNodes()
 }
 func (b *HTTP2Backend) OnPrepare() {
 	b.httpBackend_.onPrepare()
 
-	// sub components
 	b.PrepareNodes()
 }
 
@@ -55,8 +53,7 @@ func (b *HTTP2Backend) CreateNode(compName string) Node {
 }
 
 func (b *HTTP2Backend) FetchStream(req ServerRequest) (backendStream, error) {
-	node := b.nodes[b.nodeIndexGet()]
-	return node.fetchStream()
+	return b.nodes[b.nodeIndexGet()].fetchStream()
 }
 func (b *HTTP2Backend) StoreStream(backStream backendStream) {
 	backStream2 := backStream.(*backend2Stream)
@@ -141,13 +138,12 @@ type backend2Conn struct {
 	// Parent
 	http2Conn_
 	// Mixins
-	_backendConn_
+	_backendConn_[*http2Node]
 	// Assocs
 	next *backend2Conn // the linked-list
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node *http2Node // the node to which the connection belongs
 	// Conn states (zeros)
 	_backend2Conn0 // all values in this struct must be zero by default!
 }
@@ -172,16 +168,14 @@ func putBackend2Conn(backConn *backend2Conn) {
 }
 
 func (c *backend2Conn) onGet(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
-	c.http2Conn_.onGet(id, node.Stage(), node.UDSMode(), node.TLSMode(), node.ReadTimeout(), node.WriteTimeout(), netConn, rawConn)
-	c._backendConn_.onGet(time.Now().Add(node.idleTimeout))
-
-	c.node = node
+	c.http2Conn_.onGet(id, node, netConn, rawConn)
+	c._backendConn_.onGet(node, time.Now().Add(node.idleTimeout))
 }
 func (c *backend2Conn) onPut() {
 	c._backend2Conn0 = _backend2Conn0{}
-	c.node = nil
 
 	c._backendConn_.onPut()
+	c.node = nil // put here due to Go's limitation
 	c.http2Conn_.onPut()
 }
 

@@ -36,13 +36,11 @@ func (b *UDPXBackend) onCreate(compName string, stage *Stage) {
 func (b *UDPXBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
 
-	// sub components
 	b.ConfigureNodes()
 }
 func (b *UDPXBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
 
-	// sub components
 	b.PrepareNodes()
 }
 
@@ -101,8 +99,10 @@ func (n *udpxNode) dial() (*UConn, error) {
 type UConn struct {
 	// Parent
 	udpxConn_
+	// Conn states (stocks)
+	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node *udpxNode
+	node *udpxNode // the node to which the connection belongs
 	// Conn states (zeros)
 }
 

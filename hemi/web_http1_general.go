@@ -41,8 +41,8 @@ type http1Conn_ struct {
 	// Conn states (zeros)
 }
 
-func (c *http1Conn_) onGet(id int64, stage *Stage, udsMode bool, tlsMode bool, readTimeout time.Duration, writeTimeout time.Duration, netConn net.Conn, rawConn syscall.RawConn) {
-	c.httpConn_.onGet(id, stage, udsMode, tlsMode, readTimeout, writeTimeout)
+func (c *http1Conn_) onGet(id int64, holder holder, netConn net.Conn, rawConn syscall.RawConn) {
+	c.httpConn_.onGet(id, holder)
 
 	c.netConn = netConn
 	c.rawConn = rawConn

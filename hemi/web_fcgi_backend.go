@@ -41,13 +41,11 @@ func (b *fcgiBackend) onCreate(compName string, stage *Stage) {
 func (b *fcgiBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
 
-	// sub components
 	b.ConfigureNodes()
 }
 func (b *fcgiBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
 
-	// sub components
 	b.PrepareNodes()
 }
 
@@ -59,8 +57,7 @@ func (b *fcgiBackend) CreateNode(compName string) Node {
 }
 
 func (b *fcgiBackend) fetchExchan(req ServerRequest) (*fcgiExchan, error) {
-	node := b.nodes[b.nodeIndexGet()]
-	return node.fetchExchan()
+	return b.nodes[b.nodeIndexGet()].fetchExchan()
 }
 func (b *fcgiBackend) storeExchan(exchan *fcgiExchan) {
 	exchan.conn.node.storeExchan(exchan)
@@ -77,6 +74,7 @@ type fcgiNode struct {
 	idleTimeout                 time.Duration // conn idle timeout
 	maxLifetime                 time.Duration // conn's max lifetime
 	keepConn                    bool          // instructs FCGI server to keep conn?
+	keepAliveConns              int32         // max conns to keep alive
 	connPool                    struct {      // free list of conns in this node
 		sync.Mutex
 		head *fcgiConn
@@ -118,7 +116,15 @@ func (n *fcgiNode) OnConfigure() {
 	}, 1*time.Minute)
 
 	// .keepConn
-	n.ConfigureBool("keepConn", &n.keepConn, false)
+	n.ConfigureBool("keepConn", &n.keepConn, true)
+
+	// .keepAliveConns
+	n.ConfigureInt32("keepAliveConns", &n.keepAliveConns, func(value int32) error {
+		if value > 0 {
+			return nil
+		}
+		return errors.New("bad keepAliveConns in node")
+	}, 10)
 }
 func (n *fcgiNode) OnPrepare() {
 	n.Node_.OnPrepare()
@@ -161,18 +167,6 @@ func (n *fcgiNode) fetchExchan() (*fcgiExchan, error) {
 	}
 	return fcgiConn.fetchExchan()
 }
-func (n *fcgiNode) storeExchan(exchan *fcgiExchan) {
-	fcgiConn := exchan.conn
-	fcgiConn.storeExchan(exchan)
-
-	if fcgiConn.isBroken() || n.isDown() || !fcgiConn.isAlive() || !fcgiConn.persistent {
-		fcgiConn.Close()
-		n.DecSubConns()
-	} else {
-		n.pushConn(fcgiConn)
-	}
-}
-
 func (n *fcgiNode) dial() (*fcgiConn, error) {
 	if DebugLevel() >= 2 {
 		Printf("fcgiNode=%s dial %s\n", n.compName, n.address)
@@ -228,6 +222,17 @@ func (n *fcgiNode) _dialTCP() (*fcgiConn, error) {
 		return nil, err
 	}
 	return getFCGIConn(connID, n, netConn, rawConn), nil
+}
+func (n *fcgiNode) storeExchan(exchan *fcgiExchan) {
+	fcgiConn := exchan.conn
+	fcgiConn.storeExchan(exchan)
+
+	if fcgiConn.isBroken() || n.isDown() || !fcgiConn.isAlive() || !fcgiConn.persistent {
+		fcgiConn.Close()
+		n.DecSubConns()
+	} else {
+		n.pushConn(fcgiConn)
+	}
 }
 
 func (n *fcgiNode) pullConn() *fcgiConn {
@@ -289,18 +294,18 @@ type fcgiConn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id         int64 // the conn id
-	node       *fcgiNode
-	expireTime time.Time       // when the conn is considered expired
+	id         int64           // the conn id
+	node       *fcgiNode       // the node to which the connection belongs
 	netConn    net.Conn        // *net.TCPConn or *net.UnixConn
 	rawConn    syscall.RawConn // for syscall
+	expireTime time.Time       // when the conn is considered expired
 	persistent bool            // keep the connection after current exchan?
 	// Conn states (zeros)
+	cumulativeExchans atomic.Int32 // how many exchans have been used?
+	broken            atomic.Bool  // is conn broken?
 	counter           atomic.Int64 // can be used to generate a random number
 	lastWrite         time.Time    // deadline of last write operation
 	lastRead          time.Time    // deadline of last read operation
-	cumulativeExchans atomic.Int32 // how many exchans have been used?
-	broken            atomic.Bool  // is conn broken?
 }
 
 var poolFCGIConn sync.Pool
@@ -329,18 +334,18 @@ func putFCGIConn(conn *fcgiConn) {
 func (c *fcgiConn) onGet(id int64, node *fcgiNode, netConn net.Conn, rawConn syscall.RawConn) {
 	c.id = id
 	c.node = node
-	c.expireTime = time.Now().Add(node.idleTimeout)
 	c.netConn = netConn
 	c.rawConn = rawConn
+	c.expireTime = time.Now().Add(node.idleTimeout)
 	c.persistent = node.keepConn
 }
 func (c *fcgiConn) onPut() {
-	c.cumulativeExchans.Store(0)
-	c.broken.Store(false)
+	c.node = nil
 	c.netConn = nil
 	c.rawConn = nil
 	c.expireTime = time.Time{}
-	c.node = nil
+	c.cumulativeExchans.Store(0)
+	c.broken.Store(false)
 	c.counter.Store(0)
 	c.lastWrite = time.Time{}
 	c.lastRead = time.Time{}
@@ -367,15 +372,6 @@ func (c *fcgiConn) storeExchan(exchan *fcgiExchan) {
 func (c *fcgiConn) markBroken()    { c.broken.Store(true) }
 func (c *fcgiConn) isBroken() bool { return c.broken.Load() }
 
-func (c *fcgiConn) setWriteDeadline() error {
-	if deadline := time.Now().Add(c.node.writeTimeout); deadline.Sub(c.lastWrite) >= time.Second {
-		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
-			return err
-		}
-		c.lastWrite = deadline
-	}
-	return nil
-}
 func (c *fcgiConn) setReadDeadline() error {
 	if deadline := time.Now().Add(c.node.readTimeout); deadline.Sub(c.lastRead) >= time.Second {
 		if err := c.netConn.SetReadDeadline(deadline); err != nil {
@@ -385,13 +381,22 @@ func (c *fcgiConn) setReadDeadline() error {
 	}
 	return nil
 }
+func (c *fcgiConn) setWriteDeadline() error {
+	if deadline := time.Now().Add(c.node.writeTimeout); deadline.Sub(c.lastWrite) >= time.Second {
+		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
+			return err
+		}
+		c.lastWrite = deadline
+	}
+	return nil
+}
 
-func (c *fcgiConn) write(src []byte) (int, error)             { return c.netConn.Write(src) }
-func (c *fcgiConn) writev(srcVec *net.Buffers) (int64, error) { return srcVec.WriteTo(c.netConn) }
-func (c *fcgiConn) read(dst []byte) (int, error)              { return c.netConn.Read(dst) }
+func (c *fcgiConn) read(dst []byte) (int, error) { return c.netConn.Read(dst) }
 func (c *fcgiConn) readAtLeast(dst []byte, min int) (int, error) {
 	return io.ReadAtLeast(c.netConn, dst, min)
 }
+func (c *fcgiConn) write(src []byte) (int, error)             { return c.netConn.Write(src) }
+func (c *fcgiConn) writev(srcVec *net.Buffers) (int64, error) { return srcVec.WriteTo(c.netConn) }
 
 func (c *fcgiConn) Close() error {
 	netConn := c.netConn

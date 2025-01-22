@@ -72,13 +72,11 @@ func (b *PgsqlBackend) onCreate(compName string, stage *Stage) {
 func (b *PgsqlBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
 
-	// sub components
 	b.ConfigureNodes()
 }
 func (b *PgsqlBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
 
-	// sub components
 	b.PrepareNodes()
 }
 

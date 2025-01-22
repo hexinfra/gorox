@@ -93,13 +93,13 @@ type httpConn_ struct {
 	lastRead          time.Time    // deadline of last read operation
 }
 
-func (c *httpConn_) onGet(id int64, stage *Stage, udsMode bool, tlsMode bool, readTimeout time.Duration, writeTimeout time.Duration) {
+func (c *httpConn_) onGet(id int64, holder holder) {
 	c.id = id
-	c.stage = stage
-	c.udsMode = udsMode
-	c.tlsMode = tlsMode
-	c.readTimeout = readTimeout
-	c.writeTimeout = writeTimeout
+	c.stage = holder.Stage()
+	c.udsMode = holder.UDSMode()
+	c.tlsMode = holder.TLSMode()
+	c.readTimeout = holder.ReadTimeout()
+	c.writeTimeout = holder.WriteTimeout()
 }
 func (c *httpConn_) onPut() {
 	c.stage = nil

@@ -163,7 +163,7 @@ func putServer3Conn(servConn *server3Conn) {
 }
 
 func (c *server3Conn) onGet(id int64, gate *http3Gate, quicConn *tcp2.Conn) {
-	c.http3Conn_.onGet(id, gate.Stage(), gate.UDSMode(), gate.TLSMode(), gate.ReadTimeout(), gate.WriteTimeout(), quicConn)
+	c.http3Conn_.onGet(id, gate, quicConn)
 	c._serverConn_.onGet()
 
 	c.gate = gate

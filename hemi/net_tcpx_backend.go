@@ -37,13 +37,11 @@ func (b *TCPXBackend) onCreate(compName string, stage *Stage) {
 func (b *TCPXBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
 
-	// sub components
 	b.ConfigureNodes()
 }
 func (b *TCPXBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
 
-	// sub components
 	b.PrepareNodes()
 }
 
@@ -182,7 +180,7 @@ type TConn struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node *tcpxNode
+	node *tcpxNode // the node to which the connection belongs
 	// Conn states (zeros)
 }
 
@@ -204,7 +202,7 @@ func putTConn(conn *TConn) {
 }
 
 func (c *TConn) onGet(id int64, node *tcpxNode, netConn net.Conn, rawConn syscall.RawConn) {
-	c.tcpxConn_.onGet(id, node.Stage(), netConn, rawConn, node.UDSMode(), node.TLSMode(), node.ReadTimeout(), node.WriteTimeout())
+	c.tcpxConn_.onGet(id, node, netConn, rawConn)
 
 	c.node = node
 }

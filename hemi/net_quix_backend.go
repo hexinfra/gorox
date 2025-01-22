@@ -36,13 +36,11 @@ func (b *QUIXBackend) onCreate(compName string, stage *Stage) {
 func (b *QUIXBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
 
-	// sub components
 	b.ConfigureNodes()
 }
 func (b *QUIXBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
 
-	// sub components
 	b.PrepareNodes()
 }
 
@@ -109,8 +107,10 @@ func (n *quixNode) _dialTLS() (*QConn, error) {
 type QConn struct {
 	// Parent
 	quixConn_
+	// Conn states (stocks)
+	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node *quixNode
+	node *quixNode // the node to which the connection belongs
 	// Conn states (zeros)
 }
 

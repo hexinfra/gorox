@@ -60,28 +60,28 @@ type tcpxConn_ struct {
 	FixedVector [4][]byte    // used by Sendv()
 }
 
-func (c *tcpxConn_) onGet(id int64, stage *Stage, netConn net.Conn, rawConn syscall.RawConn, udsMode bool, tlsMode bool, readTimeout time.Duration, writeTimeout time.Duration) {
+func (c *tcpxConn_) onGet(id int64, holder holder, netConn net.Conn, rawConn syscall.RawConn) {
 	c.id = id
-	c.stage = stage
+	c.stage = holder.Stage()
+	c.udsMode = holder.UDSMode()
+	c.tlsMode = holder.TLSMode()
+	c.readTimeout = holder.ReadTimeout()
+	c.writeTimeout = holder.WriteTimeout()
 	c.netConn = netConn
 	c.rawConn = rawConn
-	c.udsMode = udsMode
-	c.tlsMode = tlsMode
-	c.readTimeout = readTimeout
-	c.writeTimeout = writeTimeout
 	c.input = c.stockInput[:]
 	c.region.Init()
 	c.closeSema.Store(2)
 }
 func (c *tcpxConn_) onPut() {
 	c.stage = nil
-	c.region.Free()
+	c.netConn = nil
+	c.rawConn = nil
 	if cap(c.input) != cap(c.stockInput) {
 		PutNK(c.input)
 	}
 	c.input = nil
-	c.netConn = nil
-	c.rawConn = nil
+	c.region.Free()
 
 	c.counter.Store(0)
 	c.lastRead = time.Time{}

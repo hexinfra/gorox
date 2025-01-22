@@ -62,8 +62,8 @@ type _http2Conn0 struct { // for fast reset, entirely
 	contFore           uint32                                // incoming continuation part (header or payload) ends at c.inBuffer.buf[c.contFore]
 }
 
-func (c *http2Conn_) onGet(id int64, stage *Stage, udsMode bool, tlsMode bool, readTimeout time.Duration, writeTimeout time.Duration, netConn net.Conn, rawConn syscall.RawConn) {
-	c.httpConn_.onGet(id, stage, udsMode, tlsMode, readTimeout, writeTimeout)
+func (c *http2Conn_) onGet(id int64, holder holder, netConn net.Conn, rawConn syscall.RawConn) {
+	c.httpConn_.onGet(id, holder)
 
 	c.netConn = netConn
 	c.rawConn = rawConn

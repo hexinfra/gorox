@@ -327,7 +327,7 @@ func putServer2Conn(servConn *server2Conn) {
 }
 
 func (c *server2Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
-	c.http2Conn_.onGet(id, gate.Stage(), gate.UDSMode(), gate.TLSMode(), gate.ReadTimeout(), gate.WriteTimeout(), netConn, rawConn)
+	c.http2Conn_.onGet(id, gate, netConn, rawConn)
 	c._serverConn_.onGet()
 
 	c.gate = gate

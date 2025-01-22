@@ -11,49 +11,6 @@ import (
 	"strings"
 )
 
-// Hcache component is the interface to storages of HTTP caching.
-type Hcache interface {
-	// Imports
-	Component
-	// Methods
-	Maintain() // runner
-	Set(key []byte, hobject *Hobject)
-	Get(key []byte) (hobject *Hobject)
-	Del(key []byte) bool
-}
-
-// Hcache_ is the parent for all hcaches.
-type Hcache_ struct {
-	// Parent
-	Component_
-	// Assocs
-	stage *Stage // current stage
-	// States
-}
-
-func (c *Hcache_) OnCreate(compName string, stage *Stage) {
-	c.MakeComp(compName)
-	c.stage = stage
-}
-
-func (c *Hcache_) Stage() *Stage { return c.stage }
-
-func (c *Hcache_) todo() {
-}
-
-// Hobject represents an HTTP object in Hcache.
-type Hobject struct {
-	// TODO
-	uri      []byte
-	headers  any
-	content  any
-	trailers any
-}
-
-func (o *Hobject) todo() {
-	// TODO
-}
-
 func init() {
 	RegisterHandlet("httpProxy", func(compName string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(httpProxy)
@@ -301,6 +258,49 @@ func WebExchanReverseProxy(servReq ServerRequest, servResp ServerResponse, hcach
 		backStream.markBroken()
 		return
 	}
+}
+
+// Hcache component is the interface to storages of HTTP caching.
+type Hcache interface {
+	// Imports
+	Component
+	// Methods
+	Maintain() // runner
+	Set(key []byte, hobject *Hobject)
+	Get(key []byte) (hobject *Hobject)
+	Del(key []byte) bool
+}
+
+// Hcache_ is the parent for all hcaches.
+type Hcache_ struct {
+	// Parent
+	Component_
+	// Assocs
+	stage *Stage // current stage
+	// States
+}
+
+func (c *Hcache_) OnCreate(compName string, stage *Stage) {
+	c.MakeComp(compName)
+	c.stage = stage
+}
+
+func (c *Hcache_) Stage() *Stage { return c.stage }
+
+func (c *Hcache_) todo() {
+}
+
+// Hobject represents an HTTP object in Hcache.
+type Hobject struct {
+	// TODO
+	uri      []byte
+	headers  any
+	content  any
+	trailers any
+}
+
+func (o *Hobject) todo() {
+	// TODO
 }
 
 func init() {

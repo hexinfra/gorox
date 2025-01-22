@@ -11,7 +11,6 @@ import (
 	"net"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/hexinfra/gorox/hemi/library/tcp2"
 )
@@ -43,8 +42,8 @@ type _http3Conn0 struct { // for fast reset, entirely
 	partFore     uint32 // incoming frame part (header or payload) ends at c.inBuffer.buf[c.partFore]
 }
 
-func (c *http3Conn_) onGet(id int64, stage *Stage, udsMode bool, tlsMode bool, readTimeout time.Duration, writeTimeout time.Duration, quicConn *tcp2.Conn) {
-	c.httpConn_.onGet(id, stage, udsMode, tlsMode, readTimeout, writeTimeout)
+func (c *http3Conn_) onGet(id int64, holder holder, quicConn *tcp2.Conn) {
+	c.httpConn_.onGet(id, holder)
 
 	c.quicConn = quicConn
 	if c.inBuffer == nil {

@@ -8,9 +8,9 @@
 package hemi
 
 import (
+	"io"
 	"net"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -37,13 +37,11 @@ func (b *uwsgiBackend) onCreate(compName string, stage *Stage) {
 func (b *uwsgiBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
 
-	// sub components
 	b.ConfigureNodes()
 }
 func (b *uwsgiBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
 
-	// sub components
 	b.PrepareNodes()
 }
 
@@ -122,7 +120,7 @@ func (n *uwsgiNode) _dialUDS() (*uwsgiConn, error) {
 		netConn.Close()
 		return nil, err
 	}
-	return getUwsgiConn(connID, n, netConn, rawConn), nil
+	return getUWSGIConn(connID, n, netConn, rawConn), nil
 }
 func (n *uwsgiNode) _dialTCP() (*uwsgiConn, error) {
 	// TODO: dynamic address names?
@@ -141,7 +139,7 @@ func (n *uwsgiNode) _dialTCP() (*uwsgiConn, error) {
 		netConn.Close()
 		return nil, err
 	}
-	return getUwsgiConn(connID, n, netConn, rawConn), nil
+	return getUWSGIConn(connID, n, netConn, rawConn), nil
 }
 
 // uwsgiConn
@@ -153,22 +151,21 @@ type uwsgiConn struct {
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	id      int64 // the conn id
-	node    *uwsgiNode
-	region  Region // a region-based memory pool
+	id      int64      // the conn id
+	node    *uwsgiNode // the node to which the connection belongs
+	region  Region     // a region-based memory pool
 	netConn net.Conn
 	rawConn syscall.RawConn
 	// Conn states (zeros)
-	counter   atomic.Int64 // can be used to generate a random number
-	lastWrite time.Time    // deadline of last write operation
-	lastRead  time.Time    // deadline of last read operation
+	lastWrite time.Time // deadline of last write operation
+	lastRead  time.Time // deadline of last read operation
 }
 
-var poolUwsgiConn sync.Pool
+var poolUWSGIConn sync.Pool
 
-func getUwsgiConn(id int64, node *uwsgiNode, netConn net.Conn, rawConn syscall.RawConn) *uwsgiConn {
+func getUWSGIConn(id int64, node *uwsgiNode, netConn net.Conn, rawConn syscall.RawConn) *uwsgiConn {
 	var conn *uwsgiConn
-	if x := poolUwsgiConn.Get(); x == nil {
+	if x := poolUWSGIConn.Get(); x == nil {
 		conn = new(uwsgiConn)
 		resp, req := &conn.response, &conn.request
 		resp.conn = conn
@@ -180,35 +177,81 @@ func getUwsgiConn(id int64, node *uwsgiNode, netConn net.Conn, rawConn syscall.R
 	conn.onUse(id, node, netConn, rawConn)
 	return conn
 }
-func putUwsgiConn(conn *uwsgiConn) {
+func putUWSGIConn(conn *uwsgiConn) {
 	conn.onEnd()
-	poolUwsgiConn.Put(conn)
+	poolUWSGIConn.Put(conn)
 }
 
 func (c *uwsgiConn) onUse(id int64, node *uwsgiNode, netConn net.Conn, rawConn syscall.RawConn) {
+	c.id = id
+	c.node = node
 	c.region.Init()
 	c.netConn = netConn
 	c.rawConn = rawConn
-	c.node = node
 	c.response.onUse()
 	c.request.onUse()
 }
 func (c *uwsgiConn) onEnd() {
 	c.request.onEnd()
 	c.response.onEnd()
-	c.netConn = nil
-	c.rawConn = nil
 	c.node = nil
 	c.region.Free()
+	c.netConn = nil
+	c.rawConn = nil
 }
+
+func (c *uwsgiConn) MakeTempName(dst []byte, unixTime int64) int {
+	return makeTempName(dst, c.node.Stage().ID(), c.id, unixTime, 0)
+}
+
+func (c *uwsgiConn) setReadDeadline() error {
+	if deadline := time.Now().Add(c.node.readTimeout); deadline.Sub(c.lastRead) >= time.Second {
+		if err := c.netConn.SetReadDeadline(deadline); err != nil {
+			return err
+		}
+		c.lastRead = deadline
+	}
+	return nil
+}
+func (c *uwsgiConn) setWriteDeadline() error {
+	if deadline := time.Now().Add(c.node.writeTimeout); deadline.Sub(c.lastWrite) >= time.Second {
+		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
+			return err
+		}
+		c.lastWrite = deadline
+	}
+	return nil
+}
+
+func (c *uwsgiConn) read(dst []byte) (int, error) { return c.netConn.Read(dst) }
+func (c *uwsgiConn) readAtLeast(dst []byte, min int) (int, error) {
+	return io.ReadAtLeast(c.netConn, dst, min)
+}
+func (c *uwsgiConn) write(src []byte) (int, error)             { return c.netConn.Write(src) }
+func (c *uwsgiConn) writev(srcVec *net.Buffers) (int64, error) { return srcVec.WriteTo(c.netConn) }
 
 func (c *uwsgiConn) buffer256() []byte          { return c.stockBuffer[:] }
 func (c *uwsgiConn) unsafeMake(size int) []byte { return c.region.Make(size) }
+
+func (c *uwsgiConn) Close() error {
+	netConn := c.netConn
+	putUWSGIConn(c)
+	return netConn.Close()
+}
 
 // uwsgiResponse must implements the backendResponse interface.
 type uwsgiResponse struct { // incoming. needs parsing
 	// Assocs
 	conn *uwsgiConn
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	headResult int16 // result of receiving response head. values are same as http status for convenience
+	bodyResult int16 // result of receiving response body. values are same as http status for convenience
+	// Conn states (zeros)
+	_uwsgiResponse0 // all values in this struct must be zero by default!
+}
+type _uwsgiResponse0 struct { // for fast reset, entirely
 }
 
 func (r *uwsgiResponse) onUse() {
@@ -216,13 +259,31 @@ func (r *uwsgiResponse) onUse() {
 }
 func (r *uwsgiResponse) onEnd() {
 	// TODO
+	r._uwsgiResponse0 = _uwsgiResponse0{}
 }
+
+func (r *uwsgiResponse) reuse() {
+	r.onEnd()
+	r.onUse()
+}
+
+func (r *uwsgiResponse) KeepAlive() int8 { return -1 } // same as "no connection header". TODO: confirm this
+
+func (r *uwsgiResponse) HeadResult() int16 { return r.headResult }
+func (r *uwsgiResponse) BodyResult() int16 { return r.bodyResult }
 
 // uwsgiRequest
 type uwsgiRequest struct { // outgoing. needs building
 	// Assocs
 	conn     *uwsgiConn
 	response *uwsgiResponse
+	// Conn states (stocks)
+	// Conn states (controlled)
+	// Conn states (non-zeros)
+	// Conn states (zeros)
+	_uwsgiRequest0 // all values in this struct must be zero by default!
+}
+type _uwsgiRequest0 struct { // for fast reset, entirely
 }
 
 func (r *uwsgiRequest) onUse() {
@@ -230,4 +291,5 @@ func (r *uwsgiRequest) onUse() {
 }
 func (r *uwsgiRequest) onEnd() {
 	// TODO
+	r._uwsgiRequest0 = _uwsgiRequest0{}
 }

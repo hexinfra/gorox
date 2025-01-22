@@ -72,13 +72,11 @@ func (b *MysqlBackend) onCreate(compName string, stage *Stage) {
 func (b *MysqlBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
 
-	// sub components
 	b.ConfigureNodes()
 }
 func (b *MysqlBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
 
-	// sub components
 	b.PrepareNodes()
 }
 

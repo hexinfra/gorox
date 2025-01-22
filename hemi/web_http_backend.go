@@ -103,22 +103,24 @@ type backendConn interface {
 }
 
 // _backendConn_ is a mixin for backend[1-3]Conn.
-type _backendConn_ struct {
+type _backendConn_[N HTTPNode] struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
+	node       N         // the node to which the connection belongs
 	expireTime time.Time // when the conn is considered expired
 	// Conn states (zeros)
 }
 
-func (c *_backendConn_) onGet(expireTime time.Time) {
+func (c *_backendConn_[N]) onGet(node N, expireTime time.Time) {
+	c.node = node
 	c.expireTime = expireTime
 }
-func (c *_backendConn_) onPut() {
+func (c *_backendConn_[N]) onPut() {
 	c.expireTime = time.Time{}
 }
 
-func (c *_backendConn_) isAlive() bool { return time.Now().Before(c.expireTime) }
+func (c *_backendConn_[N]) isAlive() bool { return time.Now().Before(c.expireTime) }
 
 // backendStream
 type backendStream interface { // for *backend[1-3]Stream

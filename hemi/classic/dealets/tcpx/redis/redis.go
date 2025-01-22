@@ -79,13 +79,11 @@ func (b *RedisBackend) onCreate(compName string, stage *Stage) {
 func (b *RedisBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
 
-	// sub components
 	b.ConfigureNodes()
 }
 func (b *RedisBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
 
-	// sub components
 	b.PrepareNodes()
 }
 
@@ -169,10 +167,10 @@ func (n *redisNode) closeConn(redisConn *RedisConn) {
 // RedisConn is a connection to redisNode.
 type RedisConn struct {
 	// Conn states (non-zeros)
-	id         int64 // the conn id
-	node       *redisNode
-	expireTime time.Time // when the conn is considered expired
-	netConn    net.Conn  // *net.TCPConn, *net.UnixConn
+	id         int64      // the conn id
+	node       *redisNode // the node to which the connection belongs
+	expireTime time.Time  // when the conn is considered expired
+	netConn    net.Conn   // *net.TCPConn, *net.UnixConn
 	rawConn    syscall.RawConn
 	// Conn states (zeros)
 	counter   atomic.Int64 // can be used to generate a random number

@@ -36,13 +36,11 @@ func (b *HTTP3Backend) onCreate(compName string, stage *Stage) {
 func (b *HTTP3Backend) OnConfigure() {
 	b.httpBackend_.onConfigure()
 
-	// sub components
 	b.ConfigureNodes()
 }
 func (b *HTTP3Backend) OnPrepare() {
 	b.httpBackend_.onPrepare()
 
-	// sub components
 	b.PrepareNodes()
 }
 
@@ -54,8 +52,7 @@ func (b *HTTP3Backend) CreateNode(compName string) Node {
 }
 
 func (b *HTTP3Backend) FetchStream(req ServerRequest) (backendStream, error) {
-	node := b.nodes[b.nodeIndexGet()]
-	return node.fetchStream()
+	return b.nodes[b.nodeIndexGet()].fetchStream()
 }
 func (b *HTTP3Backend) StoreStream(backStream backendStream) {
 	backStream3 := backStream.(*backend3Stream)
@@ -133,13 +130,12 @@ type backend3Conn struct {
 	// Parent
 	http3Conn_
 	// Mixins
-	_backendConn_
+	_backendConn_[*http3Node]
 	// Assocs
 	next *backend3Conn // the linked-list
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	node *http3Node // the node to which the connection belongs
 	// Conn states (zeros)
 	_backend3Conn0 // all values in this struct must be zero by default!
 }
@@ -164,16 +160,14 @@ func putBackend3Conn(backConn *backend3Conn) {
 }
 
 func (c *backend3Conn) onGet(id int64, node *http3Node, quicConn *tcp2.Conn) {
-	c.http3Conn_.onGet(id, node.Stage(), node.UDSMode(), node.TLSMode(), node.ReadTimeout(), node.WriteTimeout(), quicConn)
-	c._backendConn_.onGet(time.Now().Add(node.idleTimeout))
-
-	c.node = node
+	c.http3Conn_.onGet(id, node, quicConn)
+	c._backendConn_.onGet(node, time.Now().Add(node.idleTimeout))
 }
 func (c *backend3Conn) onPut() {
 	c._backend3Conn0 = _backend3Conn0{}
-	c.node = nil
 
 	c._backendConn_.onPut()
+	c.node = nil // put here due to Go's limitation
 	c.http3Conn_.onPut()
 }
 

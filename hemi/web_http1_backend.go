@@ -288,14 +288,14 @@ func getBackend1Conn(id int64, node *http1Node, netConn net.Conn, rawConn syscal
 	var backConn *backend1Conn
 	if x := poolBackend1Conn.Get(); x == nil {
 		backConn = new(backend1Conn)
-		stream := &backConn.stream
-		stream.conn = backConn
-		req, resp := &stream.request, &stream.response
-		req.stream = stream
+		backStream := &backConn.stream
+		backStream.conn = backConn
+		resp, req := &backStream.response, &backStream.request
+		resp.stream = backStream
+		resp.inMessage = resp
+		req.stream = backStream
 		req.outMessage = req
 		req.response = resp
-		resp.stream = stream
-		resp.inMessage = resp
 	} else {
 		backConn = x.(*backend1Conn)
 	}

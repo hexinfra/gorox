@@ -147,8 +147,8 @@ func (n *scgiNode) _dialTCP() (*scgiConn, error) {
 // scgiConn
 type scgiConn struct {
 	// Assocs
-	request  scgiRequest  // the scgi request
 	response scgiResponse // the scgi response
+	request  scgiRequest  // the scgi request
 	// Conn states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Conn states (controlled)
@@ -170,10 +170,10 @@ func getSCGIConn(id int64, node *scgiNode, netConn net.Conn, rawConn syscall.Raw
 	var conn *scgiConn
 	if x := poolSCGIConn.Get(); x == nil {
 		conn = new(scgiConn)
-		req, resp := &conn.request, &conn.response
+		resp, req := &conn.response, &conn.request
+		resp.conn = conn
 		req.conn = conn
 		req.response = resp
-		resp.conn = conn
 	} else {
 		conn = x.(*scgiConn)
 	}
@@ -190,8 +190,8 @@ func (c *scgiConn) onUse(id int64, node *scgiNode, netConn net.Conn, rawConn sys
 	c.netConn = netConn
 	c.rawConn = rawConn
 	c.node = node
-	c.request.onUse()
 	c.response.onUse()
+	c.request.onUse()
 }
 func (c *scgiConn) onEnd() {
 	c.request.onEnd()
@@ -205,6 +205,19 @@ func (c *scgiConn) onEnd() {
 func (c *scgiConn) buffer256() []byte          { return c.stockBuffer[:] }
 func (c *scgiConn) unsafeMake(size int) []byte { return c.region.Make(size) }
 
+// scgiResponse must implements the backendResponse interface.
+type scgiResponse struct { // incoming. needs parsing
+	// Assocs
+	conn *scgiConn
+}
+
+func (r *scgiResponse) onUse() {
+	// TODO
+}
+func (r *scgiResponse) onEnd() {
+	// TODO
+}
+
 // scgiRequest
 type scgiRequest struct { // outgoing. needs building
 	// Assocs
@@ -216,18 +229,5 @@ func (r *scgiRequest) onUse() {
 	// TODO
 }
 func (r *scgiRequest) onEnd() {
-	// TODO
-}
-
-// scgiResponse must implements the backendResponse interface.
-type scgiResponse struct { // incoming. needs parsing
-	// Assocs
-	conn *scgiConn
-}
-
-func (r *scgiResponse) onUse() {
-	// TODO
-}
-func (r *scgiResponse) onEnd() {
 	// TODO
 }

@@ -307,10 +307,10 @@ func getFCGIConn(id int64, node *fcgiNode, netConn net.Conn, rawConn syscall.Raw
 		conn = new(fcgiConn)
 		exchan := &conn.exchan
 		exchan.conn = conn
-		req, resp := &exchan.request, &exchan.response
+		resp, req := &exchan.response, &exchan.request
+		resp.exchan = exchan
 		req.exchan = exchan
 		req.response = resp
-		resp.exchan = exchan
 	} else {
 		conn = x.(*fcgiConn)
 	}
@@ -399,8 +399,8 @@ func (c *fcgiConn) Close() error {
 type fcgiExchan struct {
 	// Assocs
 	conn     *fcgiConn    // the fcgi conn
-	request  fcgiRequest  // the fcgi request
 	response fcgiResponse // the fcgi response
+	request  fcgiRequest  // the fcgi request
 	// Exchan states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Exchan states (controlled)
@@ -411,423 +411,30 @@ type fcgiExchan struct {
 
 func (x *fcgiExchan) onUse() { // for non-zeros
 	x.region.Init()
-	x.request.onUse()
 	x.response.onUse()
+	x.request.onUse()
 }
 func (x *fcgiExchan) onEnd() { // for zeros
-	x.response.onEnd()
 	x.request.onEnd()
+	x.response.onEnd()
 	x.region.Free()
 }
 
 func (x *fcgiExchan) markBroken()    { x.conn.markBroken() }
 func (x *fcgiExchan) isBroken() bool { return x.conn.isBroken() }
 
-func (x *fcgiExchan) setWriteDeadline() error { return x.conn.setWriteDeadline() }
 func (x *fcgiExchan) setReadDeadline() error  { return x.conn.setReadDeadline() }
+func (x *fcgiExchan) setWriteDeadline() error { return x.conn.setWriteDeadline() }
 
-func (x *fcgiExchan) write(src []byte) (int, error)             { return x.conn.write(src) }
-func (x *fcgiExchan) writev(srcVec *net.Buffers) (int64, error) { return x.conn.writev(srcVec) }
-func (x *fcgiExchan) read(dst []byte) (int, error)              { return x.conn.read(dst) }
+func (x *fcgiExchan) read(dst []byte) (int, error) { return x.conn.read(dst) }
 func (x *fcgiExchan) readAtLeast(dst []byte, min int) (int, error) {
 	return x.conn.readAtLeast(dst, min)
 }
+func (x *fcgiExchan) write(src []byte) (int, error)             { return x.conn.write(src) }
+func (x *fcgiExchan) writev(srcVec *net.Buffers) (int64, error) { return x.conn.writev(srcVec) }
 
 func (x *fcgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
 func (x *fcgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }
-
-// fcgiRequest is the FCGI request in a FCGI exchange.
-type fcgiRequest struct { // outgoing. needs building
-	// Assocs
-	exchan   *fcgiExchan
-	response *fcgiResponse
-	// Exchan states (stocks)
-	stockParams [2048]byte // for r.params
-	// Exchan states (controlled)
-	paramsHeader [8]byte // used by params record
-	stdinHeader  [8]byte // used by stdin record
-	// Exchan states (non-zeros)
-	params      []byte        // place the payload of exactly one FCGI_PARAMS record. [<r.stockParams>/16K]
-	sendTimeout time.Duration // timeout to send the whole request. zero means no timeout
-	// Exchan states (zeros)
-	sendTime      time.Time   // the time when first write operation is performed
-	vector        net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after exchan
-	fixedVector   [7][]byte   // for sending request. reset after exchan. 120B
-	_fcgiRequest0             // all values in this struct must be zero by default!
-}
-type _fcgiRequest0 struct { // for fast reset, entirely
-	paramsEdge    uint16 // edge of r.params. max size of r.params must be <= 16K.
-	forbidContent bool   // forbid content?
-	forbidFraming bool   // forbid content-length and transfer-encoding?
-}
-
-func (r *fcgiRequest) onUse() {
-	copy(r.paramsHeader[:], fcgiEmptyParams) // payloadLen (r.paramsHeader[4:6]) needs modification on using
-	copy(r.stdinHeader[:], fcgiEmptyStdin)   // payloadLen (r.stdinHeader[4:6]) needs modification for every stdin record on using
-	r.params = r.stockParams[:]
-	r.sendTimeout = r.exchan.conn.node.sendTimeout
-}
-func (r *fcgiRequest) onEnd() {
-	if cap(r.params) != cap(r.stockParams) {
-		PutNK(r.params)
-		r.params = nil
-	}
-	r.sendTime = time.Time{}
-	r.vector = nil
-	r.fixedVector = [7][]byte{}
-
-	r._fcgiRequest0 = _fcgiRequest0{}
-}
-
-func (r *fcgiRequest) proxyCopyHeaders(httpReq ServerRequest, proxy *fcgiProxy) bool {
-	// Add meta params
-	if !r._addMetaParam(fcgiBytesGatewayInterface, fcgiBytesCGI1_1) { // GATEWAY_INTERFACE
-		return false
-	}
-	if !r._addMetaParam(fcgiBytesServerSoftware, bytesGorox) { // SERVER_SOFTWARE
-		return false
-	}
-	if !r._addMetaParam(fcgiBytesServerProtocol, httpReq.UnsafeVersion()) { // SERVER_PROTOCOL
-		return false
-	}
-	if !r._addMetaParam(fcgiBytesRequestMethod, httpReq.UnsafeMethod()) { // REQUEST_METHOD
-		return false
-	}
-	if !r._addMetaParam(fcgiBytesRequestScheme, httpReq.UnsafeScheme()) { // REQUEST_SCHEME
-		return false
-	}
-	if !r._addMetaParam(fcgiBytesRequestURI, httpReq.UnsafeURI()) { // REQUEST_URI
-		return false
-	}
-	if !r._addMetaParam(fcgiBytesServerName, httpReq.UnsafeHostname()) { // SERVER_NAME
-		return false
-	}
-	if !r._addMetaParam(fcgiBytesRedirectStatus, fcgiBytes200) { // REDIRECT_STATUS
-		return false
-	}
-	if httpReq.IsHTTPS() && !r._addMetaParam(fcgiBytesHTTPS, fcgiBytesON) { // HTTPS
-		return false
-	}
-	scriptFilename := proxy.scriptFilename
-	if len(scriptFilename) == 0 {
-		absPath := httpReq.unsafeAbsPath()
-		indexFile := proxy.indexFile
-		if absPath[len(absPath)-1] == '/' && len(indexFile) > 0 {
-			scriptFilename = httpReq.UnsafeMake(len(absPath) + len(indexFile))
-			copy(scriptFilename, absPath)
-			copy(scriptFilename[len(absPath):], indexFile)
-		} else {
-			scriptFilename = absPath
-		}
-	}
-	if !r._addMetaParam(fcgiBytesScriptFilename, scriptFilename) { // SCRIPT_FILENAME
-		return false
-	}
-	if !r._addMetaParam(fcgiBytesScriptName, httpReq.UnsafePath()) { // SCRIPT_NAME
-		return false
-	}
-	var value []byte
-	if value = httpReq.UnsafeQueryString(); len(value) > 1 {
-		value = value[1:] // excluding '?'
-	} else {
-		value = nil
-	}
-	if !r._addMetaParam(fcgiBytesQueryString, value) { // QUERY_STRING
-		return false
-	}
-	if value = httpReq.UnsafeContentLength(); value != nil && !r._addMetaParam(fcgiBytesContentLength, value) { // CONTENT_LENGTH
-		return false
-	}
-	if value = httpReq.UnsafeContentType(); value != nil && !r._addMetaParam(fcgiBytesContentType, value) { // CONTENT_TYPE
-		return false
-	}
-
-	// Add http params
-	if !httpReq.proxyWalkHeaders(func(header *pair, name []byte, value []byte) bool {
-		return r._addHTTPParam(header, name, value)
-	}) {
-		return false
-	}
-
-	r.paramsHeader[4], r.paramsHeader[5] = byte(r.paramsEdge>>8), byte(r.paramsEdge)
-
-	return true
-}
-func (r *fcgiRequest) _addMetaParam(name []byte, value []byte) bool { // like: REQUEST_METHOD
-	return r._addParam(name, value, false)
-}
-func (r *fcgiRequest) _addHTTPParam(header *pair, name []byte, value []byte) bool { // like: HTTP_USER_AGENT
-	if header.isUnderscore() {
-		// TODO: got a "foo_bar" header and user prefer it. avoid name conflicts with header which is like "foo-bar"
-		return true
-	} else {
-		return r._addParam(name, value, true)
-	}
-}
-func (r *fcgiRequest) _addParam(name []byte, value []byte, http bool) bool { // into r.params
-	nameLen, valueLen := len(name), len(value)
-	if http {
-		nameLen += len(fcgiBytesHTTP_)
-	}
-	paramSize := 1 + 1 + nameLen + valueLen
-	if nameLen > 127 {
-		paramSize += 3
-	}
-	if valueLen > 127 {
-		paramSize += 3
-	}
-	from, edge, ok := r._growParams(paramSize)
-	if !ok {
-		return false
-	}
-
-	if nameLen > 127 {
-		r.params[from] = byte(nameLen>>24) | 0x80
-		r.params[from+1] = byte(nameLen >> 16)
-		r.params[from+2] = byte(nameLen >> 8)
-		from += 3
-	}
-	r.params[from] = byte(nameLen)
-	from++
-	if valueLen > 127 {
-		r.params[from] = byte(valueLen>>24) | 0x80
-		r.params[from+1] = byte(valueLen >> 16)
-		r.params[from+2] = byte(valueLen >> 8)
-		from += 3
-	}
-	r.params[from] = byte(valueLen)
-	from++
-
-	if http { // TODO: improve performance
-		from += copy(r.params[from:], fcgiBytesHTTP_)
-		last := from + copy(r.params[from:], name)
-		for i := from; i < last; i++ {
-			if b := r.params[i]; b >= 'a' && b <= 'z' {
-				r.params[i] = b - 0x20 // to upper
-			} else if b == '-' {
-				r.params[i] = '_'
-			}
-		}
-		from = last
-	} else {
-		from += copy(r.params[from:], name)
-	}
-	from += copy(r.params[from:], value)
-	if from != edge {
-		BugExitln("fcgi: from != edge")
-	}
-	return true
-}
-func (r *fcgiRequest) _growParams(size int) (from int, edge int, ok bool) { // to place more params into r.params[from:edge]
-	if size <= 0 || size > _16K { // size allowed: (0, 16K]
-		BugExitln("invalid size in growParams")
-	}
-	from = int(r.paramsEdge)
-	last := r.paramsEdge + uint16(size)
-	if last > _16K || last < r.paramsEdge {
-		// Overflow
-		return
-	}
-	if last > uint16(cap(r.params)) { // last <= _16K
-		params := Get16K()
-		copy(params, r.params[:r.paramsEdge])
-		r.params = params
-	}
-	r.paramsEdge = last
-	edge, ok = int(r.paramsEdge), true
-	return
-}
-
-func (r *fcgiRequest) proxyPassMessage(httpReq ServerRequest) error { // only for sized (>0) content. vague content must use proxyPostMessage(), as we don't use backend-side chunking
-	r.vector = r.fixedVector[0:4]
-	r._setBeginRequest(&r.vector[0])
-	r.vector[1] = r.paramsHeader[:]
-	r.vector[2] = r.params[:r.paramsEdge] // effective params
-	r.vector[3] = fcgiEmptyParams
-	if err := r._writeVector(); err != nil {
-		return err
-	}
-	for {
-		data, err := httpReq.readContent()
-		if len(data) > 0 {
-			size := len(data)
-			r.stdinHeader[4], r.stdinHeader[5] = byte(size>>8), byte(size)
-			if err == io.EOF { // EOF is immediate, write with emptyStdin
-				r.vector = r.fixedVector[0:3]
-				r.vector[0] = r.stdinHeader[:]
-				r.vector[1] = data
-				r.vector[2] = fcgiEmptyStdin
-				return r._writeVector()
-			}
-			// EOF is not immediate, err must be nil.
-			r.vector = r.fixedVector[0:2]
-			r.vector[0] = r.stdinHeader[:]
-			r.vector[1] = data
-			if e := r._writeVector(); e != nil {
-				return e
-			}
-		}
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return err
-		}
-	}
-	return r._writeBytes(fcgiEmptyStdin)
-}
-func (r *fcgiRequest) proxyPostMessage(httpContent any) error { // nil, []byte, and *os.File. for bufferClientContent or vague ServerRequest content
-	if contentText, ok := httpContent.([]byte); ok { // text, <= 64K1
-		return r.sendText(contentText)
-	} else if contentFile, ok := httpContent.(*os.File); ok { // file
-		fileInfo, err := contentFile.Stat()
-		if err != nil {
-			contentFile.Close()
-			return err
-		}
-		return r.sendFile(contentFile, fileInfo)
-	} else { // nil means no content.
-		return r.sendText(nil)
-	}
-}
-
-func (r *fcgiRequest) sendText(content []byte) error { // content <= 64K1
-	size := len(content)
-	if size == 0 { // beginRequest + (params + emptyParams) + emptyStdin
-		r.vector = r.fixedVector[0:5]
-	} else { // beginRequest + (params + emptyParams) + (stdin + emptyStdin)
-		r.vector = r.fixedVector[0:7]
-	}
-	// beginRequest
-	r._setBeginRequest(&r.vector[0])
-	// params + emptyParams
-	r.vector[1] = r.paramsHeader[:]
-	r.vector[2] = r.params[:r.paramsEdge]
-	r.vector[3] = fcgiEmptyParams
-	if size == 0 { // emptyStdin
-		r.vector[4] = fcgiEmptyStdin
-	} else { // stdin + emptyStdin
-		r.stdinHeader[4], r.stdinHeader[5] = byte(size>>8), byte(size)
-		r.vector[4] = r.stdinHeader[:]
-		r.vector[5] = content
-		r.vector[6] = fcgiEmptyStdin
-	}
-	return r._writeVector()
-}
-func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
-	buffer := Get16K() // 16K is a tradeoff between performance and memory consumption.
-	defer PutNK(buffer)
-
-	sizeRead, fileSize := int64(0), info.Size()
-	headSent, lastPart := false, false
-
-	for {
-		if sizeRead == fileSize {
-			return nil
-		}
-		readSize := int64(cap(buffer))
-		if sizeLeft := fileSize - sizeRead; sizeLeft <= readSize {
-			readSize = sizeLeft
-			lastPart = true
-		}
-		n, err := content.ReadAt(buffer[:readSize], sizeRead)
-		sizeRead += int64(n)
-		if err != nil && sizeRead != fileSize {
-			r.exchan.markBroken()
-			return err
-		}
-
-		if headSent {
-			if lastPart { // stdin + emptyStdin
-				r.vector = r.fixedVector[0:3]
-				r.vector[2] = fcgiEmptyStdin
-			} else { // stdin
-				r.vector = r.fixedVector[0:2]
-			}
-			r.stdinHeader[4], r.stdinHeader[5] = byte(n>>8), byte(n)
-			r.vector[0] = r.stdinHeader[:]
-			r.vector[1] = buffer[:n]
-		} else { // head is not sent
-			headSent = true
-			if lastPart { // beginRequest + (params + emptyParams) + (stdin * N + emptyStdin)
-				r.vector = r.fixedVector[0:7]
-				r.vector[6] = fcgiEmptyStdin
-			} else { // beginRequest + (params + emptyParams) + stdin
-				r.vector = r.fixedVector[0:6]
-			}
-			r._setBeginRequest(&r.vector[0])
-			r.vector[1] = r.paramsHeader[:]
-			r.vector[2] = r.params[:r.paramsEdge]
-			r.vector[3] = fcgiEmptyParams
-			r.stdinHeader[4], r.stdinHeader[5] = byte(n>>8), byte(n)
-			r.vector[4] = r.stdinHeader[:]
-			r.vector[5] = buffer[:n]
-		}
-		if err = r._writeVector(); err != nil {
-			return err
-		}
-	}
-}
-
-func (r *fcgiRequest) _setBeginRequest(beginRequest *[]byte) {
-	if r.exchan.conn.node.keepConn {
-		*beginRequest = fcgiBeginKeepConn
-	} else {
-		*beginRequest = fcgiBeginDontKeep
-	}
-}
-
-func (r *fcgiRequest) _writeBytes(data []byte) error {
-	if r.exchan.isBroken() {
-		return fcgiWriteBroken
-	}
-	if len(data) == 0 {
-		return nil
-	}
-	if r.sendTime.IsZero() {
-		r.sendTime = time.Now()
-	}
-	if err := r.exchan.setWriteDeadline(); err != nil {
-		r.exchan.markBroken()
-		return err
-	}
-	_, err := r.exchan.write(data)
-	return r._longTimeCheck(err)
-}
-func (r *fcgiRequest) _writeVector() error {
-	if r.exchan.isBroken() {
-		return fcgiWriteBroken
-	}
-	if len(r.vector) == 1 && len(r.vector[0]) == 0 {
-		return nil
-	}
-	if r.sendTime.IsZero() {
-		r.sendTime = time.Now()
-	}
-	if err := r.exchan.setWriteDeadline(); err != nil {
-		r.exchan.markBroken()
-		return err
-	}
-	_, err := r.exchan.writev(&r.vector)
-	return r._longTimeCheck(err)
-}
-func (r *fcgiRequest) _longTimeCheck(err error) error {
-	if err == nil && r._isLongTime() {
-		err = fcgiWriteLongTime
-	}
-	if err != nil {
-		r.exchan.markBroken()
-	}
-	return err
-}
-func (r *fcgiRequest) _isLongTime() bool {
-	return r.sendTimeout > 0 && time.Since(r.sendTime) >= r.sendTimeout
-}
-
-var ( // fcgi request errors
-	fcgiWriteLongTime = errors.New("fcgi: write costs a long time")
-	fcgiWriteBroken   = errors.New("fcgi: write broken")
-)
 
 // fcgiResponse is the FCGI response in a FCGI exchange. It must implements the backendResponse interface.
 type fcgiResponse struct { // incoming. needs parsing
@@ -1544,4 +1151,397 @@ func (r *fcgiResponse) fcgiMoveRecords(records []byte) { // so we can get more s
 var ( // fcgi response errors
 	fcgiReadBadRecord = errors.New("fcgi: bad record")
 	fcgiReadLongTime  = errors.New("fcgi: read costs a long time")
+)
+
+// fcgiRequest is the FCGI request in a FCGI exchange.
+type fcgiRequest struct { // outgoing. needs building
+	// Assocs
+	exchan   *fcgiExchan
+	response *fcgiResponse
+	// Exchan states (stocks)
+	stockParams [2048]byte // for r.params
+	// Exchan states (controlled)
+	paramsHeader [8]byte // used by params record
+	stdinHeader  [8]byte // used by stdin record
+	// Exchan states (non-zeros)
+	params      []byte        // place the payload of exactly one FCGI_PARAMS record. [<r.stockParams>/16K]
+	sendTimeout time.Duration // timeout to send the whole request. zero means no timeout
+	// Exchan states (zeros)
+	sendTime      time.Time   // the time when first write operation is performed
+	vector        net.Buffers // for writev. to overcome the limitation of Go's escape analysis. set when used, reset after exchan
+	fixedVector   [7][]byte   // for sending request. reset after exchan. 120B
+	_fcgiRequest0             // all values in this struct must be zero by default!
+}
+type _fcgiRequest0 struct { // for fast reset, entirely
+	paramsEdge    uint16 // edge of r.params. max size of r.params must be <= 16K.
+	forbidContent bool   // forbid content?
+	forbidFraming bool   // forbid content-length and transfer-encoding?
+}
+
+func (r *fcgiRequest) onUse() {
+	copy(r.paramsHeader[:], fcgiEmptyParams) // payloadLen (r.paramsHeader[4:6]) needs modification on using
+	copy(r.stdinHeader[:], fcgiEmptyStdin)   // payloadLen (r.stdinHeader[4:6]) needs modification for every stdin record on using
+	r.params = r.stockParams[:]
+	r.sendTimeout = r.exchan.conn.node.sendTimeout
+}
+func (r *fcgiRequest) onEnd() {
+	if cap(r.params) != cap(r.stockParams) {
+		PutNK(r.params)
+		r.params = nil
+	}
+	r.sendTime = time.Time{}
+	r.vector = nil
+	r.fixedVector = [7][]byte{}
+
+	r._fcgiRequest0 = _fcgiRequest0{}
+}
+
+func (r *fcgiRequest) proxyCopyHeaders(httpReq ServerRequest, proxy *fcgiProxy) bool {
+	// Add meta params
+	if !r._addMetaParam(fcgiBytesGatewayInterface, fcgiBytesCGI1_1) { // GATEWAY_INTERFACE
+		return false
+	}
+	if !r._addMetaParam(fcgiBytesServerSoftware, bytesGorox) { // SERVER_SOFTWARE
+		return false
+	}
+	if !r._addMetaParam(fcgiBytesServerProtocol, httpReq.UnsafeVersion()) { // SERVER_PROTOCOL
+		return false
+	}
+	if !r._addMetaParam(fcgiBytesRequestMethod, httpReq.UnsafeMethod()) { // REQUEST_METHOD
+		return false
+	}
+	if !r._addMetaParam(fcgiBytesRequestScheme, httpReq.UnsafeScheme()) { // REQUEST_SCHEME
+		return false
+	}
+	if !r._addMetaParam(fcgiBytesRequestURI, httpReq.UnsafeURI()) { // REQUEST_URI
+		return false
+	}
+	if !r._addMetaParam(fcgiBytesServerName, httpReq.UnsafeHostname()) { // SERVER_NAME
+		return false
+	}
+	if !r._addMetaParam(fcgiBytesRedirectStatus, fcgiBytes200) { // REDIRECT_STATUS
+		return false
+	}
+	if httpReq.IsHTTPS() && !r._addMetaParam(fcgiBytesHTTPS, fcgiBytesON) { // HTTPS
+		return false
+	}
+	scriptFilename := proxy.scriptFilename
+	if len(scriptFilename) == 0 {
+		absPath := httpReq.unsafeAbsPath()
+		indexFile := proxy.indexFile
+		if absPath[len(absPath)-1] == '/' && len(indexFile) > 0 {
+			scriptFilename = httpReq.UnsafeMake(len(absPath) + len(indexFile))
+			copy(scriptFilename, absPath)
+			copy(scriptFilename[len(absPath):], indexFile)
+		} else {
+			scriptFilename = absPath
+		}
+	}
+	if !r._addMetaParam(fcgiBytesScriptFilename, scriptFilename) { // SCRIPT_FILENAME
+		return false
+	}
+	if !r._addMetaParam(fcgiBytesScriptName, httpReq.UnsafePath()) { // SCRIPT_NAME
+		return false
+	}
+	var value []byte
+	if value = httpReq.UnsafeQueryString(); len(value) > 1 {
+		value = value[1:] // excluding '?'
+	} else {
+		value = nil
+	}
+	if !r._addMetaParam(fcgiBytesQueryString, value) { // QUERY_STRING
+		return false
+	}
+	if value = httpReq.UnsafeContentLength(); value != nil && !r._addMetaParam(fcgiBytesContentLength, value) { // CONTENT_LENGTH
+		return false
+	}
+	if value = httpReq.UnsafeContentType(); value != nil && !r._addMetaParam(fcgiBytesContentType, value) { // CONTENT_TYPE
+		return false
+	}
+
+	// Add http params
+	if !httpReq.proxyWalkHeaders(func(header *pair, name []byte, value []byte) bool {
+		return r._addHTTPParam(header, name, value)
+	}) {
+		return false
+	}
+
+	r.paramsHeader[4], r.paramsHeader[5] = byte(r.paramsEdge>>8), byte(r.paramsEdge)
+
+	return true
+}
+func (r *fcgiRequest) _addMetaParam(name []byte, value []byte) bool { // like: REQUEST_METHOD
+	return r._addParam(name, value, false)
+}
+func (r *fcgiRequest) _addHTTPParam(header *pair, name []byte, value []byte) bool { // like: HTTP_USER_AGENT
+	if header.isUnderscore() {
+		// TODO: got a "foo_bar" header and user prefer it. avoid name conflicts with header which is like "foo-bar"
+		return true
+	} else {
+		return r._addParam(name, value, true)
+	}
+}
+func (r *fcgiRequest) _addParam(name []byte, value []byte, http bool) bool { // into r.params
+	nameLen, valueLen := len(name), len(value)
+	if http {
+		nameLen += len(fcgiBytesHTTP_)
+	}
+	paramSize := 1 + 1 + nameLen + valueLen
+	if nameLen > 127 {
+		paramSize += 3
+	}
+	if valueLen > 127 {
+		paramSize += 3
+	}
+	from, edge, ok := r._growParams(paramSize)
+	if !ok {
+		return false
+	}
+
+	if nameLen > 127 {
+		r.params[from] = byte(nameLen>>24) | 0x80
+		r.params[from+1] = byte(nameLen >> 16)
+		r.params[from+2] = byte(nameLen >> 8)
+		from += 3
+	}
+	r.params[from] = byte(nameLen)
+	from++
+	if valueLen > 127 {
+		r.params[from] = byte(valueLen>>24) | 0x80
+		r.params[from+1] = byte(valueLen >> 16)
+		r.params[from+2] = byte(valueLen >> 8)
+		from += 3
+	}
+	r.params[from] = byte(valueLen)
+	from++
+
+	if http { // TODO: improve performance
+		from += copy(r.params[from:], fcgiBytesHTTP_)
+		last := from + copy(r.params[from:], name)
+		for i := from; i < last; i++ {
+			if b := r.params[i]; b >= 'a' && b <= 'z' {
+				r.params[i] = b - 0x20 // to upper
+			} else if b == '-' {
+				r.params[i] = '_'
+			}
+		}
+		from = last
+	} else {
+		from += copy(r.params[from:], name)
+	}
+	from += copy(r.params[from:], value)
+	if from != edge {
+		BugExitln("fcgi: from != edge")
+	}
+	return true
+}
+func (r *fcgiRequest) _growParams(size int) (from int, edge int, ok bool) { // to place more params into r.params[from:edge]
+	if size <= 0 || size > _16K { // size allowed: (0, 16K]
+		BugExitln("invalid size in growParams")
+	}
+	from = int(r.paramsEdge)
+	last := r.paramsEdge + uint16(size)
+	if last > _16K || last < r.paramsEdge {
+		// Overflow
+		return
+	}
+	if last > uint16(cap(r.params)) { // last <= _16K
+		params := Get16K()
+		copy(params, r.params[:r.paramsEdge])
+		r.params = params
+	}
+	r.paramsEdge = last
+	edge, ok = int(r.paramsEdge), true
+	return
+}
+
+func (r *fcgiRequest) proxyPassMessage(httpReq ServerRequest) error { // only for sized (>0) content. vague content must use proxyPostMessage(), as we don't use backend-side chunking
+	r.vector = r.fixedVector[0:4]
+	r._setBeginRequest(&r.vector[0])
+	r.vector[1] = r.paramsHeader[:]
+	r.vector[2] = r.params[:r.paramsEdge] // effective params
+	r.vector[3] = fcgiEmptyParams
+	if err := r._writeVector(); err != nil {
+		return err
+	}
+	for {
+		data, err := httpReq.readContent()
+		if len(data) > 0 {
+			size := len(data)
+			r.stdinHeader[4], r.stdinHeader[5] = byte(size>>8), byte(size)
+			if err == io.EOF { // EOF is immediate, write with emptyStdin
+				r.vector = r.fixedVector[0:3]
+				r.vector[0] = r.stdinHeader[:]
+				r.vector[1] = data
+				r.vector[2] = fcgiEmptyStdin
+				return r._writeVector()
+			}
+			// EOF is not immediate, err must be nil.
+			r.vector = r.fixedVector[0:2]
+			r.vector[0] = r.stdinHeader[:]
+			r.vector[1] = data
+			if e := r._writeVector(); e != nil {
+				return e
+			}
+		}
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+	}
+	return r._writeBytes(fcgiEmptyStdin)
+}
+func (r *fcgiRequest) proxyPostMessage(httpContent any) error { // nil, []byte, and *os.File. for bufferClientContent or vague ServerRequest content
+	if contentText, ok := httpContent.([]byte); ok { // text, <= 64K1
+		return r.sendText(contentText)
+	} else if contentFile, ok := httpContent.(*os.File); ok { // file
+		fileInfo, err := contentFile.Stat()
+		if err != nil {
+			contentFile.Close()
+			return err
+		}
+		return r.sendFile(contentFile, fileInfo)
+	} else { // nil means no content.
+		return r.sendText(nil)
+	}
+}
+
+func (r *fcgiRequest) sendText(content []byte) error { // content <= 64K1
+	size := len(content)
+	if size == 0 { // beginRequest + (params + emptyParams) + emptyStdin
+		r.vector = r.fixedVector[0:5]
+	} else { // beginRequest + (params + emptyParams) + (stdin + emptyStdin)
+		r.vector = r.fixedVector[0:7]
+	}
+	// beginRequest
+	r._setBeginRequest(&r.vector[0])
+	// params + emptyParams
+	r.vector[1] = r.paramsHeader[:]
+	r.vector[2] = r.params[:r.paramsEdge]
+	r.vector[3] = fcgiEmptyParams
+	if size == 0 { // emptyStdin
+		r.vector[4] = fcgiEmptyStdin
+	} else { // stdin + emptyStdin
+		r.stdinHeader[4], r.stdinHeader[5] = byte(size>>8), byte(size)
+		r.vector[4] = r.stdinHeader[:]
+		r.vector[5] = content
+		r.vector[6] = fcgiEmptyStdin
+	}
+	return r._writeVector()
+}
+func (r *fcgiRequest) sendFile(content *os.File, info os.FileInfo) error {
+	buffer := Get16K() // 16K is a tradeoff between performance and memory consumption.
+	defer PutNK(buffer)
+
+	sizeRead, fileSize := int64(0), info.Size()
+	headSent, lastPart := false, false
+
+	for {
+		if sizeRead == fileSize {
+			return nil
+		}
+		readSize := int64(cap(buffer))
+		if sizeLeft := fileSize - sizeRead; sizeLeft <= readSize {
+			readSize = sizeLeft
+			lastPart = true
+		}
+		n, err := content.ReadAt(buffer[:readSize], sizeRead)
+		sizeRead += int64(n)
+		if err != nil && sizeRead != fileSize {
+			r.exchan.markBroken()
+			return err
+		}
+
+		if headSent {
+			if lastPart { // stdin + emptyStdin
+				r.vector = r.fixedVector[0:3]
+				r.vector[2] = fcgiEmptyStdin
+			} else { // stdin
+				r.vector = r.fixedVector[0:2]
+			}
+			r.stdinHeader[4], r.stdinHeader[5] = byte(n>>8), byte(n)
+			r.vector[0] = r.stdinHeader[:]
+			r.vector[1] = buffer[:n]
+		} else { // head is not sent
+			headSent = true
+			if lastPart { // beginRequest + (params + emptyParams) + (stdin * N + emptyStdin)
+				r.vector = r.fixedVector[0:7]
+				r.vector[6] = fcgiEmptyStdin
+			} else { // beginRequest + (params + emptyParams) + stdin
+				r.vector = r.fixedVector[0:6]
+			}
+			r._setBeginRequest(&r.vector[0])
+			r.vector[1] = r.paramsHeader[:]
+			r.vector[2] = r.params[:r.paramsEdge]
+			r.vector[3] = fcgiEmptyParams
+			r.stdinHeader[4], r.stdinHeader[5] = byte(n>>8), byte(n)
+			r.vector[4] = r.stdinHeader[:]
+			r.vector[5] = buffer[:n]
+		}
+		if err = r._writeVector(); err != nil {
+			return err
+		}
+	}
+}
+
+func (r *fcgiRequest) _setBeginRequest(beginRequest *[]byte) {
+	if r.exchan.conn.node.keepConn {
+		*beginRequest = fcgiBeginKeepConn
+	} else {
+		*beginRequest = fcgiBeginDontKeep
+	}
+}
+
+func (r *fcgiRequest) _writeBytes(data []byte) error {
+	if r.exchan.isBroken() {
+		return fcgiWriteBroken
+	}
+	if len(data) == 0 {
+		return nil
+	}
+	if r.sendTime.IsZero() {
+		r.sendTime = time.Now()
+	}
+	if err := r.exchan.setWriteDeadline(); err != nil {
+		r.exchan.markBroken()
+		return err
+	}
+	_, err := r.exchan.write(data)
+	return r._longTimeCheck(err)
+}
+func (r *fcgiRequest) _writeVector() error {
+	if r.exchan.isBroken() {
+		return fcgiWriteBroken
+	}
+	if len(r.vector) == 1 && len(r.vector[0]) == 0 {
+		return nil
+	}
+	if r.sendTime.IsZero() {
+		r.sendTime = time.Now()
+	}
+	if err := r.exchan.setWriteDeadline(); err != nil {
+		r.exchan.markBroken()
+		return err
+	}
+	_, err := r.exchan.writev(&r.vector)
+	return r._longTimeCheck(err)
+}
+func (r *fcgiRequest) _longTimeCheck(err error) error {
+	if err == nil && r._isLongTime() {
+		err = fcgiWriteLongTime
+	}
+	if err != nil {
+		r.exchan.markBroken()
+	}
+	return err
+}
+func (r *fcgiRequest) _isLongTime() bool {
+	return r.sendTimeout > 0 && time.Since(r.sendTime) >= r.sendTimeout
+}
+
+var ( // fcgi request errors
+	fcgiWriteLongTime = errors.New("fcgi: write costs a long time")
+	fcgiWriteBroken   = errors.New("fcgi: write broken")
 )

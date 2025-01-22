@@ -147,8 +147,8 @@ func (n *uwsgiNode) _dialTCP() (*uwsgiConn, error) {
 // uwsgiConn
 type uwsgiConn struct {
 	// Assocs
-	request  uwsgiRequest  // the uwsgi request
 	response uwsgiResponse // the uwsgi response
+	request  uwsgiRequest  // the uwsgi request
 	// Conn states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Conn states (controlled)
@@ -170,10 +170,10 @@ func getUwsgiConn(id int64, node *uwsgiNode, netConn net.Conn, rawConn syscall.R
 	var conn *uwsgiConn
 	if x := poolUwsgiConn.Get(); x == nil {
 		conn = new(uwsgiConn)
-		req, resp := &conn.request, &conn.response
+		resp, req := &conn.response, &conn.request
+		resp.conn = conn
 		req.conn = conn
 		req.response = resp
-		resp.conn = conn
 	} else {
 		conn = x.(*uwsgiConn)
 	}
@@ -190,8 +190,8 @@ func (c *uwsgiConn) onUse(id int64, node *uwsgiNode, netConn net.Conn, rawConn s
 	c.netConn = netConn
 	c.rawConn = rawConn
 	c.node = node
-	c.request.onUse()
 	c.response.onUse()
+	c.request.onUse()
 }
 func (c *uwsgiConn) onEnd() {
 	c.request.onEnd()
@@ -205,6 +205,19 @@ func (c *uwsgiConn) onEnd() {
 func (c *uwsgiConn) buffer256() []byte          { return c.stockBuffer[:] }
 func (c *uwsgiConn) unsafeMake(size int) []byte { return c.region.Make(size) }
 
+// uwsgiResponse must implements the backendResponse interface.
+type uwsgiResponse struct { // incoming. needs parsing
+	// Assocs
+	conn *uwsgiConn
+}
+
+func (r *uwsgiResponse) onUse() {
+	// TODO
+}
+func (r *uwsgiResponse) onEnd() {
+	// TODO
+}
+
 // uwsgiRequest
 type uwsgiRequest struct { // outgoing. needs building
 	// Assocs
@@ -216,18 +229,5 @@ func (r *uwsgiRequest) onUse() {
 	// TODO
 }
 func (r *uwsgiRequest) onEnd() {
-	// TODO
-}
-
-// uwsgiResponse must implements the backendResponse interface.
-type uwsgiResponse struct { // incoming. needs parsing
-	// Assocs
-	conn *uwsgiConn
-}
-
-func (r *uwsgiResponse) onUse() {
-	// TODO
-}
-func (r *uwsgiResponse) onEnd() {
 	// TODO
 }

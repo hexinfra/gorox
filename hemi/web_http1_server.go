@@ -40,12 +40,12 @@ func getServer1Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall
 	var servConn *server1Conn
 	if x := poolServer1Conn.Get(); x == nil {
 		servConn = new(server1Conn)
-		stream := &servConn.stream
-		stream.conn = servConn
-		req, resp := &stream.request, &stream.response
-		req.stream = stream
+		servStream := &servConn.stream
+		servStream.conn = servConn
+		req, resp := &servStream.request, &servStream.response
+		req.stream = servStream
 		req.inMessage = req
-		resp.stream = stream
+		resp.stream = servStream
 		resp.outMessage = resp
 		resp.request = req
 	} else {

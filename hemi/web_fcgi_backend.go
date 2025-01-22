@@ -133,7 +133,7 @@ func (n *fcgiNode) Maintain() { // runner
 	})
 	n.markDown()
 	if size := n.closeFree(); size > 0 {
-		n.DecSubs(size) // conns
+		n.DecSubConnsSize(size)
 	}
 	n.WaitSubConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
@@ -267,8 +267,12 @@ func (n *fcgiNode) closeFree() int {
 	list.Lock()
 	defer list.Unlock()
 
-	for conn := list.head; conn != nil; conn = conn.next {
+	conn := list.head
+	for conn != nil {
+		next := conn.next
+		conn.next = nil
 		conn.Close()
+		conn = next
 	}
 	qnty := list.qnty
 	list.qnty = 0

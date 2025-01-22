@@ -19,7 +19,7 @@ type HTTPBackend interface { // for *HTTP[1-3]Backend
 	Backend
 	// Methods
 	FetchStream(req ServerRequest) (backendStream, error)
-	StoreStream(stream backendStream)
+	StoreStream(backStream backendStream)
 }
 
 // httpBackend_ is the parent for http[1-3]Backend.

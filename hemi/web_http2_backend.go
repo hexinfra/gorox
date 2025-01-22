@@ -58,9 +58,9 @@ func (b *HTTP2Backend) FetchStream(req ServerRequest) (backendStream, error) {
 	node := b.nodes[b.nodeIndexGet()]
 	return node.fetchStream()
 }
-func (b *HTTP2Backend) StoreStream(stream backendStream) {
-	stream2 := stream.(*backend2Stream)
-	stream2.conn.node.storeStream(stream2)
+func (b *HTTP2Backend) StoreStream(backStream backendStream) {
+	backStream2 := backStream.(*backend2Stream)
+	backStream2.conn.node.storeStream(backStream2)
 }
 
 // http2Node
@@ -107,7 +107,7 @@ func (n *http2Node) fetchStream() (*backend2Stream, error) {
 	// TODO
 	return nil, nil
 }
-func (n *http2Node) storeStream(stream *backend2Stream) {
+func (n *http2Node) storeStream(backStream *backend2Stream) {
 	// Note: A backend2Conn can be used concurrently, limited by maxConcurrentStreams.
 	// TODO
 }
@@ -185,13 +185,13 @@ func (c *backend2Conn) ranOut() bool {
 }
 func (c *backend2Conn) fetchStream() (*backend2Stream, error) {
 	// Note: A backend2Conn can be used concurrently, limited by maxConcurrentStreams.
-	// TODO: incRef, stream.onUse()
+	// TODO: incRef, backStream.onUse()
 	return nil, nil
 }
-func (c *backend2Conn) storeStream(stream *backend2Stream) {
+func (c *backend2Conn) storeStream(backStream *backend2Stream) {
 	// Note: A backend2Conn can be used concurrently, limited by maxConcurrentStreams.
 	// TODO
-	//stream.onEnd()
+	//backStream.onEnd()
 }
 
 var backend2InFrameProcessors = [http2NumFrameKinds]func(*backend2Conn, *http2InFrame) error{

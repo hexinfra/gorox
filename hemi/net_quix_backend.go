@@ -156,7 +156,7 @@ func (c *QConn) FetchStream() (*QStream, error) {
 	// TODO
 	return nil, nil
 }
-func (c *QConn) StoreStream(stream *QStream) {
+func (c *QConn) StoreStream(qStream *QStream) {
 	// TODO
 }
 

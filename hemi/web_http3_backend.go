@@ -57,9 +57,9 @@ func (b *HTTP3Backend) FetchStream(req ServerRequest) (backendStream, error) {
 	node := b.nodes[b.nodeIndexGet()]
 	return node.fetchStream()
 }
-func (b *HTTP3Backend) StoreStream(stream backendStream) {
-	stream3 := stream.(*backend3Stream)
-	stream3.conn.node.storeStream(stream3)
+func (b *HTTP3Backend) StoreStream(backStream backendStream) {
+	backStream3 := backStream.(*backend3Stream)
+	backStream3.conn.node.storeStream(backStream3)
 }
 
 // http3Node
@@ -104,7 +104,7 @@ func (n *http3Node) fetchStream() (*backend3Stream, error) {
 	// TODO
 	return nil, nil
 }
-func (n *http3Node) storeStream(stream *backend3Stream) {
+func (n *http3Node) storeStream(backStream *backend3Stream) {
 	// TODO
 }
 
@@ -178,13 +178,13 @@ func (c *backend3Conn) ranOut() bool {
 }
 func (c *backend3Conn) fetchStream() (*backend3Stream, error) {
 	// Note: A backend3Conn can be used concurrently, limited by maxConcurrentStreams.
-	// TODO: stream.onUse()
+	// TODO: backStream.onUse()
 	return nil, nil
 }
-func (c *backend3Conn) storeStream(stream *backend3Stream) {
+func (c *backend3Conn) storeStream(backStream *backend3Stream) {
 	// Note: A backend3Conn can be used concurrently, limited by maxConcurrentStreams.
 	// TODO
-	//stream.onEnd()
+	//backStream.onEnd()
 }
 
 func (c *backend3Conn) Close() error {

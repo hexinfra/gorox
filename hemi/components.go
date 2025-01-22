@@ -284,9 +284,9 @@ func _configureProp[T any](c *Component_, propName string, prop *T, conv func(*V
 
 func (c *Component_) IncSub()       { c.subs.Add(1) }
 func (c *Component_) IncSubs(n int) { c.subs.Add(n) }
-func (c *Component_) WaitSubs()     { c.subs.Wait() }
 func (c *Component_) DecSub()       { c.subs.Done() }
 func (c *Component_) DecSubs(n int) { c.subs.Add(-n) }
+func (c *Component_) WaitSubs()     { c.subs.Wait() }
 
 func (c *Component_) LoopRun(interval time.Duration, callback func(now time.Time)) {
 	ticker := time.NewTicker(interval)

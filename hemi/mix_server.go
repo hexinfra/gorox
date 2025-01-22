@@ -134,9 +134,9 @@ type Gate_[S Server] struct {
 	// Assocs
 	server S
 	// States
-	id       int32          // gate id
-	shut     atomic.Bool    // is gate shut?
-	subConns sync.WaitGroup // sub conns to wait for
+	id   int32          // gate id
+	shut atomic.Bool    // is gate shut?
+	subs sync.WaitGroup // sub conns to wait for
 }
 
 func (g *Gate_[S]) OnNew(server S, id int32) {
@@ -152,6 +152,6 @@ func (g *Gate_[S]) ID() int32    { return g.id }
 func (g *Gate_[S]) MarkShut()    { g.shut.Store(true) }
 func (g *Gate_[S]) IsShut() bool { return g.shut.Load() }
 
-func (g *Gate_[S]) IncSubConns()  { g.subConns.Add(1) }
-func (g *Gate_[S]) DecSubConns()  { g.subConns.Done() }
-func (g *Gate_[S]) WaitSubConns() { g.subConns.Wait() }
+func (g *Gate_[S]) IncSubConns()  { g.subs.Add(1) }
+func (g *Gate_[S]) DecSubConns()  { g.subs.Done() }
+func (g *Gate_[S]) WaitSubConns() { g.subs.Wait() }

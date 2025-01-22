@@ -61,9 +61,9 @@ func (b *HTTP1Backend) FetchStream(req ServerRequest) (backendStream, error) {
 	node := b.nodes[b.nodeIndexGet()]
 	return node.fetchStream()
 }
-func (b *HTTP1Backend) StoreStream(stream backendStream) {
-	stream1 := stream.(*backend1Stream)
-	stream1.conn.node.storeStream(stream1)
+func (b *HTTP1Backend) StoreStream(backStream backendStream) {
+	backStream1 := backStream.(*backend1Stream)
+	backStream1.conn.node.storeStream(backStream1)
 }
 
 // http1Node is a node in HTTP1Backend.
@@ -100,7 +100,7 @@ func (n *http1Node) Maintain() { // runner
 	})
 	n.markDown()
 	if size := n.closeFree(); size > 0 {
-		n.DecSubs(size) // conns
+		n.DecSubConnsSize(size)
 	}
 	n.WaitSubConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
@@ -136,9 +136,9 @@ func (n *http1Node) fetchStream() (*backend1Stream, error) {
 	n.IncSubConns()
 	return backConn.fetchStream()
 }
-func (n *http1Node) storeStream(stream *backend1Stream) {
-	backConn := stream.conn
-	backConn.storeStream(stream)
+func (n *http1Node) storeStream(backStream *backend1Stream) {
+	backConn := backStream.conn
+	backConn.storeStream(backStream)
 
 	if backConn.isBroken() || n.isDown() || !backConn.isAlive() || !backConn.persistent {
 		backConn.Close()
@@ -324,12 +324,12 @@ func (c *backend1Conn) ranOut() bool {
 	return c.cumulativeStreams.Add(1) > c.node.MaxCumulativeStreamsPerConn()
 }
 func (c *backend1Conn) fetchStream() (*backend1Stream, error) {
-	stream := &c.stream
-	stream.onUse()
-	return stream, nil
+	backStream := &c.stream
+	backStream.onUse()
+	return backStream, nil
 }
-func (c *backend1Conn) storeStream(stream *backend1Stream) {
-	stream.onEnd()
+func (c *backend1Conn) storeStream(backStream *backend1Stream) {
+	backStream.onEnd()
 }
 
 func (c *backend1Conn) Close() error {

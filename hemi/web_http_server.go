@@ -468,8 +468,7 @@ type _serverRequest0 struct { // for fast reset, entirely
 }
 
 func (r *serverRequest_) onUse(httpVersion uint8) { // for non-zeros
-	const asResponse = false
-	r._httpIn_.onUse(httpVersion, asResponse)
+	r._httpIn_.onUse(httpVersion, false) // as request
 
 	r.upfiles = r.stockUpfiles[0:0:cap(r.stockUpfiles)] // use append()
 }
@@ -2613,8 +2612,7 @@ type _serverResponse0 struct { // for fast reset, entirely
 }
 
 func (r *serverResponse_) onUse(httpVersion uint8) { // for non-zeros
-	const asRequest = false
-	r._httpOut_.onUse(httpVersion, asRequest)
+	r._httpOut_.onUse(httpVersion, false) // as response
 
 	r.status = StatusOK
 	r.unixTimes.expires = -1      // not set

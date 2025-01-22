@@ -979,7 +979,7 @@ func (r *fcgiResponse) recvHead() {
 		// r.headResult is set.
 		return
 	}
-	r.cleanInput()
+	r.tidyInput()
 }
 func (r *fcgiResponse) growHead() bool { // we need more head data to be appended to r.input from r.records
 	// Is r.input already full?
@@ -1309,7 +1309,7 @@ func (r *fcgiResponse) _delHeaders(pairs []pair, from int, edge int) bool {
 	return true
 }
 
-func (r *fcgiResponse) cleanInput() {
+func (r *fcgiResponse) tidyInput() {
 	if r.HasContent() {
 		r.imme.set(r.elemFore, r.inputEdge)
 		// We don't know the size of vague content. Let content receiver to decide & clean r.input.

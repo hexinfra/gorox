@@ -383,7 +383,7 @@ func (s *backend1Stream) Socket() backendSocket     { return nil } // TODO. See 
 type backend1Response struct { // incoming. needs parsing
 	// Parent
 	backendResponse_
-	// Embeds
+	// Assocs
 	in1 _http1In_
 	// Stream states (stocks)
 	// Stream states (controlled)
@@ -406,15 +406,15 @@ func (r *backend1Response) recvHead() { // status-line + headers
 		r.headResult = -1
 		return
 	}
-	if !r.in1.growHead1() { // r.input must be empty because we don't use pipelining in requests.
+	if !r.in1.growHead() { // r.input must be empty because we don't use pipelining in requests.
 		// r.headResult is set.
 		return
 	}
-	if !r._recvStatusLine() || !r.in1.recvHeaders1() || !r.examineHead() {
+	if !r._recvStatusLine() || !r.in1.recvHeaders() || !r.examineHead() {
 		// r.headResult is set.
 		return
 	}
-	r.cleanInput()
+	r.tidyInput()
 	if DebugLevel() >= 2 {
 		Printf("[backend1Stream=%d]<======= [%s]\n", r.stream.Conn().ID(), r.input[r.head.from:r.head.edge])
 	}
@@ -431,7 +431,7 @@ func (r *backend1Response) _recvStatusLine() bool { // status-line = HTTP-versio
 		// r.inputEdge at "TTP/1.X " -> after ' '
 		r.elemFore = r.inputEdge - 1
 		for i, n := int32(0), 9-have; i < n; i++ {
-			if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead() {
 				return false
 			}
 		}
@@ -445,7 +445,7 @@ func (r *backend1Response) _recvStatusLine() bool { // status-line = HTTP-versio
 	if r.input[r.elemFore] != ' ' {
 		goto invalid
 	}
-	if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead() {
 		return false
 	}
 
@@ -455,7 +455,7 @@ func (r *backend1Response) _recvStatusLine() bool { // status-line = HTTP-versio
 	} else {
 		goto invalid
 	}
-	if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead() {
 		return false
 	}
 	if b := r.input[r.elemFore]; b >= '0' && b <= '9' {
@@ -463,7 +463,7 @@ func (r *backend1Response) _recvStatusLine() bool { // status-line = HTTP-versio
 	} else {
 		goto invalid
 	}
-	if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead() {
 		return false
 	}
 	if b := r.input[r.elemFore]; b >= '0' && b <= '9' {
@@ -471,7 +471,7 @@ func (r *backend1Response) _recvStatusLine() bool { // status-line = HTTP-versio
 	} else {
 		goto invalid
 	}
-	if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead() {
 		return false
 	}
 
@@ -479,7 +479,7 @@ func (r *backend1Response) _recvStatusLine() bool { // status-line = HTTP-versio
 	if r.input[r.elemFore] != ' ' {
 		goto invalid
 	}
-	if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead() {
 		return false
 	}
 
@@ -488,13 +488,13 @@ func (r *backend1Response) _recvStatusLine() bool { // status-line = HTTP-versio
 		if b := r.input[r.elemFore]; b == '\n' {
 			break
 		}
-		if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
+		if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead() {
 			return false
 		}
 	}
 	r.receiving = httpSectionHeaders
 	// Skip '\n'
-	if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead1() {
+	if r.elemFore++; r.elemFore == r.inputEdge && !r.in1.growHead() {
 		return false
 	}
 	return true
@@ -502,7 +502,7 @@ invalid:
 	r.headResult, r.failReason = StatusBadRequest, "invalid character in control"
 	return false
 }
-func (r *backend1Response) cleanInput() {
+func (r *backend1Response) tidyInput() {
 	// r.elemFore is at the beginning of content (if exists) or next response (if exists and is pipelined).
 	if r.contentSize == -1 { // no content
 		r.contentReceived = true
@@ -536,13 +536,13 @@ func (r *backend1Response) cleanInput() {
 	}
 }
 
-func (r *backend1Response) readContent() (data []byte, err error) { return r.in1.readContent1() }
+func (r *backend1Response) readContent() (data []byte, err error) { return r.in1.readContent() }
 
 // backend1Request is the backend-side HTTP/1.x request.
 type backend1Request struct { // outgoing. needs building
 	// Parent
 	backendRequest_
-	// Embeds
+	// Assocs
 	out1 _http1Out_
 	// Stream states (stocks)
 	// Stream states (controlled)
@@ -597,7 +597,7 @@ func (r *backend1Request) proxySetAuthority(hostname []byte, colonport []byte) b
 		from += 2
 		from += copy(r.fields[from:], hostname)
 		from += copy(r.fields[from:], colonport)
-		r.out1._addCRLFHeader1(from)
+		r.out1._addCRLFHeader(from)
 		return true
 	} else {
 		return false
@@ -605,12 +605,12 @@ func (r *backend1Request) proxySetAuthority(hostname []byte, colonport []byte) b
 }
 
 func (r *backend1Request) addHeader(name []byte, value []byte) bool {
-	return r.out1.addHeader1(name, value)
+	return r.out1.addHeader(name, value)
 }
-func (r *backend1Request) header(name []byte) (value []byte, ok bool) { return r.out1.header1(name) }
-func (r *backend1Request) hasHeader(name []byte) bool                 { return r.out1.hasHeader1(name) }
-func (r *backend1Request) delHeader(name []byte) (deleted bool)       { return r.out1.delHeader1(name) }
-func (r *backend1Request) delHeaderAt(i uint8)                        { r.out1.delHeaderAt1(i) }
+func (r *backend1Request) header(name []byte) (value []byte, ok bool) { return r.out1.header(name) }
+func (r *backend1Request) hasHeader(name []byte) bool                 { return r.out1.hasHeader(name) }
+func (r *backend1Request) delHeader(name []byte) (deleted bool)       { return r.out1.delHeader(name) }
+func (r *backend1Request) delHeaderAt(i uint8)                        { r.out1.delHeaderAt(i) }
 
 func (r *backend1Request) AddCookie(name string, value string) bool { // cookie: foo=bar; xyz=baz
 	// TODO. need some space to place the cookie. use stream.unsafeMake()?
@@ -645,18 +645,18 @@ func (r *backend1Request) proxyCopyCookies(servReq ServerRequest) bool { // NOTE
 	}
 }
 
-func (r *backend1Request) sendChain() error { return r.out1.sendChain1() }
+func (r *backend1Request) sendChain() error { return r.out1.sendChain() }
 
-func (r *backend1Request) echoHeaders() error { return r.out1.writeHeaders1() }
-func (r *backend1Request) echoChain() error   { return r.out1.echoChain1(true) } // we always use HTTP/1.1 chunked
+func (r *backend1Request) echoHeaders() error { return r.out1.writeHeaders() }
+func (r *backend1Request) echoChain() error   { return r.out1.echoChain(true) } // we always use HTTP/1.1 chunked
 
 func (r *backend1Request) addTrailer(name []byte, value []byte) bool {
-	return r.out1.addTrailer1(name, value)
+	return r.out1.addTrailer(name, value)
 }
-func (r *backend1Request) trailer(name []byte) (value []byte, ok bool) { return r.out1.trailer1(name) }
+func (r *backend1Request) trailer(name []byte) (value []byte, ok bool) { return r.out1.trailer(name) }
 
-func (r *backend1Request) proxyPassHeaders() error          { return r.out1.writeHeaders1() }
-func (r *backend1Request) proxyPassBytes(data []byte) error { return r.out1.proxyPassBytes1(data) }
+func (r *backend1Request) proxyPassHeaders() error          { return r.out1.writeHeaders() }
+func (r *backend1Request) proxyPassBytes(data []byte) error { return r.out1.proxyPassBytes(data) }
 
 func (r *backend1Request) finalizeHeaders() { // add at most 256 bytes
 	// if-modified-since: Sun, 06 Nov 1994 08:49:37 GMT\r\n
@@ -674,7 +674,7 @@ func (r *backend1Request) finalizeHeaders() { // add at most 256 bytes
 			} else { // content-length: >=0\r\n
 				sizeBuffer := r.stream.buffer256() // enough for content-length
 				n := i64ToDec(r.contentSize, sizeBuffer)
-				r.out1._addFixedHeader1(bytesContentLength, sizeBuffer[:n])
+				r.out1._addFixedHeader(bytesContentLength, sizeBuffer[:n])
 			}
 		}
 		// content-type: application/octet-stream\r\n
@@ -685,7 +685,7 @@ func (r *backend1Request) finalizeHeaders() { // add at most 256 bytes
 	// connection: keep-alive\r\n
 	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
 }
-func (r *backend1Request) finalizeVague() error { return r.out1.finalizeVague1() }
+func (r *backend1Request) finalizeVague() error { return r.out1.finalizeVague() } // we always use http/1.1 in the backend side.
 
 func (r *backend1Request) addedHeaders() []byte { return r.fields[r.controlEdge:r.fieldsEdge] }
 func (r *backend1Request) fixedHeaders() []byte { return http1BytesFixedRequestHeaders }
@@ -694,7 +694,7 @@ func (r *backend1Request) fixedHeaders() []byte { return http1BytesFixedRequestH
 type backend1Socket struct { // incoming and outgoing
 	// Parent
 	backendSocket_
-	// Embeds
+	// Assocs
 	so1 _http1Socket_
 	// Stream states (stocks)
 	// Stream states (controlled)

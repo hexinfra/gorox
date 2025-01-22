@@ -283,7 +283,7 @@ func (s *server3Stream) executeSocket() { // see RFC 9220
 type server3Request struct { // incoming. needs parsing
 	// Parent
 	serverRequest_
-	// Embeds
+	// Assocs
 	in3 _http3In_
 	// Stream states (stocks)
 	// Stream states (controlled)
@@ -300,13 +300,13 @@ func (r *server3Request) onEnd() {
 	r.in3.onEnd()
 }
 
-func (r *server3Request) readContent() (data []byte, err error) { return r.in3.readContent3() }
+func (r *server3Request) readContent() (data []byte, err error) { return r.in3.readContent() }
 
 // server3Response is the server-side HTTP/3 response.
 type server3Response struct { // outgoing. needs building
 	// Parent
 	serverResponse_
-	// Embeds
+	// Assocs
 	out3 _http3Out_
 	// Stream states (stocks)
 	// Stream states (controlled)
@@ -324,12 +324,12 @@ func (r *server3Response) onEnd() {
 }
 
 func (r *server3Response) addHeader(name []byte, value []byte) bool {
-	return r.out3.addHeader3(name, value)
+	return r.out3.addHeader(name, value)
 }
-func (r *server3Response) header(name []byte) (value []byte, ok bool) { return r.out3.header3(name) }
-func (r *server3Response) hasHeader(name []byte) bool                 { return r.out3.hasHeader3(name) }
-func (r *server3Response) delHeader(name []byte) (deleted bool)       { return r.out3.delHeader3(name) }
-func (r *server3Response) delHeaderAt(i uint8)                        { r.out3.delHeaderAt3(i) }
+func (r *server3Response) header(name []byte) (value []byte, ok bool) { return r.out3.header(name) }
+func (r *server3Response) hasHeader(name []byte) bool                 { return r.out3.hasHeader(name) }
+func (r *server3Response) delHeader(name []byte) (deleted bool)       { return r.out3.delHeader(name) }
+func (r *server3Response) delHeaderAt(i uint8)                        { r.out3.delHeaderAt(i) }
 
 func (r *server3Response) AddHTTPSRedirection(authority string) bool {
 	// TODO
@@ -349,15 +349,15 @@ func (r *server3Response) AddCookie(cookie *Cookie) bool {
 	return false
 }
 
-func (r *server3Response) sendChain() error { return r.out3.sendChain3() }
+func (r *server3Response) sendChain() error { return r.out3.sendChain() }
 
-func (r *server3Response) echoHeaders() error { return r.out3.writeHeaders3() }
-func (r *server3Response) echoChain() error   { return r.out3.echoChain3() }
+func (r *server3Response) echoHeaders() error { return r.out3.writeHeaders() }
+func (r *server3Response) echoChain() error   { return r.out3.echoChain() }
 
 func (r *server3Response) addTrailer(name []byte, value []byte) bool {
-	return r.out3.addTrailer3(name, value)
+	return r.out3.addTrailer(name, value)
 }
-func (r *server3Response) trailer(name []byte) (value []byte, ok bool) { return r.out3.trailer3(name) }
+func (r *server3Response) trailer(name []byte) (value []byte, ok bool) { return r.out3.trailer(name) }
 
 func (r *server3Response) proxyPass1xx(backResp backendResponse) bool {
 	backResp.proxyDelHopHeaders()
@@ -373,8 +373,8 @@ func (r *server3Response) proxyPass1xx(backResp backendResponse) bool {
 	r.onUse()
 	return false
 }
-func (r *server3Response) proxyPassHeaders() error          { return r.out3.writeHeaders3() }
-func (r *server3Response) proxyPassBytes(data []byte) error { return r.out3.proxyPassBytes3(data) }
+func (r *server3Response) proxyPassHeaders() error          { return r.out3.writeHeaders() }
+func (r *server3Response) proxyPassBytes(data []byte) error { return r.out3.proxyPassBytes(data) }
 
 func (r *server3Response) finalizeHeaders() { // add at most 256 bytes
 	// TODO
@@ -398,7 +398,7 @@ func (r *server3Response) fixedHeaders() []byte { return nil }
 type server3Socket struct { // incoming and outgoing
 	// Parent
 	serverSocket_
-	// Embeds
+	// Assocs
 	so3 _http3Socket_
 	// Stream states (stocks)
 	// Stream states (controlled)

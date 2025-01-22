@@ -140,7 +140,7 @@ func (r *_http1In_) onEnd() {
 	r._httpIn_ = nil
 }
 
-func (r *_http1In_) growHead1() bool { // HTTP/1.x is not a binary protocol, we don't know how many bytes to grow, so just grow.
+func (r *_http1In_) growHead() bool { // HTTP/1.x is not a binary protocol, we don't know how many bytes to grow, so just grow.
 	// Is r.input full?
 	if inputSize := int32(cap(r.input)); r.inputEdge == inputSize { // r.inputEdge reached end, so r.input is full
 		if inputSize == _16K { // max r.input size is 16K, we cannot use a larger input anymore
@@ -176,7 +176,7 @@ func (r *_http1In_) growHead1() bool { // HTTP/1.x is not a binary protocol, we 
 	}
 	return false
 }
-func (r *_http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value OWS CRLF ) CRLF
+func (r *_http1In_) recvHeaders() bool { // *( field-name ":" OWS field-value OWS CRLF ) CRLF
 	r.headers.from = uint8(len(r.primes))
 	r.headers.edge = r.headers.from
 	header := &r.mainPair
@@ -188,7 +188,7 @@ func (r *_http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value O
 		// End of headers?
 		if b := r.input[r.elemFore]; b == '\r' {
 			// Skip '\r'
-			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead() {
 				return false
 			}
 			if r.input[r.elemFore] != '\n' {
@@ -222,7 +222,7 @@ func (r *_http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value O
 				return false
 			}
 			header.nameHash += uint16(b)
-			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead() {
 				return false
 			}
 		}
@@ -233,12 +233,12 @@ func (r *_http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value O
 			return false
 		}
 		// Skip ':'
-		if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+		if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead() {
 			return false
 		}
 		// Skip OWS before field-value (and OWS after field-value if it is empty)
 		for r.input[r.elemFore] == ' ' || r.input[r.elemFore] == '\t' {
-			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead() {
 				return false
 			}
 		}
@@ -251,12 +251,12 @@ func (r *_http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value O
 		r.elemBack = r.elemFore // now r.elemBack is at field-value (if not empty) or EOL (if field-value is empty)
 		for {
 			if b := r.input[r.elemFore]; (b >= 0x20 && b != 0x7F) || b == 0x09 {
-				if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+				if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead() {
 					return false
 				}
 			} else if b == '\r' {
 				// Skip '\r'
-				if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+				if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead() {
 					return false
 				}
 				if r.input[r.elemFore] != '\n' {
@@ -290,7 +290,7 @@ func (r *_http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value O
 		}
 
 		// Header is successfully received. Skip '\n'
-		if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead1() {
+		if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead() {
 			return false
 		}
 		// r.elemFore is now at the next header or end of headers.
@@ -305,14 +305,14 @@ func (r *_http1In_) recvHeaders1() bool { // *( field-name ":" OWS field-value O
 	return true
 }
 
-func (r *_http1In_) readContent1() (data []byte, err error) {
+func (r *_http1In_) readContent() (data []byte, err error) {
 	if r.contentSize >= 0 { // sized
-		return r._readSizedContent1()
+		return r._readSizedContent()
 	} else { // vague. must be -2. -1 (no content) is excluded priorly
-		return r._readVagueContent1()
+		return r._readVagueContent()
 	}
 }
-func (r *_http1In_) _readSizedContent1() ([]byte, error) {
+func (r *_http1In_) _readSizedContent() ([]byte, error) {
 	if r.receivedSize == r.contentSize { // content is entirely received
 		if r.bodyWindow == nil { // body window is not used. this means content is immediate
 			return r.contentText[:r.receivedSize], io.EOF
@@ -352,7 +352,7 @@ func (r *_http1In_) _readSizedContent1() ([]byte, error) {
 	}
 	return nil, err
 }
-func (r *_http1In_) _readVagueContent1() ([]byte, error) {
+func (r *_http1In_) _readVagueContent() ([]byte, error) {
 	if r.bodyWindow == nil {
 		r.bodyWindow = Get16K() // will be freed on ends. 16K is a tradeoff between performance and memory consumption, and can fit r.imme and trailers
 	}
@@ -360,13 +360,13 @@ func (r *_http1In_) _readVagueContent1() ([]byte, error) {
 		r.chunkEdge = int32(copy(r.bodyWindow, r.input[r.imme.from:r.imme.edge])) // r.input is not larger than r.bodyWindow
 		r.imme.zero()
 	}
-	if r.chunkEdge == 0 && !r.growChunked1() { // r.bodyWindow is empty. must fill
+	if r.chunkEdge == 0 && !r.growChunked() { // r.bodyWindow is empty. must fill
 		goto badRead
 	}
 	switch r.chunkSize { // size left in receiving current chunk
 	case -2: // got chunk-data. needs CRLF or LF
 		if r.bodyWindow[r.chunkFore] == '\r' {
-			if r.chunkFore++; r.chunkFore == r.chunkEdge && !r.growChunked1() {
+			if r.chunkFore++; r.chunkFore == r.chunkEdge && !r.growChunked() {
 				goto badRead
 			}
 		}
@@ -376,7 +376,7 @@ func (r *_http1In_) _readVagueContent1() ([]byte, error) {
 			goto badRead
 		}
 		// Skip '\n'
-		if r.chunkFore++; r.chunkFore == r.chunkEdge && !r.growChunked1() {
+		if r.chunkFore++; r.chunkFore == r.chunkEdge && !r.growChunked() {
 			goto badRead
 		}
 		fallthrough
@@ -396,7 +396,7 @@ func (r *_http1In_) _readVagueContent1() ([]byte, error) {
 			}
 			chunkSize <<= 4
 			chunkSize += int64(b)
-			if r.chunkFore++; r.chunkFore-r.chunkBack >= 16 || (r.chunkFore == r.chunkEdge && !r.growChunked1()) {
+			if r.chunkFore++; r.chunkFore-r.chunkBack >= 16 || (r.chunkFore == r.chunkEdge && !r.growChunked()) {
 				goto badRead
 			}
 		}
@@ -405,13 +405,13 @@ func (r *_http1In_) _readVagueContent1() ([]byte, error) {
 		}
 		if b := r.bodyWindow[r.chunkFore]; b == ';' { // ignore chunk-ext = *( ";" chunk-ext-name [ "=" chunk-ext-val ] )
 			for r.bodyWindow[r.chunkFore] != '\n' {
-				if r.chunkFore++; r.chunkFore == r.chunkEdge && !r.growChunked1() {
+				if r.chunkFore++; r.chunkFore == r.chunkEdge && !r.growChunked() {
 					goto badRead
 				}
 			}
 		} else if b == '\r' {
 			// Skip '\r'
-			if r.chunkFore++; r.chunkFore == r.chunkEdge && !r.growChunked1() {
+			if r.chunkFore++; r.chunkFore == r.chunkEdge && !r.growChunked() {
 				goto badRead
 			}
 		}
@@ -427,7 +427,7 @@ func (r *_http1In_) _readVagueContent1() ([]byte, error) {
 			goto badRead
 		}
 		// Skip '\n' at the end of: chunk-size [chunk-ext] CRLF
-		if r.chunkFore++; r.chunkFore == r.chunkEdge && !r.growChunked1() {
+		if r.chunkFore++; r.chunkFore == r.chunkEdge && !r.growChunked() {
 			goto badRead
 		}
 		// Last chunk?
@@ -435,7 +435,7 @@ func (r *_http1In_) _readVagueContent1() ([]byte, error) {
 			// last-chunk trailer-section CRLF
 			if r.bodyWindow[r.chunkFore] == '\r' {
 				// Skip '\r'
-				if r.chunkFore++; r.chunkFore == r.chunkEdge && !r.growChunked1() {
+				if r.chunkFore++; r.chunkFore == r.chunkEdge && !r.growChunked() {
 					goto badRead
 				}
 				if r.bodyWindow[r.chunkFore] != '\n' {
@@ -443,10 +443,10 @@ func (r *_http1In_) _readVagueContent1() ([]byte, error) {
 				}
 			} else if r.bodyWindow[r.chunkFore] != '\n' { // must be trailer-section = *( field-line CRLF)
 				r.receiving = httpSectionTrailers
-				if !r.recvTrailers1() || !r.inMessage.examineTail() {
+				if !r.recvTrailers() || !r.inMessage.examineTail() {
 					goto badRead
 				}
-				// r.recvTrailers1() must ends with r.chunkFore being at the last '\n' after trailer-section.
+				// r.recvTrailers() must ends with r.chunkFore being at the last '\n' after trailer-section.
 			}
 			// Skip the last '\n'
 			r.chunkFore++ // now the whole vague content is received and r.chunkFore is immediately after the vague content.
@@ -464,7 +464,7 @@ func (r *_http1In_) _readVagueContent1() ([]byte, error) {
 		// Not last chunk, now r.chunkFore is at the beginning of: chunk-data CRLF
 		fallthrough
 	default: // r.chunkSize > 0, we are receiving: chunk-data CRLF
-		r.chunkBack = 0 // so growChunked1() works correctly
+		r.chunkBack = 0 // so growChunked() works correctly
 		var data span   // the chunk data we are receiving
 		data.from = r.chunkFore
 		if haveSize := int64(r.chunkEdge - r.chunkFore); haveSize <= r.chunkSize { // 1 <= haveSize <= r.chunkSize. chunk-data can be taken entirely
@@ -508,7 +508,7 @@ badRead:
 	return nil, httpInBadChunk
 }
 
-func (r *_http1In_) recvTrailers1() bool { // trailer-section = *( field-line CRLF)
+func (r *_http1In_) recvTrailers() bool { // trailer-section = *( field-line CRLF)
 	copy(r.bodyWindow, r.bodyWindow[r.chunkFore:r.chunkEdge]) // slide to start, we need a clean r.bodyWindow
 	r.chunkEdge -= r.chunkFore
 	r.chunkBack, r.chunkFore = 0, 0 // setting r.chunkBack = 0 means r.bodyWindow will not slide, so the whole trailers must fit in r.bodyWindow.
@@ -523,7 +523,7 @@ func (r *_http1In_) recvTrailers1() bool { // trailer-section = *( field-line CR
 	for {
 		if b := r.bodyWindow[r.elemFore]; b == '\r' {
 			// Skip '\r'
-			if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked1() {
+			if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked() {
 				return false
 			}
 			if r.bodyWindow[r.elemFore] != '\n' {
@@ -550,7 +550,7 @@ func (r *_http1In_) recvTrailers1() bool { // trailer-section = *( field-line CR
 				return false
 			}
 			trailer.nameHash += uint16(b)
-			if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked1() {
+			if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked() {
 				return false
 			}
 		}
@@ -560,24 +560,24 @@ func (r *_http1In_) recvTrailers1() bool { // trailer-section = *( field-line CR
 			return false
 		}
 		// Skip ':'
-		if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked1() {
+		if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked() {
 			return false
 		}
 		// Skip OWS before field-value (and OWS after field-value if it is empty)
 		for r.bodyWindow[r.elemFore] == ' ' || r.bodyWindow[r.elemFore] == '\t' {
-			if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked1() {
+			if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked() {
 				return false
 			}
 		}
 		r.elemBack = r.elemFore // for field-value or EOL
 		for {
 			if b := r.bodyWindow[r.elemFore]; (b >= 0x20 && b != 0x7F) || b == 0x09 {
-				if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked1() {
+				if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked() {
 					return false
 				}
 			} else if b == '\r' {
 				// Skip '\r'
-				if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked1() {
+				if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked() {
 					return false
 				}
 				if r.bodyWindow[r.elemFore] != '\n' {
@@ -620,7 +620,7 @@ func (r *_http1In_) recvTrailers1() bool { // trailer-section = *( field-line CR
 		}
 
 		// Trailer is successfully received. Skip '\n'
-		if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked1() {
+		if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked() {
 			return false
 		}
 		// r.elemFore is now at the next trailer or end of trailers.
@@ -629,7 +629,7 @@ func (r *_http1In_) recvTrailers1() bool { // trailer-section = *( field-line CR
 	r.chunkFore = r.elemFore // r.chunkFore must ends at the last '\n'
 	return true
 }
-func (r *_http1In_) growChunked1() bool { // HTTP/1.x is not a binary protocol, we don't know how many bytes to grow, so just grow.
+func (r *_http1In_) growChunked() bool { // HTTP/1.x is not a binary protocol, we don't know how many bytes to grow, so just grow.
 	if r.chunkEdge == int32(cap(r.bodyWindow)) && r.chunkBack == 0 { // r.bodyWindow is full and we can't slide
 		return false // element is too large
 	}
@@ -675,7 +675,7 @@ func (r *_http1Out_) onEnd() {
 	r._httpOut_ = nil
 }
 
-func (r *_http1Out_) addHeader1(name []byte, value []byte) bool {
+func (r *_http1Out_) addHeader(name []byte, value []byte) bool {
 	if len(name) == 0 {
 		return false
 	}
@@ -686,13 +686,13 @@ func (r *_http1Out_) addHeader1(name []byte, value []byte) bool {
 		r.fields[from+1] = ' '
 		from += 2
 		from += copy(r.fields[from:], value)
-		r._addCRLFHeader1(from)
+		r._addCRLFHeader(from)
 		return true
 	} else {
 		return false
 	}
 }
-func (r *_http1Out_) header1(name []byte) (value []byte, ok bool) {
+func (r *_http1Out_) header(name []byte) (value []byte, ok bool) {
 	if r.numHeaders > 1 && len(name) > 0 {
 		from := uint16(0)
 		for i := uint8(1); i < r.numHeaders; i++ {
@@ -706,7 +706,7 @@ func (r *_http1Out_) header1(name []byte) (value []byte, ok bool) {
 	}
 	return
 }
-func (r *_http1Out_) hasHeader1(name []byte) bool {
+func (r *_http1Out_) hasHeader(name []byte) bool {
 	if r.numHeaders > 1 && len(name) > 0 {
 		from := uint16(0)
 		for i := uint8(1); i < r.numHeaders; i++ {
@@ -720,7 +720,7 @@ func (r *_http1Out_) hasHeader1(name []byte) bool {
 	}
 	return false
 }
-func (r *_http1Out_) delHeader1(name []byte) (deleted bool) {
+func (r *_http1Out_) delHeader(name []byte) (deleted bool) {
 	from := uint16(0)
 	for i := uint8(1); i < r.numHeaders; {
 		edge := r.edges[i]
@@ -740,9 +740,9 @@ func (r *_http1Out_) delHeader1(name []byte) (deleted bool) {
 	}
 	return
 }
-func (r *_http1Out_) delHeaderAt1(i uint8) {
+func (r *_http1Out_) delHeaderAt(i uint8) {
 	if i == 0 {
-		BugExitln("delHeaderAt1: i == 0 which must not happen")
+		BugExitln("delHeaderAt: i == 0 which must not happen")
 	}
 	from := r.edges[i-1]
 	edge := r.edges[i]
@@ -754,13 +754,13 @@ func (r *_http1Out_) delHeaderAt1(i uint8) {
 	r.fieldsEdge -= size
 	r.numHeaders--
 }
-func (r *_http1Out_) _addCRLFHeader1(from int) {
+func (r *_http1Out_) _addCRLFHeader(from int) {
 	r.fields[from] = '\r'
 	r.fields[from+1] = '\n'
 	r.edges[r.numHeaders] = uint16(from + 2)
 	r.numHeaders++
 }
-func (r *_http1Out_) _addFixedHeader1(name []byte, value []byte) { // used by finalizeHeaders
+func (r *_http1Out_) _addFixedHeader(name []byte, value []byte) { // used by finalizeHeaders
 	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], name))
 	r.fields[r.fieldsEdge] = ':'
 	r.fields[r.fieldsEdge+1] = ' '
@@ -771,26 +771,26 @@ func (r *_http1Out_) _addFixedHeader1(name []byte, value []byte) { // used by fi
 	r.fieldsEdge += 2
 }
 
-func (r *_http1Out_) sendChain1() error { // TODO: if conn is TLS, don't use writev as it uses many Write() which might be slower than make+copy+write.
-	return r._sendEntireChain1()
+func (r *_http1Out_) sendChain() error { // TODO: if conn is TLS, don't use writev as it uses many Write() which might be slower than make+copy+write.
+	return r._sendEntireChain()
 	// TODO
 	numRanges := len(r.contentRanges)
 	if numRanges == 0 {
-		return r._sendEntireChain1()
+		return r._sendEntireChain()
 	}
 	// Partial content.
 	if !r.asRequest { // as response
 		r.outMessage.(ServerResponse).SetStatus(StatusPartialContent)
 	}
 	if numRanges == 1 {
-		return r._sendSingleRange1()
+		return r._sendSingleRange()
 	} else {
-		return r._sendMultiRanges1()
+		return r._sendMultiRanges()
 	}
 }
-func (r *_http1Out_) _sendEntireChain1() error {
+func (r *_http1Out_) _sendEntireChain() error {
 	r.outMessage.finalizeHeaders()
-	vector := r._prepareVector1() // waiting to write
+	vector := r._prepareVector() // waiting to write
 	if DebugLevel() >= 2 {
 		if r.asRequest {
 			Printf("[backend1Stream=%d]=======> ", r.stream.Conn().ID())
@@ -817,7 +817,7 @@ func (r *_http1Out_) _sendEntireChain1() error {
 			vector[vectorEdge] = buffer[0:piece.size]
 			vectorEdge++
 			r.vector = vector[vectorFrom:vectorEdge]
-			if err := r.writeVector1(); err != nil {
+			if err := r.writeVector(); err != nil {
 				PutNK(buffer)
 				return err
 			}
@@ -826,23 +826,23 @@ func (r *_http1Out_) _sendEntireChain1() error {
 		} else { // large file, > 16K
 			if vectorFrom < vectorEdge {
 				r.vector = vector[vectorFrom:vectorEdge]
-				if err := r.writeVector1(); err != nil { // texts
+				if err := r.writeVector(); err != nil { // texts
 					return err
 				}
 				vectorFrom, vectorEdge = 0, 0
 			}
-			if err := r.writePiece1(piece, false); err != nil { // the file
+			if err := r.writePiece(piece, false); err != nil { // the file
 				return err
 			}
 		}
 	}
 	if vectorFrom < vectorEdge {
 		r.vector = vector[vectorFrom:vectorEdge]
-		return r.writeVector1()
+		return r.writeVector()
 	}
 	return nil
 }
-func (r *_http1Out_) _sendSingleRange1() error {
+func (r *_http1Out_) _sendSingleRange() error {
 	r.AddContentType(r.rangeType)
 	valueBuffer := r.stream.buffer256()
 	n := copy(valueBuffer, "bytes ")
@@ -855,10 +855,10 @@ func (r *_http1Out_) _sendSingleRange1() error {
 	n++
 	n += i64ToDec(r.contentSize, valueBuffer[n:])
 	r.AddHeaderBytes(bytesContentRange, valueBuffer[:n])
-	//return r._sendEntireChain1()
+	//return r._sendEntireChain()
 	return nil
 }
-func (r *_http1Out_) _sendMultiRanges1() error {
+func (r *_http1Out_) _sendMultiRanges() error {
 	valueBuffer := r.stream.buffer256()
 	n := copy(valueBuffer, "multipart/byteranges; boundary=")
 	n += copy(valueBuffer[n:], "xsd3lxT9b5c")
@@ -866,7 +866,7 @@ func (r *_http1Out_) _sendMultiRanges1() error {
 	// TODO
 	return nil
 }
-func (r *_http1Out_) _prepareVector1() [][]byte {
+func (r *_http1Out_) _prepareVector() [][]byte {
 	var vector [][]byte // waiting for write
 	if r.forbidContent {
 		vector = r.fixedVector[0:3]
@@ -882,16 +882,16 @@ func (r *_http1Out_) _prepareVector1() [][]byte {
 	return vector
 }
 
-func (r *_http1Out_) echoChain1(inChunked bool) error { // TODO: coalesce text pieces?
+func (r *_http1Out_) echoChain(inChunked bool) error { // TODO: coalesce text pieces?
 	for piece := r.chain.head; piece != nil; piece = piece.next {
-		if err := r.writePiece1(piece, inChunked); err != nil {
+		if err := r.writePiece(piece, inChunked); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (r *_http1Out_) addTrailer1(name []byte, value []byte) bool {
+func (r *_http1Out_) addTrailer(name []byte, value []byte) bool {
 	if len(name) == 0 {
 		return false
 	}
@@ -911,7 +911,7 @@ func (r *_http1Out_) addTrailer1(name []byte, value []byte) bool {
 		return false
 	}
 }
-func (r *_http1Out_) trailer1(name []byte) (value []byte, ok bool) {
+func (r *_http1Out_) trailer(name []byte) (value []byte, ok bool) {
 	if r.numTrailers > 1 && len(name) > 0 {
 		from := uint16(0)
 		for i := uint8(1); i < r.numTrailers; i++ {
@@ -925,23 +925,23 @@ func (r *_http1Out_) trailer1(name []byte) (value []byte, ok bool) {
 	}
 	return
 }
-func (r *_http1Out_) trailers1() []byte { return r.fields[0:r.fieldsEdge] } // Headers and trailers are not manipulated at the same time, so after headers is sent, r.fields is used by trailers.
+func (r *_http1Out_) trailers() []byte { return r.fields[0:r.fieldsEdge] } // Headers and trailers are not manipulated at the same time, so after headers is sent, r.fields is used by trailers.
 
-func (r *_http1Out_) proxyPassBytes1(data []byte) error { return r.writeBytes1(data) }
+func (r *_http1Out_) proxyPassBytes(data []byte) error { return r.writeBytes(data) }
 
-func (r *_http1Out_) finalizeVague1() error {
+func (r *_http1Out_) finalizeVague() error {
 	if r.numTrailers == 1 { // no trailers
-		return r.writeBytes1(http1BytesZeroCRLFCRLF) // 0\r\n\r\n
+		return r.writeBytes(http1BytesZeroCRLFCRLF) // 0\r\n\r\n
 	} else { // with trailers
 		r.vector = r.fixedVector[0:3]
 		r.vector[0] = http1BytesZeroCRLF // 0\r\n
-		r.vector[1] = r.trailers1()      // field-name: field-value\r\n
+		r.vector[1] = r.trailers()       // field-name: field-value\r\n
 		r.vector[2] = bytesCRLF          // \r\n
-		return r.writeVector1()
+		return r.writeVector()
 	}
 }
 
-func (r *_http1Out_) writeHeaders1() error { // used by echo and pass
+func (r *_http1Out_) writeHeaders() error { // used by echo and pass
 	r.outMessage.finalizeHeaders()
 	r.vector = r.fixedVector[0:3]
 	r.vector[0] = r.outMessage.control()
@@ -955,23 +955,23 @@ func (r *_http1Out_) writeHeaders1() error { // used by echo and pass
 		}
 		Printf("-------> [%s%s%s]\n", r.vector[0], r.vector[1], r.vector[2])
 	}
-	if err := r.writeVector1(); err != nil {
+	if err := r.writeVector(); err != nil {
 		return err
 	}
 	r.fieldsEdge = 0 // now that headers are all sent, r.fields will be used by trailers (if any), so reset it.
 	return nil
 }
-func (r *_http1Out_) writePiece1(piece *Piece, inChunked bool) error {
+func (r *_http1Out_) writePiece(piece *Piece, inChunked bool) error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
 	if piece.IsText() { // text piece
-		return r._writeTextPiece1(piece, inChunked)
+		return r._writeTextPiece(piece, inChunked)
 	} else {
-		return r._writeFilePiece1(piece, inChunked)
+		return r._writeFilePiece(piece, inChunked)
 	}
 }
-func (r *_http1Out_) _writeTextPiece1(piece *Piece, inChunked bool) error {
+func (r *_http1Out_) _writeTextPiece(piece *Piece, inChunked bool) error {
 	if inChunked { // HTTP/1.1 chunked data
 		sizeBuffer := r.stream.buffer256() // buffer is enough for chunk size
 		n := i64ToHex(piece.size, sizeBuffer)
@@ -982,12 +982,12 @@ func (r *_http1Out_) _writeTextPiece1(piece *Piece, inChunked bool) error {
 		r.vector[0] = sizeBuffer[:n]
 		r.vector[1] = piece.Text()
 		r.vector[2] = bytesCRLF
-		return r.writeVector1()
+		return r.writeVector()
 	} else { // HTTP/1.0, or raw data
-		return r.writeBytes1(piece.Text())
+		return r.writeBytes(piece.Text())
 	}
 }
-func (r *_http1Out_) _writeFilePiece1(piece *Piece, inChunked bool) error {
+func (r *_http1Out_) _writeFilePiece(piece *Piece, inChunked bool) error {
 	// file piece. currently we don't use sendfile(2).
 	buffer := Get16K() // 16K is a tradeoff between performance and memory consumption.
 	defer PutNK(buffer)
@@ -1032,7 +1032,7 @@ func (r *_http1Out_) _writeFilePiece1(piece *Piece, inChunked bool) error {
 		}
 	}
 }
-func (r *_http1Out_) writeVector1() error {
+func (r *_http1Out_) writeVector() error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
@@ -1049,7 +1049,7 @@ func (r *_http1Out_) writeVector1() error {
 	_, err := r.stream.writev(&r.vector)
 	return r._longTimeCheck(err)
 }
-func (r *_http1Out_) writeBytes1(data []byte) error {
+func (r *_http1Out_) writeBytes(data []byte) error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}

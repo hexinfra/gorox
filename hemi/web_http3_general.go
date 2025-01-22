@@ -151,13 +151,13 @@ func (r *_http3In_) onEnd() {
 	r._httpIn_ = nil
 }
 
-func (r *_http3In_) _growHeaders3(size int32) bool {
+func (r *_http3In_) _growHeaders(size int32) bool {
 	// TODO
 	// use r.input
 	return false
 }
 
-func (r *_http3In_) readContent3() (data []byte, err error) {
+func (r *_http3In_) readContent() (data []byte, err error) {
 	// TODO
 	return
 }
@@ -217,64 +217,64 @@ func (r *_http3Out_) onEnd() {
 	r._httpOut_ = nil
 }
 
-func (r *_http3Out_) addHeader3(name []byte, value []byte) bool {
+func (r *_http3Out_) addHeader(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *_http3Out_) header3(name []byte) (value []byte, ok bool) {
+func (r *_http3Out_) header(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *_http3Out_) hasHeader3(name []byte) bool {
+func (r *_http3Out_) hasHeader(name []byte) bool {
 	// TODO
 	return false
 }
-func (r *_http3Out_) delHeader3(name []byte) (deleted bool) {
+func (r *_http3Out_) delHeader(name []byte) (deleted bool) {
 	// TODO
 	return false
 }
-func (r *_http3Out_) delHeaderAt3(i uint8) {
+func (r *_http3Out_) delHeaderAt(i uint8) {
 	// TODO
 }
 
-func (r *_http3Out_) sendChain3() error {
+func (r *_http3Out_) sendChain() error {
 	// TODO
 	return nil
 }
-func (r *_http3Out_) _sendEntireChain3() error {
+func (r *_http3Out_) _sendEntireChain() error {
 	// TODO
 	return nil
 }
-func (r *_http3Out_) _sendSingleRange3() error {
+func (r *_http3Out_) _sendSingleRange() error {
 	// TODO
 	return nil
 }
-func (r *_http3Out_) _sendMultiRanges3() error {
-	// TODO
-	return nil
-}
-
-func (r *_http3Out_) echoChain3() error {
+func (r *_http3Out_) _sendMultiRanges() error {
 	// TODO
 	return nil
 }
 
-func (r *_http3Out_) addTrailer3(name []byte, value []byte) bool {
+func (r *_http3Out_) echoChain() error {
+	// TODO
+	return nil
+}
+
+func (r *_http3Out_) addTrailer(name []byte, value []byte) bool {
 	// TODO
 	return false
 }
-func (r *_http3Out_) trailer3(name []byte) (value []byte, ok bool) {
+func (r *_http3Out_) trailer(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *_http3Out_) trailers3() []byte {
+func (r *_http3Out_) trailers() []byte {
 	// TODO
 	return nil
 }
 
-func (r *_http3Out_) proxyPassBytes3(data []byte) error { return r.writeBytes3(data) }
+func (r *_http3Out_) proxyPassBytes(data []byte) error { return r.writeBytes(data) }
 
-func (r *_http3Out_) finalizeVague3() error {
+func (r *_http3Out_) finalizeVague() error {
 	// TODO
 	if r.numTrailers == 1 { // no trailers
 	} else { // with trailers
@@ -282,28 +282,28 @@ func (r *_http3Out_) finalizeVague3() error {
 	return nil
 }
 
-func (r *_http3Out_) writeHeaders3() error { // used by echo and pass
+func (r *_http3Out_) writeHeaders() error { // used by echo and pass
 	// TODO
 	r.fieldsEdge = 0 // now that headers are all sent, r.fields will be used by trailers (if any), so reset it.
 	return nil
 }
-func (r *_http3Out_) writePiece3(piece *Piece, vague bool) error {
+func (r *_http3Out_) writePiece(piece *Piece, vague bool) error {
 	// TODO
 	return nil
 }
-func (r *_http3Out_) _writeTextPiece3(piece *Piece) error {
+func (r *_http3Out_) _writeTextPiece(piece *Piece) error {
 	// TODO
 	return nil
 }
-func (r *_http3Out_) _writeFilePiece3(piece *Piece) error {
+func (r *_http3Out_) _writeFilePiece(piece *Piece) error {
 	// TODO
 	return nil
 }
-func (r *_http3Out_) writeVector3() error {
+func (r *_http3Out_) writeVector() error {
 	// TODO
 	return nil
 }
-func (r *_http3Out_) writeBytes3(data []byte) error {
+func (r *_http3Out_) writeBytes(data []byte) error {
 	// TODO
 	return nil
 }

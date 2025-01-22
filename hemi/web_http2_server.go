@@ -741,7 +741,7 @@ func (s *server2Stream) executeSocket() { // see RFC 8441: https://datatracker.i
 type server2Request struct { // incoming. needs parsing
 	// Parent
 	serverRequest_
-	// Embeds
+	// Assocs
 	in2 _http2In_
 	// Stream states (stocks)
 	// Stream states (controlled)
@@ -760,14 +760,14 @@ func (r *server2Request) onEnd() {
 
 func (r *server2Request) joinHeaders(p []byte) bool {
 	if len(p) > 0 {
-		if !r.in2._growHeaders2(int32(len(p))) {
+		if !r.in2._growHeaders(int32(len(p))) {
 			return false
 		}
 		r.inputEdge += int32(copy(r.input[r.inputEdge:], p))
 	}
 	return true
 }
-func (r *server2Request) readContent() (data []byte, err error) { return r.in2.readContent2() }
+func (r *server2Request) readContent() (data []byte, err error) { return r.in2.readContent() }
 func (r *server2Request) joinTrailers(p []byte) bool {
 	// TODO: to r.array
 	return false
@@ -777,7 +777,7 @@ func (r *server2Request) joinTrailers(p []byte) bool {
 type server2Response struct { // outgoing. needs building
 	// Parent
 	serverResponse_
-	// Embeds
+	// Assocs
 	out2 _http2Out_
 	// Stream states (stocks)
 	// Stream states (controlled)
@@ -795,12 +795,12 @@ func (r *server2Response) onEnd() {
 }
 
 func (r *server2Response) addHeader(name []byte, value []byte) bool {
-	return r.out2.addHeader2(name, value)
+	return r.out2.addHeader(name, value)
 }
-func (r *server2Response) header(name []byte) (value []byte, ok bool) { return r.out2.header2(name) }
-func (r *server2Response) hasHeader(name []byte) bool                 { return r.out2.hasHeader2(name) }
-func (r *server2Response) delHeader(name []byte) (deleted bool)       { return r.out2.delHeader2(name) }
-func (r *server2Response) delHeaderAt(i uint8)                        { r.out2.delHeaderAt2(i) }
+func (r *server2Response) header(name []byte) (value []byte, ok bool) { return r.out2.header(name) }
+func (r *server2Response) hasHeader(name []byte) bool                 { return r.out2.hasHeader(name) }
+func (r *server2Response) delHeader(name []byte) (deleted bool)       { return r.out2.delHeader(name) }
+func (r *server2Response) delHeaderAt(i uint8)                        { r.out2.delHeaderAt(i) }
 
 func (r *server2Response) AddHTTPSRedirection(authority string) bool {
 	// TODO
@@ -820,15 +820,15 @@ func (r *server2Response) AddCookie(cookie *Cookie) bool {
 	return false
 }
 
-func (r *server2Response) sendChain() error { return r.out2.sendChain2() }
+func (r *server2Response) sendChain() error { return r.out2.sendChain() }
 
-func (r *server2Response) echoHeaders() error { return r.out2.writeHeaders2() }
-func (r *server2Response) echoChain() error   { return r.out2.echoChain2() }
+func (r *server2Response) echoHeaders() error { return r.out2.writeHeaders() }
+func (r *server2Response) echoChain() error   { return r.out2.echoChain() }
 
 func (r *server2Response) addTrailer(name []byte, value []byte) bool {
-	return r.out2.addTrailer2(name, value)
+	return r.out2.addTrailer(name, value)
 }
-func (r *server2Response) trailer(name []byte) (value []byte, ok bool) { return r.out2.trailer2(name) }
+func (r *server2Response) trailer(name []byte) (value []byte, ok bool) { return r.out2.trailer(name) }
 
 func (r *server2Response) proxyPass1xx(backResp backendResponse) bool {
 	backResp.proxyDelHopHeaders()
@@ -844,8 +844,8 @@ func (r *server2Response) proxyPass1xx(backResp backendResponse) bool {
 	r.onUse()
 	return false
 }
-func (r *server2Response) proxyPassHeaders() error          { return r.out2.writeHeaders2() }
-func (r *server2Response) proxyPassBytes(data []byte) error { return r.out2.proxyPassBytes2(data) }
+func (r *server2Response) proxyPassHeaders() error          { return r.out2.writeHeaders() }
+func (r *server2Response) proxyPassBytes(data []byte) error { return r.out2.proxyPassBytes(data) }
 
 func (r *server2Response) finalizeHeaders() { // add at most 256 bytes
 	// TODO
@@ -869,7 +869,7 @@ func (r *server2Response) fixedHeaders() []byte { return nil } // TODO
 type server2Socket struct { // incoming and outgoing
 	// Parent
 	serverSocket_
-	// Embeds
+	// Assocs
 	so2 _http2Socket_
 	// Stream states (stocks)
 	// Stream states (controlled)

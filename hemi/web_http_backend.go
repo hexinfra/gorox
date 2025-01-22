@@ -145,7 +145,7 @@ func (s *_backendStream_) onEnd() {
 
 // backendResponse is the backend-side http response.
 type backendResponse interface { // for *backend[1-3]Response
-	KeepAlive() int8
+	KeepAlive() int8 // -1: no connection header, 0: connection close, 1: connection keep-alive
 	HeadResult() int16
 	BodyResult() int16
 	Status() int16
@@ -153,6 +153,8 @@ type backendResponse interface { // for *backend[1-3]Response
 	ContentSize() int64
 	HasTrailers() bool
 	IsVague() bool
+	recvHead()
+	reuse()
 	examineTail() bool
 	proxyTakeContent() any
 	readContent() (data []byte, err error)
@@ -160,8 +162,6 @@ type backendResponse interface { // for *backend[1-3]Response
 	proxyDelHopTrailers()
 	proxyWalkHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
 	proxyWalkTrailers(callback func(header *pair, name []byte, value []byte) bool) bool
-	recvHead()
-	reuse()
 }
 
 // backendResponse_ is the parent for backend[1-3]Response.
@@ -213,8 +213,7 @@ type _backendResponse0 struct { // for fast reset, entirely
 }
 
 func (r *backendResponse_) onUse(httpVersion uint8) { // for non-zeros
-	const asResponse = true
-	r._httpIn_.onUse(httpVersion, asResponse)
+	r._httpIn_.onUse(httpVersion, true) // as response
 }
 func (r *backendResponse_) onEnd() { // for zeros
 	r._backendResponse0 = _backendResponse0{}
@@ -597,11 +596,10 @@ type _backendRequest0 struct { // for fast reset, entirely
 }
 
 func (r *backendRequest_) onUse(httpVersion uint8) { // for non-zeros
-	const asRequest = true
-	r._httpOut_.onUse(httpVersion, asRequest)
+	r._httpOut_.onUse(httpVersion, true) // as request
 
-	r.unixTimes.ifModifiedSince = -1   // not set
-	r.unixTimes.ifUnmodifiedSince = -1 // not set
+	r.unixTimes.ifModifiedSince = -1   // -1 means not set
+	r.unixTimes.ifUnmodifiedSince = -1 // -1 means not set
 }
 func (r *backendRequest_) onEnd() { // for zeros
 	r._backendRequest0 = _backendRequest0{}
@@ -614,7 +612,7 @@ func (r *backendRequest_) Response() backendResponse { return r.response }
 func (r *backendRequest_) SetMethodURI(method string, uri string, hasContent bool) bool {
 	return r.outMessage.(backendRequest).setMethodURI(ConstBytes(method), ConstBytes(uri), hasContent)
 }
-func (r *backendRequest_) setScheme(scheme []byte) bool { // HTTP/2 and HTTP/3 only. HTTP/1.x doesn't use this!
+func (r *backendRequest_) setScheme(scheme []byte) bool { // used by http/2 and http/3 only. http/1.x doesn't use this!
 	// TODO: copy `:scheme $scheme` to r.fields
 	return false
 }

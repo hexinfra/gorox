@@ -12,7 +12,7 @@ To use the Hemi Engine, add a "require" line to your "go.mod" file:
 
     require github.com/hexinfra/gorox vx.y.z
 
-Here, x.y.z is the version of Gorox. Then import it to your "main.go":
+Here, x.y.z is the version of Hemi. Then import it to your "main.go":
 
     import . "github.com/hexinfra/gorox/hemi"
 

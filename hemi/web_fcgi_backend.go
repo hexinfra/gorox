@@ -74,7 +74,7 @@ type fcgiNode struct {
 	idleTimeout                 time.Duration // conn idle timeout
 	maxLifetime                 time.Duration // conn's max lifetime
 	keepConn                    bool          // instructs FCGI server to keep conn?
-	keepAliveConns              int32         // max conns to keep alive
+	keepAliveConns              int32         // max conns to keep alive. requires keepConn to be true
 	connPool                    struct {      // free list of conns in this node
 		sync.Mutex
 		head *fcgiConn
@@ -118,13 +118,15 @@ func (n *fcgiNode) OnConfigure() {
 	// .keepConn
 	n.ConfigureBool("keepConn", &n.keepConn, true)
 
-	// .keepAliveConns
-	n.ConfigureInt32("keepAliveConns", &n.keepAliveConns, func(value int32) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New("bad keepAliveConns in node")
-	}, 10)
+	if n.keepConn {
+		// .keepAliveConns
+		n.ConfigureInt32("keepAliveConns", &n.keepAliveConns, func(value int32) error {
+			if value > 0 {
+				return nil
+			}
+			return errors.New("bad keepAliveConns in node")
+		}, 10)
+	}
 }
 func (n *fcgiNode) OnPrepare() {
 	n.Node_.OnPrepare()
@@ -139,7 +141,7 @@ func (n *fcgiNode) Maintain() { // runner
 	})
 	n.markDown()
 	if size := n.closeFree(); size > 0 {
-		n.DecSubConnsSize(size)
+		n.DecSubConns(size)
 	}
 	n.WaitSubConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
@@ -156,7 +158,7 @@ func (n *fcgiNode) fetchExchan() (*fcgiExchan, error) {
 			return fcgiConn.fetchExchan()
 		}
 		fcgiConn.Close()
-		n.DecSubConns()
+		n.DecSubConn()
 	}
 	if nodeDown {
 		return nil, errNodeDown
@@ -183,7 +185,7 @@ func (n *fcgiNode) dial() (*fcgiConn, error) {
 	if err != nil {
 		return nil, errNodeDown
 	}
-	n.IncSubConns()
+	n.IncSubConn()
 	return conn, err
 }
 func (n *fcgiNode) _dialUDS() (*fcgiConn, error) {
@@ -229,7 +231,7 @@ func (n *fcgiNode) storeExchan(exchan *fcgiExchan) {
 
 	if fcgiConn.isBroken() || n.isDown() || !fcgiConn.isAlive() || !fcgiConn.persistent {
 		fcgiConn.Close()
-		n.DecSubConns()
+		n.DecSubConn()
 	} else {
 		n.pushConn(fcgiConn)
 	}

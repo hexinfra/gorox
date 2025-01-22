@@ -55,7 +55,7 @@ func (s *socksServer) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		s.AddGate(gate)
-		s.IncSubGates()
+		s.IncSubGate()
 		go gate.Serve()
 	}
 	s.WaitSubGates()
@@ -115,7 +115,7 @@ func (g *socksGate) Serve() { // runner
 				continue
 			}
 		}
-		g.IncSubConns()
+		g.IncSubConn()
 		socksConn := getSocksConn(connID, g, tcpConn)
 		go g.Server().serveConn(socksConn) // socksConn is put to pool in serve()
 		connID++
@@ -124,12 +124,12 @@ func (g *socksGate) Serve() { // runner
 	if DebugLevel() >= 2 {
 		Printf("socksGate=%d done\n", g.ID())
 	}
-	g.Server().DecSubGates()
+	g.Server().DecSubGate()
 }
 
 func (g *socksGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()
-	g.DecSubConns()
+	g.DecSubConn()
 }
 
 // socksConn
@@ -176,5 +176,5 @@ func (c *socksConn) onPut() {
 
 func (c *socksConn) Close() {
 	c.tcpConn.Close()
-	c.gate.DecSubConns()
+	c.gate.DecSubConn()
 }

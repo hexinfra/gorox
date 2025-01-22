@@ -121,7 +121,7 @@ func (r *TCPXRouter) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		r.AddGate(gate)
-		r.IncSubGates()
+		r.IncSubGate()
 		go gate.Serve()
 	}
 	r.WaitSubGates()
@@ -249,7 +249,7 @@ func (g *tcpxGate) serveUDS() {
 				continue
 			}
 		}
-		g.IncSubConns()
+		g.IncSubConn()
 		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
 			g.server.Logf("tcpxGate=%d: too many UDS connections!\n", g.id)
 			g.justClose(udsConn)
@@ -268,7 +268,7 @@ func (g *tcpxGate) serveUDS() {
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TCP done\n", g.id)
 	}
-	g.server.DecSubGates()
+	g.server.DecSubGate()
 }
 func (g *tcpxGate) serveTLS() {
 	listener := g.listener.(*net.TCPListener)
@@ -282,7 +282,7 @@ func (g *tcpxGate) serveTLS() {
 				continue
 			}
 		}
-		g.IncSubConns()
+		g.IncSubConn()
 		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
 			g.server.Logf("tcpxGate=%d: too many TLS connections!\n", g.id)
 			g.justClose(tcpConn)
@@ -302,7 +302,7 @@ func (g *tcpxGate) serveTLS() {
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TLS done\n", g.id)
 	}
-	g.server.DecSubGates()
+	g.server.DecSubGate()
 }
 func (g *tcpxGate) serveTCP() {
 	listener := g.listener.(*net.TCPListener)
@@ -316,7 +316,7 @@ func (g *tcpxGate) serveTCP() {
 				continue
 			}
 		}
-		g.IncSubConns()
+		g.IncSubConn()
 		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
 			g.server.Logf("tcpxGate=%d: too many TCP connections!\n", g.id)
 			g.justClose(tcpConn)
@@ -338,13 +338,13 @@ func (g *tcpxGate) serveTCP() {
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TCP done\n", g.id)
 	}
-	g.server.DecSubGates()
+	g.server.DecSubGate()
 }
 
 func (g *tcpxGate) justClose(netConn net.Conn) {
 	netConn.Close()
 	g.DecConcurrentConns()
-	g.DecSubConns()
+	g.DecSubConn()
 }
 
 // TCPXConn is a TCPX connection coming from TCPXRouter.

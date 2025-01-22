@@ -5,10 +5,10 @@
 
 // FCGI reverse proxy (a.k.a. gateway) implementation. See: https://fastcgi-archives.github.io/FastCGI_Specification.html
 
-// HTTP trailers: not supported
-// Persistent connection: supported
-// Vague request content: supported, but currently not implemented due to the limitation of CGI/1.1 even though FCGI can do that through its framing protocol
-// Vague response content: supported
+// HTTP trailers          : not supported
+// Persistent connection  : supported
+// Vague response content : supported through its framing protocol
+// Vague request content  : supported, but currently not implemented due to the limitation of CGI/1.1 even though FCGI can do that through its framing protocol
 
 // FCGI is like HTTP/2. To avoid ambiguity, the term "content" in FCGI specification is called "payload" in our implementation.
 

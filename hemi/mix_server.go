@@ -70,8 +70,8 @@ func (s *Server_[G]) OnConfigure() {
 		UseExitln(".address is required for servers")
 	}
 
-	// .udsColonport
 	if s.udsMode {
+		// .udsColonport
 		s.ConfigureString("udsColonport", &s.udsColonport, nil, ":80")
 	}
 
@@ -112,8 +112,8 @@ func (s *Server_[G]) ColonportBytes() []byte {
 	}
 }
 
-func (s *Server_[G]) IncSubGates()  { s.IncSub() }
-func (s *Server_[G]) DecSubGates()  { s.DecSub() }
+func (s *Server_[G]) IncSubGate()   { s.IncSub() }
+func (s *Server_[G]) DecSubGate()   { s.DecSub() }
 func (s *Server_[G]) WaitSubGates() { s.WaitSubs() }
 
 func (s *Server_[G]) holder() _holder_ { return s._holder_ } // copy configs
@@ -152,6 +152,6 @@ func (g *Gate_[S]) ID() int32    { return g.id }
 func (g *Gate_[S]) MarkShut()    { g.shut.Store(true) }
 func (g *Gate_[S]) IsShut() bool { return g.shut.Load() }
 
-func (g *Gate_[S]) IncSubConns()  { g.subs.Add(1) }
-func (g *Gate_[S]) DecSubConns()  { g.subs.Done() }
+func (g *Gate_[S]) IncSubConn()   { g.subs.Add(1) }
+func (g *Gate_[S]) DecSubConn()   { g.subs.Done() }
 func (g *Gate_[S]) WaitSubConns() { g.subs.Wait() }

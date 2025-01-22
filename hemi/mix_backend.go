@@ -209,7 +209,7 @@ func (n *Node_[B]) markDown()    { n.down.Store(true) }
 func (n *Node_[B]) markUp()      { n.down.Store(false) }
 func (n *Node_[B]) isDown() bool { return n.down.Load() }
 
-func (n *Node_[B]) IncSubConns()             { n.IncSub() }
-func (n *Node_[B]) DecSubConns()             { n.DecSub() }
-func (n *Node_[B]) DecSubConnsSize(size int) { n.DecSubs(size) }
-func (n *Node_[B]) WaitSubConns()            { n.WaitSubs() }
+func (n *Node_[B]) IncSubConn()          { n.IncSub() }
+func (n *Node_[B]) DecSubConn()          { n.DecSub() }
+func (n *Node_[B]) DecSubConns(size int) { n.DecSubs(size) }
+func (n *Node_[B]) WaitSubConns()        { n.WaitSubs() }

@@ -5,10 +5,10 @@
 
 // uwsgi reverse proxy (a.k.a. gateway) implementation. See: https://uwsgi-docs.readthedocs.io/en/latest/Protocol.html
 
-// HTTP trailers: unknown
-// Persistent connection: unknown
-// Vague request content: maybe? see: https://uwsgi-docs.readthedocs.io/en/latest/Chunked.html
-// Vague response content: maybe? see: https://uwsgi-docs.readthedocs.io/en/latest/Chunked.html
+// HTTP trailers          : unknown
+// Persistent connection  : unknown
+// Vague response content : unknown. see: https://uwsgi-docs.readthedocs.io/en/latest/Chunked.html
+// Vague request content  : unknown. see: https://uwsgi-docs.readthedocs.io/en/latest/Chunked.html
 
 // uwsgi is now in maintenance mode, see: https://uwsgi-docs.readthedocs.io/en/latest/
 

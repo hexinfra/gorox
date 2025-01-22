@@ -109,7 +109,7 @@ func (n *tcpxNode) dial() (*TConn, error) {
 	if err != nil {
 		return nil, errNodeDown
 	}
-	n.IncSubConns()
+	n.IncSubConn()
 	return conn, err
 }
 func (n *tcpxNode) _dialUDS() (*TConn, error) {
@@ -232,7 +232,7 @@ func (c *TConn) _checkClose() {
 }
 
 func (c *TConn) Close() error {
-	c.node.DecSubConns()
+	c.node.DecSubConn()
 	netConn := c.netConn
 	putTConn(c)
 	return netConn.Close()

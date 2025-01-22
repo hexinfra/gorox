@@ -5,10 +5,10 @@
 
 // SCGI reverse proxy (a.k.a. gateway) implementation. See: https://python.ca/scgi/protocol.txt
 
-// HTTP trailers: not supported
-// Persistent connection: not supported
-// Vague request content: not supported, proxies MUST send sized requests
-// Vague response content: supported
+// HTTP trailers          : not supported
+// Persistent connection  : not supported
+// Vague response content : supported
+// Vague request content  : not supported, proxies MUST send sized requests
 
 // SCGI protocol doesn't define the format of its response. Seems it follows the format of CGI response.
 

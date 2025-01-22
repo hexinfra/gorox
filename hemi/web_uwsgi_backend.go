@@ -101,7 +101,7 @@ func (n *uwsgiNode) dial() (*uwsgiConn, error) {
 	if err != nil {
 		return nil, errNodeDown
 	}
-	n.IncSubConns()
+	n.IncSubConn()
 	return conn, err
 }
 func (n *uwsgiNode) _dialUDS() (*uwsgiConn, error) {

@@ -91,7 +91,7 @@ func (n *udpxNode) Maintain() { // runner
 }
 
 func (n *udpxNode) dial() (*UConn, error) {
-	// TODO. note: use n.IncSubConns()?
+	// TODO. note: use n.IncSubConn()?
 	return nil, nil
 }
 
@@ -135,7 +135,7 @@ func (c *UConn) onPut() {
 }
 
 func (c *UConn) Close() error {
-	// TODO: c.node.DecSubConns()?
+	// TODO: c.node.DecSubConn()?
 	pktConn := c.pktConn
 	putUConn(c)
 	return pktConn.Close()

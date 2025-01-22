@@ -115,7 +115,7 @@ func (r *QUIXRouter) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		r.AddGate(gate)
-		r.IncSubGates()
+		r.IncSubGate()
 		go gate.Serve()
 	}
 	r.WaitSubGates()
@@ -217,12 +217,12 @@ func (g *quixGate) serveTLS() {
 	for !g.IsShut() {
 		time.Sleep(time.Second)
 	}
-	g.server.DecSubGates()
+	g.server.DecSubGate()
 }
 
 func (g *quixGate) justClose(quicConn *tcp2.Conn) {
 	quicConn.Close()
-	g.DecSubConns()
+	g.DecSubConn()
 }
 
 // QUIXConn is a QUIX connection coming from QUIXRouter.

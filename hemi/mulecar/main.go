@@ -3,22 +3,22 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// HemiCar server (leader & worker) and its control client.
+// MuleCar server (leader & worker) and its control client.
 
 package main
 
 import (
 	"github.com/hexinfra/gorox/hemi/procmgr"
 
-	_ "github.com/hexinfra/gorox/hemi/hemicar/apps"
-	_ "github.com/hexinfra/gorox/hemi/hemicar/exts"
-	_ "github.com/hexinfra/gorox/hemi/hemicar/svcs"
+	_ "github.com/hexinfra/gorox/hemi/mulecar/apps"
+	_ "github.com/hexinfra/gorox/hemi/mulecar/exts"
+	_ "github.com/hexinfra/gorox/hemi/mulecar/svcs"
 )
 
 func main() {
 	procmgr.Main(&procmgr.Opts{
-		ProgramName:  "hemicar",
-		ProgramTitle: "HemiCar",
+		ProgramName:  "mulecar",
+		ProgramTitle: "MuleCar",
 		DebugLevel:   2,
 		CmdUIAddr:    "127.0.0.1:9523",
 		WebUIAddr:    "127.0.0.1:9524",

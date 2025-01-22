@@ -37,7 +37,7 @@ the Hemi Engine, we also have these sub directories that supplement Hemi:
 
 The following sub directories are programs that use the Hemi Engine:
 
-  * hemicar/  - A prototype program that is used to develop Hemi itself,
+  * mulecar/  - A prototype program that is used to develop Hemi itself,
   * hemiweb/  - A program that implements the official website of Gorox.
 
 And something useful:

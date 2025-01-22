@@ -80,13 +80,13 @@ func TCPXReverseProxy(servConn *TCPXConn, backend *TCPXBackend, proxyConfig *TCP
 		var (
 			servErr  error
 			backErr  error
-			foreData []byte
+			servData []byte
 		)
 		for {
 			if servErr = servConn.SetReadDeadline(); servErr == nil {
-				if foreData, servErr = servConn.Recv(); len(foreData) > 0 {
+				if servData, servErr = servConn.Recv(); len(servData) > 0 {
 					if backErr = backConn.SetWriteDeadline(); backErr == nil {
-						backErr = backConn.Send(foreData)
+						backErr = backConn.Send(servData)
 					}
 				}
 			}

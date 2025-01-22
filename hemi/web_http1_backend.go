@@ -136,24 +136,6 @@ func (n *http1Node) fetchStream() (*backend1Stream, error) {
 	n.IncSubConns()
 	return backConn.fetchStream()
 }
-func (n *http1Node) storeStream(backStream *backend1Stream) {
-	backConn := backStream.conn
-	backConn.storeStream(backStream)
-
-	if backConn.isBroken() || n.isDown() || !backConn.isAlive() || !backConn.persistent {
-		backConn.Close()
-		n.DecSubConns()
-		if DebugLevel() >= 2 {
-			Printf("Backend1Conn[node=%s id=%d] closed\n", backConn.node.CompName(), backConn.id)
-		}
-	} else {
-		n.pushConn(backConn)
-		if DebugLevel() >= 2 {
-			Printf("Backend1Conn[node=%s id=%d] pushed\n", backConn.node.CompName(), backConn.id)
-		}
-	}
-}
-
 func (n *http1Node) _dialUDS() (*backend1Conn, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("unix", n.address, n.DialTimeout())
@@ -213,6 +195,23 @@ func (n *http1Node) _dialTCP() (*backend1Conn, error) {
 		return nil, err
 	}
 	return getBackend1Conn(connID, n, netConn, rawConn), nil
+}
+func (n *http1Node) storeStream(backStream *backend1Stream) {
+	backConn := backStream.conn
+	backConn.storeStream(backStream)
+
+	if backConn.isBroken() || n.isDown() || !backConn.isAlive() || !backConn.persistent {
+		backConn.Close()
+		n.DecSubConns()
+		if DebugLevel() >= 2 {
+			Printf("Backend1Conn[node=%s id=%d] closed\n", backConn.node.CompName(), backConn.id)
+		}
+	} else {
+		n.pushConn(backConn)
+		if DebugLevel() >= 2 {
+			Printf("Backend1Conn[node=%s id=%d] pushed\n", backConn.node.CompName(), backConn.id)
+		}
+	}
 }
 
 func (n *http1Node) pullConn() *backend1Conn {

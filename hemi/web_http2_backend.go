@@ -107,27 +107,32 @@ func (n *http2Node) fetchStream() (*backend2Stream, error) {
 	// TODO
 	return nil, nil
 }
+func (n *http2Node) _dialUDS() (*backend2Conn, error) {
+	// TODO
+	return nil, nil
+}
+func (n *http2Node) _dialTLS() (*backend2Conn, error) {
+	// TODO
+	return nil, nil
+}
+func (n *http2Node) _dialTCP() (*backend2Conn, error) {
+	// TODO
+	return nil, nil
+}
 func (n *http2Node) storeStream(backStream *backend2Stream) {
 	// Note: A backend2Conn can be used concurrently, limited by maxConcurrentStreams.
 	// TODO
 }
 
-func (n *http2Node) _dialUDS() (*backend2Conn, error) {
-	return nil, nil
-}
-func (n *http2Node) _dialTLS() (*backend2Conn, error) {
-	return nil, nil
-}
-func (n *http2Node) _dialTCP() (*backend2Conn, error) {
-	return nil, nil
-}
-
 func (n *http2Node) pullConn() *backend2Conn {
+	// TODO
 	return nil
 }
 func (n *http2Node) pushConn(conn *backend2Conn) {
+	// TODO
 }
 func (n *http2Node) closeFree() int {
+	// TODO
 	return 0
 }
 

@@ -104,23 +104,27 @@ func (n *http3Node) fetchStream() (*backend3Stream, error) {
 	// TODO
 	return nil, nil
 }
+func (n *http3Node) _dialUDS() (*backend3Conn, error) {
+	// TODO
+	return nil, nil
+}
+func (n *http3Node) _dialTLS() (*backend3Conn, error) {
+	// TODO
+	return nil, nil
+}
 func (n *http3Node) storeStream(backStream *backend3Stream) {
 	// TODO
 }
 
-func (n *http3Node) _dialUDS() (*backend3Conn, error) {
-	return nil, nil
-}
-func (n *http3Node) _dialTLS() (*backend3Conn, error) {
-	return nil, nil
-}
-
 func (n *http3Node) pullConn() *backend3Conn {
+	// TODO
 	return nil
 }
 func (n *http3Node) pushConn(conn *backend3Conn) {
+	// TODO
 }
 func (n *http3Node) closeFree() int {
+	// TODO
 	return 0
 }
 

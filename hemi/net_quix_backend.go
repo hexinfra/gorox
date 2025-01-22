@@ -53,17 +53,9 @@ func (b *QUIXBackend) CreateNode(compName string) Node {
 	return node
 }
 
-func (b *QUIXBackend) Dial() (*QConn, error) {
+func (b *QUIXBackend) DialStream() (*QStream, error) {
 	node := b.nodes[b.nodeIndexGet()]
-	return node.dial()
-}
-
-func (b *QUIXBackend) FetchStream() (*QStream, error) {
-	// TODO
-	return nil, nil
-}
-func (b *QUIXBackend) StoreStream(qStream *QStream) {
-	// TODO
+	return node.dialStream()
 }
 
 // quixNode is a node in QUIXBackend.
@@ -99,19 +91,18 @@ func (n *quixNode) Maintain() { // runner
 	n.backend.DecSub() // node
 }
 
-func (n *quixNode) dial() (*QConn, error) {
+func (n *quixNode) dialStream() (*QStream, error) {
+	// Note: A QConn can be used concurrently, limited by maxConcurrentStreams.
+	// TODO
+	return nil, nil
+}
+func (n *quixNode) _dialUDS() (*QConn, error) {
 	// TODO. note: use n.IncSubConns()?
 	return nil, nil
 }
-
-func (n *quixNode) fetchStream() (*QStream, error) {
-	// Note: A QConn can be used concurrently, limited by maxConcurrentStreams.
-	// TODO
+func (n *quixNode) _dialTLS() (*QConn, error) {
+	// TODO. note: use n.IncSubConns()?
 	return nil, nil
-}
-func (n *quixNode) storeStream(qStream *QStream) {
-	// Note: A QConn can be used concurrently, limited by maxConcurrentStreams.
-	// TODO
 }
 
 // QConn is a backend-side quix connection to quixNode.
@@ -152,12 +143,10 @@ func (c *QConn) onPut() {
 }
 
 func (c *QConn) ranOut() bool { return c.cumulativeStreams.Add(1) > c.maxCumulativeStreams }
-func (c *QConn) FetchStream() (*QStream, error) {
-	// TODO
+func (c *QConn) DialStream() (*QStream, error) {
+	// Note: A QConn can be used concurrently, limited by maxConcurrentStreams.
+	// TODO: qStream.onUse()
 	return nil, nil
-}
-func (c *QConn) StoreStream(qStream *QStream) {
-	// TODO
 }
 
 func (c *QConn) Close() error {

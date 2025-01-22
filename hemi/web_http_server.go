@@ -2541,6 +2541,7 @@ type ServerResponse interface { // for *server[1-3]Response
 	SendForbidden(content []byte) error                              // 403
 	SendNotFound(content []byte) error                               // 404
 	SendMethodNotAllowed(allow string, content []byte) error         // 405
+	SendNotAcceptable(content []byte) error                          // 406
 	SendRangeNotSatisfiable(contentSize int64, content []byte) error // 416
 	SendInternalServerError(content []byte) error                    // 500
 	SendNotImplemented(content []byte) error                         // 501
@@ -2688,6 +2689,9 @@ func (r *serverResponse_) SendNotFound(content []byte) error { // 404
 func (r *serverResponse_) SendMethodNotAllowed(allow string, content []byte) error { // 405
 	r.AddHeaderBytes(bytesAllow, ConstBytes(allow))
 	return r.sendError(StatusMethodNotAllowed, content)
+}
+func (r *serverResponse_) SendNotAcceptable(content []byte) error { // 406
+	return r.sendError(StatusNotAcceptable, content)
 }
 func (r *serverResponse_) SendRangeNotSatisfiable(contentSize int64, content []byte) error { // 416
 	// add a header like: content-range: bytes */1234

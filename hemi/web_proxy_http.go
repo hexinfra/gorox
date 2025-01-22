@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// HTTP reverse proxy implementation. See RFC 9110 and RFC 9111.
+// HTTP reverse proxy (a.k.a. gateway) implementation. See RFC 9110 and RFC 9111.
 
 package hemi
 
@@ -266,6 +266,7 @@ type Hcache interface {
 	Component
 	// Methods
 	Maintain() // runner
+	// TODO: design good apis
 	Set(key []byte, hobject *Hobject)
 	Get(key []byte) (hobject *Hobject)
 	Del(key []byte) bool
@@ -301,66 +302,4 @@ type Hobject struct {
 
 func (o *Hobject) todo() {
 	// TODO
-}
-
-func init() {
-	RegisterSocklet("sockProxy", func(compName string, stage *Stage, webapp *Webapp) Socklet {
-		s := new(sockProxy)
-		s.onCreate(compName, stage, webapp)
-		return s
-	})
-}
-
-// sockProxy socklet passes webSockets to http backends.
-type sockProxy struct {
-	// Parent
-	Socklet_
-	// Assocs
-	backend HTTPBackend // the *HTTP[1-3]Backend to pass to
-	// States
-	WebSocketProxyConfig // embeded
-}
-
-func (s *sockProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
-	s.Socklet_.OnCreate(compName, stage, webapp)
-}
-func (s *sockProxy) OnShutdown() {
-	s.webapp.DecSub() // socklet
-}
-
-func (s *sockProxy) OnConfigure() {
-	// .toBackend
-	if v, ok := s.Find("toBackend"); ok {
-		if compName, ok := v.String(); ok && compName != "" {
-			if backend := s.stage.Backend(compName); backend == nil {
-				UseExitf("unknown backend: '%s'\n", compName)
-			} else {
-				s.backend = backend.(HTTPBackend)
-			}
-		} else {
-			UseExitln("invalid toBackend")
-		}
-	} else {
-		UseExitln("toBackend is required for webSocket proxy")
-	}
-}
-func (s *sockProxy) OnPrepare() {
-	// Currently nothing.
-}
-
-func (s *sockProxy) IsProxy() bool { return true }
-
-func (s *sockProxy) Serve(req ServerRequest, sock ServerSocket) {
-	WebSocketReverseProxy(req, sock, s.backend, &s.WebSocketProxyConfig)
-}
-
-// WebSocketProxyConfig
-type WebSocketProxyConfig struct {
-	// TODO
-}
-
-// WebSocketReverseProxy
-func WebSocketReverseProxy(servReq ServerRequest, servSock ServerSocket, backend HTTPBackend, proxyConfig *WebSocketProxyConfig) {
-	// TODO
-	servSock.Close()
 }

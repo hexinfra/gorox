@@ -225,7 +225,7 @@ func (s *server1Stream) execute() {
 	resp.webapp = webapp
 
 	if !req.upgradeSocket { // exchan mode
-		if req.formKind != httpFormNotForm { // content is an html form
+		if req.contentIsForm() {
 			if req.formKind == httpFormMultipart { // we allow a larger content size for uploading through multipart/form-data (because large files are written to disk).
 				req.maxContentSize = webapp.maxMultiformSize
 			} else { // application/x-www-form-urlencoded is limited in a smaller size because it will be loaded into memory

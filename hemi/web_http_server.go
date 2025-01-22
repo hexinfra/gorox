@@ -369,6 +369,8 @@ type ServerRequest interface { // for *server[1-3]Request
 	getPathInfo() os.FileInfo
 	unsafeAbsPath() []byte
 	makeAbsPath()
+	contentIsForm() bool
+	contentIsEncoded() bool
 	proxyDelHopHeaders()
 	proxyDelHopTrailers()
 	proxyWalkHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
@@ -863,12 +865,6 @@ func (r *serverRequest_) examineHead() bool {
 			r.headResult, r.failReason = StatusBadRequest, "content is not allowed in CONNECT and TRACE method"
 			return false
 		}
-		if r.numContentCodings > 0 { // request has content-encoding
-			if r.numContentCodings > 1 || r.contentCodings[0] != httpCodingGzip {
-				r.headResult, r.failReason = StatusUnsupportedMediaType, "currently only gzip content coding is supported in request"
-				return false
-			}
-		}
 		if r.iContentType == 0 { // no content-type
 			if r.IsOPTIONS() {
 				// RFC 9110 (section 9.3.7):
@@ -877,7 +873,7 @@ func (r *serverRequest_) examineHead() bool {
 				r.headResult, r.failReason = StatusBadRequest, "OPTIONS with content but without a content-type"
 				return false
 			}
-		} else { // content-type exists
+		} else { // has content-type
 			header := &r.primes[r.iContentType]
 			contentType := header.dataAt(r.input)
 			bytesToLower(contentType)
@@ -902,10 +898,6 @@ func (r *serverRequest_) examineHead() bool {
 					r.headResult, r.failReason = StatusBadRequest, "bad boundary"
 					return false
 				}
-			}
-			if r.formKind != httpFormNotForm && r.numContentCodings > 0 {
-				r.headResult, r.failReason = StatusUnsupportedMediaType, "a form with content coding is not supported yet"
-				return false
 			}
 		}
 	}
@@ -1783,8 +1775,9 @@ func (r *serverRequest_) UnsafeContent() []byte {
 	return r.unsafeContent()
 }
 
+func (r *serverRequest_) contentIsForm() bool { return r.formKind != httpFormNotForm }
 func (r *serverRequest_) parseHTMLForm() { // called on need to populate r.forms and r.upfiles
-	if r.formKind == httpFormNotForm || r.formReceived {
+	if !r.contentIsForm() || r.formReceived {
 		return
 	}
 	r.formReceived = true

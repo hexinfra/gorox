@@ -481,13 +481,13 @@ func putPairs(pairs []pair) {
 	poolPairs.Put(pairs)
 }
 
-// If "accept-type" field is defined as: `allowQuote=true allowEmpty=false allowParam=true`, then a non-comma "accept-type" field may looks like this:
+// If "foobar-type" field is defined as: `allowQuote=true allowEmpty=false allowParam=true`, then a non-comma "foobar-type" field may looks like this:
 //
 //                                 [         params         )
 //                     [               value                )
 //        [   name   )  [  data   )  [    param1    )[param2)
 //       +--------------------------------------------------+
-//       |accept-type: "text/plain"; charset="utf-8";lang=en|
+//       |foobar-type: "text/plain"; charset="utf-8";lang=en|
 //       +--------------------------------------------------+
 //        ^          ^ ^^         ^                         ^
 //        |          | ||         |                         |
@@ -499,10 +499,10 @@ func putPairs(pairs []pair) {
 //
 // For dataFrom, if data is quoted, then flagQuoted is set, so flags&flagQuoted is 1, which skips '"' exactly.
 //
-// A has-comma "accept-types" field may looks like this (needs further parsing into sub fields):
+// A has-comma "foobar-types" field may looks like this (needs further parsing into sub fields):
 //
 // +-----------------------------------------------------------------------------------------------------------------+
-// |accept-types: "text/plain"; ;charset="utf-8";langs="en,zh" ,,; ;charset="" ,,application/octet-stream ;,image/png|
+// |foobar-types: "text/plain"; ;charset="utf-8";langs="en,zh" ,,; ;charset="" ,,application/octet-stream ;,image/png|
 // +-----------------------------------------------------------------------------------------------------------------+
 
 const ( // pair kinds

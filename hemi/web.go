@@ -689,6 +689,10 @@ func (r *Rule) executeExchan(req ServerRequest, resp ServerResponse) (handled bo
 				resp.SendBadRequest(nil)
 				return true
 			}
+			if req.contentIsForm() && req.contentIsEncoded() {
+				resp.SendBadRequest(nil) // TODO: a form with content coding is not supported yet
+				return true
+			}
 			// TODO: other general checks against origin server
 		}
 	}

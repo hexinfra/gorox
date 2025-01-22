@@ -919,8 +919,9 @@ func (r *_httpIn_) determineContentMode() bool {
 }
 func (r *_httpIn_) IsVague() bool { return r.contentSize == -2 }
 
-func (r *_httpIn_) ContentSize() int64  { return r.contentSize }
-func (r *_httpIn_) ContentType() string { return string(r.UnsafeContentType()) }
+func (r *_httpIn_) contentIsEncoded() bool { return r.numContentCodings != 0 }
+func (r *_httpIn_) ContentSize() int64     { return r.contentSize }
+func (r *_httpIn_) ContentType() string    { return string(r.UnsafeContentType()) }
 func (r *_httpIn_) UnsafeContentLength() []byte {
 	if r.iContentLength == 0 {
 		return nil

@@ -7,10 +7,6 @@
 
 package hemi
 
-import (
-	"strings"
-)
-
 func init() {
 	RegisterSocklet("sockProxy", func(compName string, stage *Stage, webapp *Webapp) Socklet {
 		s := new(sockProxy)

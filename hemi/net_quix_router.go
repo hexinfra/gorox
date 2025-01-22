@@ -115,10 +115,10 @@ func (r *QUIXRouter) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		r.AddGate(gate)
-		r.IncSub() // gate
+		r.IncSubGates()
 		go gate.Serve()
 	}
-	r.WaitSubs() // gates
+	r.WaitSubGates()
 
 	r.IncSubs(len(r.dealets) + len(r.cases))
 	for _, kase := range r.cases {
@@ -217,7 +217,7 @@ func (g *quixGate) serveTLS() {
 	for !g.IsShut() {
 		time.Sleep(time.Second)
 	}
-	g.server.DecSub() // gate
+	g.server.DecSubGates()
 }
 
 func (g *quixGate) justClose(quicConn *tcp2.Conn) {

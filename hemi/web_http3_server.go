@@ -49,10 +49,10 @@ func (s *http3Server) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		s.AddGate(gate)
-		s.IncSub() // gate
+		s.IncSubGates()
 		go gate.Serve()
 	}
-	s.WaitSubs() // gates
+	s.WaitSubGates()
 	if DebugLevel() >= 2 {
 		Printf("http3Server=%s done\n", s.CompName())
 	}
@@ -120,7 +120,7 @@ func (g *http3Gate) serveTLS() {
 	if DebugLevel() >= 2 {
 		Printf("http3Gate=%d done\n", g.id)
 	}
-	g.server.DecSub() // gate
+	g.server.DecSubGates()
 }
 
 func (g *http3Gate) justClose(quicConn *tcp2.Conn) {

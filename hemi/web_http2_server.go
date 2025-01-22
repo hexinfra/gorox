@@ -95,10 +95,10 @@ func (s *httpxServer) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		s.AddGate(gate)
-		s.IncSub() // gate
+		s.IncSubGates()
 		go gate.Serve()
 	}
-	s.WaitSubs() // gates
+	s.WaitSubGates()
 	if DebugLevel() >= 2 {
 		Printf("httpxServer=%s done\n", s.CompName())
 	}
@@ -202,7 +202,7 @@ func (g *httpxGate) serveUDS() {
 	if DebugLevel() >= 2 {
 		Printf("httpxGate=%d TCP done\n", g.id)
 	}
-	g.server.DecSub() // gate
+	g.server.DecSubGates()
 }
 func (g *httpxGate) serveTLS() {
 	listener := g.listener.(*net.TCPListener)
@@ -241,7 +241,7 @@ func (g *httpxGate) serveTLS() {
 	if DebugLevel() >= 2 {
 		Printf("httpxGate=%d TLS done\n", g.id)
 	}
-	g.server.DecSub() // gate
+	g.server.DecSubGates()
 }
 func (g *httpxGate) serveTCP() {
 	listener := g.listener.(*net.TCPListener)
@@ -280,7 +280,7 @@ func (g *httpxGate) serveTCP() {
 	if DebugLevel() >= 2 {
 		Printf("httpxGate=%d TCP done\n", g.id)
 	}
-	g.server.DecSub() // gate
+	g.server.DecSubGates()
 }
 
 func (g *httpxGate) justClose(netConn net.Conn) {

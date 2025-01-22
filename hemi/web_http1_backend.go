@@ -102,7 +102,7 @@ func (n *http1Node) Maintain() { // runner
 	if size := n.closeFree(); size > 0 {
 		n.DecSubs(size) // conns
 	}
-	n.WaitSubs() // conns. TODO: max timeout?
+	n.WaitSubConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("http1Node=%s done\n", n.compName)
 	}
@@ -110,46 +110,46 @@ func (n *http1Node) Maintain() { // runner
 }
 
 func (n *http1Node) fetchStream() (*backend1Stream, error) {
-	conn := n.pullConn()
-	down := n.isDown()
-	if conn != nil {
-		if conn.isAlive() && !conn.ranOut() && !down {
-			return conn.fetchStream()
+	backConn := n.pullConn()
+	nodeDown := n.isDown()
+	if backConn != nil {
+		if backConn.isAlive() && !backConn.ranOut() && !nodeDown {
+			return backConn.fetchStream()
 		}
-		conn.Close()
-		n.DecSub() // conn
+		backConn.Close()
+		n.DecSubConns()
 	}
-	if down {
+	if nodeDown {
 		return nil, errNodeDown
 	}
 	var err error
 	if n.UDSMode() {
-		conn, err = n._dialUDS()
+		backConn, err = n._dialUDS()
 	} else if n.TLSMode() {
-		conn, err = n._dialTLS()
+		backConn, err = n._dialTLS()
 	} else {
-		conn, err = n._dialTCP()
+		backConn, err = n._dialTCP()
 	}
 	if err != nil {
 		return nil, errNodeDown
 	}
-	n.IncSub() // conn
-	return conn.fetchStream()
+	n.IncSubConns()
+	return backConn.fetchStream()
 }
 func (n *http1Node) storeStream(stream *backend1Stream) {
-	conn := stream.conn
-	conn.storeStream(stream)
+	backConn := stream.conn
+	backConn.storeStream(stream)
 
-	if conn.isBroken() || n.isDown() || !conn.isAlive() || !conn.persistent {
-		conn.Close()
-		n.DecSub() // conn
+	if backConn.isBroken() || n.isDown() || !backConn.isAlive() || !backConn.persistent {
+		backConn.Close()
+		n.DecSubConns()
 		if DebugLevel() >= 2 {
-			Printf("Backend1Conn[node=%s id=%d] closed\n", conn.node.CompName(), conn.id)
+			Printf("Backend1Conn[node=%s id=%d] closed\n", backConn.node.CompName(), backConn.id)
 		}
 	} else {
-		n.pushConn(conn)
+		n.pushConn(backConn)
 		if DebugLevel() >= 2 {
-			Printf("Backend1Conn[node=%s id=%d] pushed\n", conn.node.CompName(), conn.id)
+			Printf("Backend1Conn[node=%s id=%d] pushed\n", backConn.node.CompName(), backConn.id)
 		}
 	}
 }

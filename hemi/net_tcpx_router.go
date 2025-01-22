@@ -121,10 +121,10 @@ func (r *TCPXRouter) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		r.AddGate(gate)
-		r.IncSub() // gate
+		r.IncSubGates()
 		go gate.Serve()
 	}
-	r.WaitSubs() // gates
+	r.WaitSubGates()
 
 	r.IncSubs(len(r.dealets) + len(r.cases))
 	for _, kase := range r.cases {
@@ -268,7 +268,7 @@ func (g *tcpxGate) serveUDS() {
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TCP done\n", g.id)
 	}
-	g.server.DecSub() // gate
+	g.server.DecSubGates()
 }
 func (g *tcpxGate) serveTLS() {
 	listener := g.listener.(*net.TCPListener)
@@ -302,7 +302,7 @@ func (g *tcpxGate) serveTLS() {
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TLS done\n", g.id)
 	}
-	g.server.DecSub() // gate
+	g.server.DecSubGates()
 }
 func (g *tcpxGate) serveTCP() {
 	listener := g.listener.(*net.TCPListener)
@@ -338,7 +338,7 @@ func (g *tcpxGate) serveTCP() {
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TCP done\n", g.id)
 	}
-	g.server.DecSub() // gate
+	g.server.DecSubGates()
 }
 
 func (g *tcpxGate) justClose(netConn net.Conn) {

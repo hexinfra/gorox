@@ -55,10 +55,10 @@ func (s *socksServer) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		s.AddGate(gate)
-		s.IncSub() // gate
+		s.IncSubGates()
 		go gate.Serve()
 	}
-	s.WaitSubs() // gates
+	s.WaitSubGates()
 	if DebugLevel() >= 2 {
 		Printf("socksServer=%s done\n", s.CompName())
 	}
@@ -124,7 +124,7 @@ func (g *socksGate) Serve() { // runner
 	if DebugLevel() >= 2 {
 		Printf("socksGate=%d done\n", g.ID())
 	}
-	g.Server().DecSub() // gate
+	g.Server().DecSubGates()
 }
 
 func (g *socksGate) justClose(tcpConn *net.TCPConn) {

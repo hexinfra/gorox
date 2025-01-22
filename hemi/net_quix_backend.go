@@ -100,7 +100,7 @@ func (n *quixNode) Maintain() { // runner
 }
 
 func (n *quixNode) dial() (*QConn, error) {
-	// TODO. note: use n.IncSub()?
+	// TODO. note: use n.IncSubConns()?
 	return nil, nil
 }
 

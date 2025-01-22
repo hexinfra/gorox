@@ -112,6 +112,10 @@ func (s *Server_[G]) ColonportBytes() []byte {
 	}
 }
 
+func (s *Server_[G]) IncSubGates()  { s.IncSub() }
+func (s *Server_[G]) DecSubGates()  { s.DecSub() }
+func (s *Server_[G]) WaitSubGates() { s.WaitSubs() }
+
 func (s *Server_[G]) holder() _holder_ { return s._holder_ } // copy configs
 
 // Gate is the interface for all gates. Gates are not components.
@@ -149,5 +153,5 @@ func (g *Gate_[S]) MarkShut()    { g.shut.Store(true) }
 func (g *Gate_[S]) IsShut() bool { return g.shut.Load() }
 
 func (g *Gate_[S]) IncSubConns()  { g.subConns.Add(1) }
-func (g *Gate_[S]) WaitSubConns() { g.subConns.Wait() }
 func (g *Gate_[S]) DecSubConns()  { g.subConns.Done() }
+func (g *Gate_[S]) WaitSubConns() { g.subConns.Wait() }

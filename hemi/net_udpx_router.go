@@ -104,10 +104,10 @@ func (r *UDPXRouter) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		r.AddGate(gate)
-		r.IncSub() // gate
+		r.IncSubGates()
 		go gate.Serve()
 	}
-	r.WaitSubs() // gates
+	r.WaitSubGates()
 
 	r.IncSubs(len(r.dealets) + len(r.cases))
 	for _, kase := range r.cases {
@@ -195,7 +195,7 @@ func (g *udpxGate) serveUDP() {
 	for !g.shut.Load() {
 		time.Sleep(time.Second)
 	}
-	g.server.DecSub() // gate
+	g.server.DecSubGates()
 }
 
 func (g *udpxGate) justClose(pktConn net.PacketConn) {

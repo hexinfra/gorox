@@ -86,7 +86,7 @@ func (n *tcpxNode) Maintain() { // runner
 		// TODO: health check, markDown, markUp()
 	})
 	n.markDown()
-	n.WaitSubs() // conns. TODO: max timeout?
+	n.WaitSubConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("tcpxNode=%s done\n", n.compName)
 	}
@@ -111,7 +111,7 @@ func (n *tcpxNode) dial() (*TConn, error) {
 	if err != nil {
 		return nil, errNodeDown
 	}
-	n.IncSub() // conn
+	n.IncSubConns()
 	return conn, err
 }
 func (n *tcpxNode) _dialUDS() (*TConn, error) {
@@ -234,7 +234,7 @@ func (c *TConn) _checkClose() {
 }
 
 func (c *TConn) Close() error {
-	c.node.DecSub() // conn
+	c.node.DecSubConns()
 	netConn := c.netConn
 	putTConn(c)
 	return netConn.Close()

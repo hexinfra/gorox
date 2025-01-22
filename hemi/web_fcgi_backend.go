@@ -135,7 +135,7 @@ func (n *fcgiNode) Maintain() { // runner
 	if size := n.closeFree(); size > 0 {
 		n.DecSubs(size) // conns
 	}
-	n.WaitSubs() // conns. TODO: max timeout?
+	n.WaitSubConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("fcgiNode=%s done\n", n.compName)
 	}
@@ -143,33 +143,33 @@ func (n *fcgiNode) Maintain() { // runner
 }
 
 func (n *fcgiNode) fetchExchan() (*fcgiExchan, error) {
-	conn := n.pullConn()
-	down := n.isDown()
-	if conn != nil {
-		if conn.isAlive() && !conn.ranOut() && !down {
-			return conn.fetchExchan()
+	fcgiConn := n.pullConn()
+	nodeDown := n.isDown()
+	if fcgiConn != nil {
+		if fcgiConn.isAlive() && !fcgiConn.ranOut() && !nodeDown {
+			return fcgiConn.fetchExchan()
 		}
-		conn.Close()
-		n.DecSub() // conn
+		fcgiConn.Close()
+		n.DecSubConns()
 	}
-	if down {
+	if nodeDown {
 		return nil, errNodeDown
 	}
-	conn, err := n.dial()
+	fcgiConn, err := n.dial()
 	if err != nil {
 		return nil, errNodeDown
 	}
-	return conn.fetchExchan()
+	return fcgiConn.fetchExchan()
 }
 func (n *fcgiNode) storeExchan(exchan *fcgiExchan) {
-	conn := exchan.conn
-	conn.storeExchan(exchan)
+	fcgiConn := exchan.conn
+	fcgiConn.storeExchan(exchan)
 
-	if conn.isBroken() || n.isDown() || !conn.isAlive() || !conn.persistent {
-		conn.Close()
-		n.DecSub() // conn
+	if fcgiConn.isBroken() || n.isDown() || !fcgiConn.isAlive() || !fcgiConn.persistent {
+		fcgiConn.Close()
+		n.DecSubConns()
 	} else {
-		n.pushConn(conn)
+		n.pushConn(fcgiConn)
 	}
 }
 
@@ -189,7 +189,7 @@ func (n *fcgiNode) dial() (*fcgiConn, error) {
 	if err != nil {
 		return nil, errNodeDown
 	}
-	n.IncSub() // conn
+	n.IncSubConns()
 	return conn, err
 }
 func (n *fcgiNode) _dialUDS() (*fcgiConn, error) {

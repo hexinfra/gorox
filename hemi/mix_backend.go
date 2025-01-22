@@ -208,3 +208,7 @@ func (n *Node_[B]) nextConnID() int64 { return n.connID.Add(1) }
 func (n *Node_[B]) markDown()    { n.down.Store(true) }
 func (n *Node_[B]) markUp()      { n.down.Store(false) }
 func (n *Node_[B]) isDown() bool { return n.down.Load() }
+
+func (n *Node_[B]) IncSubConns()  { n.IncSub() }
+func (n *Node_[B]) DecSubConns()  { n.DecSub() }
+func (n *Node_[B]) WaitSubConns() { n.WaitSubs() }

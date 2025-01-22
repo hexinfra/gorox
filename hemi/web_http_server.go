@@ -2537,17 +2537,17 @@ type ServerResponse interface { // for *server[1-3]Response
 	SendBytes(content []byte) error
 	SendFile(contentPath string) error
 	SendJSON(content any) error
-	SendBadRequest(content []byte) error                             // 400
-	SendForbidden(content []byte) error                              // 403
-	SendNotFound(content []byte) error                               // 404
-	SendMethodNotAllowed(allow string, content []byte) error         // 405
-	SendNotAcceptable(content []byte) error                          // 406
-	SendUnsupportedMediaType(content []byte) error                   // 415
-	SendRangeNotSatisfiable(contentSize int64, content []byte) error // 416
-	SendInternalServerError(content []byte) error                    // 500
-	SendNotImplemented(content []byte) error                         // 501
-	SendBadGateway(content []byte) error                             // 502
-	SendGatewayTimeout(content []byte) error                         // 504
+	SendBadRequest(content []byte) error                                                 // 400
+	SendForbidden(content []byte) error                                                  // 403
+	SendNotFound(content []byte) error                                                   // 404
+	SendMethodNotAllowed(allow string, content []byte) error                             // 405
+	SendNotAcceptable(content []byte) error                                              // 406
+	SendUnsupportedMediaType(acceptEncoding string, accept string, content []byte) error // 415
+	SendRangeNotSatisfiable(contentSize int64, content []byte) error                     // 416
+	SendInternalServerError(content []byte) error                                        // 500
+	SendNotImplemented(content []byte) error                                             // 501
+	SendBadGateway(content []byte) error                                                 // 502
+	SendGatewayTimeout(content []byte) error                                             // 504
 
 	Echo(chunk string) error
 	EchoBytes(chunk []byte) error
@@ -2694,7 +2694,13 @@ func (r *serverResponse_) SendMethodNotAllowed(allow string, content []byte) err
 func (r *serverResponse_) SendNotAcceptable(content []byte) error { // 406
 	return r.sendError(StatusNotAcceptable, content)
 }
-func (r *serverResponse_) SendUnsupportedMediaType(content []byte) error { // 415
+func (r *serverResponse_) SendUnsupportedMediaType(acceptEncoding string, accept string, content []byte) error { // 415
+	if acceptEncoding != "" {
+		r.AddHeaderBytes(bytesAcceptEncoding, ConstBytes(acceptEncoding))
+	}
+	if accept != "" {
+		r.AddHeaderBytes(bytesAccept, ConstBytes(accept))
+	}
 	return r.sendError(StatusUnsupportedMediaType, content)
 }
 func (r *serverResponse_) SendRangeNotSatisfiable(contentSize int64, content []byte) error { // 416

@@ -7,7 +7,7 @@
 
 // HTTP trailers          : not supported
 // Persistent connection  : supported
-// Vague response content : supported through its framing protocol
+// Vague response content : supported through its framing protocol which is like HTTP/2 framing protocol
 // Vague request content  : supported, but currently not implemented due to the limitation of CGI/1.1 even though FCGI can do that through its framing protocol
 
 // FCGI is like HTTP/2. To avoid ambiguity, the term "content" in FCGI specification is called "payload" in our implementation.
@@ -123,12 +123,12 @@ func FCGIExchanReverseProxy(httpReq ServerRequest, httpResp ServerResponse, hcac
 		}
 	}
 
-	fcgiExchan, fcgiErr := backend.fetchExchan(httpReq)
+	fcgiExchan, fcgiErr := backend.FetchExchan(httpReq)
 	if fcgiErr != nil {
 		httpResp.SendBadGateway(nil)
 		return
 	}
-	defer backend.storeExchan(fcgiExchan)
+	defer backend.StoreExchan(fcgiExchan)
 
 	fcgiReq := &fcgiExchan.request
 	if !fcgiReq.proxyCopyHeaders(httpReq, proxyConfig) {

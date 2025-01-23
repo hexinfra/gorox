@@ -988,7 +988,7 @@ func (r *_http1Out_) _writeTextPiece(piece *Piece, inChunked bool) error {
 	}
 }
 func (r *_http1Out_) _writeFilePiece(piece *Piece, inChunked bool) error {
-	// file piece. currently we don't use sendfile(2).
+	// file piece. currently we don't use the sendfile(2) syscall, maybe in the future we'll find a way to use it for better performance.
 	buffer := Get16K() // 16K is a tradeoff between performance and memory consumption.
 	defer PutNK(buffer)
 	sizeRead := int64(0)

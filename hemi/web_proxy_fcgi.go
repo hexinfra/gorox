@@ -31,12 +31,10 @@ type fcgiProxy struct {
 	// Parent
 	Handlet_
 	// Assocs
-	backend *fcgiBackend // the backend to pass to
+	backend *FCGIBackend // the backend to pass to
 	hcache  Hcache       // the hcache which is used by this proxy
 	// States
-	WebExchanProxyConfig        // embeded
-	scriptFilename       []byte // for SCRIPT_FILENAME
-	indexFile            []byte // the file that will be used as index
+	FCGIExchanProxyConfig // embeded
 }
 
 func (h *fcgiProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
@@ -52,7 +50,7 @@ func (h *fcgiProxy) OnConfigure() {
 		if compName, ok := v.String(); ok && compName != "" {
 			if backend := h.stage.Backend(compName); backend == nil {
 				UseExitf("unknown backend: '%s'\n", compName)
-			} else if fcgiBackend, ok := backend.(*fcgiBackend); ok {
+			} else if fcgiBackend, ok := backend.(*FCGIBackend); ok {
 				h.backend = fcgiBackend
 			} else {
 				UseExitf("incorrect backend '%s' for fcgiProxy, must be fcgiBackend\n", compName)
@@ -83,10 +81,10 @@ func (h *fcgiProxy) OnConfigure() {
 	h.ConfigureBool("bufferServerContent", &h.BufferServerContent, true)
 
 	// .scriptFilename
-	h.ConfigureBytes("scriptFilename", &h.scriptFilename, nil, nil)
+	h.ConfigureBytes("scriptFilename", &h.ScriptFilename, nil, nil)
 
 	// .indexFile
-	h.ConfigureBytes("indexFile", &h.indexFile, func(value []byte) error {
+	h.ConfigureBytes("indexFile", &h.IndexFile, func(value []byte) error {
 		if len(value) > 0 {
 			return nil
 		}
@@ -99,12 +97,23 @@ func (h *fcgiProxy) OnPrepare() {
 func (h *fcgiProxy) IsProxy() bool { return true }
 func (h *fcgiProxy) IsCache() bool { return h.hcache != nil }
 
-func (h *fcgiProxy) Handle(httpReq ServerRequest, httpResp ServerResponse) (handled bool) {
-	handled = true
+func (h *fcgiProxy) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
+	FCGIExchanReverseProxy(req, resp, h.hcache, h.backend, &h.FCGIExchanProxyConfig)
+	return true
+}
 
+// FCGIExchanProxyConfig
+type FCGIExchanProxyConfig struct {
+	WebExchanProxyConfig        // embeded
+	ScriptFilename       []byte // for SCRIPT_FILENAME
+	IndexFile            []byte // the file that will be used as index
+}
+
+// FCGIExchanReverseProxy
+func FCGIExchanReverseProxy(httpReq ServerRequest, httpResp ServerResponse, hcache Hcache, backend *FCGIBackend, proxyConfig *FCGIExchanProxyConfig) {
 	var httpContent any // nil, []byte, tempFile
 	httpHasContent := httpReq.HasContent()
-	if httpHasContent && (h.BufferClientContent || httpReq.IsVague()) { // including size 0
+	if httpHasContent && (proxyConfig.BufferClientContent || httpReq.IsVague()) { // including size 0
 		httpContent = httpReq.proxyTakeContent()
 		if httpContent == nil { // take failed
 			// httpStream was marked as broken
@@ -114,20 +123,20 @@ func (h *fcgiProxy) Handle(httpReq ServerRequest, httpResp ServerResponse) (hand
 		}
 	}
 
-	fcgiExchan, fcgiErr := h.backend.fetchExchan(httpReq)
+	fcgiExchan, fcgiErr := backend.fetchExchan(httpReq)
 	if fcgiErr != nil {
 		httpResp.SendBadGateway(nil)
 		return
 	}
-	defer h.backend.storeExchan(fcgiExchan)
+	defer backend.storeExchan(fcgiExchan)
 
 	fcgiReq := &fcgiExchan.request
-	if !fcgiReq.proxyCopyHeaders(httpReq, h) {
+	if !fcgiReq.proxyCopyHeaders(httpReq, proxyConfig) {
 		fcgiExchan.markBroken()
 		httpResp.SendBadGateway(nil)
 		return
 	}
-	if httpHasContent && !h.BufferClientContent && !httpReq.IsVague() {
+	if httpHasContent && !proxyConfig.BufferClientContent && !httpReq.IsVague() {
 		fcgiErr = fcgiReq.proxyPassMessage(httpReq)
 	} else {
 		fcgiErr = fcgiReq.proxyPostMessage(httpContent)
@@ -170,7 +179,7 @@ func (h *fcgiProxy) Handle(httpReq ServerRequest, httpResp ServerResponse) (hand
 	if !httpReq.IsHEAD() {
 		fcgiHasContent = fcgiResp.HasContent()
 	}
-	if fcgiHasContent && h.BufferServerContent { // including size 0
+	if fcgiHasContent && proxyConfig.BufferServerContent { // including size 0
 		fcgiContent = fcgiResp.proxyTakeContent()
 		if fcgiContent == nil { // take failed
 			// fcgiExchan was marked as broken
@@ -179,11 +188,11 @@ func (h *fcgiProxy) Handle(httpReq ServerRequest, httpResp ServerResponse) (hand
 		}
 	}
 
-	if !httpResp.proxyCopyHeaders(fcgiResp, &h.WebExchanProxyConfig) {
+	if !httpResp.proxyCopyHeaders(fcgiResp, &proxyConfig.WebExchanProxyConfig) {
 		fcgiExchan.markBroken()
 		return
 	}
-	if fcgiHasContent && !h.BufferServerContent {
+	if fcgiHasContent && !proxyConfig.BufferServerContent {
 		if err := httpResp.proxyPassMessage(fcgiResp); err != nil {
 			fcgiExchan.markBroken()
 			return
@@ -191,6 +200,4 @@ func (h *fcgiProxy) Handle(httpReq ServerRequest, httpResp ServerResponse) (hand
 	} else if err := httpResp.proxyPostMessage(fcgiContent, false); err != nil { // false means no trailers
 		return
 	}
-
-	return
 }

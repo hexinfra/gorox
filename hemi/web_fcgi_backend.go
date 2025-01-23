@@ -21,52 +21,52 @@ import (
 
 func init() {
 	RegisterBackend("fcgiBackend", func(compName string, stage *Stage) Backend {
-		b := new(fcgiBackend)
+		b := new(FCGIBackend)
 		b.onCreate(compName, stage)
 		return b
 	})
 }
 
-// fcgiBackend is a FCGI backend.
-type fcgiBackend struct {
+// FCGIBackend is a FCGI backend.
+type FCGIBackend struct {
 	// Parent
 	Backend_[*fcgiNode]
 	// States
 }
 
-func (b *fcgiBackend) onCreate(compName string, stage *Stage) {
+func (b *FCGIBackend) onCreate(compName string, stage *Stage) {
 	b.Backend_.OnCreate(compName, stage)
 }
 
-func (b *fcgiBackend) OnConfigure() {
+func (b *FCGIBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
 
 	b.ConfigureNodes()
 }
-func (b *fcgiBackend) OnPrepare() {
+func (b *FCGIBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
 
 	b.PrepareNodes()
 }
 
-func (b *fcgiBackend) CreateNode(compName string) Node {
+func (b *FCGIBackend) CreateNode(compName string) Node {
 	node := new(fcgiNode)
 	node.onCreate(compName, b.stage, b)
 	b.AddNode(node)
 	return node
 }
 
-func (b *fcgiBackend) fetchExchan(req ServerRequest) (*fcgiExchan, error) {
+func (b *FCGIBackend) fetchExchan(req ServerRequest) (*fcgiExchan, error) {
 	return b.nodes[b.nodeIndexGet()].fetchExchan()
 }
-func (b *fcgiBackend) storeExchan(exchan *fcgiExchan) {
+func (b *FCGIBackend) storeExchan(exchan *fcgiExchan) {
 	exchan.conn.node.storeExchan(exchan)
 }
 
 // fcgiNode is a node in FCGI backend.
 type fcgiNode struct {
 	// Parent
-	Node_[*fcgiBackend]
+	Node_[*FCGIBackend]
 	// Mixins
 	_contentSaver_ // so fcgi responses can save their large contents in local file system.
 	// States
@@ -83,7 +83,7 @@ type fcgiNode struct {
 	}
 }
 
-func (n *fcgiNode) onCreate(compName string, stage *Stage, backend *fcgiBackend) {
+func (n *fcgiNode) onCreate(compName string, stage *Stage, backend *FCGIBackend) {
 	n.Node_.OnCreate(compName, stage, backend)
 }
 
@@ -1207,7 +1207,7 @@ func (r *fcgiRequest) onEnd() {
 	r._fcgiRequest0 = _fcgiRequest0{}
 }
 
-func (r *fcgiRequest) proxyCopyHeaders(httpReq ServerRequest, proxy *fcgiProxy) bool {
+func (r *fcgiRequest) proxyCopyHeaders(httpReq ServerRequest, proxyConfig *FCGIExchanProxyConfig) bool {
 	// Add meta params
 	if !r._addMetaParam(fcgiBytesGatewayInterface, fcgiBytesCGI1_1) { // GATEWAY_INTERFACE
 		return false
@@ -1236,10 +1236,10 @@ func (r *fcgiRequest) proxyCopyHeaders(httpReq ServerRequest, proxy *fcgiProxy) 
 	if httpReq.IsHTTPS() && !r._addMetaParam(fcgiBytesHTTPS, fcgiBytesON) { // HTTPS
 		return false
 	}
-	scriptFilename := proxy.scriptFilename
+	scriptFilename := proxyConfig.ScriptFilename
 	if len(scriptFilename) == 0 {
 		absPath := httpReq.unsafeAbsPath()
-		indexFile := proxy.indexFile
+		indexFile := proxyConfig.IndexFile
 		if absPath[len(absPath)-1] == '/' && len(indexFile) > 0 {
 			scriptFilename = httpReq.UnsafeMake(len(absPath) + len(indexFile))
 			copy(scriptFilename, absPath)

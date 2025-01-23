@@ -52,10 +52,10 @@ func (b *HTTP2Backend) CreateNode(compName string) Node {
 	return node
 }
 
-func (b *HTTP2Backend) FetchStream(req ServerRequest) (backendStream, error) {
+func (b *HTTP2Backend) FetchStream(req ServerRequest) (BackendStream, error) {
 	return b.nodes[b.nodeIndexGet()].fetchStream()
 }
-func (b *HTTP2Backend) StoreStream(backStream backendStream) {
+func (b *HTTP2Backend) StoreStream(backStream BackendStream) {
 	backStream2 := backStream.(*backend2Stream)
 	backStream2.conn.node.storeStream(backStream2)
 }
@@ -326,9 +326,9 @@ func (s *backend2Stream) onEnd() { // for zeros
 
 func (s *backend2Stream) Holder() httpHolder { return s.conn.node }
 
-func (s *backend2Stream) Response() backendResponse { return &s.response }
-func (s *backend2Stream) Request() backendRequest   { return &s.request }
-func (s *backend2Stream) Socket() backendSocket     { return nil } // TODO. See RFC 8441: https://datatracker.ietf.org/doc/html/rfc8441
+func (s *backend2Stream) Response() BackendResponse { return &s.response }
+func (s *backend2Stream) Request() BackendRequest   { return &s.request }
+func (s *backend2Stream) Socket() BackendSocket     { return nil } // TODO. See RFC 8441: https://datatracker.ietf.org/doc/html/rfc8441
 
 // backend2Response is the backend-side HTTP/2 response.
 type backend2Response struct { // incoming. needs parsing

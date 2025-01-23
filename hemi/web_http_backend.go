@@ -18,8 +18,8 @@ type HTTPBackend interface { // for *HTTP[1-3]Backend
 	// Imports
 	Backend
 	// Methods
-	FetchStream(req ServerRequest) (backendStream, error)
-	StoreStream(backStream backendStream)
+	FetchStream(req ServerRequest) (BackendStream, error)
+	StoreStream(backStream BackendStream)
 }
 
 // httpBackend_ is the parent for http[1-3]Backend.
@@ -122,11 +122,11 @@ func (c *_backendConn_[N]) onPut() {
 
 func (c *_backendConn_[N]) isAlive() bool { return time.Now().Before(c.expireTime) }
 
-// backendStream
-type backendStream interface { // for *backend[1-3]Stream
-	Response() backendResponse
-	Request() backendRequest
-	Socket() backendSocket
+// BackendStream
+type BackendStream interface { // for *backend[1-3]Stream
+	Response() BackendResponse
+	Request() BackendRequest
+	Socket() BackendSocket
 
 	isBroken() bool
 	markBroken()
@@ -145,8 +145,8 @@ func (s *_backendStream_) onUse() {
 func (s *_backendStream_) onEnd() {
 }
 
-// backendResponse is the backend-side http response.
-type backendResponse interface { // for *backend[1-3]Response
+// BackendResponse is the backend-side http response.
+type BackendResponse interface { // for *backend[1-3]Response
 	KeepAlive() int8 // -1: no connection header, 0: connection close, 1: connection keep-alive
 	HeadResult() int16
 	BodyResult() int16
@@ -559,8 +559,8 @@ func (r *backendResponse_) applyTrailer(index uint8) bool {
 	return true
 }
 
-// backendRequest is the backend-side http request.
-type backendRequest interface { // for *backend[1-3]Request
+// BackendRequest is the backend-side http request.
+type BackendRequest interface { // for *backend[1-3]Request
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	proxySetAuthority(hostname []byte, colonport []byte) bool
 	proxyCopyCookies(servReq ServerRequest) bool // NOTE: HTTP 1.x/2/3 have different requirements on "cookie" header
@@ -577,7 +577,7 @@ type backendRequest_ struct { // outgoing. needs building
 	// Mixins
 	_httpOut_ // outgoing http request
 	// Assocs
-	response backendResponse // the corresponding response
+	response BackendResponse // the corresponding response
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -609,10 +609,10 @@ func (r *backendRequest_) onEnd() { // for zeros
 	r._httpOut_.onEnd()
 }
 
-func (r *backendRequest_) Response() backendResponse { return r.response }
+func (r *backendRequest_) Response() BackendResponse { return r.response }
 
 func (r *backendRequest_) SetMethodURI(method string, uri string, hasContent bool) bool {
-	return r.outMessage.(backendRequest).setMethodURI(ConstBytes(method), ConstBytes(uri), hasContent)
+	return r.outMessage.(BackendRequest).setMethodURI(ConstBytes(method), ConstBytes(uri), hasContent)
 }
 func (r *backendRequest_) setScheme(scheme []byte) bool { // used by http/2 and http/3 only. http/1.x doesn't use this!
 	// TODO: copy `:scheme $scheme` to r.fields
@@ -731,7 +731,7 @@ func (r *backendRequest_) proxyCopyHeaders(servReq ServerRequest, proxyConfig *W
 		// then the last proxy on the request chain MUST send a request-target of "*" when it forwards the request to the indicated origin server.
 		uri = bytesAsterisk
 	}
-	if !r.outMessage.(backendRequest).setMethodURI(servReq.UnsafeMethod(), uri, servReq.HasContent()) {
+	if !r.outMessage.(BackendRequest).setMethodURI(servReq.UnsafeMethod(), uri, servReq.HasContent()) {
 		return false
 	}
 	if servReq.IsAbsoluteForm() || len(proxyConfig.Hostname) != 0 || len(proxyConfig.Colonport) != 0 { // TODO: what about HTTP/2 and HTTP/3?
@@ -755,7 +755,7 @@ func (r *backendRequest_) proxyCopyHeaders(servReq ServerRequest, proxyConfig *W
 			} else {
 				colonport = proxyConfig.Colonport
 			}
-			if !r.outMessage.(backendRequest).proxySetAuthority(hostname, colonport) {
+			if !r.outMessage.(BackendRequest).proxySetAuthority(hostname, colonport) {
 				return false
 			}
 		}
@@ -775,7 +775,7 @@ func (r *backendRequest_) proxyCopyHeaders(servReq ServerRequest, proxyConfig *W
 	}
 
 	// copy selective forbidden headers (including cookie) from servReq
-	if servReq.HasCookies() && !r.outMessage.(backendRequest).proxyCopyCookies(servReq) {
+	if servReq.HasCookies() && !r.outMessage.(BackendRequest).proxyCopyCookies(servReq) {
 		return false
 	}
 	if !r.outMessage.addHeader(bytesVia, proxyConfig.InboundViaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
@@ -824,8 +824,8 @@ func (r *backendRequest_) proxyCopyTrailers(servReq ServerRequest, proxyConfig *
 	})
 }
 
-// backendSocket is the backend-side webSocket.
-type backendSocket interface { // for *backend[1-3]Socket
+// BackendSocket is the backend-side webSocket.
+type BackendSocket interface { // for *backend[1-3]Socket
 	Read(dst []byte) (int, error)
 	Write(src []byte) (int, error)
 	Close() error

@@ -359,7 +359,7 @@ func (r *server3Response) addTrailer(name []byte, value []byte) bool {
 }
 func (r *server3Response) trailer(name []byte) (value []byte, ok bool) { return r.out3.trailer(name) }
 
-func (r *server3Response) proxyPass1xx(backResp backendResponse) bool {
+func (r *server3Response) proxyPass1xx(backResp BackendResponse) bool {
 	backResp.proxyDelHopHeaders()
 	r.status = backResp.Status()
 	if !backResp.proxyWalkHeaders(func(header *pair, name []byte, value []byte) bool {

@@ -51,10 +51,10 @@ func (b *HTTP3Backend) CreateNode(compName string) Node {
 	return node
 }
 
-func (b *HTTP3Backend) FetchStream(req ServerRequest) (backendStream, error) {
+func (b *HTTP3Backend) FetchStream(req ServerRequest) (BackendStream, error) {
 	return b.nodes[b.nodeIndexGet()].fetchStream()
 }
-func (b *HTTP3Backend) StoreStream(backStream backendStream) {
+func (b *HTTP3Backend) StoreStream(backStream BackendStream) {
 	backStream3 := backStream.(*backend3Stream)
 	backStream3.conn.node.storeStream(backStream3)
 }
@@ -256,9 +256,9 @@ func (s *backend3Stream) onEnd() { // for zeros
 
 func (s *backend3Stream) Holder() httpHolder { return s.conn.node }
 
-func (s *backend3Stream) Response() backendResponse { return &s.response }
-func (s *backend3Stream) Request() backendRequest   { return &s.request }
-func (s *backend3Stream) Socket() backendSocket     { return nil } // TODO. See RFC 9220
+func (s *backend3Stream) Response() BackendResponse { return &s.response }
+func (s *backend3Stream) Request() BackendRequest   { return &s.request }
+func (s *backend3Stream) Socket() BackendSocket     { return nil } // TODO. See RFC 9220
 
 // backend3Response is the backend-side HTTP/3 response.
 type backend3Response struct { // incoming. needs parsing

@@ -239,7 +239,7 @@ func (c *scgiConn) Close() error {
 	return netConn.Close()
 }
 
-// scgiResponse must implements the backendResponse interface.
+// scgiResponse must implements the BackendResponse interface.
 type scgiResponse struct { // incoming. needs parsing
 	// Assocs
 	conn *scgiConn

@@ -830,7 +830,7 @@ func (r *server2Response) addTrailer(name []byte, value []byte) bool {
 }
 func (r *server2Response) trailer(name []byte) (value []byte, ok bool) { return r.out2.trailer(name) }
 
-func (r *server2Response) proxyPass1xx(backResp backendResponse) bool {
+func (r *server2Response) proxyPass1xx(backResp BackendResponse) bool {
 	backResp.proxyDelHopHeaders()
 	r.status = backResp.Status()
 	if !backResp.proxyWalkHeaders(func(header *pair, name []byte, value []byte) bool {

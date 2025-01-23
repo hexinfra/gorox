@@ -55,10 +55,10 @@ func (b *HTTP1Backend) CreateNode(compName string) Node {
 	return node
 }
 
-func (b *HTTP1Backend) FetchStream(req ServerRequest) (backendStream, error) {
+func (b *HTTP1Backend) FetchStream(req ServerRequest) (BackendStream, error) {
 	return b.nodes[b.nodeIndexGet()].fetchStream()
 }
-func (b *HTTP1Backend) StoreStream(backStream backendStream) {
+func (b *HTTP1Backend) StoreStream(backStream BackendStream) {
 	backStream1 := backStream.(*backend1Stream)
 	backStream1.conn.node.storeStream(backStream1)
 }
@@ -367,9 +367,9 @@ func (s *backend1Stream) onEnd() { // for zeros
 
 func (s *backend1Stream) Holder() httpHolder { return s.conn.node }
 
-func (s *backend1Stream) Response() backendResponse { return &s.response }
-func (s *backend1Stream) Request() backendRequest   { return &s.request }
-func (s *backend1Stream) Socket() backendSocket     { return nil } // TODO. See RFC 6455
+func (s *backend1Stream) Response() BackendResponse { return &s.response }
+func (s *backend1Stream) Request() BackendRequest   { return &s.request }
+func (s *backend1Stream) Socket() BackendSocket     { return nil } // TODO. See RFC 6455
 
 // backend1Response is the backend-side HTTP/1.x response.
 type backend1Response struct { // incoming. needs parsing

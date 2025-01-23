@@ -447,7 +447,7 @@ func (x *fcgiExchan) writev(srcVec *net.Buffers) (int64, error) { return x.conn.
 func (x *fcgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
 func (x *fcgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }
 
-// fcgiResponse is the FCGI response in a FCGI exchange. It must implements the backendResponse interface.
+// fcgiResponse is the FCGI response in a FCGI exchange. It must implements the BackendResponse interface.
 type fcgiResponse struct { // incoming. needs parsing
 	// Assocs
 	exchan *fcgiExchan

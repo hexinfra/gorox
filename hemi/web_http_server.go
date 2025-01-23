@@ -2568,11 +2568,11 @@ type ServerResponse interface { // for *server[1-3]Response
 	echoChain() error // chunks
 	addTrailer(name []byte, value []byte) bool
 	endVague() error
-	proxyPass1xx(backResp backendResponse) bool
-	proxyPassMessage(backResp backendResponse) error              // pass content to client directly
+	proxyPass1xx(backResp BackendResponse) bool
+	proxyPassMessage(backResp BackendResponse) error              // pass content to client directly
 	proxyPostMessage(backContent any, backHasTrailers bool) error // post held content to client
-	proxyCopyHeaders(backResp backendResponse, proxyConfig *WebExchanProxyConfig) bool
-	proxyCopyTrailers(backResp backendResponse, proxyConfig *WebExchanProxyConfig) bool
+	proxyCopyHeaders(backResp BackendResponse, proxyConfig *WebExchanProxyConfig) bool
+	proxyCopyTrailers(backResp BackendResponse, proxyConfig *WebExchanProxyConfig) bool
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
 }
@@ -2900,10 +2900,10 @@ func (r *serverResponse_) _removeLastModified() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.lastModified, &r.indexes.lastModified)
 }
 
-func (r *serverResponse_) proxyPassMessage(backResp backendResponse) error {
+func (r *serverResponse_) proxyPassMessage(backResp BackendResponse) error {
 	return r._proxyPassMessage(backResp)
 }
-func (r *serverResponse_) proxyCopyHeaders(backResp backendResponse, proxyConfig *WebExchanProxyConfig) bool {
+func (r *serverResponse_) proxyCopyHeaders(backResp BackendResponse, proxyConfig *WebExchanProxyConfig) bool {
 	backResp.proxyDelHopHeaders()
 
 	// copy control (:status)
@@ -2928,7 +2928,7 @@ func (r *serverResponse_) proxyCopyHeaders(backResp backendResponse, proxyConfig
 
 	return true
 }
-func (r *serverResponse_) proxyCopyTrailers(backResp backendResponse, proxyConfig *WebExchanProxyConfig) bool {
+func (r *serverResponse_) proxyCopyTrailers(backResp BackendResponse, proxyConfig *WebExchanProxyConfig) bool {
 	return backResp.proxyWalkTrailers(func(trailer *pair, name []byte, value []byte) bool {
 		return r.outMessage.addTrailer(name, value)
 	})

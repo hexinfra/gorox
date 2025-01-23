@@ -27,10 +27,10 @@ type scgiProxy struct {
 	// Parent
 	Handlet_
 	// Assocs
-	backend *scgiBackend // the backend to pass to
+	backend *SCGIBackend // the backend to pass to
 	hcache  Hcache       // the hcache which is used by this proxy
 	// States
-	WebExchanProxyConfig // embeded
+	SCGIExchanProxyConfig // embeded
 }
 
 func (h *scgiProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
@@ -46,7 +46,7 @@ func (h *scgiProxy) OnConfigure() {
 		if compName, ok := v.String(); ok && compName != "" {
 			if backend := h.stage.Backend(compName); backend == nil {
 				UseExitf("unknown backend: '%s'\n", compName)
-			} else if scgiBackend, ok := backend.(*scgiBackend); ok {
+			} else if scgiBackend, ok := backend.(*SCGIBackend); ok {
 				h.backend = scgiBackend
 			} else {
 				UseExitf("incorrect backend '%s' for scgiProxy, must be scgiBackend\n", compName)
@@ -82,8 +82,17 @@ func (h *scgiProxy) OnPrepare() {
 func (h *scgiProxy) IsProxy() bool { return true }
 func (h *scgiProxy) IsCache() bool { return h.hcache != nil }
 
-func (h *scgiProxy) Handle(httpReq ServerRequest, httpResp ServerResponse) (handled bool) {
-	// TODO: implementation
-	httpResp.Send("SCGI")
+func (h *scgiProxy) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
+	SCGIExchanReverseProxy(req, resp, h.hcache, h.backend, &h.SCGIExchanProxyConfig)
 	return true
+}
+
+// SCGIExchanProxyConfig
+type SCGIExchanProxyConfig struct {
+	WebExchanProxyConfig // embeded
+}
+
+func SCGIExchanReverseProxy(httpReq ServerRequest, httpResp ServerResponse, hcache Hcache, backend *SCGIBackend, proxyConfig *SCGIExchanProxyConfig) {
+	// TODO
+	httpResp.Send("SCGI")
 }

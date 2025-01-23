@@ -17,35 +17,35 @@ import (
 
 func init() {
 	RegisterBackend("scgiBackend", func(compName string, stage *Stage) Backend {
-		b := new(scgiBackend)
+		b := new(SCGIBackend)
 		b.onCreate(compName, stage)
 		return b
 	})
 }
 
-// scgiBackend
-type scgiBackend struct {
+// SCGIBackend
+type SCGIBackend struct {
 	// Parent
 	Backend_[*scgiNode]
 	// States
 }
 
-func (b *scgiBackend) onCreate(compName string, stage *Stage) {
+func (b *SCGIBackend) onCreate(compName string, stage *Stage) {
 	b.Backend_.OnCreate(compName, stage)
 }
 
-func (b *scgiBackend) OnConfigure() {
+func (b *SCGIBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
 
 	b.ConfigureNodes()
 }
-func (b *scgiBackend) OnPrepare() {
+func (b *SCGIBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
 
 	b.PrepareNodes()
 }
 
-func (b *scgiBackend) CreateNode(compName string) Node {
+func (b *SCGIBackend) CreateNode(compName string) Node {
 	node := new(scgiNode)
 	node.onCreate(compName, b.stage, b)
 	b.AddNode(node)
@@ -55,13 +55,13 @@ func (b *scgiBackend) CreateNode(compName string) Node {
 // scgiNode
 type scgiNode struct {
 	// Parent
-	Node_[*scgiBackend]
+	Node_[*SCGIBackend]
 	// Mixins
 	_contentSaver_ // so scgi responses can save their large contents in local file system.
 	// States
 }
 
-func (n *scgiNode) onCreate(compName string, stage *Stage, backend *scgiBackend) {
+func (n *scgiNode) onCreate(compName string, stage *Stage, backend *SCGIBackend) {
 	n.Node_.OnCreate(compName, stage, backend)
 }
 
@@ -85,26 +85,26 @@ func (n *scgiNode) Maintain() { // runner
 	n.backend.DecSub() // node
 }
 
-func (n *scgiNode) dial() (*scgiConn, error) {
+func (n *scgiNode) dial() (*scgiExchan, error) {
 	if DebugLevel() >= 2 {
 		Printf("scgiNode=%s dial %s\n", n.compName, n.address)
 	}
 	var (
-		conn *scgiConn
-		err  error
+		exchan *scgiExchan
+		err    error
 	)
 	if n.UDSMode() {
-		conn, err = n._dialUDS()
+		exchan, err = n._dialUDS()
 	} else {
-		conn, err = n._dialTCP()
+		exchan, err = n._dialTCP()
 	}
 	if err != nil {
 		return nil, errNodeDown
 	}
 	n.IncSubConn()
-	return conn, err
+	return exchan, err
 }
-func (n *scgiNode) _dialUDS() (*scgiConn, error) {
+func (n *scgiNode) _dialUDS() (*scgiExchan, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("unix", n.address, n.DialTimeout())
 	if err != nil {
@@ -120,9 +120,9 @@ func (n *scgiNode) _dialUDS() (*scgiConn, error) {
 		netConn.Close()
 		return nil, err
 	}
-	return getSCGIConn(connID, n, netConn, rawConn), nil
+	return getSCGIExchan(connID, n, netConn, rawConn), nil
 }
-func (n *scgiNode) _dialTCP() (*scgiConn, error) {
+func (n *scgiNode) _dialTCP() (*scgiExchan, error) {
 	// TODO: dynamic address names?
 	netConn, err := net.DialTimeout("tcp", n.address, n.DialTimeout())
 	if err != nil {
@@ -139,116 +139,116 @@ func (n *scgiNode) _dialTCP() (*scgiConn, error) {
 		netConn.Close()
 		return nil, err
 	}
-	return getSCGIConn(connID, n, netConn, rawConn), nil
+	return getSCGIExchan(connID, n, netConn, rawConn), nil
 }
 
-// scgiConn
-type scgiConn struct {
+// scgiExchan
+type scgiExchan struct {
 	// Assocs
 	response scgiResponse // the scgi response
 	request  scgiRequest  // the scgi request
-	// Conn states (stocks)
+	// Exchan states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	id      int64     // the conn id
-	node    *scgiNode // the node to which the connection belongs
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
+	id      int64     // the exchan id
+	node    *scgiNode // the node to which the exchan belongs
 	region  Region    // a region-based memory pool
 	netConn net.Conn
 	rawConn syscall.RawConn
-	// Conn states (zeros)
+	// Exchan states (zeros)
 	lastWrite time.Time // deadline of last write operation
 	lastRead  time.Time // deadline of last read operation
 }
 
-var poolSCGIConn sync.Pool
+var poolSCGIExchan sync.Pool
 
-func getSCGIConn(id int64, node *scgiNode, netConn net.Conn, rawConn syscall.RawConn) *scgiConn {
-	var conn *scgiConn
-	if x := poolSCGIConn.Get(); x == nil {
-		conn = new(scgiConn)
-		resp, req := &conn.response, &conn.request
-		resp.conn = conn
-		req.conn = conn
+func getSCGIExchan(id int64, node *scgiNode, netConn net.Conn, rawConn syscall.RawConn) *scgiExchan {
+	var exchan *scgiExchan
+	if x := poolSCGIExchan.Get(); x == nil {
+		exchan = new(scgiExchan)
+		resp, req := &exchan.response, &exchan.request
+		resp.exchan = exchan
+		req.exchan = exchan
 		req.response = resp
 	} else {
-		conn = x.(*scgiConn)
+		exchan = x.(*scgiExchan)
 	}
-	conn.onUse(id, node, netConn, rawConn)
-	return conn
+	exchan.onUse(id, node, netConn, rawConn)
+	return exchan
 }
-func putSCGIConn(conn *scgiConn) {
-	conn.onEnd()
-	poolSCGIConn.Put(conn)
-}
-
-func (c *scgiConn) onUse(id int64, node *scgiNode, netConn net.Conn, rawConn syscall.RawConn) {
-	c.id = id
-	c.node = node
-	c.region.Init()
-	c.netConn = netConn
-	c.rawConn = rawConn
-	c.response.onUse()
-	c.request.onUse()
-}
-func (c *scgiConn) onEnd() {
-	c.request.onEnd()
-	c.response.onEnd()
-	c.node = nil
-	c.region.Free()
-	c.netConn = nil
-	c.rawConn = nil
+func putSCGIExchan(exchan *scgiExchan) {
+	exchan.onEnd()
+	poolSCGIExchan.Put(exchan)
 }
 
-func (c *scgiConn) MakeTempName(dst []byte, unixTime int64) int {
-	return makeTempName(dst, c.node.Stage().ID(), c.id, unixTime, 0)
+func (x *scgiExchan) onUse(id int64, node *scgiNode, netConn net.Conn, rawConn syscall.RawConn) {
+	x.id = id
+	x.node = node
+	x.region.Init()
+	x.netConn = netConn
+	x.rawConn = rawConn
+	x.response.onUse()
+	x.request.onUse()
+}
+func (x *scgiExchan) onEnd() {
+	x.request.onEnd()
+	x.response.onEnd()
+	x.node = nil
+	x.region.Free()
+	x.netConn = nil
+	x.rawConn = nil
 }
 
-func (c *scgiConn) setReadDeadline() error {
-	if deadline := time.Now().Add(c.node.readTimeout); deadline.Sub(c.lastRead) >= time.Second {
-		if err := c.netConn.SetReadDeadline(deadline); err != nil {
+func (x *scgiExchan) MakeTempName(dst []byte, unixTime int64) int {
+	return makeTempName(dst, x.node.Stage().ID(), x.id, unixTime, 0)
+}
+
+func (x *scgiExchan) setReadDeadline() error {
+	if deadline := time.Now().Add(x.node.readTimeout); deadline.Sub(x.lastRead) >= time.Second {
+		if err := x.netConn.SetReadDeadline(deadline); err != nil {
 			return err
 		}
-		c.lastRead = deadline
+		x.lastRead = deadline
 	}
 	return nil
 }
-func (c *scgiConn) setWriteDeadline() error {
-	if deadline := time.Now().Add(c.node.writeTimeout); deadline.Sub(c.lastWrite) >= time.Second {
-		if err := c.netConn.SetWriteDeadline(deadline); err != nil {
+func (x *scgiExchan) setWriteDeadline() error {
+	if deadline := time.Now().Add(x.node.writeTimeout); deadline.Sub(x.lastWrite) >= time.Second {
+		if err := x.netConn.SetWriteDeadline(deadline); err != nil {
 			return err
 		}
-		c.lastWrite = deadline
+		x.lastWrite = deadline
 	}
 	return nil
 }
 
-func (c *scgiConn) read(dst []byte) (int, error) { return c.netConn.Read(dst) }
-func (c *scgiConn) readAtLeast(dst []byte, min int) (int, error) {
-	return io.ReadAtLeast(c.netConn, dst, min)
+func (x *scgiExchan) read(dst []byte) (int, error) { return x.netConn.Read(dst) }
+func (x *scgiExchan) readAtLeast(dst []byte, min int) (int, error) {
+	return io.ReadAtLeast(x.netConn, dst, min)
 }
-func (c *scgiConn) write(src []byte) (int, error)             { return c.netConn.Write(src) }
-func (c *scgiConn) writev(srcVec *net.Buffers) (int64, error) { return srcVec.WriteTo(c.netConn) }
+func (x *scgiExchan) write(src []byte) (int, error)             { return x.netConn.Write(src) }
+func (x *scgiExchan) writev(srcVec *net.Buffers) (int64, error) { return srcVec.WriteTo(x.netConn) }
 
-func (c *scgiConn) buffer256() []byte          { return c.stockBuffer[:] }
-func (c *scgiConn) unsafeMake(size int) []byte { return c.region.Make(size) }
+func (x *scgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
+func (x *scgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }
 
-func (c *scgiConn) Close() error {
-	netConn := c.netConn
-	putSCGIConn(c)
+func (x *scgiExchan) Close() error {
+	netConn := x.netConn
+	putSCGIExchan(x)
 	return netConn.Close()
 }
 
 // scgiResponse must implements the BackendResponse interface.
 type scgiResponse struct { // incoming. needs parsing
 	// Assocs
-	conn *scgiConn
-	// Conn states (stocks)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
+	exchan *scgiExchan
+	// Exchan states (stocks)
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
 	headResult int16 // result of receiving response head. values are same as http status for convenience
 	bodyResult int16 // result of receiving response body. values are same as http status for convenience
-	// Conn states (zeros)
+	// Exchan states (zeros)
 	_scgiResponse0 // all values in this struct must be zero by default!
 }
 type _scgiResponse0 struct { // for fast reset, entirely
@@ -275,12 +275,12 @@ func (r *scgiResponse) BodyResult() int16 { return r.bodyResult }
 // scgiRequest
 type scgiRequest struct { // outgoing. needs building
 	// Assocs
-	conn     *scgiConn
+	exchan   *scgiExchan
 	response *scgiResponse
-	// Conn states (stocks)
-	// Conn states (controlled)
-	// Conn states (non-zeros)
-	// Conn states (zeros)
+	// Exchan states (stocks)
+	// Exchan states (controlled)
+	// Exchan states (non-zeros)
+	// Exchan states (zeros)
 	_scgiRequest0 // all values in this struct must be zero by default!
 }
 type _scgiRequest0 struct { // for fast reset, entirely

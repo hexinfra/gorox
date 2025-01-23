@@ -6,7 +6,7 @@ Welcome to Gorox!
 Gorox is a pragmatic Webapp Server, RPC Framework, and Network Proxy. It can be
 used as a:
 
-  * Web Server (HTTP, TLS, WebSocket, static, FCGI, SCGI, uwsgi)
+  * Web Server (HTTP, TLS, WebSocket, static, FCGI, SCGI)
   * Go Web Application Server (Frameworks, Applications)
   * RPC Framework for Go (gRPC, HRPC)
   * Web Reverse Proxy (HTTP, TLS, WebSocket, Caching, Load Balancing)
@@ -15,7 +15,7 @@ used as a:
   * Forward Proxy (SOCKS, HTTP Tunnel)
   * ... and more through its highly extensible compoments design!
 
-Gorox is currently under heavy development, *ALL FEATURES ARE EXPERIMENTAL!* For
+Gorox is under heavy development, *CURRENTLY ALL FEATURES ARE EXPERIMENTAL!* For
 more details about Gorox, please see our project site: https://gorox.org/.
 
 

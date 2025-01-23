@@ -48,8 +48,8 @@ And something useful:
 Architecture
 ============
 
-Program dependencies
---------------------
+Dependencies
+------------
 
 A program (like Gorox) using Hemi Engine typically has these dependencies:
 
@@ -69,10 +69,11 @@ A program (like Gorox) using Hemi Engine typically has these dependencies:
   +-----------------------+   +---------------------------------+
 ```
 
-Program processes
------------------
+Processes
+---------
 
-A program instance has two processes: a leader process, and a worker process:
+A program instance managed by procmgr has two processes: a leader process, and a
+worker process:
 
 ```
                   +----------------+         +----------------+ business traffic
@@ -87,14 +88,15 @@ The leader process manages the worker process, which do the real and heavy work.
 A program instance can be controlled by operators through the cmdui interface of
 the leader process. Operators connect to the leader, send commands, and the
 leader executes the commands. Some commands are delivered to the worker process
-through admConn.
+through admConn which is a TCP connection between the leader process and the
+worker process.
 
-Alternatively, program instances can connect to a Myrox instance and delegate
-their administration to Myrox. In this way, the cmdui interface in the leader
-process is disabled.
+Alternatively, program instances can choose to connect to a Myrox instance and
+delegate their administration to Myrox. In this way, the cmdui interface in the
+leader process is disabled.
 
-Process stages
---------------
+Stages
+------
 
 A worker process has one stage most of the time. When an old stage is about to
 retire and a new stage is about to start, there may be many stages running at

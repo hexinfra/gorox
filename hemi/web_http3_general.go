@@ -9,8 +9,6 @@ package hemi
 
 import (
 	"net"
-	"sync"
-	"sync/atomic"
 
 	"github.com/hexinfra/gorox/hemi/library/tcp2"
 )
@@ -30,7 +28,7 @@ type http3Conn_ struct {
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	quicConn *tcp2.Conn        // the quic connection
-	inBuffer *http3InBuffer    // ...
+	inBuffer *http3Buffer      // ...
 	table    http3DynamicTable // ...
 	// Conn states (zeros)
 	activeStreams [http3MaxConcurrentStreams]http3Stream // active (open, remoteClosed, localClosed) streams
@@ -47,7 +45,7 @@ func (c *http3Conn_) onGet(id int64, holder holder, quicConn *tcp2.Conn) {
 
 	c.quicConn = quicConn
 	if c.inBuffer == nil {
-		c.inBuffer = getHTTP3InBuffer()
+		c.inBuffer = getHTTP3Buffer()
 		c.inBuffer.incRef()
 	}
 }
@@ -167,37 +165,6 @@ type http3InFrame struct {
 }
 
 func (f *http3InFrame) zero() { *f = http3InFrame{} }
-
-// http3InBuffer
-type http3InBuffer struct {
-	buf [_16K]byte // header + payload
-	ref atomic.Int32
-}
-
-var poolHTTP3InBuffer sync.Pool
-
-func getHTTP3InBuffer() *http3InBuffer {
-	var inBuffer *http3InBuffer
-	if x := poolHTTP3InBuffer.Get(); x == nil {
-		inBuffer = new(http3InBuffer)
-	} else {
-		inBuffer = x.(*http3InBuffer)
-	}
-	return inBuffer
-}
-func putHTTP3InBuffer(inBuffer *http3InBuffer) { poolHTTP3InBuffer.Put(inBuffer) }
-
-func (b *http3InBuffer) size() uint32  { return uint32(cap(b.buf)) }
-func (b *http3InBuffer) getRef() int32 { return b.ref.Load() }
-func (b *http3InBuffer) incRef()       { b.ref.Add(1) }
-func (b *http3InBuffer) decRef() {
-	if b.ref.Add(-1) == 0 {
-		if DebugLevel() >= 1 {
-			Printf("putHTTP3InBuffer ref=%d\n", b.ref.Load())
-		}
-		putHTTP3InBuffer(b)
-	}
-}
 
 // _http3Out_ is a mixin for server3Response and backend3Request.
 type _http3Out_ struct {

@@ -9,6 +9,11 @@
 
 package hemi
 
+import (
+	"sync"
+	"sync/atomic"
+)
+
 const ( // HTTP/2 sizes and limits for both of our HTTP/2 server and HTTP/2 backend
 	http2MaxFrameSize         = _16K
 	http2MaxTableSize         = _4K
@@ -392,3 +397,34 @@ var ( // HTTP/2 byteses
 	http2BytesPrism  = []byte("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
 	http2BytesStatic = []byte(":authority:methodGETPOST:path//index.html:schemehttphttps:status200204206304400404500accept-charsetaccept-encodinggzip, deflateaccept-languageaccept-rangesacceptaccess-control-allow-originageallowauthorizationcache-controlcontent-dispositioncontent-encodingcontent-languagecontent-lengthcontent-locationcontent-rangecontent-typecookiedateetagexpectexpiresfromhostif-matchif-modified-sinceif-none-matchif-rangeif-unmodified-sincelast-modifiedlinklocationmax-forwardsproxy-authenticateproxy-authorizationrangerefererrefreshretry-afterserverset-cookiestrict-transport-securitytransfer-encodinguser-agentvaryviawww-authenticate") // DO NOT CHANGE THIS UNLESS YOU KNOW WHAT YOU ARE DOING
 )
+
+// http2Buffer
+type http2Buffer struct {
+	buf [9 + http2MaxFrameSize]byte // header + payload
+	ref atomic.Int32
+}
+
+var poolHTTP2Buffer sync.Pool
+
+func getHTTP2Buffer() *http2Buffer {
+	var inBuffer *http2Buffer
+	if x := poolHTTP2Buffer.Get(); x == nil {
+		inBuffer = new(http2Buffer)
+	} else {
+		inBuffer = x.(*http2Buffer)
+	}
+	return inBuffer
+}
+func putHTTP2Buffer(inBuffer *http2Buffer) { poolHTTP2Buffer.Put(inBuffer) }
+
+func (b *http2Buffer) size() uint32  { return uint32(cap(b.buf)) }
+func (b *http2Buffer) getRef() int32 { return b.ref.Load() }
+func (b *http2Buffer) incRef()       { b.ref.Add(1) }
+func (b *http2Buffer) decRef() {
+	if b.ref.Add(-1) == 0 {
+		if DebugLevel() >= 1 {
+			Printf("putHTTP2Buffer ref=%d\n", b.ref.Load())
+		}
+		putHTTP2Buffer(b)
+	}
+}

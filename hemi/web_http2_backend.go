@@ -169,7 +169,7 @@ func putBackend2Conn(backConn *backend2Conn) {
 
 func (c *backend2Conn) onGet(id int64, node *http2Node, netConn net.Conn, rawConn syscall.RawConn) {
 	c.http2Conn_.onGet(id, node, netConn, rawConn)
-	c._backendConn_.onGet(node, time.Now().Add(node.idleTimeout))
+	c._backendConn_.onGet(node)
 }
 func (c *backend2Conn) onPut() {
 	c._backend2Conn0 = _backend2Conn0{}

@@ -224,6 +224,7 @@ func (n *fcgiNode) storeExchan(exchan *fcgiExchan) {
 		fcgiConn.Close()
 		n.DecSubConn()
 	} else {
+		fcgiConn.expireTime = time.Now().Add(n.idleTimeout)
 		n.pushConn(fcgiConn)
 	}
 }
@@ -286,12 +287,12 @@ type fcgiConn struct {
 	exchan fcgiExchan // an fcgi connection has exactly one stream. currently we don't support multiplex
 	// Conn states (stocks)
 	// Conn states (controlled)
+	expireTime time.Time // when the conn is considered expired
 	// Conn states (non-zeros)
-	id         int64           // the conn id
-	node       *fcgiNode       // the node to which the connection belongs
-	netConn    net.Conn        // *net.TCPConn or *net.UnixConn
-	rawConn    syscall.RawConn // for syscall
-	expireTime time.Time       // when the conn is considered expired
+	id      int64           // the conn id
+	node    *fcgiNode       // the node to which the connection belongs
+	netConn net.Conn        // *net.TCPConn or *net.UnixConn
+	rawConn syscall.RawConn // for syscall
 	// Conn states (zeros)
 	cumulativeExchans atomic.Int32 // how many exchans have been used?
 	broken            atomic.Bool  // is conn broken?
@@ -328,13 +329,12 @@ func (c *fcgiConn) onGet(id int64, node *fcgiNode, netConn net.Conn, rawConn sys
 	c.node = node
 	c.netConn = netConn
 	c.rawConn = rawConn
-	c.expireTime = time.Now().Add(node.idleTimeout)
 }
 func (c *fcgiConn) onPut() {
+	c.expireTime = time.Time{}
 	c.node = nil
 	c.netConn = nil
 	c.rawConn = nil
-	c.expireTime = time.Time{}
 	c.cumulativeExchans.Store(0)
 	c.broken.Store(false)
 	c.counter.Store(0)
@@ -346,7 +346,7 @@ func (c *fcgiConn) MakeTempName(dst []byte, unixTime int64) int {
 	return makeTempName(dst, c.node.Stage().ID(), unixTime, c.id, c.counter.Add(1))
 }
 
-func (c *fcgiConn) isAlive() bool { return time.Now().Before(c.expireTime) }
+func (c *fcgiConn) isAlive() bool { return c.expireTime.IsZero() || time.Now().Before(c.expireTime) }
 
 func (c *fcgiConn) fetchExchan() (*fcgiExchan, error) {
 	exchan := &c.exchan

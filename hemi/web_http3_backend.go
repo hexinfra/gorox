@@ -161,7 +161,7 @@ func putBackend3Conn(backConn *backend3Conn) {
 
 func (c *backend3Conn) onGet(id int64, node *http3Node, quicConn *tcp2.Conn) {
 	c.http3Conn_.onGet(id, node, quicConn)
-	c._backendConn_.onGet(node, time.Now().Add(node.idleTimeout))
+	c._backendConn_.onGet(node)
 }
 func (c *backend3Conn) onPut() {
 	c._backend3Conn0 = _backend3Conn0{}

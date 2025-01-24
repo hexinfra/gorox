@@ -57,7 +57,6 @@ type httpNode_[B HTTPBackend] struct {
 	// States
 	keepAliveConns int32         // max conns to keep alive
 	idleTimeout    time.Duration // conn idle timeout
-	maxLifetime    time.Duration // conn's max lifetime
 }
 
 func (n *httpNode_[B]) onCreate(compName string, stage *Stage, backend B) {
@@ -83,14 +82,6 @@ func (n *httpNode_[B]) onConfigure() {
 		}
 		return errors.New(".idleTimeout has an invalid value")
 	}, 2*time.Second)
-
-	// .maxLifetime
-	n.ConfigureDuration("maxLifetime", &n.maxLifetime, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".maxLifetime has an invalid value")
-	}, 1*time.Minute)
 }
 func (n *httpNode_[B]) onPrepare() {
 	n.Node_.OnPrepare()

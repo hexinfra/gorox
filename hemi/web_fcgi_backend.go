@@ -71,7 +71,6 @@ type fcgiNode struct {
 	_contentSaver_ // so fcgi responses can save their large contents in local file system.
 	// States
 	idleTimeout                 time.Duration // conn idle timeout
-	maxLifetime                 time.Duration // conn's max lifetime
 	keepConn                    bool          // instructs FCGI server to keep conn?
 	keepAliveConns              int32         // max conns to keep alive. requires keepConn to be true
 	maxCumulativeExchansPerConn int32         // max exchans of one conn. 0 means infinite
@@ -98,14 +97,6 @@ func (n *fcgiNode) OnConfigure() {
 		}
 		return errors.New(".idleTimeout has an invalid value")
 	}, 2*time.Second)
-
-	// .maxLifetime
-	n.ConfigureDuration("maxLifetime", &n.maxLifetime, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".maxLifetime has an invalid value")
-	}, 1*time.Minute)
 
 	// .keepConn
 	n.ConfigureBool("keepConn", &n.keepConn, true)

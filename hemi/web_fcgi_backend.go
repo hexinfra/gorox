@@ -70,11 +70,11 @@ type fcgiNode struct {
 	// Mixins
 	_contentSaver_ // so fcgi responses can save their large contents in local file system.
 	// States
-	maxCumulativeExchansPerConn int32         // max exchans of one conn. 0 means infinite
 	idleTimeout                 time.Duration // conn idle timeout
 	maxLifetime                 time.Duration // conn's max lifetime
 	keepConn                    bool          // instructs FCGI server to keep conn?
 	keepAliveConns              int32         // max conns to keep alive. requires keepConn to be true
+	maxCumulativeExchansPerConn int32         // max exchans of one conn. 0 means infinite
 	connPool                    struct {      // free list of conns in this node
 		sync.Mutex
 		head *fcgiConn
@@ -90,14 +90,6 @@ func (n *fcgiNode) onCreate(compName string, stage *Stage, backend *FCGIBackend)
 func (n *fcgiNode) OnConfigure() {
 	n.Node_.OnConfigure()
 	n._contentSaver_.onConfigure(n, 0*time.Second, 0*time.Second, TmpDir()+"/web/backends/"+n.backend.compName+"/"+n.compName)
-
-	// .maxCumulativeExchansPerConn
-	n.ConfigureInt32("maxCumulativeExchansPerConn", &n.maxCumulativeExchansPerConn, func(value int32) error {
-		if value >= 0 {
-			return nil
-		}
-		return errors.New(".maxCumulativeExchansPerConn has an invalid value")
-	}, 1000)
 
 	// .idleTimeout
 	n.ConfigureDuration("idleTimeout", &n.idleTimeout, func(value time.Duration) error {
@@ -126,14 +118,20 @@ func (n *fcgiNode) OnConfigure() {
 			}
 			return errors.New("bad keepAliveConns in node")
 		}, 10)
+
+		// .maxCumulativeExchansPerConn
+		n.ConfigureInt32("maxCumulativeExchansPerConn", &n.maxCumulativeExchansPerConn, func(value int32) error {
+			if value >= 0 {
+				return nil
+			}
+			return errors.New(".maxCumulativeExchansPerConn has an invalid value")
+		}, 1000)
 	}
 }
 func (n *fcgiNode) OnPrepare() {
 	n.Node_.OnPrepare()
 	n._contentSaver_.onPrepare(n, 0755)
 }
-
-func (n *fcgiNode) MaxCumulativeExchansPerConn() int32 { return n.maxCumulativeExchansPerConn }
 
 func (n *fcgiNode) Maintain() { // runner
 	n.LoopRun(time.Second, func(now time.Time) {
@@ -151,17 +149,19 @@ func (n *fcgiNode) Maintain() { // runner
 }
 
 func (n *fcgiNode) fetchExchan() (*fcgiExchan, error) {
-	fcgiConn := n.pullConn()
-	nodeDown := n.isDown()
-	if fcgiConn != nil {
-		if fcgiConn.isAlive() && !fcgiConn.ranOut() && !nodeDown {
-			return fcgiConn.fetchExchan()
+	if n.keepConn {
+		fcgiConn := n.pullConn()
+		nodeDown := n.isDown()
+		if fcgiConn != nil {
+			if !nodeDown && fcgiConn.isAlive() && fcgiConn.cumulativeExchans.Add(1) <= n.maxCumulativeExchansPerConn {
+				return fcgiConn.fetchExchan()
+			}
+			fcgiConn.Close()
+			n.DecSubConn()
 		}
-		fcgiConn.Close()
-		n.DecSubConn()
-	}
-	if nodeDown {
-		return nil, errNodeDown
+		if nodeDown {
+			return nil, errNodeDown
+		}
 	}
 	fcgiConn, err := n.dial()
 	if err != nil {
@@ -229,7 +229,7 @@ func (n *fcgiNode) storeExchan(exchan *fcgiExchan) {
 	fcgiConn := exchan.conn
 	fcgiConn.storeExchan(exchan)
 
-	if fcgiConn.isBroken() || n.isDown() || !fcgiConn.isAlive() || !fcgiConn.persistent {
+	if fcgiConn.isBroken() || n.isDown() || !fcgiConn.isAlive() || !n.keepConn {
 		fcgiConn.Close()
 		n.DecSubConn()
 	} else {
@@ -301,7 +301,6 @@ type fcgiConn struct {
 	netConn    net.Conn        // *net.TCPConn or *net.UnixConn
 	rawConn    syscall.RawConn // for syscall
 	expireTime time.Time       // when the conn is considered expired
-	persistent bool            // keep the connection after current exchan?
 	// Conn states (zeros)
 	cumulativeExchans atomic.Int32 // how many exchans have been used?
 	broken            atomic.Bool  // is conn broken?
@@ -339,7 +338,6 @@ func (c *fcgiConn) onGet(id int64, node *fcgiNode, netConn net.Conn, rawConn sys
 	c.netConn = netConn
 	c.rawConn = rawConn
 	c.expireTime = time.Now().Add(node.idleTimeout)
-	c.persistent = node.keepConn
 }
 func (c *fcgiConn) onPut() {
 	c.node = nil
@@ -354,14 +352,11 @@ func (c *fcgiConn) onPut() {
 }
 
 func (c *fcgiConn) MakeTempName(dst []byte, unixTime int64) int {
-	return makeTempName(dst, c.node.Stage().ID(), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(dst, c.node.Stage().ID(), unixTime, c.id, c.counter.Add(1))
 }
 
 func (c *fcgiConn) isAlive() bool { return time.Now().Before(c.expireTime) }
 
-func (c *fcgiConn) ranOut() bool {
-	return c.cumulativeExchans.Add(1) > c.node.maxCumulativeExchansPerConn
-}
 func (c *fcgiConn) fetchExchan() (*fcgiExchan, error) {
 	exchan := &c.exchan
 	exchan.onUse()

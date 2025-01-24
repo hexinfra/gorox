@@ -37,7 +37,7 @@ func (h *_quixHolder_) onConfigure(comp Component) {
 		return errors.New(".maxCumulativeStreamsPerConn has an invalid value")
 	}, 1000)
 
-	// .maxCumulativeStreamsPerConn
+	// .maxConcurrentStreamsPerConn
 	comp.ConfigureInt32("maxConcurrentStreamsPerConn", &h.maxConcurrentStreamsPerConn, func(value int32) error {
 		if value >= 0 {
 			return nil
@@ -100,7 +100,7 @@ func (c *quixConn_) UDSMode() bool { return c.udsMode }
 func (c *quixConn_) TLSMode() bool { return c.tlsMode }
 
 func (c *quixConn_) MakeTempName(dst []byte, unixTime int64) int {
-	return makeTempName(dst, c.stage.ID(), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(dst, c.stage.ID(), unixTime, c.id, c.counter.Add(1))
 }
 
 func (c *quixConn_) markBroken()    { c.broken.Store(true) }

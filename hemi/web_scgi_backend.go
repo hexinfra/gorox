@@ -202,7 +202,7 @@ func (x *scgiExchan) onEnd() {
 }
 
 func (x *scgiExchan) MakeTempName(dst []byte, unixTime int64) int {
-	return makeTempName(dst, x.node.Stage().ID(), x.id, unixTime, 0)
+	return makeTempName(dst, x.node.Stage().ID(), unixTime, x.id, 0)
 }
 
 func (x *scgiExchan) setReadDeadline() error {
@@ -282,7 +282,7 @@ func (r *scgiResponse) reuse() {
 	r.onUse()
 }
 
-func (r *scgiResponse) KeepAlive() bool { return false } // scgi does not support persistent connections or keep-alive negotiations
+func (r *scgiResponse) KeepAlive() bool { return false } // required by the BackendResponse interface. actually scgi does not support persistent connections or keep-alive negotiations so this is not used
 
 func (r *scgiResponse) HeadResult() int16 { return r.headResult }
 func (r *scgiResponse) BodyResult() int16 { return r.bodyResult }

@@ -132,7 +132,7 @@ var httpSchemeByteses = [...][]byte{
 
 var httpStatus = [11]byte{':', 's', 't', 'a', 't', 'u', 's', ' ', 'n', 'n', 'n'} // used by http/2 and http/3
 
-const ( // misc http types
+const ( // misc http type constants
 	httpSectionControl  = 0 // must be 0
 	httpSectionHeaders  = 1
 	httpSectionContent  = 2

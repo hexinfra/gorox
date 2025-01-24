@@ -179,9 +179,6 @@ func (c *backend2Conn) onPut() {
 	c.http2Conn_.onPut()
 }
 
-func (c *backend2Conn) ranOut() bool {
-	return c.cumulativeStreams.Add(1) > c.node.MaxCumulativeStreamsPerConn()
-}
 func (c *backend2Conn) fetchStream() (*backend2Stream, error) {
 	// Note: A backend2Conn can be used concurrently, limited by maxConcurrentStreams.
 	// TODO: incRef, backStream.onUse()

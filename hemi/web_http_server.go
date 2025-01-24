@@ -45,7 +45,7 @@ type httpServer_[G httpGate] struct {
 	suffixWebapps             []*hostnameTo[*Webapp] // like: ("*.example.com")
 	prefixWebapps             []*hostnameTo[*Webapp] // like: ("www.example.*")
 	forceScheme               int8                   // scheme (http/https) that must be used
-	alignScheme               bool                   // use https scheme for TLS and http scheme for others?
+	alignScheme               bool                   // if scheme is not forced, use https scheme for TLS and http scheme for others?
 	maxConcurrentConnsPerGate int32                  // max concurrent connections allowed per gate
 }
 

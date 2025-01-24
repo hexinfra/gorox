@@ -181,7 +181,7 @@ func (c *grpcConn) onPut() {
 }
 
 func (c *grpcConn) MakeTempName(dst []byte, unixTime int64) int {
-	return makeTempName(dst, c.gate.Stage().ID(), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(dst, c.gate.Stage().ID(), unixTime, c.id, c.counter.Add(1))
 }
 
 //func (c *grpcConn) rpcServer() *grpcServer { return c.server }

@@ -71,7 +71,7 @@ func (c *udpxConn_) onPut() {
 func (c *udpxConn_) UDSMode() bool { return c.udsMode }
 
 func (c *udpxConn_) MakeTempName(dst []byte, unixTime int64) int {
-	return makeTempName(dst, c.stage.ID(), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(dst, c.stage.ID(), unixTime, c.id, c.counter.Add(1))
 }
 
 func (c *udpxConn_) markBroken()    { c.broken.Store(true) }

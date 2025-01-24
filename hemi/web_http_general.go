@@ -24,7 +24,6 @@ type httpHolder interface {
 	// Imports
 	contentSaver
 	// Methods
-	MaxCumulativeStreamsPerConn() int32
 	MaxMemoryContentSize() int32 // allowed to load into memory
 }
 
@@ -60,8 +59,7 @@ func (h *_httpHolder_) onPrepare(comp Component, perm os.FileMode) {
 	h._contentSaver_.onPrepare(comp, perm)
 }
 
-func (h *_httpHolder_) MaxCumulativeStreamsPerConn() int32 { return h.maxCumulativeStreamsPerConn }
-func (h *_httpHolder_) MaxMemoryContentSize() int32        { return h.maxMemoryContentSize }
+func (h *_httpHolder_) MaxMemoryContentSize() int32 { return h.maxMemoryContentSize }
 
 // httpConn
 type httpConn interface {
@@ -116,7 +114,7 @@ func (c *httpConn_) UDSMode() bool { return c.udsMode }
 func (c *httpConn_) TLSMode() bool { return c.tlsMode }
 
 func (c *httpConn_) MakeTempName(dst []byte, unixTime int64) int {
-	return makeTempName(dst, c.stage.ID(), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(dst, c.stage.ID(), unixTime, c.id, c.counter.Add(1))
 }
 
 func (c *httpConn_) markBroken()    { c.broken.Store(true) }

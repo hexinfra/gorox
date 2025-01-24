@@ -110,7 +110,7 @@ func (n *http1Node) fetchStream() (*backend1Stream, error) {
 	backConn := n.pullConn()
 	nodeDown := n.isDown()
 	if backConn != nil {
-		if backConn.isAlive() && !backConn.ranOut() && !nodeDown {
+		if !nodeDown && backConn.isAlive() && backConn.cumulativeStreams.Add(1) <= n.maxCumulativeStreamsPerConn {
 			return backConn.fetchStream()
 		}
 		backConn.Close()
@@ -312,9 +312,6 @@ func (c *backend1Conn) onPut() {
 	c.http1Conn_.onPut()
 }
 
-func (c *backend1Conn) ranOut() bool {
-	return c.cumulativeStreams.Add(1) > c.node.MaxCumulativeStreamsPerConn()
-}
 func (c *backend1Conn) fetchStream() (*backend1Stream, error) {
 	backStream := &c.stream
 	backStream.onUse()

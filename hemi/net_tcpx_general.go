@@ -95,7 +95,7 @@ func (c *tcpxConn_) UDSMode() bool { return c.udsMode }
 func (c *tcpxConn_) TLSMode() bool { return c.tlsMode }
 
 func (c *tcpxConn_) MakeTempName(dst []byte, unixTime int64) int {
-	return makeTempName(dst, c.stage.ID(), c.id, unixTime, c.counter.Add(1))
+	return makeTempName(dst, c.stage.ID(), unixTime, c.id, c.counter.Add(1))
 }
 
 func (c *tcpxConn_) markBroken()    { c.broken.Store(true) }

@@ -97,14 +97,14 @@ func PutNK(p []byte) {
 	}
 }
 
-func makeTempName(dst []byte, stageID int32, connID int64, unixTime int64, counter int64) int {
+func makeTempName(dst []byte, stageID int32, unixTime int64, connID int64, counter int64) int {
 	// TODO: improvement
-	// stageID(8) | connID(16) | seconds(24) | counter(16)
+	// stageID(8) | unixTime(24) | connID(16) | counter(16)
 	stageID &= 0x7f
-	connID &= 0xffff
 	unixTime &= 0xffffff
+	connID &= 0xffff
 	counter &= 0xffff
-	return i64ToDec(int64(stageID)<<56|connID<<40|unixTime<<16|counter, dst)
+	return i64ToDec(int64(stageID)<<56|unixTime<<32|connID<<16|counter, dst)
 }
 
 func equalMatch(value []byte, patterns [][]byte) bool {
@@ -223,7 +223,7 @@ var varCodes = map[string]int16{ // TODO
 	"path":        5, // /abc, /def/
 	"uri":         6, // /abc?x=y, /%cc%dd?y=z&z=%ff
 	"encodedPath": 7, // /abc, /%cc%dd
-	"queryString": 8, // ?x=y, ?y=z&z=%ff
+	"queryString": 8, // ?x=y, ?y=z&z=%ff, ?z
 	"contentType": 9, // application/json
 }
 

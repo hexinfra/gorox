@@ -203,7 +203,7 @@ func WebExchanReverseProxy(servReq ServerRequest, servResp ServerResponse, hcach
 		}
 		if backResp.Status() >= StatusOK {
 			if !backResp.KeepAlive() { // connection close. only HTTP/1.x uses this. TODO: what if the connection is closed remotely?
-				backStream.(*backend1Stream).conn.persistent = false
+				backStream.(*backend1Stream).conn.persistent = false // backend told us to not keep the connection alive
 			}
 			break
 		}

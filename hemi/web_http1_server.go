@@ -251,14 +251,14 @@ func (s *server1Stream) execute() {
 			return
 		}
 		conn.cumulativeStreams.Add(1)
-		if maxCumulativeStreams := server.MaxCumulativeStreamsPerConn(); (maxCumulativeStreams > 0 && conn.cumulativeStreams.Load() == maxCumulativeStreams) || !req.KeepAlive() || conn.gate.IsShut() {
+		if maxCumulativeStreams := server.maxCumulativeStreamsPerConn; (maxCumulativeStreams > 0 && conn.cumulativeStreams.Load() == maxCumulativeStreams) || !req.KeepAlive() || conn.gate.IsShut() {
 			conn.persistent = false // reaches limit, or client told us to close, or gate was shut
 		}
 
 		s.executeExchan(webapp, req, resp)
 
 		if s.isBroken() {
-			conn.persistent = false // i/o error
+			conn.persistent = false // i/o error, close anyway
 		}
 	} else { // socket mode.
 		if req.expectContinue && !s._writeContinue() {
@@ -267,14 +267,14 @@ func (s *server1Stream) execute() {
 
 		s.executeSocket()
 
-		conn.persistent = false // explicitly
+		conn.persistent = false // explicitly close for webSocket
 	}
 }
 func (s *server1Stream) _serveAbnormal(req *server1Request, resp *server1Response) { // 4xx & 5xx
 	if DebugLevel() >= 2 {
 		Printf("server=%s gate=%d conn=%d headResult=%d\n", s.conn.gate.server.CompName(), s.conn.gate.ID(), s.conn.id, s.request.headResult)
 	}
-	s.conn.persistent = false // close anyway.
+	s.conn.persistent = false // we are in abnormal state, so close anyway
 
 	status := req.headResult
 	if status == -1 || (status == StatusRequestTimeout && !req.gotSomeInput) {
@@ -322,8 +322,7 @@ func (s *server1Stream) _writeContinue() bool { // 100 continue
 			return true
 		}
 	}
-	// i/o error
-	s.conn.persistent = false
+	s.conn.persistent = false // i/o error, close anyway
 	return false
 }
 
@@ -497,13 +496,10 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 				r.headResult, r.failReason = StatusBadRequest, "bad authority"
 				return false
 			}
-			if b == ' ' { // ends of request-target
-				// Don't treat this as asterisk-form! r.uri is empty but we fetch it through r.URI() or like which gives '/' if uri is empty.
-				if r.IsOPTIONS() {
-					// OPTIONS http://www.example.org:8001 HTTP/1.1
+			if b == ' ' { // end of request-target. don't treat this as asterisk-form! r.uri is empty but we fetch it through r.URI() or like which gives '/' if uri is empty
+				if r.IsOPTIONS() { // OPTIONS http://www.example.org:8001 HTTP/1.1
 					r.asteriskOptions = true
-				} else {
-					// GET http://www.example.org HTTP/1.1
+				} else { // GET http://www.example.org HTTP/1.1
 					// Do nothing.
 				}
 				goto beforeVersion // request target is done, since origin-form always starts with '/', while b is ' ' here.
@@ -994,7 +990,7 @@ func (r *server1Response) finalizeHeaders() { // add at most 256 bytes
 				// RFC 9112 (section 6.1):
 				// A server MUST NOT send a response containing Transfer-Encoding unless
 				// the corresponding request indicates HTTP/1.1 (or later minor revisions).
-				conn.persistent = false // close conn anyway for HTTP/1.0
+				conn.persistent = false // for HTTP/1.0 we have to close the connection anyway since there is no way to delimit the chunks
 			}
 		}
 		// content-type: text/html; charset=utf-8\r\n

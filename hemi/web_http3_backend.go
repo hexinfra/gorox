@@ -171,9 +171,6 @@ func (c *backend3Conn) onPut() {
 	c.http3Conn_.onPut()
 }
 
-func (c *backend3Conn) ranOut() bool {
-	return c.cumulativeStreams.Add(1) > c.node.MaxCumulativeStreamsPerConn()
-}
 func (c *backend3Conn) fetchStream() (*backend3Stream, error) {
 	// Note: A backend3Conn can be used concurrently, limited by maxConcurrentStreams.
 	// TODO: backStream.onUse()

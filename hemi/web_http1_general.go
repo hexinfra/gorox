@@ -37,7 +37,7 @@ type http1Conn_ struct {
 	// Conn states (non-zeros)
 	netConn    net.Conn        // *net.TCPConn, *tls.Conn, *net.UnixConn
 	rawConn    syscall.RawConn // for syscall, only usable when netConn is TCP/UDS
-	persistent bool            // keep the connection after current stream? true by default
+	persistent bool            // keep the connection after current stream? true by default, will be changed by "connection: close" header received from the remote side
 	// Conn states (zeros)
 }
 

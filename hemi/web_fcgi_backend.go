@@ -220,12 +220,18 @@ func (n *fcgiNode) storeExchan(exchan *fcgiExchan) {
 	fcgiConn := exchan.conn
 	fcgiConn.storeExchan(exchan)
 
-	if fcgiConn.isBroken() || n.isDown() || !fcgiConn.isAlive() || !n.keepConn {
-		fcgiConn.Close()
-		n.DecSubConn()
-	} else {
+	if n.keepConn && !n.isDown() && !fcgiConn.isBroken() && fcgiConn.isAlive() {
+		if DebugLevel() >= 2 {
+			Printf("fcgiConn[node=%s id=%d] pushed\n", n.CompName(), fcgiConn.id)
+		}
 		fcgiConn.expireTime = time.Now().Add(n.idleTimeout)
 		n.pushConn(fcgiConn)
+	} else {
+		if DebugLevel() >= 2 {
+			Printf("fcgiConn[node=%s id=%d] closed\n", n.CompName(), fcgiConn.id)
+		}
+		fcgiConn.Close()
+		n.DecSubConn()
 	}
 }
 

@@ -197,18 +197,18 @@ func (n *http1Node) storeStream(backStream *backend1Stream) {
 	backConn := backStream.conn
 	backConn.storeStream(backStream)
 
-	if backConn.isBroken() || n.isDown() || !backConn.isAlive() || !backConn.persistent {
+	if !n.isDown() && !backConn.isBroken() && backConn.isAlive() && backConn.persistent {
 		if DebugLevel() >= 2 {
-			Printf("Backend1Conn[node=%s id=%d] closed\n", backConn.node.CompName(), backConn.id)
-		}
-		backConn.Close()
-		n.DecSubConn()
-	} else {
-		if DebugLevel() >= 2 {
-			Printf("Backend1Conn[node=%s id=%d] pushed\n", backConn.node.CompName(), backConn.id)
+			Printf("Backend1Conn[node=%s id=%d] pushed\n", n.CompName(), backConn.id)
 		}
 		backConn.expireTime = time.Now().Add(n.idleTimeout)
 		n.pushConn(backConn)
+	} else {
+		if DebugLevel() >= 2 {
+			Printf("Backend1Conn[node=%s id=%d] closed\n", n.CompName(), backConn.id)
+		}
+		backConn.Close()
+		n.DecSubConn()
 	}
 }
 

@@ -295,7 +295,7 @@ func (s *server1Stream) _serveAbnormal(req *server1Request, resp *server1Respons
 	}
 	// Use response as a dumb struct here, don't use its methods (like Send) to send anything as we are in abnormal state!
 	resp.status = status
-	resp.AddHeaderBytes(bytesContentType, bytesTypeHTMLUTF8)
+	resp.AddHeaderBytes(bytesContentType, bytesTypeHTML)
 	resp.contentSize = int64(len(content))
 	if status == StatusMethodNotAllowed {
 		// Currently only WebSocket use this status in abnormal state, so GET is hard coded.
@@ -993,9 +993,9 @@ func (r *server1Response) finalizeHeaders() { // add at most 256 bytes
 				conn.persistent = false // for HTTP/1.0 we have to close the connection anyway since there is no way to delimit the chunks
 			}
 		}
-		// content-type: text/html; charset=utf-8\r\n
+		// content-type: text/html\r\n
 		if r.iContentType == 0 {
-			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTMLUTF8))
+			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTML))
 		}
 	}
 	if conn.persistent { // connection: keep-alive\r\n

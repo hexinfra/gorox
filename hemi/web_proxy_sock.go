@@ -52,7 +52,7 @@ func (s *sockProxy) OnPrepare() {
 	// Currently nothing.
 }
 
-func (s *sockProxy) IsProxy() bool { return true }
+func (s *sockProxy) IsProxy() bool { return true } // works as a reverse proxy
 
 func (s *sockProxy) Serve(req ServerRequest, sock ServerSocket) {
 	WebSocketReverseProxy(req, sock, s.backend, &s.WebSocketProxyConfig)

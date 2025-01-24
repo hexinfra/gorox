@@ -227,7 +227,6 @@ type ServerRequest interface { // for *server[1-3]Request
 	RemoteAddr() net.Addr
 	Webapp() *Webapp
 
-	IsAbsoluteForm() bool    // TODO: what about HTTP/2 and HTTP/3?
 	IsAsteriskOptions() bool // OPTIONS *
 
 	VersionCode() uint8
@@ -404,7 +403,7 @@ type serverRequest_ struct { // incoming. needs parsing
 }
 type _serverRequest0 struct { // for fast reset, entirely
 	gotSomeInput    bool     // got some input from client? for request timeout handling
-	targetForm      int8     // request-target form. see httpTargetXXX
+	_               byte     // padding
 	asteriskOptions bool     // true if method and uri is: OPTIONS *
 	schemeCode      uint8    // SchemeHTTP, SchemeHTTPS
 	methodCode      uint32   // known method code. 0: unknown method
@@ -503,7 +502,6 @@ func (r *serverRequest_) onEnd() { // for zeros
 
 func (r *serverRequest_) Webapp() *Webapp { return r.webapp }
 
-func (r *serverRequest_) IsAbsoluteForm() bool    { return r.targetForm == httpTargetAbsolute }
 func (r *serverRequest_) IsAsteriskOptions() bool { return r.asteriskOptions }
 
 func (r *serverRequest_) SchemeCode() uint8    { return r.schemeCode }

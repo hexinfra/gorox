@@ -282,7 +282,7 @@ func (r *scgiResponse) reuse() {
 	r.onUse()
 }
 
-func (r *scgiResponse) KeepAlive() int8 { return -1 } // same as "no connection header". TODO: confirm this
+func (r *scgiResponse) KeepAlive() bool { return false } // scgi does not support persistent connections or keep-alive negotiations
 
 func (r *scgiResponse) HeadResult() int16 { return r.headResult }
 func (r *scgiResponse) BodyResult() int16 { return r.bodyResult }

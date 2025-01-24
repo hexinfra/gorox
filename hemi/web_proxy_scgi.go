@@ -79,7 +79,7 @@ func (h *scgiProxy) OnConfigure() {
 func (h *scgiProxy) OnPrepare() {
 }
 
-func (h *scgiProxy) IsProxy() bool { return true }
+func (h *scgiProxy) IsProxy() bool { return true } // works as a reverse proxy
 func (h *scgiProxy) IsCache() bool { return h.hcache != nil }
 
 func (h *scgiProxy) Handle(req ServerRequest, resp ServerResponse) (handled bool) {

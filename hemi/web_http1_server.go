@@ -251,7 +251,7 @@ func (s *server1Stream) execute() {
 			return
 		}
 		conn.cumulativeStreams.Add(1)
-		if maxCumulativeStreams := server.MaxCumulativeStreamsPerConn(); (maxCumulativeStreams > 0 && conn.cumulativeStreams.Load() == maxCumulativeStreams) || req.keepAlive == 0 || conn.gate.IsShut() {
+		if maxCumulativeStreams := server.MaxCumulativeStreamsPerConn(); (maxCumulativeStreams > 0 && conn.cumulativeStreams.Load() == maxCumulativeStreams) || !req.KeepAlive() || conn.gate.IsShut() {
 			conn.persistent = false // reaches limit, or client told us to close, or gate was shut
 		}
 
@@ -422,7 +422,6 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 	// request-target = absolute-form / origin-form / authority-form / asterisk-form
 	if b := r.input[r.elemFore]; b != '*' && !r.IsCONNECT() { // absolute-form / origin-form
 		if b != '/' { // absolute-form
-			r.targetForm = httpTargetAbsolute
 			// absolute-form = absolute-URI
 			// absolute-URI = scheme ":" hier-part [ "?" query ]
 			// scheme = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
@@ -499,7 +498,7 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 				return false
 			}
 			if b == ' ' { // ends of request-target
-				// Don't treat this as httpTargetAsterisk! r.uri is empty but we fetch it through r.URI() or like which gives '/' if uri is empty.
+				// Don't treat this as asterisk-form! r.uri is empty but we fetch it through r.URI() or like which gives '/' if uri is empty.
 				if r.IsOPTIONS() {
 					// OPTIONS http://www.example.org:8001 HTTP/1.1
 					r.asteriskOptions = true
@@ -659,7 +658,6 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 		}
 		r.cleanPath()
 	} else if b == '*' { // OPTIONS *, asterisk-form
-		r.targetForm = httpTargetAsterisk
 		// RFC 9112 (section 3.2.4):
 		// The "asterisk-form" of request-target is only used for a server-wide OPTIONS request (Section 9.3.7 of [HTTP]).
 		if !r.IsOPTIONS() {
@@ -681,7 +679,6 @@ func (r *server1Request) _recvRequestLine() bool { // request-line = method SP r
 		// target URI's combined path and query component is empty. Otherwise,
 		// the target URI's combined path and query component is the request-target.
 	} else { // CONNECT method, must be authority-form
-		r.targetForm = httpTargetAuthority
 		// RFC 9112 (section 3.2.3):
 		// The "authority-form" of request-target is only used for CONNECT requests (Section 9.3.6 of [HTTP]).
 		//

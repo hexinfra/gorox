@@ -578,7 +578,7 @@ func (r *fcgiResponse) reuse() {
 	r.onUse()
 }
 
-func (r *fcgiResponse) KeepAlive() int8 { return -1 } // same as "no connection header". TODO: confirm this
+func (r *fcgiResponse) KeepAlive() bool { return r.exchan.conn.node.keepConn } // this exists to satisfy the BackendResponse interface but is not actually used, as fcgi lacks the mechanism to negotiate keep-alive or not
 
 func (r *fcgiResponse) HeadResult() int16 { return r.headResult }
 func (r *fcgiResponse) BodyResult() int16 { return r.bodyResult }

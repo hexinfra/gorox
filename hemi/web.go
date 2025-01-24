@@ -664,31 +664,23 @@ func (r *Rule) executeExchan(req ServerRequest, resp ServerResponse) (handled bo
 		return true
 	}
 
-	if len(r.handlets) > 0 { // there are handlets in this rule, so we check against origin server or proxy server here.
+	if len(r.handlets) > 0 { // there are handlets in this rule, so we check against origin server or reverse proxy here.
 		toOrigin := true
 		for _, handlet := range r.handlets {
-			if handlet.IsProxy() { // request to proxy server. checks against proxy server
+			if handlet.IsProxy() { // request to a reverse proxy. checks against reverse proxies
 				toOrigin = false
 				if req.VersionCode() == Version1_0 {
 					// RFC 9112 (section 9.3):
 					// A proxy server MUST NOT maintain a persistent connection with an HTTP/1.0 client.
 					resp.(*server1Response).setConnectionClose()
 				}
-				if handlet.IsCache() { // request to proxy cache. checks against proxy cache
+				if handlet.IsCache() { // request to a proxy cache. checks against proxy caches
 					// Add checks here.
 				}
 				break
 			}
 		}
-		if toOrigin { // request to origin server
-			if req.IsPUT() && req.HasHeader("content-range") {
-				// RFC 9110:
-				// An origin server SHOULD respond with a 400 (Bad Request) status code
-				// if it receives Content-Range on a PUT for a target resource that
-				// does not support partial PUT requests.
-				resp.SendBadRequest(nil)
-				return true
-			}
+		if toOrigin { // request to an origin server
 			if req.contentIsForm() && req.contentIsEncoded() { // currently a form with content coding is not supported yet
 				resp.SendUnsupportedMediaType("", "", nil)
 				return true
@@ -715,11 +707,6 @@ func (r *Rule) executeSocket(req ServerRequest, sock ServerSocket) (served bool)
 		if r.socklet == nil {
 			return
 		}
-		if r.socklet.IsProxy() {
-			// TODO
-		} else {
-			// TODO
-		}
 		r.socklet.Serve(req, sock)
 	*/
 	return true
@@ -730,8 +717,8 @@ type Handlet interface {
 	// Imports
 	Component
 	// Methods
-	IsProxy() bool // proxies and origins are different, we must differentiate them
-	IsCache() bool // caches and proxies are different, we must differentiate them
+	IsProxy() bool // reverse proxies and origins are different, we must differentiate them
+	IsCache() bool // caches and reverse proxies are different, we must differentiate them
 	Handle(req ServerRequest, resp ServerResponse) (handled bool)
 }
 
@@ -756,8 +743,8 @@ func (h *Handlet_) OnCreate(compName string, stage *Stage, webapp *Webapp) {
 func (h *Handlet_) Stage() *Stage   { return h.stage }
 func (h *Handlet_) Webapp() *Webapp { return h.webapp }
 
-func (h *Handlet_) IsProxy() bool { return false } // override this for proxy handlets
-func (h *Handlet_) IsCache() bool { return false } // override this for cache handlets
+func (h *Handlet_) IsProxy() bool { return false } // override this for reverse proxy handlets
+func (h *Handlet_) IsCache() bool { return false } // override this for proxy cache handlets
 
 func (h *Handlet_) UseMapper(handlet Handlet, mapper Mapper) {
 	h.mapper = mapper
@@ -843,7 +830,7 @@ type Socklet interface {
 	// Imports
 	Component
 	// Methods
-	IsProxy() bool // proxies and origins are different, we must differentiate them
+	IsProxy() bool // reverse proxies and origin servers are different, we must differentiate them
 	Serve(req ServerRequest, sock ServerSocket)
 }
 
@@ -866,4 +853,4 @@ func (s *Socklet_) OnCreate(compName string, stage *Stage, webapp *Webapp) {
 func (s *Socklet_) Stage() *Stage   { return s.stage }
 func (s *Socklet_) Webapp() *Webapp { return s.webapp }
 
-func (s *Socklet_) IsProxy() bool { return false } // override this for proxy socklets
+func (s *Socklet_) IsProxy() bool { return false } // override this for reverse proxy socklets

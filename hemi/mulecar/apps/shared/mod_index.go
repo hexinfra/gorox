@@ -9,26 +9,17 @@ import (
 	. "github.com/hexinfra/gorox/hemi"
 )
 
-func (h *sharedHandlet) GET_(req ServerRequest, resp ServerResponse) { // GET empty through absolute-form, or GET /
-	if req.IsAbsoluteForm() {
-		resp.Send("absolute-form GET /")
-	} else {
-		resp.Send("origin-form GET /")
-	}
+func (h *sharedHandlet) GET_(req ServerRequest, resp ServerResponse) { // GET /
+	resp.Send("GET /")
+}
+func (h *sharedHandlet) POST_(req ServerRequest, resp ServerResponse) { // POST /
+	resp.Send("POST /")
 }
 func (h *sharedHandlet) OPTIONS_(req ServerRequest, resp ServerResponse) { // OPTIONS * or OPTIONS /
 	if req.IsAsteriskOptions() {
-		if req.IsAbsoluteForm() {
-			resp.Send("absolute-form OPTIONS *")
-		} else {
-			resp.Send("asterisk-form OPTIONS *")
-		}
+		resp.Send("OPTIONS *")
 	} else {
-		if req.IsAbsoluteForm() {
-			resp.Send("absolute-form OPTIONS /")
-		} else {
-			resp.Send("origin-form OPTIONS /")
-		}
+		resp.Send("OPTIONS /")
 	}
 }
 func (h *sharedHandlet) GET_json(req ServerRequest, resp ServerResponse) { // GET /json

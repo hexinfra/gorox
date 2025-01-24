@@ -52,5 +52,5 @@ func (h *sharedHandlet) Handle(req ServerRequest, resp ServerResponse) (handled 
 	return true
 }
 func (h *sharedHandlet) notFound(req ServerRequest, resp ServerResponse) {
-	resp.Send("handle not found!")
+	resp.Send("404 handle not found!")
 }

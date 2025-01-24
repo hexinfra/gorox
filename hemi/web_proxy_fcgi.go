@@ -94,7 +94,7 @@ func (h *fcgiProxy) OnConfigure() {
 func (h *fcgiProxy) OnPrepare() {
 }
 
-func (h *fcgiProxy) IsProxy() bool { return true }
+func (h *fcgiProxy) IsProxy() bool { return true } // works as a reverse proxy
 func (h *fcgiProxy) IsCache() bool { return h.hcache != nil }
 
 func (h *fcgiProxy) Handle(req ServerRequest, resp ServerResponse) (handled bool) {

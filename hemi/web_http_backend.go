@@ -147,7 +147,7 @@ func (s *_backendStream_) onEnd() {
 
 // BackendResponse is the backend-side http response.
 type BackendResponse interface { // for *backend[1-3]Response
-	KeepAlive() int8 // -1: no connection header, 0: connection close, 1: connection keep-alive
+	KeepAlive() bool
 	HeadResult() int16
 	BodyResult() int16
 	Status() int16
@@ -734,30 +734,24 @@ func (r *backendRequest_) proxyCopyHeaders(servReq ServerRequest, proxyConfig *W
 	if !r.outMessage.(BackendRequest).setMethodURI(servReq.UnsafeMethod(), uri, servReq.HasContent()) {
 		return false
 	}
-	if servReq.IsAbsoluteForm() || len(proxyConfig.Hostname) != 0 || len(proxyConfig.Colonport) != 0 { // TODO: what about HTTP/2 and HTTP/3?
+	if len(proxyConfig.Hostname) != 0 || len(proxyConfig.Colonport) != 0 { // custom authority (hostname or colonport)
 		servReq.proxyUnsetHost()
-		if servReq.IsAbsoluteForm() {
-			if !r.outMessage.addHeader(bytesHost, servReq.UnsafeAuthority()) {
-				return false
-			}
-		} else { // custom authority (hostname or colonport)
-			var (
-				hostname  []byte
-				colonport []byte
-			)
-			if len(proxyConfig.Hostname) == 0 { // no custom hostname
-				hostname = servReq.UnsafeHostname()
-			} else {
-				hostname = proxyConfig.Hostname
-			}
-			if len(proxyConfig.Colonport) == 0 { // no custom colonport
-				colonport = servReq.UnsafeColonport()
-			} else {
-				colonport = proxyConfig.Colonport
-			}
-			if !r.outMessage.(BackendRequest).proxySetAuthority(hostname, colonport) {
-				return false
-			}
+		var (
+			hostname  []byte
+			colonport []byte
+		)
+		if len(proxyConfig.Hostname) == 0 { // no custom hostname
+			hostname = servReq.UnsafeHostname()
+		} else {
+			hostname = proxyConfig.Hostname
+		}
+		if len(proxyConfig.Colonport) == 0 { // no custom colonport
+			colonport = servReq.UnsafeColonport()
+		} else {
+			colonport = proxyConfig.Colonport
+		}
+		if !r.outMessage.(BackendRequest).proxySetAuthority(hostname, colonport) {
+			return false
 		}
 	}
 	if r.httpVersion >= Version2 {

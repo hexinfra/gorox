@@ -111,7 +111,7 @@ func (h *httpProxy) OnPrepare() {
 	// Currently nothing.
 }
 
-func (h *httpProxy) IsProxy() bool { return true }
+func (h *httpProxy) IsProxy() bool { return true } // works as a reverse proxy
 func (h *httpProxy) IsCache() bool { return h.hcache != nil }
 
 func (h *httpProxy) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
@@ -202,7 +202,7 @@ func WebExchanReverseProxy(servReq ServerRequest, servResp ServerResponse, hcach
 			return
 		}
 		if backResp.Status() >= StatusOK {
-			if backResp.KeepAlive() == 0 { // connection close. only HTTP/1.x uses this. TODO: what if the connection is closed remotely in http/2 and http/3?
+			if !backResp.KeepAlive() { // connection close. only HTTP/1.x uses this. TODO: what if the connection is closed remotely?
 				backStream.(*backend1Stream).conn.persistent = false
 			}
 			break

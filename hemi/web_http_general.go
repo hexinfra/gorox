@@ -346,7 +346,7 @@ func (r *_httpIn_) IsHTTP3() bool         { return r.httpVersion == Version3 }
 func (r *_httpIn_) Version() string       { return httpVersionStrings[r.httpVersion] }
 func (r *_httpIn_) UnsafeVersion() []byte { return httpVersionByteses[r.httpVersion] }
 
-func (r *_httpIn_) KeepAlive() int8   { return r.keepAlive }
+func (r *_httpIn_) KeepAlive() bool   { return r.keepAlive == 1 } // -1 was excluded priorly
 func (r *_httpIn_) HeadResult() int16 { return r.headResult }
 func (r *_httpIn_) BodyResult() int16 { return r.bodyResult }
 
@@ -811,7 +811,9 @@ func (r *_httpIn_) checkConnection(pairs []pair, from uint8, edge uint8) bool { 
 		data := pairs[i].dataAt(r.input)
 		bytesToLower(data) // connection options are case-insensitive.
 		if bytes.Equal(data, bytesKeepAlive) {
-			r.keepAlive = 1 // to be compatible with HTTP/1.0
+			if r.httpVersion != Version1_0 { // we don't support persistent HTTP/1.0 connections
+				r.keepAlive = 1
+			}
 		} else if bytes.Equal(data, bytesClose) {
 			// Furthermore, the header field-name "Close" has been registered as
 			// "reserved", since using that name as an HTTP header field might

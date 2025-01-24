@@ -669,11 +669,7 @@ func (r *Rule) executeExchan(req ServerRequest, resp ServerResponse) (handled bo
 		for _, handlet := range r.handlets {
 			if handlet.IsProxy() { // request to a reverse proxy. checks against reverse proxies
 				toOrigin = false
-				if req.VersionCode() == Version1_0 {
-					// RFC 9112 (section 9.3):
-					// A proxy server MUST NOT maintain a persistent connection with an HTTP/1.0 client.
-					resp.(*server1Response).setConnectionClose()
-				}
+				// Add checks here.
 				if handlet.IsCache() { // request to a proxy cache. checks against proxy caches
 					// Add checks here.
 				}

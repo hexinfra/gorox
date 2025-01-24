@@ -811,7 +811,9 @@ func (r *_httpIn_) checkConnection(pairs []pair, from uint8, edge uint8) bool { 
 		data := pairs[i].dataAt(r.input)
 		bytesToLower(data) // connection options are case-insensitive.
 		if bytes.Equal(data, bytesKeepAlive) {
-			if r.httpVersion != Version1_0 { // we don't support persistent HTTP/1.0 connections
+			if r.httpVersion == Version1_0 { // we don't support persistent HTTP/1.0 connections, disable it explicitly
+				r.keepAlive = 0
+			} else {
 				r.keepAlive = 1
 			}
 		} else if bytes.Equal(data, bytesClose) {

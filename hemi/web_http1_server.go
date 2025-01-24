@@ -911,7 +911,6 @@ func (r *server1Response) AddDirectoryRedirection() bool {
 		return false
 	}
 }
-func (r *server1Response) setConnectionClose() { r.stream.(*server1Stream).conn.persistent = false }
 
 func (r *server1Response) AddCookie(cookie *Cookie) bool {
 	if cookie.name == "" || cookie.invalid {

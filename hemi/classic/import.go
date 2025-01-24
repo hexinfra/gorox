@@ -8,6 +8,9 @@
 package classic
 
 import ( // preload all
+	_ "github.com/hexinfra/gorox/hemi/classic/backends/mysql"
+	_ "github.com/hexinfra/gorox/hemi/classic/backends/pgsql"
+	_ "github.com/hexinfra/gorox/hemi/classic/backends/redis"
 	_ "github.com/hexinfra/gorox/hemi/classic/cronjobs/clean"
 	_ "github.com/hexinfra/gorox/hemi/classic/dealets/tcpx/access"
 	_ "github.com/hexinfra/gorox/hemi/classic/dealets/tcpx/limit"

@@ -613,7 +613,7 @@ func (r *backend1Request) proxyCopyCookies(servReq ServerRequest) bool { // NOTE
 		headerSize += len(name) + 1 + len(value) + 2 // `name=value; `
 		return true
 	})
-	if from, _, ok := r.growHeader(headerSize); ok {
+	if from, _, ok := r.growHeaders(headerSize); ok {
 		from += copy(r.fields[from:], bytesCookie)
 		r.fields[from] = ':'
 		r.fields[from+1] = ' '

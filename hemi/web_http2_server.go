@@ -356,7 +356,7 @@ serve:
 	for { // each frame from c.receiver() and server streams
 		select {
 		case incoming := <-c.incomingChan: // got an incoming frame from c.receiver()
-			if inFrame, ok := incoming.(*http2InFrame); ok { // data, headers, priority, rst_stream, settings, ping, windows_update, unknown
+			if inFrame, ok := incoming.(*http2InFrame); ok { // data, fields, priority, rst_stream, settings, ping, windows_update, unknown
 				if inFrame.isUnknown() {
 					// Ignore unknown frames.
 					continue
@@ -381,7 +381,7 @@ serve:
 				}
 			}
 			break serve
-		case outFrame := <-c.outgoingChan: // got an outgoing frame from streams. only headers frame and data frame!
+		case outFrame := <-c.outgoingChan: // got an outgoing frame from streams. only fields frame and data frame!
 			// TODO: collect as many outgoing frames as we can?
 			Printf("%+v\n", outFrame)
 			if outFrame.endStream { // a stream has ended
@@ -416,7 +416,7 @@ serve:
 	Printf("conn=%d c.manager() quit\n", c.id)
 }
 func (c *server2Conn) _handshake() error {
-	// Set deadline for the first request headers frame
+	// Set deadline for the first request fields frame
 	if err := c.setReadDeadline(); err != nil {
 		return err
 	}
@@ -474,7 +474,7 @@ var server2PrefaceAndMore = []byte{
 
 var server2InFrameProcessors = [http2NumFrameKinds]func(*server2Conn, *http2InFrame) error{
 	(*server2Conn).onDataInFrame,
-	(*server2Conn).onHeadersInFrame,
+	(*server2Conn).onFieldsInFrame,
 	(*server2Conn).onPriorityInFrame,
 	(*server2Conn).onRSTStreamInFrame,
 	(*server2Conn).onSettingsInFrame,
@@ -489,12 +489,12 @@ func (c *server2Conn) onDataInFrame(dataInFrame *http2InFrame) error {
 	// TODO
 	return nil
 }
-func (c *server2Conn) onHeadersInFrame(headersInFrame *http2InFrame) error {
+func (c *server2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
 	var (
 		stream *server2Stream
 		req    *server2Request
 	)
-	streamID := headersInFrame.streamID
+	streamID := fieldsInFrame.streamID
 	if streamID > c.lastStreamID { // new stream
 		if c.concurrentStreams == http2MaxConcurrentStreams {
 			return http2ErrorProtocol
@@ -503,11 +503,11 @@ func (c *server2Conn) onHeadersInFrame(headersInFrame *http2InFrame) error {
 		c.cumulativeStreams.Add(1)
 		stream = getServer2Stream(c, streamID, c.peerSettings.initialWindowSize)
 		req = &stream.request
-		if !c._decodeFields(headersInFrame.effective(), req.joinHeaders) {
+		if !c._decodeFields(fieldsInFrame.effective(), req.joinHeaders) {
 			putServer2Stream(stream)
 			return http2ErrorCompression
 		}
-		if headersInFrame.endStream {
+		if fieldsInFrame.endStream {
 			stream.state = http2StateRemoteClosed
 		} else {
 			stream.state = http2StateOpen
@@ -524,12 +524,12 @@ func (c *server2Conn) onHeadersInFrame(headersInFrame *http2InFrame) error {
 		if stream.state != http2StateOpen {
 			return http2ErrorProtocol
 		}
-		if !headersInFrame.endStream { // here must be trailer fields that end the stream
+		if !fieldsInFrame.endStream { // here must be trailer fields that end the stream
 			return http2ErrorProtocol
 		}
 		req = &stream.request
 		req.receiving = httpSectionTrailers
-		if !c._decodeFields(headersInFrame.effective(), req.joinTrailers) {
+		if !c._decodeFields(fieldsInFrame.effective(), req.joinTrailers) {
 			return http2ErrorCompression
 		}
 	}

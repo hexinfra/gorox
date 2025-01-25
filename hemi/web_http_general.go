@@ -909,7 +909,7 @@ func (r *_httpIn_) determineContentMode() bool {
 		}
 		r.contentSize = -2 // vague
 	} else if r.httpVersion >= Version2 && r.contentSize == -1 { // no content-length header field
-		// TODO: if there is no content, HTTP/2 and HTTP/3 should mark END_STREAM in headers frame. use this to decide!
+		// TODO: if there is no content, HTTP/2 and HTTP/3 should mark END_STREAM in fields frame. use this to decide!
 		r.contentSize = -2 // if there is no content-length in HTTP/2 or HTTP/3, we treat it as vague
 	}
 	return true
@@ -1571,17 +1571,17 @@ type _httpOut_ struct { // outgoing. needs building
 	// Stream states (stocks)
 	stockFields [1536]byte // for r.fields
 	// Stream states (controlled)
-	edges [128]uint16 // edges of header fields or trailer fields in r.fields, but not used at the same time. controlled by r.numHeaders or r.numTrailers. edges[0] is not used!
+	edges [128]uint16 // edges of header fields or trailer fields in r.fields, but not used at the same time. controlled by r.numHeaderFields or r.numTrailerFields. edges[0] is not used!
 	piece Piece       // for r.chain. used when sending content or echoing chunks
 	chain Chain       // outgoing piece chain. used when sending content or echoing chunks
 	// Stream states (non-zeros)
-	fields      []byte        // bytes of the header fields or trailer fields which are not manipulated at the same time. [<r.stockFields>/4K/16K]
-	sendTimeout time.Duration // timeout to send the whole message. zero means no timeout
-	contentSize int64         // info of outgoing content. -1: not set, -2: vague, >=0: size
-	httpVersion uint8         // Version1_1, Version2, Version3
-	asRequest   bool          // treat this outgoing message as request?
-	numHeaders  uint8         // 1+num of added header fields, starts from 1 because edges[0] is not used
-	numTrailers uint8         // 1+num of added trailer fields, starts from 1 because edges[0] is not used
+	fields           []byte        // bytes of the header fields or trailer fields which are not manipulated at the same time. [<r.stockFields>/4K/16K]
+	sendTimeout      time.Duration // timeout to send the whole message. zero means no timeout
+	contentSize      int64         // info of outgoing content. -1: not set, -2: vague, >=0: size
+	httpVersion      uint8         // Version1_1, Version2, Version3
+	asRequest        bool          // treat this outgoing message as request?
+	numHeaderFields  uint8         // 1+num of added header fields, starts from 1 because edges[0] is not used
+	numTrailerFields uint8         // 1+num of added trailer fields, starts from 1 because edges[0] is not used
 	// Stream states (zeros)
 	sendTime      time.Time   // the time when first write operation is performed
 	contentRanges []Range     // if outgoing content is ranged, this will be set
@@ -1608,7 +1608,7 @@ func (r *_httpOut_) onUse(httpVersion uint8, asRequest bool) { // for non-zeros
 	r.contentSize = -1 // not set
 	r.httpVersion = httpVersion
 	r.asRequest = asRequest
-	r.numHeaders, r.numTrailers = 1, 1 // r.edges[0] is not used
+	r.numHeaderFields, r.numTrailerFields = 1, 1 // r.edges[0] is not used
 }
 func (r *_httpOut_) onEnd() { // for zeros
 	if cap(r.fields) != cap(r.stockFields) {
@@ -1712,7 +1712,7 @@ func (r *_httpOut_) _appendSingleton(pIndex *uint8, name []byte, value []byte) b
 	if *pIndex > 0 || !r.outMessage.addHeader(name, value) {
 		return false
 	}
-	*pIndex = r.numHeaders - 1 // r.numHeaders begins from 1, so must minus one
+	*pIndex = r.numHeaderFields - 1 // r.numHeaderFields begins from 1, so must minus one
 	return true
 }
 
@@ -1748,7 +1748,7 @@ func (r *_httpOut_) _addUnixTime(pUnixTime *int64, pIndex *uint8, name []byte, h
 	if !r.outMessage.addHeader(name, httpDate) {
 		return false
 	}
-	*pIndex = r.numHeaders - 1 // r.numHeaders begins from 1, so must minus one
+	*pIndex = r.numHeaderFields - 1 // r.numHeaderFields begins from 1, so must minus one
 	return true
 }
 func (r *_httpOut_) _delUnixTime(pUnixTime *int64, pIndex *uint8) bool {
@@ -1955,19 +1955,19 @@ func (r *_httpOut_) _beforeEcho() error {
 	return r.outMessage.echoHeaders()
 }
 
-func (r *_httpOut_) growHeader(size int) (from int, edge int, ok bool) { // header fields and trailer fields are not manipulated at the same time
-	if r.numHeaders == uint8(cap(r.edges)) { // too many header fields
+func (r *_httpOut_) growHeaders(size int) (from int, edge int, ok bool) { // header fields and trailer fields are not manipulated at the same time
+	if r.numHeaderFields == uint8(cap(r.edges)) { // too many header fields
 		return
 	}
 	return r._growFields(size)
 }
-func (r *_httpOut_) growTrailer(size int) (from int, edge int, ok bool) { // header fields and trailer fields are not manipulated at the same time
-	if r.numTrailers == uint8(cap(r.edges)) { // too many trailer fields
+func (r *_httpOut_) growTrailers(size int) (from int, edge int, ok bool) { // header fields and trailer fields are not manipulated at the same time
+	if r.numTrailerFields == uint8(cap(r.edges)) { // too many trailer fields
 		return
 	}
 	return r._growFields(size)
 }
-func (r *_httpOut_) _growFields(size int) (from int, edge int, ok bool) { // used by growHeader first and growTrailer later as they are not manipulated at the same time
+func (r *_httpOut_) _growFields(size int) (from int, edge int, ok bool) { // used by growHeaders first and growTrailers later as they are not manipulated at the same time
 	if size <= 0 || size > _16K { // size allowed: (0, 16K]
 		BugExitln("invalid size in _growFields")
 	}

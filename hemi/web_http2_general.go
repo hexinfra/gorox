@@ -155,13 +155,13 @@ func (c *http2Conn_) recvInFrame() (*http2InFrame, error) {
 	if c.cumulativeInFrames == 20 && !c.acknowledged {
 		return nil, http2ErrorSettingsTimeout
 	}
-	if inFrame.kind == http2FrameHeaders {
-		if !inFrame.endHeaders { // continuations follow, join them into headers frame
+	if inFrame.kind == http2FrameFields {
+		if !inFrame.endFields { // continuations follow, join them into fields frame
 			if err := c._joinContinuations(inFrame); err != nil {
 				return nil, err
 			}
 		}
-		// Got a new headers frame. Set deadline for next headers frame
+		// Got a new fields frame. Set deadline for next fields frame
 		if err := c.setReadDeadline(); err != nil {
 			return nil, err
 		}
@@ -192,13 +192,13 @@ func (c *http2Conn_) _growInFrame(size uint32) error {
 	}
 	return c._fillInBuffer(c.partFore - c.inBufferEdge)
 }
-func (c *http2Conn_) _joinContinuations(headersInFrame *http2InFrame) error { // into a single headers frame
-	headersInFrame.inBuffer = nil // will be restored at the end of continuations
+func (c *http2Conn_) _joinContinuations(fieldsInFrame *http2InFrame) error { // into a single fields frame
+	fieldsInFrame.inBuffer = nil // will be restored at the end of continuations
 	var continuationInFrame http2InFrame
 	c.contBack, c.contFore = c.partFore, c.partFore
 	for { // each continuation frame
 		// Receive continuation header
-		if err := c._growContinuation(9, headersInFrame); err != nil {
+		if err := c._growContinuation(9, fieldsInFrame); err != nil {
 			return err
 		}
 		// Decode continuation header
@@ -206,40 +206,40 @@ func (c *http2Conn_) _joinContinuations(headersInFrame *http2InFrame) error { //
 			return err
 		}
 		// Check continuation header
-		if continuationInFrame.length == 0 || headersInFrame.length+continuationInFrame.length > http2MaxFrameSize {
+		if continuationInFrame.length == 0 || fieldsInFrame.length+continuationInFrame.length > http2MaxFrameSize {
 			return http2ErrorFrameSize
 		}
-		if continuationInFrame.streamID != headersInFrame.streamID || continuationInFrame.kind != http2FrameContinuation {
+		if continuationInFrame.streamID != fieldsInFrame.streamID || continuationInFrame.kind != http2FrameContinuation {
 			return http2ErrorProtocol
 		}
 		// Receive continuation payload
 		c.contBack = c.contFore
-		if err := c._growContinuation(continuationInFrame.length, headersInFrame); err != nil {
+		if err := c._growContinuation(continuationInFrame.length, fieldsInFrame); err != nil {
 			return err
 		}
 		// TODO: limit the number of continuation frames to avoid DoS attack
 		c.cumulativeInFrames++ // got the continuation frame.
-		// Append continuation frame to headers frame
-		copy(c.inBuffer.buf[headersInFrame.realEdge:], c.inBuffer.buf[c.contBack:c.contFore]) // may overwrite padding if exists
-		headersInFrame.realEdge += continuationInFrame.length
-		headersInFrame.length += continuationInFrame.length // we don't care if padding is overwritten. just accumulate
-		c.partFore += continuationInFrame.length            // also accumulate headers payload, with padding included
-		// End of headers frame?
-		if continuationInFrame.endHeaders {
-			headersInFrame.endHeaders = true
-			headersInFrame.inBuffer = c.inBuffer // restore the inBuffer
-			c.partFore = c.contFore              // for next frame.
+		// Append continuation frame to fields frame
+		copy(c.inBuffer.buf[fieldsInFrame.realEdge:], c.inBuffer.buf[c.contBack:c.contFore]) // may overwrite padding if exists
+		fieldsInFrame.realEdge += continuationInFrame.length
+		fieldsInFrame.length += continuationInFrame.length // we don't care if padding is overwritten. just accumulate
+		c.partFore += continuationInFrame.length           // also accumulate fields payload, with padding included
+		// End of fields frame?
+		if continuationInFrame.endFields {
+			fieldsInFrame.endFields = true
+			fieldsInFrame.inBuffer = c.inBuffer // restore the inBuffer
+			c.partFore = c.contFore             // for next frame.
 			return nil
 		}
 		c.contBack = c.contFore
 	}
 }
-func (c *http2Conn_) _growContinuation(size uint32, headersInFrame *http2InFrame) error {
+func (c *http2Conn_) _growContinuation(size uint32, fieldsInFrame *http2InFrame) error {
 	c.contFore += size                // won't overflow
 	if c.contFore <= c.inBufferEdge { // inBuffer is sufficient
 		return nil
 	}
-	// Needs grow. Cases are (A is payload of the headers frame):
+	// Needs grow. Cases are (A is payload of the fields frame):
 	// c.inBuffer: [| .. ] | A | 9 | B | 9 | C | 9 | D |
 	// c.inBuffer: [| .. ] | AB | oooo | 9 | C | 9 | D |
 	// c.inBuffer: [| .. ] | ABC | ooooooooooo | 9 | D |
@@ -260,8 +260,8 @@ func (c *http2Conn_) _growContinuation(size uint32, headersInFrame *http2InFrame
 		if inBuffer != c.inBuffer {
 			inBuffer.decRef()
 		}
-		headersInFrame.realFrom -= c.partBack
-		headersInFrame.realEdge -= c.partBack
+		fieldsInFrame.realFrom -= c.partBack
+		fieldsInFrame.realEdge -= c.partBack
 		c.partBack = 0
 		c.contBack = c.partFore
 		c.contFore = c.contBack + size
@@ -611,18 +611,18 @@ func (r *_http2In_) readContent() (data []byte, err error) {
 
 // http2InFrame is the HTTP/2 incoming frame.
 type http2InFrame struct { // 32 bytes
-	inBuffer   *http2Buffer // the inBuffer that holds payload
-	length     uint32       // length of payload. the real type is uint24
-	streamID   uint32       // the real type is uint31
-	kind       uint8        // see http2FrameXXX
-	endHeaders bool         // is END_HEADERS flag set?
-	endStream  bool         // is END_STREAM flag set?
-	ack        bool         // is ACK flag set?
-	padded     bool         // is PADDED flag set?
-	priority   bool         // is PRIORITY flag set?
-	_          [2]byte      // padding
-	realFrom   uint32       // (effective) payload from
-	realEdge   uint32       // (effective) payload edge
+	inBuffer  *http2Buffer // the inBuffer that holds payload
+	length    uint32       // length of payload. the real type is uint24
+	streamID  uint32       // the real type is uint31
+	kind      uint8        // see http2FrameXXX
+	endFields bool         // is END_FIELDS flag set?
+	endStream bool         // is END_STREAM flag set?
+	ack       bool         // is ACK flag set?
+	padded    bool         // is PADDED flag set?
+	priority  bool         // is PRIORITY flag set?
+	_         [2]byte      // padding
+	realFrom  uint32       // (effective) payload from
+	realEdge  uint32       // (effective) payload edge
 }
 
 func (f *http2InFrame) zero() { *f = http2InFrame{} }
@@ -639,11 +639,11 @@ func (f *http2InFrame) decodeHeader(frameHeader []byte) error {
 	}
 	f.kind = frameHeader[3]
 	flags := frameHeader[4]
-	f.endHeaders = flags&0x04 != 0 && (f.kind == http2FrameHeaders || f.kind == http2FrameContinuation)
-	f.endStream = flags&0x01 != 0 && (f.kind == http2FrameData || f.kind == http2FrameHeaders)
+	f.endFields = flags&0x04 != 0 && (f.kind == http2FrameFields || f.kind == http2FrameContinuation)
+	f.endStream = flags&0x01 != 0 && (f.kind == http2FrameData || f.kind == http2FrameFields)
 	f.ack = flags&0x01 != 0 && (f.kind == http2FrameSettings || f.kind == http2FramePing)
-	f.padded = flags&0x08 != 0 && (f.kind == http2FrameData || f.kind == http2FrameHeaders)
-	f.priority = flags&0x20 != 0 && f.kind == http2FrameHeaders
+	f.padded = flags&0x08 != 0 && (f.kind == http2FrameData || f.kind == http2FrameFields)
+	f.priority = flags&0x20 != 0 && f.kind == http2FrameFields
 	return nil
 }
 
@@ -652,7 +652,7 @@ func (f *http2InFrame) effective() []byte { return f.inBuffer.buf[f.realFrom:f.r
 
 var http2InFrameCheckers = [http2NumFrameKinds]func(*http2InFrame) error{
 	(*http2InFrame).checkAsData,
-	(*http2InFrame).checkAsHeaders,
+	(*http2InFrame).checkAsFields,
 	(*http2InFrame).checkAsPriority,
 	(*http2InFrame).checkAsRSTStream,
 	(*http2InFrame).checkAsSettings,
@@ -688,7 +688,7 @@ func (f *http2InFrame) checkAsData() error {
 	}
 	return nil
 }
-func (f *http2InFrame) checkAsHeaders() error {
+func (f *http2InFrame) checkAsFields() error {
 	var minLength uint32 = 1 // Field Block Fragment
 	if f.padded {
 		minLength += 1 // Pad Length (8)
@@ -851,7 +851,7 @@ func (r *_http2Out_) proxyPassBytes(data []byte) error { return r.writeBytes(dat
 
 func (r *_http2Out_) finalizeVague2() error {
 	// TODO
-	if r.numTrailers == 1 { // no trailer section
+	if r.numTrailerFields == 1 { // no trailer section
 	} else { // with trailer section
 	}
 	return nil
@@ -885,18 +885,18 @@ func (r *_http2Out_) writeBytes(data []byte) error {
 
 // http2OutFrame is the HTTP/2 outgoing frame.
 type http2OutFrame struct { // 64 bytes
-	length     uint32   // length of payload. the real type is uint24
-	streamID   uint32   // the real type is uint31
-	kind       uint8    // see http2FrameXXX. WARNING: http2FramePushPromise and http2FrameContinuation are NOT allowed!
-	endHeaders bool     // is END_HEADERS flag set?
-	endStream  bool     // is END_STREAM flag set?
-	ack        bool     // is ACK flag set?
-	padded     bool     // is PADDED flag set?
-	priority   bool     // is PRIORITY flag set?
-	_          bool     // padding
-	header     [9]byte  // frame header is encoded here
-	outBuffer  [16]byte // small payload of the frame is placed here temporarily
-	payload    []byte   // refers to the payload
+	length    uint32   // length of payload. the real type is uint24
+	streamID  uint32   // the real type is uint31
+	kind      uint8    // see http2FrameXXX. WARNING: http2FramePushPromise and http2FrameContinuation are NOT allowed!
+	endFields bool     // is END_FIELDS flag set?
+	endStream bool     // is END_STREAM flag set?
+	ack       bool     // is ACK flag set?
+	padded    bool     // is PADDED flag set?
+	priority  bool     // is PRIORITY flag set?
+	_         bool     // padding
+	header    [9]byte  // frame header is encoded here
+	outBuffer [16]byte // small payload of the frame is placed here temporarily
+	payload   []byte   // refers to the payload
 }
 
 func (f *http2OutFrame) zero() { *f = http2OutFrame{} }
@@ -915,19 +915,19 @@ func (f *http2OutFrame) encodeHeader() (frameHeader []byte) { // caller must ens
 	frameHeader[0], frameHeader[1], frameHeader[2] = byte(f.length>>16), byte(f.length>>8), byte(f.length)
 	frameHeader[3] = f.kind
 	flags := uint8(0x00)
-	if f.endHeaders && f.kind == http2FrameHeaders {
+	if f.endFields && f.kind == http2FrameFields {
 		flags |= 0x04
 	}
-	if f.endStream && (f.kind == http2FrameData || f.kind == http2FrameHeaders) {
+	if f.endStream && (f.kind == http2FrameData || f.kind == http2FrameFields) {
 		flags |= 0x01
 	}
 	if f.ack && (f.kind == http2FrameSettings || f.kind == http2FramePing) {
 		flags |= 0x01
 	}
-	if f.padded && (f.kind == http2FrameData || f.kind == http2FrameHeaders) {
+	if f.padded && (f.kind == http2FrameData || f.kind == http2FrameFields) {
 		flags |= 0x08
 	}
-	if f.priority && f.kind == http2FrameHeaders {
+	if f.priority && f.kind == http2FrameFields {
 		flags |= 0x20
 	}
 	frameHeader[4] = flags

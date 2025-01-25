@@ -192,7 +192,7 @@ func (c *backend2Conn) storeStream(backStream *backend2Stream) {
 
 var backend2InFrameProcessors = [http2NumFrameKinds]func(*backend2Conn, *http2InFrame) error{
 	(*backend2Conn).onDataInFrame,
-	(*backend2Conn).onHeadersInFrame,
+	(*backend2Conn).onFieldsInFrame,
 	(*backend2Conn).onPriorityInFrame,
 	(*backend2Conn).onRSTStreamInFrame,
 	(*backend2Conn).onSettingsInFrame,
@@ -207,7 +207,7 @@ func (c *backend2Conn) onDataInFrame(dataInFrame *http2InFrame) error {
 	// TODO
 	return nil
 }
-func (c *backend2Conn) onHeadersInFrame(headersInFrame *http2InFrame) error {
+func (c *backend2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
 	// TODO
 	return nil
 }

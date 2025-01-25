@@ -445,7 +445,7 @@ type fcgiResponse struct { // incoming. needs parsing
 	// Assocs
 	exchan *fcgiExchan
 	// Exchan states (stocks)
-	stockRecords [8456]byte // for r.records. fcgiHeaderSize + 8K + fcgiMaxPadding. good for PHP
+	stockRecords [8456]byte // for r.records. fcgiHeaderSize + 8K + fcgiMaxPadding. good for PHP-FPM
 	stockInput   [2048]byte // for r.input
 	stockPrimes  [48]pair   // for r.primes
 	stockExtras  [16]pair   // for r.extras

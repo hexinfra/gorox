@@ -691,7 +691,7 @@ func (r *_http1Out_) addHeader(name []byte, value []byte) bool {
 		return false
 	}
 	headerSize := len(name) + len(bytesColonSpace) + len(value) + len(bytesCRLF) // name: value\r\n
-	if from, _, ok := r.growHeader(headerSize); ok {
+	if from, _, ok := r.growHeaders(headerSize); ok {
 		from += copy(r.fields[from:], name)
 		r.fields[from] = ':'
 		r.fields[from+1] = ' '
@@ -704,9 +704,9 @@ func (r *_http1Out_) addHeader(name []byte, value []byte) bool {
 	}
 }
 func (r *_http1Out_) header(name []byte) (value []byte, ok bool) {
-	if r.numHeaders > 1 && len(name) > 0 {
+	if r.numHeaderFields > 1 && len(name) > 0 {
 		from := uint16(0)
-		for i := uint8(1); i < r.numHeaders; i++ {
+		for i := uint8(1); i < r.numHeaderFields; i++ {
 			edge := r.edges[i]
 			header := r.fields[from:edge]
 			if p := bytes.IndexByte(header, ':'); p != -1 && bytes.Equal(header[0:p], name) {
@@ -718,9 +718,9 @@ func (r *_http1Out_) header(name []byte) (value []byte, ok bool) {
 	return
 }
 func (r *_http1Out_) hasHeader(name []byte) bool {
-	if r.numHeaders > 1 && len(name) > 0 {
+	if r.numHeaderFields > 1 && len(name) > 0 {
 		from := uint16(0)
-		for i := uint8(1); i < r.numHeaders; i++ {
+		for i := uint8(1); i < r.numHeaderFields; i++ {
 			edge := r.edges[i]
 			header := r.fields[from:edge]
 			if p := bytes.IndexByte(header, ':'); p != -1 && bytes.Equal(header[0:p], name) {
@@ -733,16 +733,16 @@ func (r *_http1Out_) hasHeader(name []byte) bool {
 }
 func (r *_http1Out_) delHeader(name []byte) (deleted bool) {
 	from := uint16(0)
-	for i := uint8(1); i < r.numHeaders; {
+	for i := uint8(1); i < r.numHeaderFields; {
 		edge := r.edges[i]
 		if p := bytes.IndexByte(r.fields[from:edge], ':'); bytes.Equal(r.fields[from:from+uint16(p)], name) {
 			size := edge - from
 			copy(r.fields[from:], r.fields[edge:])
-			for j := i + 1; j < r.numHeaders; j++ {
+			for j := i + 1; j < r.numHeaderFields; j++ {
 				r.edges[j] -= size
 			}
 			r.fieldsEdge -= size
-			r.numHeaders--
+			r.numHeaderFields--
 			deleted = true
 		} else {
 			from = edge
@@ -759,17 +759,17 @@ func (r *_http1Out_) delHeaderAt(i uint8) {
 	edge := r.edges[i]
 	size := edge - from
 	copy(r.fields[from:], r.fields[edge:])
-	for j := i + 1; j < r.numHeaders; j++ {
+	for j := i + 1; j < r.numHeaderFields; j++ {
 		r.edges[j] -= size
 	}
 	r.fieldsEdge -= size
-	r.numHeaders--
+	r.numHeaderFields--
 }
 func (r *_http1Out_) _addCRLFHeader(from int) {
 	r.fields[from] = '\r'
 	r.fields[from+1] = '\n'
-	r.edges[r.numHeaders] = uint16(from + 2)
-	r.numHeaders++
+	r.edges[r.numHeaderFields] = uint16(from + 2)
+	r.numHeaderFields++
 }
 func (r *_http1Out_) _addFixedHeader(name []byte, value []byte) { // used by finalizeHeaders
 	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], name))
@@ -906,7 +906,7 @@ func (r *_http1Out_) addTrailer(name []byte, value []byte) bool {
 		return false
 	}
 	trailerSize := len(name) + len(bytesColonSpace) + len(value) + len(bytesCRLF) // name: value\r\n
-	if from, _, ok := r.growTrailer(trailerSize); ok {
+	if from, _, ok := r.growTrailers(trailerSize); ok {
 		from += copy(r.fields[from:], name)
 		r.fields[from] = ':'
 		r.fields[from+1] = ' '
@@ -914,17 +914,17 @@ func (r *_http1Out_) addTrailer(name []byte, value []byte) bool {
 		from += copy(r.fields[from:], value)
 		r.fields[from] = '\r'
 		r.fields[from+1] = '\n'
-		r.edges[r.numTrailers] = uint16(from + 2)
-		r.numTrailers++
+		r.edges[r.numTrailerFields] = uint16(from + 2)
+		r.numTrailerFields++
 		return true
 	} else {
 		return false
 	}
 }
 func (r *_http1Out_) trailer(name []byte) (value []byte, ok bool) {
-	if r.numTrailers > 1 && len(name) > 0 {
+	if r.numTrailerFields > 1 && len(name) > 0 {
 		from := uint16(0)
-		for i := uint8(1); i < r.numTrailers; i++ {
+		for i := uint8(1); i < r.numTrailerFields; i++ {
 			edge := r.edges[i]
 			trailer := r.fields[from:edge]
 			if p := bytes.IndexByte(trailer, ':'); p != -1 && bytes.Equal(trailer[0:p], name) {
@@ -940,7 +940,7 @@ func (r *_http1Out_) trailerFields() []byte { return r.fields[0:r.fieldsEdge] } 
 func (r *_http1Out_) proxyPassBytes(data []byte) error { return r.writeBytes(data) }
 
 func (r *_http1Out_) finalizeVague() error {
-	if r.numTrailers == 1 { // no trailer section
+	if r.numTrailerFields == 1 { // no trailer section
 		return r.writeBytes(http1BytesZeroCRLFCRLF) // 0\r\n\r\n
 	} else { // with trailer section
 		r.vector = r.fixedVector[0:3]

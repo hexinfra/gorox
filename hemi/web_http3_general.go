@@ -241,7 +241,7 @@ func (r *_http3Out_) proxyPassBytes(data []byte) error { return r.writeBytes(dat
 
 func (r *_http3Out_) finalizeVague() error {
 	// TODO
-	if r.numTrailers == 1 { // no trailer section
+	if r.numTrailerFields == 1 { // no trailer section
 	} else { // with trailer section
 	}
 	return nil

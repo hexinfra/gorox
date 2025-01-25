@@ -846,7 +846,7 @@ func (r *server1Response) AddHTTPSRedirection(authority string) bool {
 		headerSize += len(authority)
 	}
 	headerSize += len(r.request.UnsafeURI()) + len(bytesCRLF)
-	if from, _, ok := r.growHeader(headerSize); ok {
+	if from, _, ok := r.growHeaders(headerSize); ok {
 		from += copy(r.fields[from:], http1BytesLocationHTTPS)
 		if authority == "" {
 			from += copy(r.fields[from:], r.request.UnsafeAuthority())
@@ -871,7 +871,7 @@ func (r *server1Response) AddHostnameRedirection(hostname string) bool {
 	// TODO: remove colonport if colonport is default?
 	colonport := r.request.UnsafeColonport()
 	headerSize += len(hostname) + len(colonport) + len(r.request.UnsafeURI()) + len(bytesCRLF)
-	if from, _, ok := r.growHeader(headerSize); ok {
+	if from, _, ok := r.growHeaders(headerSize); ok {
 		from += copy(r.fields[from:], prefix)
 		from += copy(r.fields[from:], hostname) // this is almost always configured, not client provided
 		from += copy(r.fields[from:], colonport)
@@ -892,7 +892,7 @@ func (r *server1Response) AddDirectoryRedirection() bool {
 	req := r.request
 	headerSize := len(prefix)
 	headerSize += len(req.UnsafeAuthority()) + len(req.UnsafeURI()) + 1 + len(bytesCRLF)
-	if from, _, ok := r.growHeader(headerSize); ok {
+	if from, _, ok := r.growHeaders(headerSize); ok {
 		from += copy(r.fields[from:], prefix)
 		from += copy(r.fields[from:], req.UnsafeAuthority())
 		from += copy(r.fields[from:], req.UnsafeEncodedPath())
@@ -913,7 +913,7 @@ func (r *server1Response) AddCookie(cookie *Cookie) bool {
 		return false
 	}
 	headerSize := len(bytesSetCookie) + len(bytesColonSpace) + cookie.size() + len(bytesCRLF) // set-cookie: cookie\r\n
-	if from, _, ok := r.growHeader(headerSize); ok {
+	if from, _, ok := r.growHeaders(headerSize); ok {
 		from += copy(r.fields[from:], bytesSetCookie)
 		r.fields[from] = ':'
 		r.fields[from+1] = ' '

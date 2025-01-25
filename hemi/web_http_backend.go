@@ -210,9 +210,9 @@ type BackendResponse interface { // for *backend[1-3]Response
 	proxyTakeContent() any
 	readContent() (data []byte, err error)
 	proxyDelHopHeaderFields()
-	proxyDelHopTrailers()
+	proxyDelHopTrailerFields()
 	proxyWalkHeaderLines(callback func(headerLine *pair, name []byte, value []byte) bool) bool
-	proxyWalkTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
+	proxyWalkTrailerLines(callback func(trailerLine *pair, name []byte, value []byte) bool) bool
 }
 
 // backendResponse_ is the parent for backend[1-3]Response.
@@ -618,7 +618,7 @@ type BackendRequest interface { // for *backend[1-3]Request
 	proxyCopyHeaderLines(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool
 	proxyPassMessage(servReq ServerRequest) error                 // pass content to backend directly
 	proxyPostMessage(foreContent any, foreHasTrailers bool) error // post held content to backend
-	proxyCopyTrailers(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool
+	proxyCopyTrailerLines(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool
 	isVague() bool
 	endVague() error
 }
@@ -865,8 +865,8 @@ func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfi
 
 	return true
 }
-func (r *backendRequest_) proxyCopyTrailers(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool {
-	return servReq.proxyWalkTrailers(func(trailer *pair, name []byte, value []byte) bool {
+func (r *backendRequest_) proxyCopyTrailerLines(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool {
+	return servReq.proxyWalkTrailerLines(func(trailerLine *pair, name []byte, value []byte) bool {
 		return r.outMessage.addTrailer(name, value)
 	})
 }

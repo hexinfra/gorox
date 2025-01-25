@@ -613,7 +613,7 @@ func (r *_http1In_) recvTrailerLines() bool { // trailer-section = *( field-line
 		}
 		trailerLine.value.set(r.elemBack, fore)
 
-		// Copy trailer data to r.array
+		// Copy trailer line data to r.array
 		fore = r.arrayEdge
 		if !r.arrayCopy(trailerLine.nameAt(r.bodyWindow)) {
 			return false
@@ -625,17 +625,17 @@ func (r *_http1In_) recvTrailerLines() bool { // trailer-section = *( field-line
 		}
 		trailerLine.value.set(fore, r.arrayEdge)
 
-		// Trailer is received in general algorithm. Now add it
+		// Trailer line is received in general algorithm. Now add it
 		if !r.addTrailerLine(trailerLine) {
 			return false
 		}
 
-		// Trailer is successfully received. Skip '\n'
+		// Trailer line is successfully received. Skip '\n'
 		if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked() {
 			return false
 		}
 		// r.elemFore is now at the next trailer line or end of trailer section.
-		trailerLine.nameHash, trailerLine.flags = 0, 0 // reset for next trailer
+		trailerLine.nameHash, trailerLine.flags = 0, 0 // reset for next trailer line
 	}
 	r.chunkFore = r.elemFore // r.chunkFore must ends at the last '\n'
 	return true
@@ -935,7 +935,7 @@ func (r *_http1Out_) trailer(name []byte) (value []byte, ok bool) {
 	}
 	return
 }
-func (r *_http1Out_) trailerFields() []byte { return r.fields[0:r.fieldsEdge] } // Header fields and trailer fields are not manipulated at the same time, so after header fields is sent, r.fields is used by trailer fields.
+func (r *_http1Out_) trailers() []byte { return r.fields[0:r.fieldsEdge] } // Header fields and trailer fields are not manipulated at the same time, so after header fields is sent, r.fields is used by trailer fields.
 
 func (r *_http1Out_) proxyPassBytes(data []byte) error { return r.writeBytes(data) }
 
@@ -945,7 +945,7 @@ func (r *_http1Out_) finalizeVague() error {
 	} else { // with trailer section
 		r.vector = r.fixedVector[0:3]
 		r.vector[0] = http1BytesZeroCRLF // 0\r\n
-		r.vector[1] = r.trailerFields()  // field-name: field-value\r\n
+		r.vector[1] = r.trailers()       // field-name: field-value\r\n
 		r.vector[2] = bytesCRLF          // \r\n
 		return r.writeVector()
 	}

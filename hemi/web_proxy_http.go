@@ -168,7 +168,7 @@ func WebExchanReverseProxy(servReq ServerRequest, servResp ServerResponse, hcach
 		servHasTrailers := servReq.HasTrailers()
 		backErr = backReq.proxyPostMessage(servContent, servHasTrailers)
 		if backErr == nil && servHasTrailers {
-			if !backReq.proxyCopyTrailers(servReq, proxyConfig) {
+			if !backReq.proxyCopyTrailerLines(servReq, proxyConfig) {
 				backStream.markBroken()
 				backErr = httpOutTrailerFailed
 			} else if backErr = backReq.endVague(); backErr != nil {
@@ -250,7 +250,7 @@ func WebExchanReverseProxy(servReq ServerRequest, servResp ServerResponse, hcach
 			return
 		}
 		if backHasTrailers {
-			if !servResp.proxyCopyTrailers(backResp, proxyConfig) {
+			if !servResp.proxyCopyTrailerLines(backResp, proxyConfig) {
 				return
 			}
 		}

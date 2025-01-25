@@ -1001,8 +1001,8 @@ func (r *fcgiResponse) readContent() (data []byte, err error) {
 func (r *fcgiResponse) HasTrailers() bool { return false } // fcgi doesn't support http trailers
 func (r *fcgiResponse) examineTail() bool { return true }  // fcgi doesn't support http trailers
 
-func (r *fcgiResponse) proxyDelHopHeaderFields() {} // for fcgi, nothing to delete
-func (r *fcgiResponse) proxyDelHopTrailers()     {} // fcgi doesn't support http trailers
+func (r *fcgiResponse) proxyDelHopHeaderFields()  {} // for fcgi, nothing to delete
+func (r *fcgiResponse) proxyDelHopTrailerFields() {} // fcgi doesn't support http trailers
 
 func (r *fcgiResponse) proxyWalkHeaderLines(callback func(headerLine *pair, name []byte, value []byte) bool) bool { // excluding sub header lines
 	for i := 1; i < len(r.primes); i++ { // r.primes[0] is not used
@@ -1014,7 +1014,7 @@ func (r *fcgiResponse) proxyWalkHeaderLines(callback func(headerLine *pair, name
 	}
 	return true
 }
-func (r *fcgiResponse) proxyWalkTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // fcgi doesn't support http trailers
+func (r *fcgiResponse) proxyWalkTrailerLines(callback func(trailerLine *pair, name []byte, value []byte) bool) bool { // fcgi doesn't support http trailers
 	return true
 }
 

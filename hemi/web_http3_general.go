@@ -232,7 +232,7 @@ func (r *_http3Out_) trailer(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *_http3Out_) trailerFields() []byte {
+func (r *_http3Out_) trailers() []byte {
 	// TODO
 	return nil
 }

@@ -935,7 +935,7 @@ func (r *server1Response) addTrailer(name []byte, value []byte) bool {
 	if r.request.VersionCode() == Version1_1 {
 		return r.out1.addTrailer(name, value)
 	}
-	return true // HTTP/1.0 doesn't support trailer.
+	return true // HTTP/1.0 doesn't support http trailers.
 }
 func (r *server1Response) trailer(name []byte) (value []byte, ok bool) { return r.out1.trailer(name) }
 

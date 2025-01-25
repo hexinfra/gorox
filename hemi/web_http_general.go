@@ -167,7 +167,7 @@ type httpIn interface {
 
 	readContent() (data []byte, err error)
 	examineTail() bool
-	proxyWalkTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
+	proxyWalkTrailerLines(callback func(trailer *pair, name []byte, value []byte) bool) bool
 }
 
 // _httpIn_ is a mixin for serverRequest_ and backendResponse_.
@@ -1365,7 +1365,7 @@ func (r *_httpIn_) _placeOf(pair *pair) []byte {
 func (r *_httpIn_) proxyDelHopHeaderFields() {
 	r._proxyDelHopFieldLines(r.headerLines, pairHeader, r.delHeader)
 }
-func (r *_httpIn_) proxyDelHopTrailers() {
+func (r *_httpIn_) proxyDelHopTrailerFields() {
 	r._proxyDelHopFieldLines(r.trailerLines, pairTrailer, r.delTrailer)
 }
 func (r *_httpIn_) _proxyDelHopFieldLines(fieldLines zone, extraKind int8, delField func(name []byte, nameHash uint16)) { // TODO: improve performance
@@ -1414,7 +1414,7 @@ func (r *_httpIn_) _proxyDelHopFieldLines(fieldLines zone, extraKind int8, delFi
 func (r *_httpIn_) proxyWalkHeaderLines(callback func(headerLine *pair, name []byte, value []byte) bool) bool { // excluding sub header lines
 	return r._proxyWalkMainFields(r.headerLines, pairHeader, callback)
 }
-func (r *_httpIn_) proxyWalkTrailers(callback func(trailerLine *pair, name []byte, value []byte) bool) bool { // excluding sub trailer lines
+func (r *_httpIn_) proxyWalkTrailerLines(callback func(trailerLine *pair, name []byte, value []byte) bool) bool { // excluding sub trailer lines
 	return r._proxyWalkMainFields(r.trailerLines, pairTrailer, callback)
 }
 func (r *_httpIn_) _proxyWalkMainFields(fieldLines zone, extraKind int8, callback func(fieldLine *pair, name []byte, value []byte) bool) bool {
@@ -1811,7 +1811,7 @@ func (r *_httpOut_) AddTrailer(name string, value string) bool {
 	return r.AddTrailerBytes(ConstBytes(name), ConstBytes(value))
 }
 func (r *_httpOut_) AddTrailerBytes(name []byte, value []byte) bool {
-	if !r.isSent { // trailer fields must be added after header fields & content are sent, otherwise r.fields will be messed up
+	if !r.isSent { // trailer fields must be added after header fields & content was sent, otherwise r.fields will be messed up
 		return false
 	}
 	return r.outMessage.addTrailer(name, value)
@@ -1848,7 +1848,7 @@ func (r *_httpOut_) _proxyPassMessage(inMessage httpIn) error {
 		}
 	}
 	if inMessage.HasTrailers() {
-		if !inMessage.proxyWalkTrailers(func(trailer *pair, name []byte, value []byte) bool {
+		if !inMessage.proxyWalkTrailerLines(func(trailerLine *pair, name []byte, value []byte) bool {
 			return r.outMessage.addTrailer(name, value) // added trailer fields will be written by upper code eventually.
 		}) {
 			return httpOutTrailerFailed

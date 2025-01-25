@@ -371,9 +371,9 @@ type ServerRequest interface { // for *server[1-3]Request
 	contentIsForm() bool
 	contentIsEncoded() bool
 	proxyDelHopHeaderFields()
-	proxyDelHopTrailers()
+	proxyDelHopTrailerFields()
 	proxyWalkHeaderLines(callback func(headerLine *pair, name []byte, value []byte) bool) bool
-	proxyWalkTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
+	proxyWalkTrailerLines(callback func(trailerLine *pair, name []byte, value []byte) bool) bool
 	proxyWalkCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool
 	proxyUnsetHost()
 	proxyTakeContent() any
@@ -2574,7 +2574,7 @@ type ServerResponse interface { // for *server[1-3]Response
 	proxyPassMessage(backResp BackendResponse) error              // pass content to client directly
 	proxyPostMessage(backContent any, backHasTrailers bool) error // post held content to client
 	proxyCopyHeaderLines(backResp BackendResponse, proxyConfig *WebExchanProxyConfig) bool
-	proxyCopyTrailers(backResp BackendResponse, proxyConfig *WebExchanProxyConfig) bool
+	proxyCopyTrailerLines(backResp BackendResponse, proxyConfig *WebExchanProxyConfig) bool
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
 }
@@ -2932,8 +2932,8 @@ func (r *serverResponse_) proxyCopyHeaderLines(backResp BackendResponse, proxyCo
 
 	return true
 }
-func (r *serverResponse_) proxyCopyTrailers(backResp BackendResponse, proxyConfig *WebExchanProxyConfig) bool {
-	return backResp.proxyWalkTrailers(func(trailer *pair, name []byte, value []byte) bool {
+func (r *serverResponse_) proxyCopyTrailerLines(backResp BackendResponse, proxyConfig *WebExchanProxyConfig) bool {
+	return backResp.proxyWalkTrailerLines(func(trailerLine *pair, name []byte, value []byte) bool {
 		return r.outMessage.addTrailer(name, value)
 	})
 }

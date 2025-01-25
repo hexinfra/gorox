@@ -373,6 +373,7 @@ type ServerRequest interface { // for *server[1-3]Request
 	proxyDelHopHeaderFields()
 	proxyDelHopTrailerFields()
 	proxyWalkHeaderLines(callback func(headerLine *pair, headerName []byte, lineValue []byte) bool) bool
+	proxyWalkHeaderFields(callback func(headerName []byte, headerValue []byte) bool) bool // used by cgi-based protocols like cgi and fcgi
 	proxyWalkTrailerLines(callback func(trailerLine *pair, trailerName []byte, lineValue []byte) bool) bool
 	proxyWalkCookies(callback func(cookie *pair, cookieName []byte, cookieValue []byte) bool) bool
 	proxyUnsetHost()
@@ -1766,6 +1767,13 @@ func (r *serverRequest_) EvalRanges(contentSize int64) []Range { // returned ran
 
 func (r *serverRequest_) proxyUnsetHost() {
 	r._delPrime(r.indexes.host) // zero safe
+}
+func (r *serverRequest_) proxyWalkHeaderFields(callback func(headerName []byte, headerValue []byte) bool) bool {
+	// TODO
+	// RFC 3875 (section 4.1.18): If multiple header fields with the same field-name are received then the server MUST rewrite them as a single value having the same semantics.
+	// Note: check headerLine.isUnderscore()
+	// Note: // TODO: got a "foo_bar" header line and user prefer it. avoid name conflicts with header line which is like "foo-bar"
+	return true
 }
 
 func (r *serverRequest_) HasContent() bool { return r.contentSize >= 0 || r.IsVague() }

@@ -1263,10 +1263,8 @@ func (r *fcgiRequest) proxyCopyHeaderLines(httpReq ServerRequest, proxyConfig *F
 		return false
 	}
 
-	// Add http params
-	if !httpReq.proxyWalkHeaderLines(func(headerLine *pair, headerName []byte, lineValue []byte) bool {
-		return r._addHTTPParam(headerLine, headerName, lineValue)
-	}) {
+	// Add HTTP header fields.
+	if !httpReq.proxyWalkHeaderFields(r._addHTTPParam) {
 		return false
 	}
 
@@ -1274,16 +1272,11 @@ func (r *fcgiRequest) proxyCopyHeaderLines(httpReq ServerRequest, proxyConfig *F
 
 	return true
 }
-func (r *fcgiRequest) _addMetaParam(name []byte, value []byte) bool { // like: REQUEST_METHOD
-	return r._addParam(name, value, false)
+func (r *fcgiRequest) _addMetaParam(paramName []byte, paramValue []byte) bool { // like: REQUEST_METHOD
+	return r._addParam(paramName, paramValue, false)
 }
-func (r *fcgiRequest) _addHTTPParam(headerLine *pair, headerName []byte, lineValue []byte) bool { // like: HTTP_USER_AGENT
-	if headerLine.isUnderscore() {
-		// TODO: got a "foo_bar" header line and user prefer it. avoid name conflicts with header line which is like "foo-bar"
-		return true
-	} else {
-		return r._addParam(headerName, lineValue, true)
-	}
+func (r *fcgiRequest) _addHTTPParam(headerName []byte, headerValue []byte) bool { // like: HTTP_USER_AGENT
+	return r._addParam(headerName, headerValue, true)
 }
 func (r *fcgiRequest) _addParam(name []byte, value []byte, http bool) bool { // into r.params
 	nameLen, valueLen := len(name), len(value)

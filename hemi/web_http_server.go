@@ -372,9 +372,9 @@ type ServerRequest interface { // for *server[1-3]Request
 	contentIsEncoded() bool
 	proxyDelHopHeaderFields()
 	proxyDelHopTrailerFields()
-	proxyWalkHeaderLines(callback func(headerLine *pair, name []byte, value []byte) bool) bool
-	proxyWalkTrailerLines(callback func(trailerLine *pair, name []byte, value []byte) bool) bool
-	proxyWalkCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool
+	proxyWalkHeaderLines(callback func(headerLine *pair, headerName []byte, lineValue []byte) bool) bool
+	proxyWalkTrailerLines(callback func(trailerLine *pair, trailerName []byte, lineValue []byte) bool) bool
+	proxyWalkCookies(callback func(cookie *pair, cookieName []byte, cookieValue []byte) bool) bool
 	proxyUnsetHost()
 	proxyTakeContent() any
 	readContent() (data []byte, err error)
@@ -1605,7 +1605,7 @@ func (r *serverRequest_) DelCookie(name string) (deleted bool) {
 func (r *serverRequest_) AddCookie(name string, value string) bool { // as extra, by webapp
 	return r.addExtra(name, value, 0, pairCookie)
 }
-func (r *serverRequest_) proxyWalkCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool {
+func (r *serverRequest_) proxyWalkCookies(callback func(cookie *pair, cookieName []byte, cookieValue []byte) bool) bool {
 	for i := r.cookies.from; i < r.cookies.edge; i++ {
 		if cookie := &r.primes[i]; cookie.nameHash != 0 {
 			if !callback(cookie, cookie.nameAt(r.input), cookie.valueAt(r.input)) {
@@ -2916,11 +2916,11 @@ func (r *serverResponse_) proxyCopyHeaderLines(backResp BackendResponse, proxyCo
 	// copy selective forbidden header fields (excluding set-cookie, which is copied directly) from backResp
 
 	// copy remaining header fields from backResp
-	if !backResp.proxyWalkHeaderLines(func(headerLine *pair, name []byte, value []byte) bool {
-		if headerLine.nameHash == hashSetCookie && bytes.Equal(name, bytesSetCookie) { // set-cookie is copied directly
-			return r.outMessage.addHeader(name, value)
+	if !backResp.proxyWalkHeaderLines(func(headerLine *pair, headerName []byte, lineValue []byte) bool {
+		if headerLine.nameHash == hashSetCookie && bytes.Equal(headerName, bytesSetCookie) { // set-cookie is copied directly
+			return r.outMessage.addHeader(headerName, lineValue)
 		} else {
-			return r.outMessage.insertHeader(headerLine.nameHash, name, value) // some header fields (e.g. "connection") are restricted
+			return r.outMessage.insertHeader(headerLine.nameHash, headerName, lineValue) // some header fields (e.g. "connection") are restricted
 		}
 	}) {
 		return false
@@ -2933,8 +2933,8 @@ func (r *serverResponse_) proxyCopyHeaderLines(backResp BackendResponse, proxyCo
 	return true
 }
 func (r *serverResponse_) proxyCopyTrailerLines(backResp BackendResponse, proxyConfig *WebExchanProxyConfig) bool {
-	return backResp.proxyWalkTrailerLines(func(trailerLine *pair, name []byte, value []byte) bool {
-		return r.outMessage.addTrailer(name, value)
+	return backResp.proxyWalkTrailerLines(func(trailerLine *pair, trailerName []byte, lineValue []byte) bool {
+		return r.outMessage.addTrailer(trailerName, lineValue)
 	})
 }
 

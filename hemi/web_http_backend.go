@@ -211,8 +211,8 @@ type BackendResponse interface { // for *backend[1-3]Response
 	readContent() (data []byte, err error)
 	proxyDelHopHeaderFields()
 	proxyDelHopTrailerFields()
-	proxyWalkHeaderLines(callback func(headerLine *pair, name []byte, value []byte) bool) bool
-	proxyWalkTrailerLines(callback func(trailerLine *pair, name []byte, value []byte) bool) bool
+	proxyWalkHeaderLines(callback func(headerLine *pair, headerName []byte, lineValue []byte) bool) bool
+	proxyWalkTrailerLines(callback func(trailerLine *pair, trailerName []byte, lineValue []byte) bool) bool
 }
 
 // backendResponse_ is the parent for backend[1-3]Response.
@@ -849,11 +849,11 @@ func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfi
 	}
 
 	// copy remaining header fields from servReq
-	if !servReq.proxyWalkHeaderLines(func(headerLine *pair, name []byte, value []byte) bool {
+	if !servReq.proxyWalkHeaderLines(func(headerLine *pair, headerName []byte, lineValue []byte) bool {
 		if false { // TODO: are there any special header fields that should be copied directly?
-			return r.outMessage.addHeader(name, value)
+			return r.outMessage.addHeader(headerName, lineValue)
 		} else {
-			return r.outMessage.insertHeader(headerLine.nameHash, name, value) // some header fields (e.g. "connection") are restricted
+			return r.outMessage.insertHeader(headerLine.nameHash, headerName, lineValue) // some header fields (e.g. "connection") are restricted
 		}
 	}) {
 		return false
@@ -866,8 +866,8 @@ func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfi
 	return true
 }
 func (r *backendRequest_) proxyCopyTrailerLines(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool {
-	return servReq.proxyWalkTrailerLines(func(trailerLine *pair, name []byte, value []byte) bool {
-		return r.outMessage.addTrailer(name, value)
+	return servReq.proxyWalkTrailerLines(func(trailerLine *pair, trailerName []byte, lineValue []byte) bool {
+		return r.outMessage.addTrailer(trailerName, lineValue)
 	})
 }
 

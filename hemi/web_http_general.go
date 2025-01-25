@@ -167,7 +167,7 @@ type httpIn interface {
 
 	readContent() (data []byte, err error)
 	examineTail() bool
-	proxyWalkTrailerLines(callback func(trailer *pair, name []byte, value []byte) bool) bool
+	proxyWalkTrailerLines(callback func(trailerLine *pair, trailerName []byte, lineValue []byte) bool) bool
 }
 
 // _httpIn_ is a mixin for serverRequest_ and backendResponse_.
@@ -1411,13 +1411,13 @@ func (r *_httpIn_) _proxyDelHopFieldLines(fieldLines zone, extraKind int8, delFi
 	}
 }
 
-func (r *_httpIn_) proxyWalkHeaderLines(callback func(headerLine *pair, name []byte, value []byte) bool) bool { // excluding sub header lines
+func (r *_httpIn_) proxyWalkHeaderLines(callback func(headerLine *pair, headerName []byte, lineValue []byte) bool) bool { // excluding sub header lines
 	return r._proxyWalkMainFields(r.headerLines, pairHeader, callback)
 }
-func (r *_httpIn_) proxyWalkTrailerLines(callback func(trailerLine *pair, name []byte, value []byte) bool) bool { // excluding sub trailer lines
+func (r *_httpIn_) proxyWalkTrailerLines(callback func(trailerLine *pair, trailerName []byte, lineValue []byte) bool) bool { // excluding sub trailer lines
 	return r._proxyWalkMainFields(r.trailerLines, pairTrailer, callback)
 }
-func (r *_httpIn_) _proxyWalkMainFields(fieldLines zone, extraKind int8, callback func(fieldLine *pair, name []byte, value []byte) bool) bool {
+func (r *_httpIn_) _proxyWalkMainFields(fieldLines zone, extraKind int8, callback func(fieldLine *pair, fieldName []byte, lineValue []byte) bool) bool {
 	for i := fieldLines.from; i < fieldLines.edge; i++ {
 		if fieldLine := &r.primes[i]; fieldLine.nameHash != 0 {
 			p := r._placeOf(fieldLine)
@@ -1848,8 +1848,8 @@ func (r *_httpOut_) _proxyPassMessage(inMessage httpIn) error {
 		}
 	}
 	if inMessage.HasTrailers() {
-		if !inMessage.proxyWalkTrailerLines(func(trailerLine *pair, name []byte, value []byte) bool {
-			return r.outMessage.addTrailer(name, value) // added trailer fields will be written by upper code eventually.
+		if !inMessage.proxyWalkTrailerLines(func(trailerLine *pair, trailerName []byte, lineValue []byte) bool {
+			return r.outMessage.addTrailer(trailerName, lineValue) // added trailer fields will be written by upper code eventually.
 		}) {
 			return httpOutTrailerFailed
 		}

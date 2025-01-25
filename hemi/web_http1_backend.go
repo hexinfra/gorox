@@ -609,8 +609,8 @@ func (r *backend1Request) AddCookie(name string, value string) bool { // cookie:
 }
 func (r *backend1Request) proxyCopyCookies(servReq ServerRequest) bool { // NOTE: merge all cookies into one "cookie" header field
 	headerSize := len(bytesCookie) + len(bytesColonSpace) // `cookie: `
-	servReq.proxyWalkCookies(func(cookie *pair, name []byte, value []byte) bool {
-		headerSize += len(name) + 1 + len(value) + 2 // `name=value; `
+	servReq.proxyWalkCookies(func(cookie *pair, cookieName []byte, cookieValue []byte) bool {
+		headerSize += len(cookieName) + 1 + len(cookieValue) + 2 // `name=value; `
 		return true
 	})
 	if from, _, ok := r.growHeaders(headerSize); ok {
@@ -618,11 +618,11 @@ func (r *backend1Request) proxyCopyCookies(servReq ServerRequest) bool { // NOTE
 		r.fields[from] = ':'
 		r.fields[from+1] = ' '
 		from += 2
-		servReq.proxyWalkCookies(func(cookie *pair, name []byte, value []byte) bool {
-			from += copy(r.fields[from:], name)
+		servReq.proxyWalkCookies(func(cookie *pair, cookieName []byte, cookieValue []byte) bool {
+			from += copy(r.fields[from:], cookieName)
 			r.fields[from] = '='
 			from++
-			from += copy(r.fields[from:], value)
+			from += copy(r.fields[from:], cookieValue)
 			r.fields[from] = ';'
 			r.fields[from+1] = ' '
 			from += 2

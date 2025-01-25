@@ -1004,7 +1004,7 @@ func (r *fcgiResponse) examineTail() bool { return true }  // fcgi doesn't suppo
 func (r *fcgiResponse) proxyDelHopHeaderFields()  {} // for fcgi, nothing to delete
 func (r *fcgiResponse) proxyDelHopTrailerFields() {} // fcgi doesn't support http trailers
 
-func (r *fcgiResponse) proxyWalkHeaderLines(callback func(headerLine *pair, name []byte, value []byte) bool) bool { // excluding sub header lines
+func (r *fcgiResponse) proxyWalkHeaderLines(callback func(headerLine *pair, headerName []byte, lineValue []byte) bool) bool { // excluding sub header lines
 	for i := 1; i < len(r.primes); i++ { // r.primes[0] is not used
 		if headerLine := &r.primes[i]; headerLine.nameHash != 0 && !headerLine.isSubField() {
 			if !callback(headerLine, headerLine.nameAt(r.input), headerLine.valueAt(r.input)) {
@@ -1014,7 +1014,7 @@ func (r *fcgiResponse) proxyWalkHeaderLines(callback func(headerLine *pair, name
 	}
 	return true
 }
-func (r *fcgiResponse) proxyWalkTrailerLines(callback func(trailerLine *pair, name []byte, value []byte) bool) bool { // fcgi doesn't support http trailers
+func (r *fcgiResponse) proxyWalkTrailerLines(callback func(trailerLine *pair, trailerName []byte, lineValue []byte) bool) bool { // fcgi doesn't support http trailers
 	return true
 }
 
@@ -1264,8 +1264,8 @@ func (r *fcgiRequest) proxyCopyHeaderLines(httpReq ServerRequest, proxyConfig *F
 	}
 
 	// Add http params
-	if !httpReq.proxyWalkHeaderLines(func(headerLine *pair, name []byte, value []byte) bool {
-		return r._addHTTPParam(headerLine, name, value)
+	if !httpReq.proxyWalkHeaderLines(func(headerLine *pair, headerName []byte, lineValue []byte) bool {
+		return r._addHTTPParam(headerLine, headerName, lineValue)
 	}) {
 		return false
 	}
@@ -1277,12 +1277,12 @@ func (r *fcgiRequest) proxyCopyHeaderLines(httpReq ServerRequest, proxyConfig *F
 func (r *fcgiRequest) _addMetaParam(name []byte, value []byte) bool { // like: REQUEST_METHOD
 	return r._addParam(name, value, false)
 }
-func (r *fcgiRequest) _addHTTPParam(headerLine *pair, name []byte, value []byte) bool { // like: HTTP_USER_AGENT
+func (r *fcgiRequest) _addHTTPParam(headerLine *pair, headerName []byte, lineValue []byte) bool { // like: HTTP_USER_AGENT
 	if headerLine.isUnderscore() {
 		// TODO: got a "foo_bar" header line and user prefer it. avoid name conflicts with header line which is like "foo-bar"
 		return true
 	} else {
-		return r._addParam(name, value, true)
+		return r._addParam(headerName, lineValue, true)
 	}
 }
 func (r *fcgiRequest) _addParam(name []byte, value []byte, http bool) bool { // into r.params

@@ -260,10 +260,10 @@ type scgiResponse struct { // incoming. needs parsing
 	_scgiResponse0           // all values in this struct must be zero by default!
 }
 type _scgiResponse0 struct { // for fast reset, entirely
-	elemBack        int32 // element begins from. for parsing header elements
-	elemFore        int32 // element spanning to. for parsing header elements
+	elemBack        int32 // element begins from. for parsing header section elements
+	elemFore        int32 // element spanning to. for parsing header section elements
 	head            span  // for debugging
-	imme            span  // immediate bytes in r.input that belongs to content, not headers
+	imme            span  // immediate bytes in r.input that belongs to content, not header section
 	receiving       int8  // currently receiving. see httpSectionXXX
 	contentTextKind int8  // kind of current r.contentText. see httpContentTextXXX
 	receivedSize    int64 // bytes of currently received content
@@ -287,7 +287,7 @@ func (r *scgiResponse) KeepAlive() bool { return false } // required by the Back
 func (r *scgiResponse) HeadResult() int16 { return r.headResult }
 func (r *scgiResponse) BodyResult() int16 { return r.bodyResult }
 
-func (r *scgiResponse) recvHead() {
+func (r *scgiResponse) recvHead() { // header section
 }
 
 func (r *scgiResponse) Status() int16 { return r.status }
@@ -326,7 +326,7 @@ func (r *scgiRequest) onEnd() {
 	r._scgiRequest0 = _scgiRequest0{}
 }
 
-func (r *scgiRequest) proxyCopyHeaders(httpReq ServerRequest, proxyConfig *SCGIExchanProxyConfig) bool {
+func (r *scgiRequest) proxyCopyHeaderLines(httpReq ServerRequest, proxyConfig *SCGIExchanProxyConfig) bool {
 	// TODO
 	return false
 }

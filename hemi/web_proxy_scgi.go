@@ -5,7 +5,7 @@
 
 // SCGI reverse proxy (a.k.a. gateway) implementation. See: https://python.ca/scgi/protocol.txt
 
-// HTTP trailers          : not supported
+// HTTP trailer section   : not supported
 // Persistent connection  : not supported, each request/response exchan occupies a connection
 // Vague response content : supported, as scgi servers close the connection after the response has been sent
 // Vague request content  : not supported, proxies MUST buffer the entire content and send sized requests to scgi servers

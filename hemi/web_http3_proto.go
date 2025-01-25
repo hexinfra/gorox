@@ -144,7 +144,7 @@ var ( // HTTP/3 byteses
 
 // http3Buffer
 type http3Buffer struct {
-	buf [_16K]byte // header + payload
+	buf [_16K]byte // frame header + frame payload
 	ref atomic.Int32
 }
 

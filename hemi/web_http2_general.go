@@ -224,7 +224,7 @@ func (c *http2Conn_) _joinContinuations(headersInFrame *http2InFrame) error { //
 		headersInFrame.realEdge += continuationInFrame.length
 		headersInFrame.length += continuationInFrame.length // we don't care if padding is overwritten. just accumulate
 		c.partFore += continuationInFrame.length            // also accumulate headers payload, with padding included
-		// End of headers?
+		// End of headers frame?
 		if continuationInFrame.endHeaders {
 			headersInFrame.endHeaders = true
 			headersInFrame.inBuffer = c.inBuffer // restore the inBuffer
@@ -246,7 +246,7 @@ func (c *http2Conn_) _growContinuation(size uint32, headersInFrame *http2InFrame
 	// c.inBuffer: [| .. ] | ABCD | oooooooooooooooooo |
 	if c.contFore > c.inBuffer.size() { // needs slide
 		if c.partBack == 0 { // cannot slide again
-			// This should only happens when looking for header, the 9 bytes
+			// This should only happens when looking for frame header, the 9 bytes
 			return http2ErrorFrameSize
 		}
 		// Now slide. Skip holes (if any) when sliding
@@ -592,7 +592,7 @@ func (r *_http2In_) _growHeaders(size int32) bool {
 	if edge < int32(cap(r.input)) { // fast path
 		return true
 	}
-	if edge > _16K { // exceeds the max headers limit
+	if edge > _16K { // exceeds the max header section limit
 		return false
 	}
 	input := GetNK(int64(edge)) // 4K/16K
@@ -627,18 +627,18 @@ type http2InFrame struct { // 32 bytes
 
 func (f *http2InFrame) zero() { *f = http2InFrame{} }
 
-func (f *http2InFrame) decodeHeader(header []byte) error {
-	f.length = uint32(header[0])<<16 | uint32(header[1])<<8 | uint32(header[2])
+func (f *http2InFrame) decodeHeader(frameHeader []byte) error {
+	f.length = uint32(frameHeader[0])<<16 | uint32(frameHeader[1])<<8 | uint32(frameHeader[2])
 	if f.length > http2MaxFrameSize {
 		return http2ErrorFrameSize
 	}
-	header[5] &= 0x7f // strip out the reserved bit
-	f.streamID = binary.BigEndian.Uint32(header[5:9])
+	frameHeader[5] &= 0x7f // strip out the reserved bit
+	f.streamID = binary.BigEndian.Uint32(frameHeader[5:9])
 	if f.streamID != 0 && f.streamID&1 == 0 { // we don't support server push, so only odd stream ids are allowed
 		return http2ErrorProtocol
 	}
-	f.kind = header[3]
-	flags := header[4]
+	f.kind = frameHeader[3]
+	flags := frameHeader[4]
 	f.endHeaders = flags&0x04 != 0 && (f.kind == http2FrameHeaders || f.kind == http2FrameContinuation)
 	f.endStream = flags&0x01 != 0 && (f.kind == http2FrameData || f.kind == http2FrameHeaders)
 	f.ack = flags&0x01 != 0 && (f.kind == http2FrameSettings || f.kind == http2FramePing)
@@ -842,7 +842,7 @@ func (r *_http2Out_) trailer(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *_http2Out_) trailers() []byte {
+func (r *_http2Out_) trailerFields() []byte {
 	// TODO
 	return nil
 }
@@ -851,15 +851,15 @@ func (r *_http2Out_) proxyPassBytes(data []byte) error { return r.writeBytes(dat
 
 func (r *_http2Out_) finalizeVague2() error {
 	// TODO
-	if r.numTrailers == 1 { // no trailers
-	} else { // with trailers
+	if r.numTrailers == 1 { // no trailer section
+	} else { // with trailer section
 	}
 	return nil
 }
 
 func (r *_http2Out_) writeHeaders() error { // used by echo and pass
 	// TODO
-	r.fieldsEdge = 0 // now that headers are all sent, r.fields will be used by trailers (if any), so reset it.
+	r.fieldsEdge = 0 // now that header fields are all sent, r.fields will be used by trailer fields (if any), so reset it.
 	return nil
 }
 func (r *_http2Out_) writePiece(piece *Piece, vague bool) error {
@@ -894,7 +894,7 @@ type http2OutFrame struct { // 64 bytes
 	padded     bool     // is PADDED flag set?
 	priority   bool     // is PRIORITY flag set?
 	_          bool     // padding
-	header     [9]byte  // header of the frame is encoded here
+	header     [9]byte  // frame header is encoded here
 	outBuffer  [16]byte // small payload of the frame is placed here temporarily
 	payload    []byte   // refers to the payload
 }

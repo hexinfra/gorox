@@ -232,7 +232,7 @@ func (r *_http3Out_) trailer(name []byte) (value []byte, ok bool) {
 	// TODO
 	return
 }
-func (r *_http3Out_) trailers() []byte {
+func (r *_http3Out_) trailerFields() []byte {
 	// TODO
 	return nil
 }
@@ -241,15 +241,15 @@ func (r *_http3Out_) proxyPassBytes(data []byte) error { return r.writeBytes(dat
 
 func (r *_http3Out_) finalizeVague() error {
 	// TODO
-	if r.numTrailers == 1 { // no trailers
-	} else { // with trailers
+	if r.numTrailers == 1 { // no trailer section
+	} else { // with trailer section
 	}
 	return nil
 }
 
 func (r *_http3Out_) writeHeaders() error { // used by echo and pass
 	// TODO
-	r.fieldsEdge = 0 // now that headers are all sent, r.fields will be used by trailers (if any), so reset it.
+	r.fieldsEdge = 0 // now that header fields are all sent, r.fields will be used by trailer fields (if any), so reset it.
 	return nil
 }
 func (r *_http3Out_) writePiece(piece *Piece, vague bool) error {

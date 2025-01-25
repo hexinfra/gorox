@@ -37,7 +37,7 @@ type http1Conn_ struct {
 	// Conn states (non-zeros)
 	netConn    net.Conn        // *net.TCPConn, *tls.Conn, *net.UnixConn
 	rawConn    syscall.RawConn // for syscall, only usable when netConn is TCP/UDS
-	persistent bool            // keep the connection after current stream? true by default, will be changed by "connection: close" header received from the remote side
+	persistent bool            // keep the connection after current stream? true by default, will be changed by "connection: close" header field received from the remote side
 	// Conn states (zeros)
 	streamID int64 // next stream id
 }
@@ -187,23 +187,23 @@ func (r *_http1In_) growHead() bool { // HTTP/1.x is not a binary protocol, we d
 	}
 	return false
 }
-func (r *_http1In_) recvHeaders() bool { // *( field-name ":" OWS field-value OWS CRLF ) CRLF
-	r.headers.from = uint8(len(r.primes))
-	r.headers.edge = r.headers.from
+func (r *_http1In_) recvHeaderLines() bool { // *( field-name ":" OWS field-value OWS CRLF ) CRLF
+	r.headerLines.from = uint8(len(r.primes))
+	r.headerLines.edge = r.headerLines.from
 	headerLine := &r.mainPair
 	headerLine.zero()
 	headerLine.kind = pairHeader
-	headerLine.place = placeInput // all received headers are in r.input
-	// r.elemFore is at headers (if any) or end of headers (if none).
-	for { // each header
-		// End of headers?
+	headerLine.place = placeInput // all received header lines are in r.input
+	// r.elemFore is at header section (if any) or end of header section (if none).
+	for { // each header line
+		// End of header section?
 		if b := r.input[r.elemFore]; b == '\r' {
 			// Skip '\r'
 			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead() {
 				return false
 			}
 			if r.input[r.elemFore] != '\n' {
-				r.headResult, r.failReason = StatusBadRequest, "bad end of headers"
+				r.headResult, r.failReason = StatusBadRequest, "bad end of header section"
 				return false
 			}
 			break
@@ -216,7 +216,7 @@ func (r *_http1In_) recvHeaders() bool { // *( field-name ":" OWS field-value OW
 		// field-name = token
 		// token = 1*tchar
 
-		r.elemBack = r.elemFore // now r.elemBack is at header-field
+		r.elemBack = r.elemFore // now r.elemBack is at field-line
 		for {
 			b := r.input[r.elemFore]
 			if t := httpTchar[b]; t == 1 {
@@ -294,21 +294,21 @@ func (r *_http1In_) recvHeaders() bool { // *( field-name ":" OWS field-value OW
 		}
 		headerLine.value.set(r.elemBack, fore)
 
-		// Header is received in general algorithm. Now add it
+		// Header line is received in general algorithm. Now add it
 		if !r.addHeaderLine(headerLine) {
 			// r.headResult is set.
 			return false
 		}
 
-		// Header is successfully received. Skip '\n'
+		// Header line is successfully received. Skip '\n'
 		if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead() {
 			return false
 		}
-		// r.elemFore is now at the next header or end of headers.
-		headerLine.nameHash, headerLine.flags = 0, 0 // reset for next header
+		// r.elemFore is now at the next header line or end of header section.
+		headerLine.nameHash, headerLine.flags = 0, 0 // reset for next header line
 	}
 	r.receiving = httpSectionContent
-	// Skip end of headers
+	// Skip end of header section
 	r.elemFore++
 	// Now the head is received, and r.elemFore is at the beginning of content (if exists) or next message (if exists and is pipelined).
 	r.head.set(0, r.elemFore)
@@ -365,7 +365,7 @@ func (r *_http1In_) _readSizedContent() ([]byte, error) {
 }
 func (r *_http1In_) _readVagueContent() ([]byte, error) {
 	if r.bodyWindow == nil {
-		r.bodyWindow = Get16K() // will be freed on ends. 16K is a tradeoff between performance and memory consumption, and can fit r.imme and trailers
+		r.bodyWindow = Get16K() // will be freed on ends. 16K is a tradeoff between performance and memory consumption, and can fit r.imme and trailer section
 	}
 	if r.imme.notEmpty() {
 		r.chunkEdge = int32(copy(r.bodyWindow, r.input[r.imme.from:r.imme.edge])) // r.input is not larger than r.bodyWindow
@@ -454,10 +454,10 @@ func (r *_http1In_) _readVagueContent() ([]byte, error) {
 				}
 			} else if r.bodyWindow[r.chunkFore] != '\n' { // must be trailer-section = *( field-line CRLF)
 				r.receiving = httpSectionTrailers
-				if !r.recvTrailers() || !r.inMessage.examineTail() {
+				if !r.recvTrailerLines() || !r.inMessage.examineTail() {
 					goto badRead
 				}
-				// r.recvTrailers() must ends with r.chunkFore being at the last '\n' after trailer-section.
+				// r.recvTrailerLines() must ends with r.chunkFore being at the last '\n' after trailer-section.
 			}
 			// Skip the last '\n'
 			r.chunkFore++ // now the whole vague content is received and r.chunkFore is immediately after the vague content.
@@ -519,18 +519,18 @@ badRead:
 	return nil, httpInBadChunk
 }
 
-func (r *_http1In_) recvTrailers() bool { // trailer-section = *( field-line CRLF)
+func (r *_http1In_) recvTrailerLines() bool { // trailer-section = *( field-line CRLF)
 	copy(r.bodyWindow, r.bodyWindow[r.chunkFore:r.chunkEdge]) // slide to start, we need a clean r.bodyWindow
 	r.chunkEdge -= r.chunkFore
-	r.chunkBack, r.chunkFore = 0, 0 // setting r.chunkBack = 0 means r.bodyWindow will not slide, so the whole trailers must fit in r.bodyWindow.
+	r.chunkBack, r.chunkFore = 0, 0 // setting r.chunkBack = 0 means r.bodyWindow will not slide, so the whole trailer section must fit in r.bodyWindow.
 	r.elemBack, r.elemFore = 0, 0   // for parsing trailer fields
 
-	r.trailers.from = uint8(len(r.primes))
-	r.trailers.edge = r.trailers.from
+	r.trailerLines.from = uint8(len(r.primes))
+	r.trailerLines.edge = r.trailerLines.from
 	trailerLine := &r.mainPair
 	trailerLine.zero()
 	trailerLine.kind = pairTrailer
-	trailerLine.place = placeArray // all received trailers are placed in r.array
+	trailerLine.place = placeArray // all received trailer lines are placed in r.array
 	for {
 		if b := r.bodyWindow[r.elemFore]; b == '\r' {
 			// Skip '\r'
@@ -634,7 +634,7 @@ func (r *_http1In_) recvTrailers() bool { // trailer-section = *( field-line CRL
 		if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked() {
 			return false
 		}
-		// r.elemFore is now at the next trailer or end of trailers.
+		// r.elemFore is now at the next trailer line or end of trailer section.
 		trailerLine.nameHash, trailerLine.flags = 0, 0 // reset for next trailer
 	}
 	r.chunkFore = r.elemFore // r.chunkFore must ends at the last '\n'
@@ -886,7 +886,7 @@ func (r *_http1Out_) _prepareVector() [][]byte {
 	} else { // numPieces >= 2
 		vector = make([][]byte, 3+numPieces) // TODO(diogin): get from pool? defer pool.put()
 	}
-	vector[0] = r.outMessage.control()
+	vector[0] = r.outMessage.controlData()
 	vector[1] = r.outMessage.addedHeaders()
 	vector[2] = r.outMessage.fixedHeaders()
 	return vector
@@ -935,17 +935,17 @@ func (r *_http1Out_) trailer(name []byte) (value []byte, ok bool) {
 	}
 	return
 }
-func (r *_http1Out_) trailers() []byte { return r.fields[0:r.fieldsEdge] } // Headers and trailers are not manipulated at the same time, so after headers is sent, r.fields is used by trailers.
+func (r *_http1Out_) trailerFields() []byte { return r.fields[0:r.fieldsEdge] } // Header fields and trailer fields are not manipulated at the same time, so after header fields is sent, r.fields is used by trailer fields.
 
 func (r *_http1Out_) proxyPassBytes(data []byte) error { return r.writeBytes(data) }
 
 func (r *_http1Out_) finalizeVague() error {
-	if r.numTrailers == 1 { // no trailers
+	if r.numTrailers == 1 { // no trailer section
 		return r.writeBytes(http1BytesZeroCRLFCRLF) // 0\r\n\r\n
-	} else { // with trailers
+	} else { // with trailer section
 		r.vector = r.fixedVector[0:3]
 		r.vector[0] = http1BytesZeroCRLF // 0\r\n
-		r.vector[1] = r.trailers()       // field-name: field-value\r\n
+		r.vector[1] = r.trailerFields()  // field-name: field-value\r\n
 		r.vector[2] = bytesCRLF          // \r\n
 		return r.writeVector()
 	}
@@ -954,7 +954,7 @@ func (r *_http1Out_) finalizeVague() error {
 func (r *_http1Out_) writeHeaders() error { // used by echo and pass
 	r.outMessage.finalizeHeaders()
 	r.vector = r.fixedVector[0:3]
-	r.vector[0] = r.outMessage.control()
+	r.vector[0] = r.outMessage.controlData()
 	r.vector[1] = r.outMessage.addedHeaders()
 	r.vector[2] = r.outMessage.fixedHeaders()
 	if DebugLevel() >= 2 {
@@ -967,7 +967,7 @@ func (r *_http1Out_) writeHeaders() error { // used by echo and pass
 	if err := r.writeVector(); err != nil {
 		return err
 	}
-	r.fieldsEdge = 0 // now that headers are all sent, r.fields will be used by trailers (if any), so reset it.
+	r.fieldsEdge = 0 // now that header fields are all sent, r.fields will be used by trailer fields (if any), so reset it.
 	return nil
 }
 func (r *_http1Out_) writePiece(piece *Piece, inChunked bool) error {

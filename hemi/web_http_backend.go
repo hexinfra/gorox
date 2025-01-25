@@ -209,10 +209,10 @@ type BackendResponse interface { // for *backend[1-3]Response
 	examineTail() bool
 	proxyTakeContent() any
 	readContent() (data []byte, err error)
-	proxyDelHopHeaders()
+	proxyDelHopHeaderFields()
 	proxyDelHopTrailers()
-	proxyWalkHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
-	proxyWalkTrailers(callback func(header *pair, name []byte, value []byte) bool) bool
+	proxyWalkHeaderLines(callback func(headerLine *pair, name []byte, value []byte) bool) bool
+	proxyWalkTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
 }
 
 // backendResponse_ is the parent for backend[1-3]Response.
@@ -228,18 +228,18 @@ type backendResponse_ struct { // incoming. needs parsing
 type _backendResponse0 struct { // for fast reset, entirely
 	status      int16    // 200, 302, 404, ...
 	acceptBytes bool     // accept-ranges: bytes?
-	hasAllow    bool     // has allow header?
+	hasAllow    bool     // has "allow" header field?
 	age         int32    // age seconds
-	indexes     struct { // indexes of some selected singleton headers, for fast accessing
-		etag         uint8   // etag header ->r.input
-		expires      uint8   // expires header ->r.input
-		lastModified uint8   // last-modified header ->r.input
-		location     uint8   // location header ->r.input
-		retryAfter   uint8   // retry-after header ->r.input
-		server       uint8   // server header ->r.input
+	indexes     struct { // indexes of some selected singleton header fields, for fast accessing
+		etag         uint8   // etag header line ->r.input
+		expires      uint8   // expires header line ->r.input
+		lastModified uint8   // last-modified header line ->r.input
+		location     uint8   // location header line ->r.input
+		retryAfter   uint8   // retry-after header line ->r.input
+		server       uint8   // server header line ->r.input
 		_            [2]byte // padding
 	}
-	zones struct { // zones of some selected headers, for fast accessing
+	zones struct { // zones of some selected header fields, for fast accessing
 		allow  zone
 		altSvc zone
 		vary   zone
@@ -281,8 +281,8 @@ func (r *backendResponse_) reuse() { // between 1xx and non-1xx responses
 func (r *backendResponse_) Status() int16 { return r.status }
 
 func (r *backendResponse_) examineHead() bool {
-	for i := r.headers.from; i < r.headers.edge; i++ {
-		if !r.applyHeader(i) {
+	for i := r.headerLines.from; i < r.headerLines.edge; i++ {
+		if !r.applyHeaderLine(i) {
 			// r.headResult is set.
 			return false
 		}
@@ -303,7 +303,7 @@ func (r *backendResponse_) examineHead() bool {
 	case Version1_0: // we don't support HTTP/1.0 in backend side!
 		BugExitln("HTTP/1.0 must be denied priorly")
 	case Version1_1:
-		if r.keepAlive == -1 { // no connection header
+		if r.keepAlive == -1 { // no connection header field
 			r.keepAlive = 1 // default is keep-alive for HTTP/1.1
 		}
 	default: // HTTP/2 and HTTP/3
@@ -326,45 +326,45 @@ func (r *backendResponse_) examineHead() bool {
 
 	return true
 }
-func (r *backendResponse_) applyHeader(index uint8) bool {
-	header := &r.primes[index]
-	name := header.nameAt(r.input)
-	if sh := &backendResponseSingletonHeaderTable[backendResponseSingletonHeaderFind(header.nameHash)]; sh.nameHash == header.nameHash && bytes.Equal(sh.name, name) {
-		header.setSingleton()
+func (r *backendResponse_) applyHeaderLine(index uint8) bool {
+	headerLine := &r.primes[index]
+	name := headerLine.nameAt(r.input)
+	if sh := &backendResponseSingletonHeaderFieldTable[backendResponseSingletonHeaderFieldFind(headerLine.nameHash)]; sh.nameHash == headerLine.nameHash && bytes.Equal(sh.name, name) {
+		headerLine.setSingleton()
 		if !sh.parse { // unnecessary to parse generally
-			header.setParsed()
-			header.dataEdge = header.value.edge
-		} else if !r._parseField(header, &sh.fdesc, r.input, true) { // fully
+			headerLine.setParsed()
+			headerLine.dataEdge = headerLine.value.edge
+		} else if !r._parseFieldLine(headerLine, &sh.fdesc, r.input, true) { // fully
 			r.headResult = StatusBadRequest
 			return false
 		}
-		if !sh.check(r, header, index) {
+		if !sh.check(r, headerLine, index) {
 			// r.headResult is set.
 			return false
 		}
-	} else if mh := &backendResponseImportantHeaderTable[backendResponseImportantHeaderFind(header.nameHash)]; mh.nameHash == header.nameHash && bytes.Equal(mh.name, name) {
+	} else if mh := &backendResponseImportantHeaderFieldTable[backendResponseImportantHeaderFieldFind(headerLine.nameHash)]; mh.nameHash == headerLine.nameHash && bytes.Equal(mh.name, name) {
 		extraFrom := uint8(len(r.extras))
-		if !r._splitField(header, &mh.fdesc, r.input) {
+		if !r._splitFieldLine(headerLine, &mh.fdesc, r.input) {
 			r.headResult = StatusBadRequest
 			return false
 		}
-		if header.isCommaValue() { // has sub headers, check them
+		if headerLine.isCommaValue() { // has sub header lines, check them
 			if extraEdge := uint8(len(r.extras)); !mh.check(r, r.extras, extraFrom, extraEdge) {
 				// r.headResult is set.
 				return false
 			}
-		} else if !mh.check(r, r.primes, index, index+1) { // no sub headers. check it
+		} else if !mh.check(r, r.primes, index, index+1) { // no sub header lines. check it
 			// r.headResult is set.
 			return false
 		}
 	} else {
-		// All other headers are treated as list-based headers.
+		// All other header fields are treated as list-based header fields.
 	}
 	return true
 }
 
-var ( // perfect hash table for singleton response headers
-	backendResponseSingletonHeaderTable = [12]struct {
+var ( // perfect hash table for singleton response header fields
+	backendResponseSingletonHeaderFieldTable = [12]struct {
 		parse bool // need general parse or not
 		fdesc      // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*backendResponse_, *pair, uint8) bool
@@ -382,44 +382,46 @@ var ( // perfect hash table for singleton response headers
 		10: {true, fdesc{hashContentType, false, false, true, false, bytesContentType}, (*backendResponse_).checkContentType},
 		11: {false, fdesc{hashRetryAfter, false, false, false, false, bytesRetryAfter}, (*backendResponse_).checkRetryAfter},
 	}
-	backendResponseSingletonHeaderFind = func(nameHash uint16) int { return (889344 / int(nameHash)) % len(backendResponseSingletonHeaderTable) }
+	backendResponseSingletonHeaderFieldFind = func(nameHash uint16) int {
+		return (889344 / int(nameHash)) % len(backendResponseSingletonHeaderFieldTable)
+	}
 )
 
-func (r *backendResponse_) checkAge(header *pair, index uint8) bool { // Age = delta-seconds
-	if header.value.isEmpty() {
+func (r *backendResponse_) checkAge(headerLine *pair, index uint8) bool { // Age = delta-seconds
+	if headerLine.value.isEmpty() {
 		r.headResult, r.failReason = StatusBadRequest, "empty age"
 		return false
 	}
 	// TODO: check and write to r.age
 	return true
 }
-func (r *backendResponse_) checkETag(header *pair, index uint8) bool { // ETag = entity-tag
+func (r *backendResponse_) checkETag(headerLine *pair, index uint8) bool { // ETag = entity-tag
 	// TODO: check
 	r.indexes.etag = index
 	return true
 }
-func (r *backendResponse_) checkExpires(header *pair, index uint8) bool { // Expires = HTTP-date
-	return r._checkHTTPDate(header, index, &r.indexes.expires, &r.unixTimes.expires)
+func (r *backendResponse_) checkExpires(headerLine *pair, index uint8) bool { // Expires = HTTP-date
+	return r._checkHTTPDate(headerLine, index, &r.indexes.expires, &r.unixTimes.expires)
 }
-func (r *backendResponse_) checkLastModified(header *pair, index uint8) bool { // Last-Modified = HTTP-date
-	return r._checkHTTPDate(header, index, &r.indexes.lastModified, &r.unixTimes.lastModified)
+func (r *backendResponse_) checkLastModified(headerLine *pair, index uint8) bool { // Last-Modified = HTTP-date
+	return r._checkHTTPDate(headerLine, index, &r.indexes.lastModified, &r.unixTimes.lastModified)
 }
-func (r *backendResponse_) checkLocation(header *pair, index uint8) bool { // Location = URI-reference
+func (r *backendResponse_) checkLocation(headerLine *pair, index uint8) bool { // Location = URI-reference
 	// TODO: check
 	r.indexes.location = index
 	return true
 }
-func (r *backendResponse_) checkRetryAfter(header *pair, index uint8) bool { // Retry-After = HTTP-date / delay-seconds
+func (r *backendResponse_) checkRetryAfter(headerLine *pair, index uint8) bool { // Retry-After = HTTP-date / delay-seconds
 	// TODO: check
 	r.indexes.retryAfter = index
 	return true
 }
-func (r *backendResponse_) checkServer(header *pair, index uint8) bool { // Server = product *( RWS ( product / comment ) )
+func (r *backendResponse_) checkServer(headerLine *pair, index uint8) bool { // Server = product *( RWS ( product / comment ) )
 	// TODO: check
 	r.indexes.server = index
 	return true
 }
-func (r *backendResponse_) checkSetCookie(header *pair, index uint8) bool { // Set-Cookie = set-cookie-string
+func (r *backendResponse_) checkSetCookie(headerLine *pair, index uint8) bool { // Set-Cookie = set-cookie-string
 	// set-cookie-string = cookie-pair *( ";" SP cookie-av )
 	// cookie-pair = token "=" cookie-value
 	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
@@ -436,8 +438,8 @@ func (r *backendResponse_) checkSetCookie(header *pair, index uint8) bool { // S
 	return true
 }
 
-var ( // perfect hash table for important response headers
-	backendResponseImportantHeaderTable = [18]struct {
+var ( // perfect hash table for important response header fields
+	backendResponseImportantHeaderFieldTable = [18]struct {
 		fdesc // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*backendResponse_, []pair, uint8, uint8) bool
 	}{ // accept accept-encoding accept-ranges allow alt-svc cache-control cache-status cdn-cache-control connection content-encoding content-language proxy-authenticate trailer transfer-encoding upgrade vary via www-authenticate
@@ -460,8 +462,8 @@ var ( // perfect hash table for important response headers
 		16: {fdesc{hashContentEncoding, false, false, false, false, bytesContentEncoding}, (*backendResponse_).checkContentEncoding},
 		17: {fdesc{hashAllow, false, true, false, false, bytesAllow}, (*backendResponse_).checkAllow},
 	}
-	backendResponseImportantHeaderFind = func(nameHash uint16) int {
-		return (215790325 / int(nameHash)) % len(backendResponseImportantHeaderTable)
+	backendResponseImportantHeaderFieldFind = func(nameHash uint16) int {
+		return (215790325 / int(nameHash)) % len(backendResponseImportantHeaderFieldTable)
 	}
 )
 
@@ -594,16 +596,16 @@ func (r *backendResponse_) Content() string       { return string(r.unsafeConten
 func (r *backendResponse_) UnsafeContent() []byte { return r.unsafeContent() }
 
 func (r *backendResponse_) examineTail() bool {
-	for i := r.trailers.from; i < r.trailers.edge; i++ {
-		if !r.applyTrailer(i) {
+	for i := r.trailerLines.from; i < r.trailerLines.edge; i++ {
+		if !r.applyTrailerLine(i) {
 			// r.bodyResult is set.
 			return false
 		}
 	}
 	return true
 }
-func (r *backendResponse_) applyTrailer(index uint8) bool {
-	//trailer := &r.primes[index]
+func (r *backendResponse_) applyTrailerLine(index uint8) bool {
+	//trailerLine := &r.primes[index]
 	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
 }
@@ -612,8 +614,8 @@ func (r *backendResponse_) applyTrailer(index uint8) bool {
 type BackendRequest interface { // for *backend[1-3]Request
 	setMethodURI(method []byte, uri []byte, hasContent bool) bool
 	proxySetAuthority(hostname []byte, colonport []byte) bool
-	proxyCopyCookies(servReq ServerRequest) bool // NOTE: HTTP 1.x/2/3 have different requirements on "cookie" header
-	proxyCopyHeaders(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool
+	proxyCopyCookies(servReq ServerRequest) bool // NOTE: HTTP 1.x/2/3 have different requirements on the "cookie" header field
+	proxyCopyHeaderLines(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool
 	proxyPassMessage(servReq ServerRequest) error                 // pass content to backend directly
 	proxyPostMessage(foreContent any, foreHasTrailers bool) error // post held content to backend
 	proxyCopyTrailers(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool
@@ -667,7 +669,7 @@ func (r *backendRequest_) setScheme(scheme []byte) bool { // used by http/2 and 
 	// TODO: copy `:scheme $scheme` to r.fields
 	return false
 }
-func (r *backendRequest_) control() []byte { return r.fields[0:r.controlEdge] } // TODO: maybe we need a struct type to represent pseudo headers?
+func (r *backendRequest_) controlData() []byte { return r.fields[0:r.controlEdge] } // TODO: maybe we need a struct type to represent pseudo header fields?
 
 func (r *backendRequest_) SetIfModifiedSince(since int64) bool {
 	return r._setUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince, since)
@@ -697,8 +699,8 @@ func (r *backendRequest_) endVague() error { // revising is not supported in bac
 	return r.outMessage.finalizeVague()
 }
 
-var ( // perfect hash table for request critical headers
-	backendRequestCriticalHeaderTable = [12]struct {
+var ( // perfect hash table for request critical header fields
+	backendRequestCriticalHeaderFieldTable = [12]struct {
 		hash uint16
 		name []byte
 		fAdd func(*backendRequest_, []byte) (ok bool)
@@ -717,13 +719,15 @@ var ( // perfect hash table for request critical headers
 		10: {hashDate, bytesDate, (*backendRequest_)._insertDate, (*backendRequest_)._removeDate},
 		11: {hashVia, bytesVia, nil, nil}, // restricted. added if needed when acting as a proxy
 	}
-	backendRequestCriticalHeaderFind = func(nameHash uint16) int { return (645048 / int(nameHash)) % len(backendRequestCriticalHeaderTable) }
+	backendRequestCriticalHeaderFieldFind = func(nameHash uint16) int {
+		return (645048 / int(nameHash)) % len(backendRequestCriticalHeaderFieldTable)
+	}
 )
 
 func (r *backendRequest_) insertHeader(nameHash uint16, name []byte, value []byte) bool {
-	h := &backendRequestCriticalHeaderTable[backendRequestCriticalHeaderFind(nameHash)]
+	h := &backendRequestCriticalHeaderFieldTable[backendRequestCriticalHeaderFieldFind(nameHash)]
 	if h.hash == nameHash && bytes.Equal(h.name, name) {
-		if h.fAdd == nil { // mainly because this header is restricted to insert
+		if h.fAdd == nil { // mainly because this header field is restricted to insert
 			return true // pretend to be successful
 		}
 		return h.fAdd(r, value)
@@ -744,9 +748,9 @@ func (r *backendRequest_) _insertIfUnmodifiedSince(since []byte) (ok bool) {
 }
 
 func (r *backendRequest_) removeHeader(nameHash uint16, name []byte) bool {
-	h := &backendRequestCriticalHeaderTable[backendRequestCriticalHeaderFind(nameHash)]
+	h := &backendRequestCriticalHeaderFieldTable[backendRequestCriticalHeaderFieldFind(nameHash)]
 	if h.hash == nameHash && bytes.Equal(h.name, name) {
-		if h.fDel == nil { // mainly because this header is restricted to remove
+		if h.fDel == nil { // mainly because this header field is restricted to remove
 			return true // pretend to be successful
 		}
 		return h.fDel(r)
@@ -769,8 +773,8 @@ func (r *backendRequest_) _removeIfUnmodifiedSince() (deleted bool) {
 func (r *backendRequest_) proxyPassMessage(servReq ServerRequest) error {
 	return r._proxyPassMessage(servReq)
 }
-func (r *backendRequest_) proxyCopyHeaders(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool {
-	servReq.proxyDelHopHeaders()
+func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool {
+	servReq.proxyDelHopHeaderFields()
 
 	// copy control (:method, :path, :authority, :scheme)
 	uri := servReq.UnsafeURI()
@@ -817,7 +821,7 @@ func (r *backendRequest_) proxyCopyHeaders(servReq ServerRequest, proxyConfig *W
 		// we have no way to set scheme in HTTP/1.x unless we use absolute-form, which is a risk as some servers may not support it.
 	}
 
-	// copy selective forbidden headers (including cookie) from servReq
+	// copy selective forbidden header fields (including cookie) from servReq
 	if servReq.HasCookies() && !r.outMessage.(BackendRequest).proxyCopyCookies(servReq) {
 		return false
 	}
@@ -829,7 +833,7 @@ func (r *backendRequest_) proxyCopyHeaders(servReq ServerRequest, proxyConfig *W
 		// TODO: add connection: te
 	}
 
-	// copy added headers
+	// copy added header fields
 	for headerName, vHeaderValue := range proxyConfig.AddRequestHeaders {
 		var headerValue []byte
 		if vHeaderValue.IsVariable() {
@@ -844,12 +848,12 @@ func (r *backendRequest_) proxyCopyHeaders(servReq ServerRequest, proxyConfig *W
 		}
 	}
 
-	// copy remaining headers from servReq
-	if !servReq.proxyWalkHeaders(func(header *pair, name []byte, value []byte) bool {
-		if false { // TODO: are there any special headers that should be copied directly?
+	// copy remaining header fields from servReq
+	if !servReq.proxyWalkHeaderLines(func(headerLine *pair, name []byte, value []byte) bool {
+		if false { // TODO: are there any special header fields that should be copied directly?
 			return r.outMessage.addHeader(name, value)
 		} else {
-			return r.outMessage.insertHeader(header.nameHash, name, value) // some headers (e.g. "connection") are restricted
+			return r.outMessage.insertHeader(headerLine.nameHash, name, value) // some header fields (e.g. "connection") are restricted
 		}
 	}) {
 		return false

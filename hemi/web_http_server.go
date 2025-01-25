@@ -284,7 +284,7 @@ type ServerRequest interface { // for *server[1-3]Request
 	AddQuery(name string, value string) bool
 
 	HasHeaders() bool
-	AllHeaders() (headers [][2]string)
+	AllHeaderLines() (headerLines [][2]string)
 	H(name string) string
 	Hstr(name string, defaultValue string) string
 	Hint(name string, defaultValue int) int
@@ -351,7 +351,7 @@ type ServerRequest interface { // for *server[1-3]Request
 	HasUpfile(name string) bool
 
 	HasTrailers() bool
-	AllTrailers() (trailers [][2]string)
+	AllTrailerLines() (trailerLines [][2]string)
 	T(name string) string
 	Tstr(name string, defaultValue string) string
 	Tint(name string, defaultValue int) int
@@ -370,9 +370,9 @@ type ServerRequest interface { // for *server[1-3]Request
 	makeAbsPath()
 	contentIsForm() bool
 	contentIsEncoded() bool
-	proxyDelHopHeaders()
+	proxyDelHopHeaderFields()
 	proxyDelHopTrailers()
-	proxyWalkHeaders(callback func(header *pair, name []byte, value []byte) bool) bool
+	proxyWalkHeaderLines(callback func(headerLine *pair, name []byte, value []byte) bool) bool
 	proxyWalkTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool
 	proxyWalkCookies(callback func(cookie *pair, name []byte, value []byte) bool) bool
 	proxyUnsetHost()
@@ -416,27 +416,27 @@ type _serverRequest0 struct { // for fast reset, entirely
 	queryString     span     // raw query string (with '?') -> r.input
 	boundary        span     // boundary parameter of "multipart/form-data" if exists -> r.input
 	queries         zone     // decoded queries -> r.array
-	cookies         zone     // cookies ->r.input. temporarily used when checking cookie headers, set after cookie header is parsed
+	cookies         zone     // cookies ->r.input. temporarily used when checking the cookie header, set after cookie header is parsed
 	forms           zone     // decoded forms -> r.array
 	ifMatch         int8     // -1: if-match *, 0: no if-match field, >0: number of if-match: 1#entity-tag
 	ifNoneMatch     int8     // -1: if-none-match *, 0: no if-none-match field, >0: number of if-none-match: 1#entity-tag
 	numRanges       int8     // num of ranges. controls r.ranges
-	maxForwards     int8     // parsed value of "Max-Forwards" header, must <= 127
+	maxForwards     int8     // parsed value of "Max-Forwards" header field, must <= 127
 	expectContinue  bool     // expect: 100-continue?
-	acceptTrailers  bool     // does client accept trailers? i.e. te: trailers
+	acceptTrailers  bool     // does client accept trailer section? i.e. te: trailers
 	pathInfoGot     bool     // is r.pathInfo got?
 	_               [3]byte  // padding
-	indexes         struct { // indexes of some selected singleton headers, for fast accessing
-		authorization      uint8 // authorization header ->r.input
-		host               uint8 // host header ->r.input
-		ifModifiedSince    uint8 // if-modified-since header ->r.input
-		ifRange            uint8 // if-range header ->r.input
-		ifUnmodifiedSince  uint8 // if-unmodified-since header ->r.input
-		maxForwards        uint8 // max-forwards header ->r.input
-		proxyAuthorization uint8 // proxy-authorization header ->r.input
-		userAgent          uint8 // user-agent header ->r.input
+	indexes         struct { // indexes of some selected singleton header fields, for fast accessing
+		authorization      uint8 // authorization header field ->r.input
+		host               uint8 // host header field ->r.input
+		ifModifiedSince    uint8 // if-modified-since header field ->r.input
+		ifRange            uint8 // if-range header field ->r.input
+		ifUnmodifiedSince  uint8 // if-unmodified-since header field ->r.input
+		maxForwards        uint8 // max-forwards header field ->r.input
+		proxyAuthorization uint8 // proxy-authorization header field ->r.input
+		userAgent          uint8 // user-agent header field ->r.input
 	}
-	zones struct { // zones (may not be continuous) of some selected headers, for fast accessing
+	zones struct { // zones (may not be continuous) of some selected header fields, for fast accessing
 		acceptLanguage zone
 		expect         zone
 		forwarded      zone
@@ -732,8 +732,8 @@ func (r *serverRequest_) AddQuery(name string, value string) bool { // as extra,
 }
 
 func (r *serverRequest_) examineHead() bool {
-	for i := r.headers.from; i < r.headers.edge; i++ {
-		if !r.applyHeader(i) {
+	for i := r.headerLines.from; i < r.headerLines.edge; i++ {
+		if !r.applyHeaderLine(i) {
 			// r.headResult is set.
 			return false
 		}
@@ -772,11 +772,11 @@ func (r *serverRequest_) examineHead() bool {
 	// Basic checks against versions
 	switch r.httpVersion {
 	case Version1_0:
-		if r.keepAlive == -1 { // no connection header
+		if r.keepAlive == -1 { // no connection header field
 			r.keepAlive = 0 // default is close for HTTP/1.0
 		}
 	case Version1_1:
-		if r.keepAlive == -1 { // no connection header
+		if r.keepAlive == -1 { // no connection header field
 			r.keepAlive = 1 // default is keep-alive for HTTP/1.1
 		}
 		if r.indexes.host == 0 {
@@ -850,7 +850,7 @@ func (r *serverRequest_) examineHead() bool {
 	}
 	if r.contentSize == -1 { // no content
 		if r.expectContinue { // expect is used to send large content.
-			r.headResult, r.failReason = StatusBadRequest, "cannot use expect header without content"
+			r.headResult, r.failReason = StatusBadRequest, "cannot use expect header field without content"
 			return false
 		}
 		if r.methodCode&(MethodPOST|MethodPUT) != 0 {
@@ -872,13 +872,13 @@ func (r *serverRequest_) examineHead() bool {
 				return false
 			}
 		} else { // has content-type
-			header := &r.primes[r.iContentType]
-			contentType := header.dataAt(r.input)
+			headerLine := &r.primes[r.iContentType]
+			contentType := headerLine.dataAt(r.input)
 			bytesToLower(contentType)
 			if bytes.Equal(contentType, bytesURLEncodedForm) {
 				r.formKind = httpFormURLEncoded
 			} else if bytes.Equal(contentType, bytesMultipartForm) { // multipart/form-data; boundary=xxxxxx
-				for i := header.params.from; i < header.params.edge; i++ {
+				for i := headerLine.params.from; i < headerLine.params.edge; i++ {
 					param := &r.extras[i]
 					if param.nameHash != hashBoundary || !param.nameEqualBytes(r.input, bytesBoundary) {
 						continue
@@ -902,45 +902,45 @@ func (r *serverRequest_) examineHead() bool {
 
 	return true
 }
-func (r *serverRequest_) applyHeader(index uint8) bool {
-	header := &r.primes[index]
-	name := header.nameAt(r.input)
-	if sh := &serverRequestSingletonHeaderTable[serverRequestSingletonHeaderFind(header.nameHash)]; sh.nameHash == header.nameHash && bytes.Equal(sh.name, name) {
-		header.setSingleton()
+func (r *serverRequest_) applyHeaderLine(index uint8) bool {
+	headerLine := &r.primes[index]
+	headerName := headerLine.nameAt(r.input)
+	if sh := &serverRequestSingletonHeaderFieldTable[serverRequestSingletonHeaderFieldFind(headerLine.nameHash)]; sh.nameHash == headerLine.nameHash && bytes.Equal(sh.name, headerName) {
+		headerLine.setSingleton()
 		if !sh.parse { // unnecessary to parse generally
-			header.setParsed()
-			header.dataEdge = header.value.edge
-		} else if !r._parseField(header, &sh.fdesc, r.input, true) { // fully
+			headerLine.setParsed()
+			headerLine.dataEdge = headerLine.value.edge
+		} else if !r._parseFieldLine(headerLine, &sh.fdesc, r.input, true) { // fully
 			r.headResult = StatusBadRequest
 			return false
 		}
-		if !sh.check(r, header, index) {
+		if !sh.check(r, headerLine, index) {
 			// r.headResult is set.
 			return false
 		}
-	} else if mh := &serverRequestImportantHeaderTable[serverRequestImportantHeaderFind(header.nameHash)]; mh.nameHash == header.nameHash && bytes.Equal(mh.name, name) {
+	} else if mh := &serverRequestImportantHeaderFieldTable[serverRequestImportantHeaderFieldFind(headerLine.nameHash)]; mh.nameHash == headerLine.nameHash && bytes.Equal(mh.name, headerName) {
 		extraFrom := uint8(len(r.extras))
-		if !r._splitField(header, &mh.fdesc, r.input) {
+		if !r._splitFieldLine(headerLine, &mh.fdesc, r.input) {
 			r.headResult = StatusBadRequest
 			return false
 		}
-		if header.isCommaValue() { // has sub headers, check them
+		if headerLine.isCommaValue() { // has sub header lines, check them
 			if extraEdge := uint8(len(r.extras)); !mh.check(r, r.extras, extraFrom, extraEdge) {
 				// r.headResult is set.
 				return false
 			}
-		} else if !mh.check(r, r.primes, index, index+1) { // no sub headers. check it
+		} else if !mh.check(r, r.primes, index, index+1) { // no sub header lines. check it
 			// r.headResult is set.
 			return false
 		}
 	} else {
-		// All other headers are treated as list-based headers.
+		// All other header fields are treated as list-based header fields.
 	}
 	return true
 }
 
-var ( // perfect hash table for singleton request headers
-	serverRequestSingletonHeaderTable = [13]struct {
+var ( // perfect hash table for singleton request header fields
+	serverRequestSingletonHeaderFieldTable = [13]struct {
 		parse bool // need general parse or not
 		fdesc      // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*serverRequest_, *pair, uint8) bool
@@ -959,23 +959,25 @@ var ( // perfect hash table for singleton request headers
 		11: {false, fdesc{hashRange, false, false, false, false, bytesRange}, (*serverRequest_).checkRange},
 		12: {false, fdesc{hashHost, false, false, false, false, bytesHost}, (*serverRequest_).checkHost},
 	}
-	serverRequestSingletonHeaderFind = func(nameHash uint16) int { return (811410 / int(nameHash)) % len(serverRequestSingletonHeaderTable) }
+	serverRequestSingletonHeaderFieldFind = func(nameHash uint16) int {
+		return (811410 / int(nameHash)) % len(serverRequestSingletonHeaderFieldTable)
+	}
 )
 
-func (r *serverRequest_) checkAuthorization(header *pair, index uint8) bool { // Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
+func (r *serverRequest_) checkAuthorization(headerLine *pair, index uint8) bool { // Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
 	// auth-scheme = token
 	// token68     = 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" ) *"="
 	// auth-param  = token BWS "=" BWS ( token / quoted-string )
 	// TODO
 	if r.indexes.authorization != 0 {
-		r.headResult, r.failReason = StatusBadRequest, "duplicated authorization header"
+		r.headResult, r.failReason = StatusBadRequest, "duplicated authorization header field"
 		return false
 	}
 	r.indexes.authorization = index
 	return true
 }
-func (r *serverRequest_) checkCookie(header *pair, index uint8) bool { // Cookie = cookie-string
-	if header.value.isEmpty() {
+func (r *serverRequest_) checkCookie(headerLine *pair, index uint8) bool { // Cookie = cookie-string
+	if headerLine.value.isEmpty() {
 		r.headResult, r.failReason = StatusBadRequest, "empty cookie"
 		return false
 	}
@@ -983,23 +985,23 @@ func (r *serverRequest_) checkCookie(header *pair, index uint8) bool { // Cookie
 		r.headResult, r.failReason = StatusBadRequest, "too many pairs"
 		return false
 	}
-	// HTTP/2 and HTTP/3 allows multiple cookie headers, so we have to mark all the cookie headers.
+	// HTTP/2 and HTTP/3 allows multiple cookie header fields, so we have to mark all the cookie header fields.
 	if r.cookies.isEmpty() {
 		r.cookies.from = index
 	}
-	// And we can't inject cookies into headers zone while receiving headers, this will break the continuous nature of headers zone.
+	// And we can't inject cookies into header lines zone while receiving header lines, this will break the continuous nature of header lines zone.
 	r.cookies.edge = index + 1 // so we postpone cookie parsing after the request head is entirely received. only mark the edge
 	return true
 }
-func (r *serverRequest_) checkHost(header *pair, index uint8) bool { // Host = host [ ":" port ]
+func (r *serverRequest_) checkHost(headerLine *pair, index uint8) bool { // Host = host [ ":" port ]
 	// RFC 9112 (section 3.2):
 	// A server MUST respond with a 400 (Bad Request) status code to any HTTP/1.1 request message that lacks a Host header field and
 	// to any request message that contains more than one Host header field line or a Host header field with an invalid field value.
 	if r.indexes.host != 0 {
-		r.headResult, r.failReason = StatusBadRequest, "duplicate host header"
+		r.headResult, r.failReason = StatusBadRequest, "duplicate host header field"
 		return false
 	}
-	host := header.value
+	host := headerLine.value
 	if host.notEmpty() {
 		// RFC 9110 (section 4.2.3):
 		// The scheme and host are case-insensitive and normally provided in lowercase;
@@ -1013,53 +1015,53 @@ func (r *serverRequest_) checkHost(header *pair, index uint8) bool { // Host = h
 	r.indexes.host = index
 	return true
 }
-func (r *serverRequest_) checkIfModifiedSince(header *pair, index uint8) bool { // If-Modified-Since = HTTP-date
-	return r._checkHTTPDate(header, index, &r.indexes.ifModifiedSince, &r.unixTimes.ifModifiedSince)
+func (r *serverRequest_) checkIfModifiedSince(headerLine *pair, index uint8) bool { // If-Modified-Since = HTTP-date
+	return r._checkHTTPDate(headerLine, index, &r.indexes.ifModifiedSince, &r.unixTimes.ifModifiedSince)
 }
-func (r *serverRequest_) checkIfRange(header *pair, index uint8) bool { // If-Range = entity-tag / HTTP-date
+func (r *serverRequest_) checkIfRange(headerLine *pair, index uint8) bool { // If-Range = entity-tag / HTTP-date
 	if r.indexes.ifRange != 0 {
-		r.headResult, r.failReason = StatusBadRequest, "duplicated if-range header"
+		r.headResult, r.failReason = StatusBadRequest, "duplicated if-range header field"
 		return false
 	}
-	if date, ok := clockParseHTTPDate(header.valueAt(r.input)); ok {
+	if date, ok := clockParseHTTPDate(headerLine.valueAt(r.input)); ok {
 		r.unixTimes.ifRange = date
 	}
 	r.indexes.ifRange = index
 	return true
 }
-func (r *serverRequest_) checkIfUnmodifiedSince(header *pair, index uint8) bool { // If-Unmodified-Since = HTTP-date
-	return r._checkHTTPDate(header, index, &r.indexes.ifUnmodifiedSince, &r.unixTimes.ifUnmodifiedSince)
+func (r *serverRequest_) checkIfUnmodifiedSince(headerLine *pair, index uint8) bool { // If-Unmodified-Since = HTTP-date
+	return r._checkHTTPDate(headerLine, index, &r.indexes.ifUnmodifiedSince, &r.unixTimes.ifUnmodifiedSince)
 }
-func (r *serverRequest_) checkMaxForwards(header *pair, index uint8) bool { // Max-Forwards = Max-Forwards = 1*DIGIT
+func (r *serverRequest_) checkMaxForwards(headerLine *pair, index uint8) bool { // Max-Forwards = Max-Forwards = 1*DIGIT
 	if r.indexes.maxForwards != 0 {
-		r.headResult, r.failReason = StatusBadRequest, "duplicated max-forwards header"
+		r.headResult, r.failReason = StatusBadRequest, "duplicated max-forwards header field"
 		return false
 	}
-	// TODO: parse header.valueAt(r.input) as 1*DIGIT into r.maxForwards
+	// TODO: parse headerLine.valueAt(r.input) as 1*DIGIT into r.maxForwards
 	r.indexes.maxForwards = index
 	return true
 }
-func (r *serverRequest_) checkProxyAuthorization(header *pair, index uint8) bool { // Proxy-Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
+func (r *serverRequest_) checkProxyAuthorization(headerLine *pair, index uint8) bool { // Proxy-Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
 	// auth-scheme = token
 	// token68     = 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" ) *"="
 	// auth-param  = token BWS "=" BWS ( token / quoted-string )
 	if r.indexes.proxyAuthorization != 0 {
-		r.headResult, r.failReason = StatusBadRequest, "duplicated proxyAuthorization header"
+		r.headResult, r.failReason = StatusBadRequest, "duplicated proxyAuthorization header field"
 		return false
 	}
 	// TODO: check
 	r.indexes.proxyAuthorization = index
 	return true
 }
-func (r *serverRequest_) checkRange(header *pair, index uint8) bool { // Range = ranges-specifier
+func (r *serverRequest_) checkRange(headerLine *pair, index uint8) bool { // Range = ranges-specifier
 	if !r.IsGET() {
 		// A server MUST ignore a Range header field received with a request method that is unrecognized or for which range handling is not defined.
 		// For this specification, GET is the only method for which range handling is defined.
 		r._delPrime(index)
 		return true
 	}
-	if r.numRanges > 0 { // we have already got a valid range header
-		r.headResult, r.failReason = StatusBadRequest, "duplicated range header"
+	if r.numRanges > 0 { // we have already got a valid range header field
+		r.headResult, r.failReason = StatusBadRequest, "duplicated range header field"
 		return false
 	}
 	// Range        = range-unit "=" range-set
@@ -1067,7 +1069,7 @@ func (r *serverRequest_) checkRange(header *pair, index uint8) bool { // Range =
 	// range-spec   = int-range / suffix-range
 	// int-range    = first-pos "-" [ last-pos ]
 	// suffix-range = "-" suffix-length
-	rangeSet := header.valueAt(r.input)
+	rangeSet := headerLine.valueAt(r.input)
 	nPrefix := len(bytesBytesEqual) // bytes=
 	if !bytes.Equal(rangeSet[0:nPrefix], bytesBytesEqual) {
 		r.headResult, r.failReason = StatusBadRequest, "unsupported range unit"
@@ -1184,17 +1186,17 @@ func (r *serverRequest_) _addRange(rang Range) bool {
 	r.numRanges++
 	return true
 }
-func (r *serverRequest_) checkUserAgent(header *pair, index uint8) bool { // User-Agent = product *( RWS ( product / comment ) )
+func (r *serverRequest_) checkUserAgent(headerLine *pair, index uint8) bool { // User-Agent = product *( RWS ( product / comment ) )
 	if r.indexes.userAgent != 0 {
-		r.headResult, r.failReason = StatusBadRequest, "duplicated user-agent header"
+		r.headResult, r.failReason = StatusBadRequest, "duplicated user-agent header field"
 		return false
 	}
 	r.indexes.userAgent = index
 	return true
 }
 
-var ( // perfect hash table for important request headers
-	serverRequestImportantHeaderTable = [17]struct {
+var ( // perfect hash table for important request header fields
+	serverRequestImportantHeaderFieldTable = [17]struct {
 		fdesc // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*serverRequest_, []pair, uint8, uint8) bool
 	}{ // accept accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match te trailer transfer-encoding upgrade via x-forwarded-for
@@ -1216,7 +1218,9 @@ var ( // perfect hash table for important request headers
 		15: {fdesc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*serverRequest_).checkContentLanguage},
 		16: {fdesc{hashConnection, false, false, false, false, bytesConnection}, (*serverRequest_).checkConnection},
 	}
-	serverRequestImportantHeaderFind = func(nameHash uint16) int { return (3462430 / int(nameHash)) % len(serverRequestImportantHeaderTable) }
+	serverRequestImportantHeaderFieldFind = func(nameHash uint16) int {
+		return (3462430 / int(nameHash)) % len(serverRequestImportantHeaderFieldTable)
+	}
 )
 
 func (r *serverRequest_) checkAcceptLanguage(pairs []pair, from uint8, edge uint8) bool { // Accept-Language = #( language-range [ weight ] )
@@ -1660,11 +1664,11 @@ func (r *serverRequest_) _evalIfMatch(etag []byte) (pass bool) {
 		return true
 	}
 	for i := r.zones.ifMatch.from; i < r.zones.ifMatch.edge; i++ {
-		header := &r.primes[i]
-		if header.nameHash != hashIfMatch || !header.nameEqualBytes(r.input, bytesIfMatch) {
+		headerLine := &r.primes[i]
+		if headerLine.nameHash != hashIfMatch || !headerLine.nameEqualBytes(r.input, bytesIfMatch) {
 			continue
 		}
-		data := header.dataAt(r.input)
+		data := headerLine.dataAt(r.input)
 		if size := len(data); !(size >= 4 && data[0] == 'W' && data[1] == '/' && data[2] == '"' && data[size-1] == '"') && bytes.Equal(data, etag) {
 			// If the field value is a list of entity tags, the condition is true if any of the listed tags match the entity tag of the selected representation.
 			return true
@@ -1679,11 +1683,11 @@ func (r *serverRequest_) _evalIfNoneMatch(etag []byte) (pass bool) {
 		return false
 	}
 	for i := r.zones.ifNoneMatch.from; i < r.zones.ifNoneMatch.edge; i++ {
-		header := &r.primes[i]
-		if header.nameHash != hashIfNoneMatch || !header.nameEqualBytes(r.input, bytesIfNoneMatch) {
+		headerLine := &r.primes[i]
+		if headerLine.nameHash != hashIfNoneMatch || !headerLine.nameEqualBytes(r.input, bytesIfNoneMatch) {
 			continue
 		}
-		if bytes.Equal(header.valueAt(r.input), etag) {
+		if bytes.Equal(headerLine.valueAt(r.input), etag) {
 			// If the field value is a list of entity tags, the condition is false if one of the listed tags matches the entity tag of the selected representation.
 			return false
 		}
@@ -2229,7 +2233,7 @@ func (r *serverRequest_) _growMultipartForm() bool { // caller needs more data f
 		r.formEdge -= r.elemBack
 		r.elemFore -= r.elemBack
 		if r.pFieldName.notEmpty() {
-			r.pFieldName.sub(r.elemBack) // for fields in multipart/form-data, not for trailers
+			r.pFieldName.sub(r.elemBack) // for fields in multipart/form-data, not for trailer fields
 		}
 		r.elemBack = 0
 	}
@@ -2448,16 +2452,16 @@ func (r *serverRequest_) HasUpfile(name string) bool {
 }
 
 func (r *serverRequest_) examineTail() bool {
-	for i := r.trailers.from; i < r.trailers.edge; i++ {
-		if !r.applyTrailer(i) {
+	for i := r.trailerLines.from; i < r.trailerLines.edge; i++ {
+		if !r.applyTrailerLine(i) {
 			// r.bodyResult is set.
 			return false
 		}
 	}
 	return true
 }
-func (r *serverRequest_) applyTrailer(index uint8) bool {
-	//trailer := &r.primes[index]
+func (r *serverRequest_) applyTrailerLine(index uint8) bool {
+	//trailerLine := &r.primes[index]
 	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
 }
@@ -2569,7 +2573,7 @@ type ServerResponse interface { // for *server[1-3]Response
 	proxyPass1xx(backResp BackendResponse) bool
 	proxyPassMessage(backResp BackendResponse) error              // pass content to client directly
 	proxyPostMessage(backContent any, backHasTrailers bool) error // post held content to client
-	proxyCopyHeaders(backResp BackendResponse, proxyConfig *WebExchanProxyConfig) bool
+	proxyCopyHeaderLines(backResp BackendResponse, proxyConfig *WebExchanProxyConfig) bool
 	proxyCopyTrailers(backResp BackendResponse, proxyConfig *WebExchanProxyConfig) bool
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
@@ -2637,7 +2641,7 @@ func (r *serverResponse_) SetStatus(status int16) error {
 	}
 }
 func (r *serverResponse_) Status() int16 { return r.status }
-func (r *serverResponse_) control() []byte { // used by http/2 and http/3. http/1.x overrides this!
+func (r *serverResponse_) controlData() []byte { // used by http/2 and http/3. http/1.x overrides this!
 	start := r.start[:len(httpStatus)]
 	if r.status < int16(len(http1Controls)) && http1Controls[r.status] != nil {
 		control := http1Controls[r.status]
@@ -2775,7 +2779,7 @@ func (r *serverResponse_) beforeSend() {
 			continue
 		}
 		reviser := r.webapp.reviserByID(id)
-		reviser.BeforeSend(resp.Request(), resp) // revise headers
+		reviser.BeforeSend(resp.Request(), resp) // revise header fields
 	}
 }
 func (r *serverResponse_) doSend() error {
@@ -2800,7 +2804,7 @@ func (r *serverResponse_) doSend() error {
 
 func (r *serverResponse_) beforeEcho() {
 	resp := r.outMessage.(ServerResponse)
-	for _, id := range r.revisers { // revise headers
+	for _, id := range r.revisers { // revise header fields
 		if id == 0 { // id of effective reviser is ensured to be > 0
 			continue
 		}
@@ -2843,8 +2847,8 @@ func (r *serverResponse_) endVague() error {
 	return r.outMessage.finalizeVague()
 }
 
-var ( // perfect hash table for response critical headers
-	serverResponseCriticalHeaderTable = [10]struct {
+var ( // perfect hash table for response critical header fields
+	serverResponseCriticalHeaderFieldTable = [10]struct {
 		hash uint16
 		name []byte
 		fAdd func(*serverResponse_, []byte) (ok bool)
@@ -2861,13 +2865,15 @@ var ( // perfect hash table for response critical headers
 		8: {hashContentLength, bytesContentLength, nil, nil}, // restricted. added at finalizeHeaders()
 		9: {hashContentType, bytesContentType, (*serverResponse_)._insertContentType, (*serverResponse_)._removeContentType},
 	}
-	serverResponseCriticalHeaderFind = func(nameHash uint16) int { return (113100 / int(nameHash)) % len(serverResponseCriticalHeaderTable) }
+	serverResponseCriticalHeaderFieldFind = func(nameHash uint16) int {
+		return (113100 / int(nameHash)) % len(serverResponseCriticalHeaderFieldTable)
+	}
 )
 
 func (r *serverResponse_) insertHeader(nameHash uint16, name []byte, value []byte) bool {
-	h := &serverResponseCriticalHeaderTable[serverResponseCriticalHeaderFind(nameHash)]
+	h := &serverResponseCriticalHeaderFieldTable[serverResponseCriticalHeaderFieldFind(nameHash)]
 	if h.hash == nameHash && bytes.Equal(h.name, name) {
-		if h.fAdd == nil { // mainly because this header is restricted to insert
+		if h.fAdd == nil { // mainly because this header field is restricted to insert
 			return true // pretend to be successful
 		}
 		return h.fAdd(r, value)
@@ -2882,9 +2888,9 @@ func (r *serverResponse_) _insertLastModified(lastModified []byte) (ok bool) {
 }
 
 func (r *serverResponse_) removeHeader(nameHash uint16, name []byte) bool {
-	h := &serverResponseCriticalHeaderTable[serverResponseCriticalHeaderFind(nameHash)]
+	h := &serverResponseCriticalHeaderFieldTable[serverResponseCriticalHeaderFieldFind(nameHash)]
 	if h.hash == nameHash && bytes.Equal(h.name, name) {
-		if h.fDel == nil { // mainly because this header is restricted to remove
+		if h.fDel == nil { // mainly because this header field is restricted to remove
 			return true // pretend to be successful
 		}
 		return h.fDel(r)
@@ -2901,20 +2907,20 @@ func (r *serverResponse_) _removeLastModified() (deleted bool) {
 func (r *serverResponse_) proxyPassMessage(backResp BackendResponse) error {
 	return r._proxyPassMessage(backResp)
 }
-func (r *serverResponse_) proxyCopyHeaders(backResp BackendResponse, proxyConfig *WebExchanProxyConfig) bool {
-	backResp.proxyDelHopHeaders()
+func (r *serverResponse_) proxyCopyHeaderLines(backResp BackendResponse, proxyConfig *WebExchanProxyConfig) bool {
+	backResp.proxyDelHopHeaderFields()
 
 	// copy control (:status)
 	r.SetStatus(backResp.Status())
 
-	// copy selective forbidden headers (excluding set-cookie, which is copied directly) from backResp
+	// copy selective forbidden header fields (excluding set-cookie, which is copied directly) from backResp
 
-	// copy remaining headers from backResp
-	if !backResp.proxyWalkHeaders(func(header *pair, name []byte, value []byte) bool {
-		if header.nameHash == hashSetCookie && bytes.Equal(name, bytesSetCookie) { // set-cookie is copied directly
+	// copy remaining header fields from backResp
+	if !backResp.proxyWalkHeaderLines(func(headerLine *pair, name []byte, value []byte) bool {
+		if headerLine.nameHash == hashSetCookie && bytes.Equal(name, bytesSetCookie) { // set-cookie is copied directly
 			return r.outMessage.addHeader(name, value)
 		} else {
-			return r.outMessage.insertHeader(header.nameHash, name, value) // some headers (e.g. "connection") are restricted
+			return r.outMessage.insertHeader(headerLine.nameHash, name, value) // some header fields (e.g. "connection") are restricted
 		}
 	}) {
 		return false

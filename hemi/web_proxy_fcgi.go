@@ -5,7 +5,7 @@
 
 // FCGI reverse proxy (a.k.a. gateway) implementation. See: https://fastcgi-archives.github.io/FastCGI_Specification.html
 
-// HTTP trailers          : not supported
+// HTTP trailer section   : not supported
 // Persistent connection  : supported
 // Vague response content : supported through its framing protocol which is like HTTP/2 framing protocol
 // Vague request content  : supported, but currently not implemented due to the limitation of CGI/1.1 even though FCGI can do that through its framing protocol
@@ -131,7 +131,7 @@ func FCGIExchanReverseProxy(httpReq ServerRequest, httpResp ServerResponse, hcac
 	defer backend.StoreExchan(fcgiExchan)
 
 	fcgiReq := &fcgiExchan.request
-	if !fcgiReq.proxyCopyHeaders(httpReq, proxyConfig) {
+	if !fcgiReq.proxyCopyHeaderLines(httpReq, proxyConfig) {
 		fcgiExchan.markBroken()
 		httpResp.SendBadGateway(nil)
 		return
@@ -188,7 +188,7 @@ func FCGIExchanReverseProxy(httpReq ServerRequest, httpResp ServerResponse, hcac
 		}
 	}
 
-	if !httpResp.proxyCopyHeaders(fcgiResp, &proxyConfig.WebExchanProxyConfig) {
+	if !httpResp.proxyCopyHeaderLines(fcgiResp, &proxyConfig.WebExchanProxyConfig) {
 		fcgiExchan.markBroken()
 		return
 	}
@@ -197,7 +197,7 @@ func FCGIExchanReverseProxy(httpReq ServerRequest, httpResp ServerResponse, hcac
 			fcgiExchan.markBroken()
 			return
 		}
-	} else if err := httpResp.proxyPostMessage(fcgiContent, false); err != nil { // false means no trailers
+	} else if err := httpResp.proxyPostMessage(fcgiContent, false); err != nil { // false means no trailer section
 		return
 	}
 }

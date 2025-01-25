@@ -278,7 +278,7 @@ func (r *backend3Response) onEnd() {
 	r.in3.onEnd()
 }
 
-func (r *backend3Response) recvHead() {
+func (r *backend3Response) recvHead() { // control data + header section
 	// TODO
 }
 
@@ -326,7 +326,7 @@ func (r *backend3Request) AddCookie(name string, value string) bool {
 	// TODO. need some space to place the cookie
 	return false
 }
-func (r *backend3Request) proxyCopyCookies(servReq ServerRequest) bool { // NOTE: DO NOT merge into one "cookie" header!
+func (r *backend3Request) proxyCopyCookies(servReq ServerRequest) bool { // NOTE: DO NOT merge into one "cookie" header field!
 	// TODO: one by one?
 	return true
 }

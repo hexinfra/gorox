@@ -183,12 +183,12 @@ type _httpIn_ struct { // incoming. needs parsing
 	// Stream states (controlled)
 	inputNext      int32    // HTTP/1.x request only. next request begins from r.input[r.inputNext]. exists because HTTP/1.1 supports pipelining
 	inputEdge      int32    // edge position of current message head is at r.input[r.inputEdge]. placed here to make it compatible with HTTP/1.1 pipelining
-	mainPair       pair     // to overcome the limitation of Go's escape analysis when receiving pairs
+	mainPair       pair     // to overcome the limitation of Go's escape analysis when receiving incoming pairs
 	contentCodings [4]uint8 // content-encoding flags, controlled by r.numContentCodings. see httpCodingXXX for values
 	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.numAcceptCodings. see httpCodingXXX for values
 	// Stream states (non-zeros)
-	primes               []pair        // hold prime queries, headers(main+subs), cookies, forms, and trailers(main+subs). [<r.stockPrimes>/max]
-	extras               []pair        // hold extra queries, headers(main+subs), cookies, forms, trailers(main+subs), and params. [<r.stockExtras>/max]
+	primes               []pair        // hold prime queries, headerLines(main+subs), cookies, forms, and trailerLines(main+subs). [<r.stockPrimes>/max]
+	extras               []pair        // hold extra queries, headerLines(main+subs), cookies, forms, trailerLines(main+subs), and params. [<r.stockExtras>/max]
 	array                []byte        // store parsed, dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
 	input                []byte        // bytes of raw incoming message heads. [<r.stockInput>/4K/16K]
 	recvTimeout          time.Duration // timeout to recv the whole message content. zero means no timeout
@@ -198,7 +198,7 @@ type _httpIn_ struct { // incoming. needs parsing
 	contentSize          int64         // size info about incoming content. -2: vague content, -1: no content, >=0: content size
 	httpVersion          uint8         // Version1_0, Version1_1, Version2, Version3
 	asResponse           bool          // treat this incoming message as a response?
-	keepAlive            int8          // -1: no connection header, 0: connection close, 1: connection keep-alive
+	keepAlive            int8          // -1: no connection header field, 0: connection close, 1: connection keep-alive
 	_                    byte          // padding
 	headResult           int16         // result of receiving message head. values are as same as http status for convenience
 	bodyResult           int16         // result of receiving message body. values are as same as http status for convenience
@@ -211,33 +211,33 @@ type _httpIn_ struct { // incoming. needs parsing
 	_httpIn0              // all values in this struct must be zero by default!
 }
 type _httpIn0 struct { // for fast reset, entirely
-	elemBack          int32   // element begins from. for parsing elements in control & headers & content & trailers
-	elemFore          int32   // element spanning to. for parsing elements in control & headers & content & trailers
-	head              span    // head (control + headers) of current message -> r.input. set after head is received. only for debugging
+	elemBack          int32   // element begins from. for parsing elements in control & headerLines & content & trailerLines
+	elemFore          int32   // element spanning to. for parsing elements in control & headerLines & content & trailerLines
+	head              span    // head (control data + header section) of current message -> r.input. set after head is received. only for debugging
 	imme              span    // HTTP/1.x only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
 	hasExtra          [8]bool // has extra pairs? see pairXXX for indexes
-	dateTime          int64   // parsed unix time of the date header
+	dateTime          int64   // parsed unix time of the date header field
 	arrayEdge         int32   // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
 	arrayKind         int8    // kind of current r.array. see arrayKindXXX
 	receiving         int8    // what section of the message are we currently receiving. see httpSectionXXX
-	headers           zone    // headers ->r.primes
+	headerLines       zone    // header lines ->r.primes
 	hasRevisers       bool    // are there any incoming revisers hooked on this incoming message?
 	upgradeSocket     bool    // upgrade: websocket?
 	acceptGzip        bool    // does the peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
 	acceptBrotli      bool    // does the peer accept brotli content coding? i.e. accept-encoding: gzip, br
 	numContentCodings int8    // num of content-encoding flags, controls r.contentCodings
 	numAcceptCodings  int8    // num of accept-encoding flags, controls r.acceptCodings
-	iContentLength    uint8   // index of content-length header in r.primes
-	iContentLocation  uint8   // index of content-location header in r.primes
-	iContentRange     uint8   // index of content-range header in r.primes
-	iContentType      uint8   // index of content-type header in r.primes
-	iDate             uint8   // index of date header in r.primes
+	iContentLength    uint8   // index of content-length header line in r.primes
+	iContentLocation  uint8   // index of content-location header line in r.primes
+	iContentRange     uint8   // index of content-range header line in r.primes
+	iContentType      uint8   // index of content-type header line in r.primes
+	iDate             uint8   // index of date header line in r.primes
 	_                 byte    // padding
-	zAccept           zone    // zone of accept headers in r.primes. may not be continuous
-	zConnection       zone    // zone of connection headers in r.primes. may not be continuous
-	zContentLanguage  zone    // zone of content-language headers in r.primes. may not be continuous
-	zTrailer          zone    // zone of trailer headers in r.primes. may not be continuous
-	zVia              zone    // zone of via headers in r.primes. may not be continuous
+	zAccept           zone    // zone of accept header lines in r.primes. may not be continuous
+	zConnection       zone    // zone of connection header lines in r.primes. may not be continuous
+	zContentLanguage  zone    // zone of content-language header lines in r.primes. may not be continuous
+	zTrailer          zone    // zone of trailer header lines in r.primes. may not be continuous
+	zVia              zone    // zone of via header lines in r.primes. may not be continuous
 	contentReceived   bool    // is the content received? true if the message has no content or the content is received
 	contentTextKind   int8    // kind of current r.contentText if it is text. see httpContentTextXXX
 	receivedSize      int64   // bytes of currently received content. used by both sized & vague content receiver
@@ -247,7 +247,7 @@ type _httpIn0 struct { // for fast reset, entirely
 	chunkEdge         int32   // edge position of the filled chunked data in r.bodyWindow. HTTP/1.1 chunked only
 	transferChunked   bool    // transfer-encoding: chunked? HTTP/1.1 only
 	overChunked       bool    // for HTTP/1.1 requests, if chunked receiver over received in r.bodyWindow, then r.bodyWindow will be used as r.input on ends
-	trailers          zone    // trailers -> r.primes. set after trailer section is received and parsed
+	trailerLines      zone    // trailer lines -> r.primes. set after trailer section is received and parsed
 }
 
 func (r *_httpIn_) onUse(httpVersion uint8, asResponse bool) { // for non-zeros
@@ -266,7 +266,7 @@ func (r *_httpIn_) onUse(httpVersion uint8, asResponse bool) { // for non-zeros
 	r.contentSize = -1 // no content
 	r.httpVersion = httpVersion
 	r.asResponse = asResponse
-	r.keepAlive = -1 // no connection header
+	r.keepAlive = -1 // no connection header field
 	r.headResult = StatusOK
 	r.bodyResult = StatusOK
 }
@@ -351,14 +351,16 @@ func (r *_httpIn_) BodyResult() int16 { return r.bodyResult }
 
 func (r *_httpIn_) addHeaderLine(headerLine *pair) bool { // as prime
 	if edge, ok := r._addPrime(headerLine); ok {
-		r.headers.edge = edge
+		r.headerLines.edge = edge
 		return true
 	}
-	r.headResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many headers"
+	r.headResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many header lines"
 	return false
 }
-func (r *_httpIn_) HasHeaders() bool                  { return r.hasPairs(r.headers, pairHeader) }
-func (r *_httpIn_) AllHeaders() (headers [][2]string) { return r.allPairs(r.headers, pairHeader) }
+func (r *_httpIn_) HasHeaders() bool { return r.hasPairs(r.headerLines, pairHeader) }
+func (r *_httpIn_) AllHeaderLines() (headerLines [][2]string) {
+	return r.allPairs(r.headerLines, pairHeader)
+}
 func (r *_httpIn_) H(name string) string {
 	value, _ := r.Header(name)
 	return value
@@ -378,34 +380,34 @@ func (r *_httpIn_) Hint(name string, defaultValue int) int {
 	return defaultValue
 }
 func (r *_httpIn_) Header(name string) (value string, ok bool) {
-	v, ok := r.getPair(name, 0, r.headers, pairHeader)
+	v, ok := r.getPair(name, 0, r.headerLines, pairHeader)
 	return string(v), ok
 }
 func (r *_httpIn_) UnsafeHeader(name string) (value []byte, ok bool) {
-	return r.getPair(name, 0, r.headers, pairHeader)
+	return r.getPair(name, 0, r.headerLines, pairHeader)
 }
 func (r *_httpIn_) Headers(name string) (values []string, ok bool) {
-	return r.getPairs(name, 0, r.headers, pairHeader)
+	return r.getPairs(name, 0, r.headerLines, pairHeader)
 }
 func (r *_httpIn_) HasHeader(name string) bool {
-	_, ok := r.getPair(name, 0, r.headers, pairHeader)
+	_, ok := r.getPair(name, 0, r.headerLines, pairHeader)
 	return ok
 }
 func (r *_httpIn_) DelHeader(name string) (deleted bool) {
-	// TODO: add restrictions on what headers are allowed to del?
-	return r.delPair(name, 0, r.headers, pairHeader)
+	// TODO: add restrictions on what header fields are allowed to del?
+	return r.delPair(name, 0, r.headerLines, pairHeader)
 }
 func (r *_httpIn_) delHeader(name []byte, nameHash uint16) {
-	r.delPair(WeakString(name), nameHash, r.headers, pairHeader)
+	r.delPair(WeakString(name), nameHash, r.headerLines, pairHeader)
 }
 func (r *_httpIn_) AddHeader(name string, value string) bool { // as extra, by webapp
-	// TODO: add restrictions on what headers are allowed to add? should we check the value?
+	// TODO: add restrictions on what header fields are allowed to add? should we check the value?
 	// TODO: parse and check?
 	// setFlags?
 	return r.addExtra(name, value, 0, pairHeader)
 }
 
-func (r *_httpIn_) _splitField(field *pair, fdesc *fdesc, p []byte) bool { // split: #element => [ element ] *( OWS "," OWS [ element ] )
+func (r *_httpIn_) _splitFieldLine(field *pair, fdesc *fdesc, p []byte) bool { // split: #element => [ element ] *( OWS "," OWS [ element ] )
 	field.setParsed()
 
 	subField := *field
@@ -435,7 +437,7 @@ func (r *_httpIn_) _splitField(field *pair, fdesc *fdesc, p []byte) bool { // sp
 			return false
 		}
 		subField.value.edge = field.value.edge
-		if !r._parseField(&subField, fdesc, p, false) { // parse one sub field
+		if !r._parseFieldLine(&subField, fdesc, p, false) { // parse one sub field
 			// r.failReason is set.
 			return false
 		}
@@ -469,7 +471,7 @@ func (r *_httpIn_) _splitField(field *pair, fdesc *fdesc, p []byte) bool { // sp
 	}
 	return true
 }
-func (r *_httpIn_) _parseField(field *pair, fdesc *fdesc, p []byte, fully bool) bool { // for field data and value params
+func (r *_httpIn_) _parseFieldLine(field *pair, fdesc *fdesc, p []byte, fully bool) bool { // for field data and value params
 	field.setParsed()
 
 	if field.value.isEmpty() {
@@ -686,7 +688,7 @@ func (r *_httpIn_) _parseField(field *pair, fdesc *fdesc, p []byte, fully bool) 
 	}
 }
 
-func (r *_httpIn_) checkContentLength(header *pair, index uint8) bool { // Content-Length = 1*DIGIT
+func (r *_httpIn_) checkContentLength(headerLine *pair, index uint8) bool { // Content-Length = 1*DIGIT
 	// RFC 9110 (section 8.6):
 	// Likewise, a sender MUST NOT forward a message with a Content-Length
 	// header field value that does not match the ABNF above, with one
@@ -696,8 +698,8 @@ func (r *_httpIn_) checkContentLength(header *pair, index uint8) bool { // Conte
 	// invalid or replace that invalid field value with a single instance of
 	// the decimal value, since this likely indicates that a duplicate was
 	// generated or combined by an upstream message processor.
-	if r.contentSize == -1 { // r.contentSize can only be -1 or >= 0 here. -2 is set after all of the headers are received if the content is vague
-		if size, ok := decToI64(header.valueAt(r.input)); ok {
+	if r.contentSize == -1 { // r.contentSize can only be -1 or >= 0 here. -2 is set after the header section is received if the content is vague
+		if size, ok := decToI64(headerLine.valueAt(r.input)); ok {
 			r.contentSize = size
 			r.iContentLength = index
 			return true
@@ -706,8 +708,8 @@ func (r *_httpIn_) checkContentLength(header *pair, index uint8) bool { // Conte
 	r.headResult, r.failReason = StatusBadRequest, "bad content-length"
 	return false
 }
-func (r *_httpIn_) checkContentLocation(header *pair, index uint8) bool { // Content-Location = absolute-URI / partial-URI
-	if r.iContentLocation == 0 && header.value.notEmpty() {
+func (r *_httpIn_) checkContentLocation(headerLine *pair, index uint8) bool { // Content-Location = absolute-URI / partial-URI
+	if r.iContentLocation == 0 && headerLine.value.notEmpty() {
 		// TODO: check syntax
 		r.iContentLocation = index
 		return true
@@ -715,8 +717,8 @@ func (r *_httpIn_) checkContentLocation(header *pair, index uint8) bool { // Con
 	r.headResult, r.failReason = StatusBadRequest, "bad or too many content-location"
 	return false
 }
-func (r *_httpIn_) checkContentRange(header *pair, index uint8) bool { // Content-Range = range-unit SP ( range-resp / unsatisfied-range )
-	if r.iContentRange == 0 && header.value.notEmpty() {
+func (r *_httpIn_) checkContentRange(headerLine *pair, index uint8) bool { // Content-Range = range-unit SP ( range-resp / unsatisfied-range )
+	if r.iContentRange == 0 && headerLine.value.notEmpty() {
 		// TODO: check syntax
 		r.iContentRange = index
 		return true
@@ -724,12 +726,12 @@ func (r *_httpIn_) checkContentRange(header *pair, index uint8) bool { // Conten
 	r.headResult, r.failReason = StatusBadRequest, "bad or too many content-range"
 	return false
 }
-func (r *_httpIn_) checkContentType(header *pair, index uint8) bool { // Content-Type = media-type
+func (r *_httpIn_) checkContentType(headerLine *pair, index uint8) bool { // Content-Type = media-type
 	// media-type = type "/" subtype *( OWS ";" OWS parameter )
 	// type = token
 	// subtype = token
 	// parameter = token "=" ( token / quoted-string )
-	if r.iContentType == 0 && !header.dataEmpty() {
+	if r.iContentType == 0 && !headerLine.dataEmpty() {
 		// TODO: check syntax
 		r.iContentType = index
 		return true
@@ -737,12 +739,12 @@ func (r *_httpIn_) checkContentType(header *pair, index uint8) bool { // Content
 	r.headResult, r.failReason = StatusBadRequest, "bad or too many content-type"
 	return false
 }
-func (r *_httpIn_) checkDate(header *pair, index uint8) bool { // Date = HTTP-date
-	return r._checkHTTPDate(header, index, &r.iDate, &r.dateTime)
+func (r *_httpIn_) checkDate(headerLine *pair, index uint8) bool { // Date = HTTP-date
+	return r._checkHTTPDate(headerLine, index, &r.iDate, &r.dateTime)
 }
-func (r *_httpIn_) _checkHTTPDate(header *pair, index uint8, pIndex *uint8, toTime *int64) bool { // HTTP-date = day-name "," SP day SP month SP year SP hour ":" minute ":" second SP GMT
+func (r *_httpIn_) _checkHTTPDate(headerLine *pair, index uint8, pIndex *uint8, toTime *int64) bool { // HTTP-date = day-name "," SP day SP month SP year SP hour ":" minute ":" second SP GMT
 	if *pIndex == 0 {
-		if httpDate, ok := clockParseHTTPDate(header.valueAt(r.input)); ok {
+		if httpDate, ok := clockParseHTTPDate(headerLine.valueAt(r.input)); ok {
 			*pIndex = index
 			*toTime = httpDate
 			return true
@@ -798,7 +800,7 @@ func (r *_httpIn_) checkAcceptEncoding(pairs []pair, from uint8, edge uint8) boo
 }
 func (r *_httpIn_) checkConnection(pairs []pair, from uint8, edge uint8) bool { // Connection = #connection-option
 	if r.httpVersion >= Version2 {
-		r.headResult, r.failReason = StatusBadRequest, "connection header is not allowed in HTTP/2 and HTTP/3"
+		r.headResult, r.failReason = StatusBadRequest, "connection header field is not allowed in HTTP/2 and HTTP/3"
 		return false
 	}
 	if r.zConnection.isEmpty() {
@@ -906,7 +908,7 @@ func (r *_httpIn_) determineContentMode() bool {
 			return false
 		}
 		r.contentSize = -2 // vague
-	} else if r.httpVersion >= Version2 && r.contentSize == -1 { // no content-length header
+	} else if r.httpVersion >= Version2 && r.contentSize == -1 { // no content-length header field
 		// TODO: if there is no content, HTTP/2 and HTTP/3 should mark END_STREAM in headers frame. use this to decide!
 		r.contentSize = -2 // if there is no content-length in HTTP/2 or HTTP/3, we treat it as vague
 	}
@@ -1065,14 +1067,16 @@ func (r *_httpIn_) _recvContent(retain bool) any { // to []byte (for small conte
 
 func (r *_httpIn_) addTrailerLine(trailerLine *pair) bool { // as prime
 	if edge, ok := r._addPrime(trailerLine); ok {
-		r.trailers.edge = edge
+		r.trailerLines.edge = edge
 		return true
 	}
-	r.bodyResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many trailers"
+	r.bodyResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many trailer lines"
 	return false
 }
-func (r *_httpIn_) HasTrailers() bool                   { return r.hasPairs(r.trailers, pairTrailer) }
-func (r *_httpIn_) AllTrailers() (trailers [][2]string) { return r.allPairs(r.trailers, pairTrailer) }
+func (r *_httpIn_) HasTrailers() bool { return r.hasPairs(r.trailerLines, pairTrailer) }
+func (r *_httpIn_) AllTrailerLines() (trailerLines [][2]string) {
+	return r.allPairs(r.trailerLines, pairTrailer)
+}
 func (r *_httpIn_) T(name string) string {
 	value, _ := r.Trailer(name)
 	return value
@@ -1092,27 +1096,27 @@ func (r *_httpIn_) Tint(name string, defaultValue int) int {
 	return defaultValue
 }
 func (r *_httpIn_) Trailer(name string) (value string, ok bool) {
-	v, ok := r.getPair(name, 0, r.trailers, pairTrailer)
+	v, ok := r.getPair(name, 0, r.trailerLines, pairTrailer)
 	return string(v), ok
 }
 func (r *_httpIn_) UnsafeTrailer(name string) (value []byte, ok bool) {
-	return r.getPair(name, 0, r.trailers, pairTrailer)
+	return r.getPair(name, 0, r.trailerLines, pairTrailer)
 }
 func (r *_httpIn_) Trailers(name string) (values []string, ok bool) {
-	return r.getPairs(name, 0, r.trailers, pairTrailer)
+	return r.getPairs(name, 0, r.trailerLines, pairTrailer)
 }
 func (r *_httpIn_) HasTrailer(name string) bool {
-	_, ok := r.getPair(name, 0, r.trailers, pairTrailer)
+	_, ok := r.getPair(name, 0, r.trailerLines, pairTrailer)
 	return ok
 }
 func (r *_httpIn_) DelTrailer(name string) (deleted bool) {
-	return r.delPair(name, 0, r.trailers, pairTrailer)
+	return r.delPair(name, 0, r.trailerLines, pairTrailer)
 }
 func (r *_httpIn_) delTrailer(name []byte, nameHash uint16) {
-	r.delPair(WeakString(name), nameHash, r.trailers, pairTrailer)
+	r.delPair(WeakString(name), nameHash, r.trailerLines, pairTrailer)
 }
 func (r *_httpIn_) AddTrailer(name string, value string) bool { // as extra, by webapp
-	// TODO: add restrictions on what trailers are allowed to add? should we check the value?
+	// TODO: add restrictions on what trailer fields are allowed to add? should we check the value?
 	// TODO: parse and check?
 	// setFlags?
 	return r.addExtra(name, value, 0, pairTrailer)
@@ -1188,7 +1192,7 @@ func (r *_httpIn_) hasPairs(primes zone, extraKind int8) bool {
 }
 func (r *_httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 	var pairs [][2]string
-	if extraKind == pairHeader || extraKind == pairTrailer { // skip sub fields, only collects values of main fields
+	if extraKind == pairHeader || extraKind == pairTrailer { // skip sub field lines, only collects values of main field lines
 		for i := primes.from; i < primes.edge; i++ {
 			if prime := &r.primes[i]; prime.nameHash != 0 {
 				p := r._placeOf(prime)
@@ -1226,11 +1230,11 @@ func (r *_httpIn_) getPair(name string, nameHash uint16, primes zone, extraKind 
 	if nameHash == 0 {
 		nameHash = stringHash(name)
 	}
-	if extraKind == pairHeader || extraKind == pairTrailer { // skip comma fields, only collects data of fields without comma
+	if extraKind == pairHeader || extraKind == pairTrailer { // skip comma field lines, only collects data of field lines without comma
 		for i := primes.from; i < primes.edge; i++ {
 			if prime := &r.primes[i]; prime.nameHash == nameHash {
 				if p := r._placeOf(prime); prime.nameEqualString(p, name) {
-					if !prime.isParsed() && !r._splitField(prime, defaultFdesc, p) {
+					if !prime.isParsed() && !r._splitFieldLine(prime, defaultFdesc, p) {
 						continue
 					}
 					if !prime.isCommaValue() { // not a comma field, collect it
@@ -1273,11 +1277,11 @@ func (r *_httpIn_) getPairs(name string, nameHash uint16, primes zone, extraKind
 	if nameHash == 0 {
 		nameHash = stringHash(name)
 	}
-	if extraKind == pairHeader || extraKind == pairTrailer { // skip comma fields, only collects data of fields without comma
+	if extraKind == pairHeader || extraKind == pairTrailer { // skip comma field lines, only collects data of field lines without comma
 		for i := primes.from; i < primes.edge; i++ {
 			if prime := &r.primes[i]; prime.nameHash == nameHash {
 				if p := r._placeOf(prime); prime.nameEqualString(p, name) {
-					if !prime.isParsed() && !r._splitField(prime, defaultFdesc, p) {
+					if !prime.isParsed() && !r._splitFieldLine(prime, defaultFdesc, p) {
 						continue
 					}
 					if !prime.isCommaValue() { // not a comma field, collect it
@@ -1358,13 +1362,13 @@ func (r *_httpIn_) _placeOf(pair *pair) []byte {
 	return place
 }
 
-func (r *_httpIn_) proxyDelHopHeaders() {
-	r._proxyDelHopFields(r.headers, pairHeader, r.delHeader)
+func (r *_httpIn_) proxyDelHopHeaderFields() {
+	r._proxyDelHopFieldLines(r.headerLines, pairHeader, r.delHeader)
 }
 func (r *_httpIn_) proxyDelHopTrailers() {
-	r._proxyDelHopFields(r.trailers, pairTrailer, r.delTrailer)
+	r._proxyDelHopFieldLines(r.trailerLines, pairTrailer, r.delTrailer)
 }
-func (r *_httpIn_) _proxyDelHopFields(fields zone, extraKind int8, delField func(name []byte, nameHash uint16)) { // TODO: improve performance
+func (r *_httpIn_) _proxyDelHopFieldLines(fieldLines zone, extraKind int8, delField func(name []byte, nameHash uint16)) { // TODO: improve performance
 	// These fields should be removed anyway: proxy-connection, keep-alive, te, transfer-encoding, upgrade
 	delField(bytesProxyConnection, hashProxyConnection)
 	delField(bytesKeepAlive, hashKeepAlive)
@@ -1390,9 +1394,9 @@ func (r *_httpIn_) _proxyDelHopFields(fields zone, extraKind int8, delField func
 			continue
 		}
 		// Got a "connection: xxx" option, remove it from fields
-		for j := fields.from; j < fields.edge; j++ {
-			if field := &r.primes[j]; field.nameHash == optionHash && field.nameEqualBytes(p, optionName) {
-				field.zero()
+		for j := fieldLines.from; j < fieldLines.edge; j++ {
+			if fieldLine := &r.primes[j]; fieldLine.nameHash == optionHash && fieldLine.nameEqualBytes(p, optionName) {
+				fieldLine.zero()
 			}
 		}
 		if r.hasExtra[extraKind] {
@@ -1407,17 +1411,17 @@ func (r *_httpIn_) _proxyDelHopFields(fields zone, extraKind int8, delField func
 	}
 }
 
-func (r *_httpIn_) proxyWalkHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // excluding sub headers
-	return r._proxyWalkMainFields(r.headers, pairHeader, callback)
+func (r *_httpIn_) proxyWalkHeaderLines(callback func(headerLine *pair, name []byte, value []byte) bool) bool { // excluding sub header lines
+	return r._proxyWalkMainFields(r.headerLines, pairHeader, callback)
 }
-func (r *_httpIn_) proxyWalkTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // excluding sub trailers
-	return r._proxyWalkMainFields(r.trailers, pairTrailer, callback)
+func (r *_httpIn_) proxyWalkTrailers(callback func(trailerLine *pair, name []byte, value []byte) bool) bool { // excluding sub trailer lines
+	return r._proxyWalkMainFields(r.trailerLines, pairTrailer, callback)
 }
-func (r *_httpIn_) _proxyWalkMainFields(fields zone, extraKind int8, callback func(field *pair, name []byte, value []byte) bool) bool {
-	for i := fields.from; i < fields.edge; i++ {
-		if field := &r.primes[i]; field.nameHash != 0 {
-			p := r._placeOf(field)
-			if !callback(field, field.nameAt(p), field.valueAt(p)) {
+func (r *_httpIn_) _proxyWalkMainFields(fieldLines zone, extraKind int8, callback func(fieldLine *pair, name []byte, value []byte) bool) bool {
+	for i := fieldLines.from; i < fieldLines.edge; i++ {
+		if fieldLine := &r.primes[i]; fieldLine.nameHash != 0 {
+			p := r._placeOf(fieldLine)
+			if !callback(fieldLine, fieldLine.nameAt(p), fieldLine.valueAt(p)) {
 				return false
 			}
 		}
@@ -1534,7 +1538,7 @@ var ( // _httpIn_ errors
 
 // httpOut
 type httpOut interface {
-	control() []byte
+	controlData() []byte
 	addHeader(name []byte, value []byte) bool
 	header(name []byte) (value []byte, ok bool)
 	hasHeader(name []byte) bool
@@ -1567,17 +1571,17 @@ type _httpOut_ struct { // outgoing. needs building
 	// Stream states (stocks)
 	stockFields [1536]byte // for r.fields
 	// Stream states (controlled)
-	edges [128]uint16 // edges of headers or trailers in r.fields, but not used at the same time. controlled by r.numHeaders or r.numTrailers. edges[0] is not used!
+	edges [128]uint16 // edges of header fields or trailer fields in r.fields, but not used at the same time. controlled by r.numHeaders or r.numTrailers. edges[0] is not used!
 	piece Piece       // for r.chain. used when sending content or echoing chunks
 	chain Chain       // outgoing piece chain. used when sending content or echoing chunks
 	// Stream states (non-zeros)
-	fields      []byte        // bytes of the headers or trailers which are not manipulated at the same time. [<r.stockFields>/4K/16K]
+	fields      []byte        // bytes of the header fields or trailer fields which are not manipulated at the same time. [<r.stockFields>/4K/16K]
 	sendTimeout time.Duration // timeout to send the whole message. zero means no timeout
 	contentSize int64         // info of outgoing content. -1: not set, -2: vague, >=0: size
 	httpVersion uint8         // Version1_1, Version2, Version3
 	asRequest   bool          // treat this outgoing message as request?
-	numHeaders  uint8         // 1+num of added headers, starts from 1 because edges[0] is not used
-	numTrailers uint8         // 1+num of added trailers, starts from 1 because edges[0] is not used
+	numHeaders  uint8         // 1+num of added header fields, starts from 1 because edges[0] is not used
+	numTrailers uint8         // 1+num of added trailer fields, starts from 1 because edges[0] is not used
 	// Stream states (zeros)
 	sendTime      time.Time   // the time when first write operation is performed
 	contentRanges []Range     // if outgoing content is ranged, this will be set
@@ -1588,7 +1592,7 @@ type _httpOut_ struct { // outgoing. needs building
 }
 type _httpOut0 struct { // for fast reset, entirely
 	controlEdge   uint16 // edge of control in r.fields. only used by request to mark the method and request-target
-	fieldsEdge    uint16 // edge of r.fields. max size of r.fields must be <= 16K. used by both headers and trailers because they are not manipulated at the same time
+	fieldsEdge    uint16 // edge of r.fields. max size of r.fields must be <= 16K. used by both header fields and trailer fields because they are not manipulated at the same time
 	hasRevisers   bool   // are there any outgoing revisers hooked on this outgoing message?
 	isSent        bool   // whether the message is sent
 	forbidContent bool   // forbid content?
@@ -1651,7 +1655,7 @@ func (r *_httpOut_) AddHeaderBytes(name []byte, value []byte) bool {
 			return false
 		}
 	}
-	return r.outMessage.insertHeader(nameHash, lower, value) // some headers (e.g. "connection") are restricted
+	return r.outMessage.insertHeader(nameHash, lower, value) // some header fields (e.g. "connection") are restricted
 }
 func (r *_httpOut_) DelHeader(name string) bool {
 	return r.DelHeaderBytes(ConstBytes(name))
@@ -1807,7 +1811,7 @@ func (r *_httpOut_) AddTrailer(name string, value string) bool {
 	return r.AddTrailerBytes(ConstBytes(name), ConstBytes(value))
 }
 func (r *_httpOut_) AddTrailerBytes(name []byte, value []byte) bool {
-	if !r.isSent { // trailers must be added after headers & content are sent, otherwise r.fields will be messed up
+	if !r.isSent { // trailer fields must be added after header fields & content are sent, otherwise r.fields will be messed up
 		return false
 	}
 	return r.outMessage.addTrailer(name, value)
@@ -1843,9 +1847,9 @@ func (r *_httpOut_) _proxyPassMessage(inMessage httpIn) error {
 			return err
 		}
 	}
-	if inMessage.HasTrailers() { // added trailers will be written by upper code eventually.
+	if inMessage.HasTrailers() {
 		if !inMessage.proxyWalkTrailers(func(trailer *pair, name []byte, value []byte) bool {
-			return r.outMessage.addTrailer(name, value)
+			return r.outMessage.addTrailer(name, value) // added trailer fields will be written by upper code eventually.
 		}) {
 			return httpOutTrailerFailed
 		}
@@ -1951,14 +1955,14 @@ func (r *_httpOut_) _beforeEcho() error {
 	return r.outMessage.echoHeaders()
 }
 
-func (r *_httpOut_) growHeader(size int) (from int, edge int, ok bool) { // headers and trailers are not manipulated at the same time
-	if r.numHeaders == uint8(cap(r.edges)) { // too many headers
+func (r *_httpOut_) growHeader(size int) (from int, edge int, ok bool) { // header fields and trailer fields are not manipulated at the same time
+	if r.numHeaders == uint8(cap(r.edges)) { // too many header fields
 		return
 	}
 	return r._growFields(size)
 }
-func (r *_httpOut_) growTrailer(size int) (from int, edge int, ok bool) { // headers and trailers are not manipulated at the same time
-	if r.numTrailers == uint8(cap(r.edges)) { // too many trailers
+func (r *_httpOut_) growTrailer(size int) (from int, edge int, ok bool) { // header fields and trailer fields are not manipulated at the same time
+	if r.numTrailers == uint8(cap(r.edges)) { // too many trailer fields
 		return
 	}
 	return r._growFields(size)

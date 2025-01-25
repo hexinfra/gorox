@@ -156,7 +156,7 @@ const ( // misc http type constants
 )
 
 const ( // hashes of http fields. value is calculated by adding all ASCII values.
-	// Pseudo headers
+	// Pseudo header fields
 	hashAuthority = 1059 // :authority
 	hashMethod    = 699  // :method
 	hashPath      = 487  // :path
@@ -221,7 +221,7 @@ const ( // hashes of http fields. value is calculated by adding all ASCII values
 )
 
 var ( // byteses of http fields.
-	// Pseudo headers
+	// Pseudo header fields
 	bytesAuthority = []byte(":authority")
 	bytesMethod    = []byte(":method")
 	bytesPath      = []byte(":path")
@@ -444,7 +444,7 @@ type fdesc struct {
 	name       []byte // field name
 }
 
-// pair is used to hold queries, headers, cookies, forms, trailers, and params.
+// pair is used to hold queries, headerLines, cookies, forms, trailerLines, and params.
 type pair struct { // 24 bytes
 	nameHash uint16 // name hash, to support fast search. 0 means empty pair
 	kind     int8   // see pair kinds

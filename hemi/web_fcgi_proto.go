@@ -102,10 +102,10 @@ var ( // fcgi request param values
 	fcgiBytes200    = []byte("200")
 )
 
-const ( // fcgi response header hashes
+const ( // fcgi response header field hashes
 	fcgiHashStatus = 676
 )
 
-var ( // fcgi response header names
+var ( // fcgi response header field names
 	fcgiBytesStatus = []byte("status")
 )

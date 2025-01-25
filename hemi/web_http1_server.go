@@ -308,7 +308,7 @@ func (s *server1Stream) _serveAbnormal(req *server1Request, resp *server1Respons
 		resp.vector = resp.fixedVector[0:4]
 		resp.vector[3] = content
 	}
-	resp.vector[0] = resp.control()
+	resp.vector[0] = resp.controlData()
 	resp.vector[1] = resp.addedHeaders()
 	resp.vector[2] = resp.fixedHeaders()
 	if s.setWriteDeadline() == nil { // ignore any error, as the connection will be closed anyway.
@@ -331,7 +331,7 @@ func (s *server1Stream) executeExchan(webapp *Webapp, req *server1Request, resp 
 
 	if !resp.isSent { // only happens for sized contents because for vague contents the response must be sent on echo()
 		resp.sendChain()
-	} else if resp.isVague() { // for vague contents, we end vague content and write trailers (if exist) here
+	} else if resp.isVague() { // for vague contents, we end vague content and write trailer fields (if exist) here
 		resp.endVague()
 	}
 
@@ -366,7 +366,7 @@ func (r *server1Request) onEnd() {
 	r.in1.onEnd()
 }
 
-func (r *server1Request) recvHead() { // request-line + headers
+func (r *server1Request) recvHead() { // control data + header section
 	// The entire request head must be received in one read timeout
 	if err := r.stream.setReadDeadline(); err != nil {
 		r.headResult = -1
@@ -376,7 +376,7 @@ func (r *server1Request) recvHead() { // request-line + headers
 		// r.headResult is set.
 		return
 	}
-	if !r._recvRequestLine() || !r.in1.recvHeaders() || !r.examineHead() {
+	if !r._recvControlData() || !r.in1.recvHeaderLines() || !r.examineHead() {
 		// r.headResult is set.
 		return
 	}
@@ -385,7 +385,7 @@ func (r *server1Request) recvHead() { // request-line + headers
 		Printf("[server1Stream=%d]<-------[%s]\n", r.stream.ID(), r.input[r.head.from:r.head.edge])
 	}
 }
-func (r *server1Request) _recvRequestLine() bool { // request-line = method SP request-target SP HTTP-version CRLF
+func (r *server1Request) _recvControlData() bool { // request-line = method SP request-target SP HTTP-version CRLF
 	r.elemBack, r.elemFore = 0, 0
 
 	// method = token
@@ -816,7 +816,7 @@ func (r *server1Response) onEnd() {
 	r.out1.onEnd()
 }
 
-func (r *server1Response) control() []byte { // overrides r.serverResponse_.control()
+func (r *server1Response) controlData() []byte { // overrides r.serverResponse_.controlData()
 	var start []byte
 	if r.status < int16(len(http1Controls)) && http1Controls[r.status] != nil {
 		start = http1Controls[r.status]
@@ -940,15 +940,15 @@ func (r *server1Response) addTrailer(name []byte, value []byte) bool {
 func (r *server1Response) trailer(name []byte) (value []byte, ok bool) { return r.out1.trailer(name) }
 
 func (r *server1Response) proxyPass1xx(backResp BackendResponse) bool {
-	backResp.proxyDelHopHeaders()
+	backResp.proxyDelHopHeaderFields()
 	r.status = backResp.Status()
-	if !backResp.proxyWalkHeaders(func(header *pair, name []byte, value []byte) bool {
-		return r.insertHeader(header.nameHash, name, value) // some headers (e.g. "connection") are restricted
+	if !backResp.proxyWalkHeaderLines(func(headerLine *pair, name []byte, value []byte) bool {
+		return r.insertHeader(headerLine.nameHash, name, value) // some header fields (e.g. "connection") are restricted
 	}) {
 		return false
 	}
 	r.vector = r.fixedVector[0:3]
-	r.vector[0] = r.control()
+	r.vector[0] = r.controlData()
 	r.vector[1] = r.addedHeaders()
 	r.vector[2] = bytesCRLF
 	// 1xx response has no content.

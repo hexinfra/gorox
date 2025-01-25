@@ -450,12 +450,12 @@ type fcgiResponse struct { // incoming. needs parsing
 	stockPrimes  [48]pair   // for r.primes
 	stockExtras  [16]pair   // for r.extras
 	// Exchan states (controlled)
-	header pair // to overcome the limitation of Go's escape analysis when receiving headers
+	headerLine pair // to overcome the limitation of Go's escape analysis when receiving header lines
 	// Exchan states (non-zeros)
 	records        []byte        // bytes of incoming fcgi records. [<r.stockRecords>/fcgiMaxRecords]
-	input          []byte        // bytes of incoming response headers. [<r.stockInput>/4K/16K]
-	primes         []pair        // prime fcgi response headers
-	extras         []pair        // extra fcgi response headers
+	input          []byte        // bytes of incoming response header lines. [<r.stockInput>/4K/16K]
+	primes         []pair        // prime fcgi response header lines
+	extras         []pair        // extra fcgi response header lines
 	recvTimeout    time.Duration // timeout to recv the whole response content. zero means no timeout
 	maxContentSize int64         // max content size allowed for current response
 	status         int16         // 200, 302, 404, ...
@@ -473,16 +473,16 @@ type _fcgiResponse0 struct { // for fast reset, entirely
 	recordsEdge     int32    // edge position of current records
 	stdoutFrom      int32    // if stdout's payload is too large to be appended to r.input, use this to note current from position
 	stdoutEdge      int32    // see above, to note current edge position
-	elemBack        int32    // element begins from. for parsing header elements
-	elemFore        int32    // element spanning to. for parsing header elements
+	elemBack        int32    // element begins from. for parsing header section elements
+	elemFore        int32    // element spanning to. for parsing header section elements
 	head            span     // for debugging
-	imme            span     // immediate bytes in r.input that belongs to content, not headers
+	imme            span     // immediate bytes in r.input that belongs to content, not header section
 	hasExtra        [8]bool  // see pairXXX for indexes
 	inputEdge       int32    // edge position of r.input
 	receiving       int8     // currently receiving. see httpSectionXXX
 	contentTextKind int8     // kind of current r.contentText. see httpContentTextXXX
 	receivedSize    int64    // bytes of currently received content
-	indexes         struct { // indexes of some selected singleton headers, for fast accessing
+	indexes         struct { // indexes of some selected singleton header fields, for fast accessing
 		contentType  uint8
 		date         uint8
 		etag         uint8
@@ -492,7 +492,7 @@ type _fcgiResponse0 struct { // for fast reset, entirely
 		xPoweredBy   uint8
 		_            byte // padding
 	}
-	zones struct { // zones of some selected headers, for fast accessing
+	zones struct { // zones of some selected header fields, for fast accessing
 		allow           zone
 		contentLanguage zone
 		_               [4]byte // padding
@@ -519,7 +519,7 @@ type _fcgiResponse0 struct { // for fast reset, entirely
 func (r *fcgiResponse) onUse() {
 	r.records = r.stockRecords[:]
 	r.input = r.stockInput[:]
-	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of header indexes.
+	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of header field indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
 	r.recvTimeout = r.exchan.conn.node.recvTimeout
 	r.maxContentSize = r.exchan.conn.node.maxContentSize
@@ -576,7 +576,7 @@ func (r *fcgiResponse) KeepAlive() bool { return r.exchan.conn.node.keepConn } /
 func (r *fcgiResponse) HeadResult() int16 { return r.headResult }
 func (r *fcgiResponse) BodyResult() int16 { return r.bodyResult }
 
-func (r *fcgiResponse) recvHead() {
+func (r *fcgiResponse) recvHead() { // header section
 	// The entire response head must be received within one read timeout
 	if err := r.exchan.setReadDeadline(); err != nil {
 		r.headResult = -1
@@ -586,7 +586,7 @@ func (r *fcgiResponse) recvHead() {
 		// r.headResult is set.
 		return
 	}
-	if !r.recvHeaders() || !r.examineHead() { // there is no control in FCGI, or, control is included in headers
+	if !r.recvHeaderLines() || !r.examineHead() { // there is no control data in FCGI, or, control data is included in header lines
 		// r.headResult is set.
 		return
 	}
@@ -635,7 +635,7 @@ func (r *fcgiResponse) growHead() bool { // we need more head data to be appende
 	}
 	return true
 }
-func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-value OWS CRLF ) CRLF
+func (r *fcgiResponse) recvHeaderLines() bool { // 1*( field-name ":" OWS field-value OWS CRLF ) CRLF
 	// generic-response = 1*header-field NL [ response-body ]
 	// header-field    = CGI-field | generic-field
 	// CGI-field       = Content-Type | Location | Status
@@ -645,20 +645,20 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 	// field-name      = token
 	// field-value     = *( field-content | LWSP )
 	// field-content   = *( token | separator | quoted-string )
-	header := &r.header
-	header.zero()
-	header.kind = pairHeader
-	header.place = placeInput // all received headers are in r.input
-	// r.elemFore is at headers (if any) or end of headers (if none).
-	for { // each header
-		// End of headers?
+	headerLine := &r.headerLine
+	headerLine.zero()
+	headerLine.kind = pairHeader
+	headerLine.place = placeInput // all received header lines are in r.input
+	// r.elemFore is at header section (if any) or end of header section (if none).
+	for { // each header line
+		// End of header section?
 		if b := r.input[r.elemFore]; b == '\r' {
 			// Skip '\r'
 			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead() {
 				return false
 			}
 			if r.input[r.elemFore] != '\n' {
-				r.headResult, r.failReason = StatusBadRequest, "bad end of headers"
+				r.headResult, r.failReason = StatusBadRequest, "bad end of header section"
 				return false
 			}
 			break
@@ -682,18 +682,18 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 			} else if b == ':' {
 				break
 			} else {
-				r.headResult, r.failReason = StatusBadRequest, "header name contains bad character"
+				r.headResult, r.failReason = StatusBadRequest, "header field name contains bad character"
 				return false
 			}
-			header.nameHash += uint16(b)
+			headerLine.nameHash += uint16(b)
 			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead() {
 				return false
 			}
 		}
 		if nameSize := r.elemFore - r.elemBack; nameSize > 0 && nameSize <= 255 {
-			header.nameFrom, header.nameSize = r.elemBack, uint8(nameSize)
+			headerLine.nameFrom, headerLine.nameSize = r.elemBack, uint8(nameSize)
 		} else {
-			r.headResult, r.failReason = StatusBadRequest, "header name out of range"
+			r.headResult, r.failReason = StatusBadRequest, "header field name out of range"
 			return false
 		}
 		// Skip ':'
@@ -719,14 +719,14 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 					return false
 				}
 				if r.input[r.elemFore] != '\n' {
-					r.headResult, r.failReason = StatusBadRequest, "header value contains bad eol"
+					r.headResult, r.failReason = StatusBadRequest, "header field value contains bad eol"
 					return false
 				}
 				break
 			} else if b == '\n' {
 				break
 			} else {
-				r.headResult, r.failReason = StatusBadRequest, "header value contains bad character"
+				r.headResult, r.failReason = StatusBadRequest, "header field value contains bad character"
 				return false
 			}
 		}
@@ -740,23 +740,23 @@ func (r *fcgiResponse) recvHeaders() bool { // 1*( field-name ":" OWS field-valu
 				fore--
 			}
 		}
-		header.value.set(r.elemBack, fore)
+		headerLine.value.set(r.elemBack, fore)
 
-		// Header is received in general algorithm. Now add it
-		if !r.addPrime(header) {
+		// Header line is received in general algorithm. Now add it
+		if !r.addPrime(headerLine) {
 			// r.headResult is set.
 			return false
 		}
 
-		// Header is successfully received. Skip '\n'
+		// Header line is successfully received. Skip '\n'
 		if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead() {
 			return false
 		}
-		// r.elemFore is now at the next header or end of headers.
-		header.nameHash, header.flags = 0, 0 // reset for next header
+		// r.elemFore is now at the next header line or end of header section.
+		headerLine.nameHash, headerLine.flags = 0, 0 // reset for next header line
 	}
 	r.receiving = httpSectionContent
-	// Skip end of headers
+	// Skip end of header section
 	r.elemFore++
 	// Now the head is received, and r.elemFore is at the beginning of content (if exists).
 	r.head.set(0, r.elemFore)
@@ -783,7 +783,7 @@ func (r *fcgiResponse) IsVague() bool      { return true } // fcgi is vague by d
 
 func (r *fcgiResponse) examineHead() bool {
 	for i := 1; i < len(r.primes); i++ { // r.primes[0] is not used
-		if !r.applyHeader(i) {
+		if !r.applyHeaderLine(i) {
 			// r.headResult is set.
 			return false
 		}
@@ -791,48 +791,48 @@ func (r *fcgiResponse) examineHead() bool {
 	// content length is not known at this time, can't check.
 	return true
 }
-func (r *fcgiResponse) applyHeader(index int) bool {
-	header := &r.primes[index]
-	headerName := header.nameAt(r.input)
-	if sh := &fcgiResponseSingletonHeaderTable[fcgiResponseSingletonHeaderFind(header.nameHash)]; sh.nameHash == header.nameHash && bytes.Equal(sh.name, headerName) {
-		header.setSingleton()
+func (r *fcgiResponse) applyHeaderLine(index int) bool {
+	headerLine := &r.primes[index]
+	headerName := headerLine.nameAt(r.input)
+	if sh := &fcgiResponseSingletonHeaderFieldTable[fcgiResponseSingletonHeaderFieldFind(headerLine.nameHash)]; sh.nameHash == headerLine.nameHash && bytes.Equal(sh.name, headerName) {
+		headerLine.setSingleton()
 		if !sh.parse { // unnecessary to parse generally
-			header.setParsed()
-		} else if !r._parseHeader(header, &sh.fdesc, true) {
+			headerLine.setParsed()
+		} else if !r._parseHeaderLine(headerLine, &sh.fdesc, true) {
 			// r.headResult is set.
 			return false
 		}
-		if !sh.check(r, header, index) {
+		if !sh.check(r, headerLine, index) {
 			// r.headResult is set.
 			return false
 		}
-	} else if mh := &fcgiResponseImportantHeaderTable[fcgiResponseImportantHeaderFind(header.nameHash)]; mh.nameHash == header.nameHash && bytes.Equal(mh.name, headerName) {
+	} else if mh := &fcgiResponseImportantHeaderFieldTable[fcgiResponseImportantHeaderFieldFind(headerLine.nameHash)]; mh.nameHash == headerLine.nameHash && bytes.Equal(mh.name, headerName) {
 		extraFrom := len(r.extras)
-		if !r._splitHeader(header, &mh.fdesc) {
+		if !r._splitHeaderLine(headerLine, &mh.fdesc) {
 			// r.headResult is set.
 			return false
 		}
-		if header.isCommaValue() { // has sub headers, check them
+		if headerLine.isCommaValue() { // has sub header lines, check them
 			if extraEdge := len(r.extras); !mh.check(r, r.extras, extraFrom, extraEdge) {
 				// r.headResult is set.
 				return false
 			}
-		} else if !mh.check(r, r.primes, index, index+1) { // no sub headers. check it
+		} else if !mh.check(r, r.primes, index, index+1) { // no sub header lines. check it
 			// r.headResult is set.
 			return false
 		}
 	} else {
-		// All other headers are treated as list-based headers.
+		// All other header fields are treated as list-based header fields.
 	}
 	return true
 }
 
-func (r *fcgiResponse) _parseHeader(header *pair, fdesc *fdesc, fully bool) bool { // data and params
+func (r *fcgiResponse) _parseHeaderLine(headerLine *pair, fdesc *fdesc, fully bool) bool { // data and params
 	// TODO
 	// use r._addExtra
 	return true
 }
-func (r *fcgiResponse) _splitHeader(header *pair, fdesc *fdesc) bool {
+func (r *fcgiResponse) _splitHeaderLine(headerLine *pair, fdesc *fdesc) bool {
 	// TODO
 	// use r._addExtra
 	return true
@@ -851,8 +851,8 @@ func (r *fcgiResponse) _addExtra(extra *pair) bool {
 	return true
 }
 
-var ( // perfect hash table for singleton response headers
-	fcgiResponseSingletonHeaderTable = [4]struct {
+var ( // perfect hash table for singleton response header fields
+	fcgiResponseSingletonHeaderFieldTable = [4]struct {
 		parse bool // need general parse or not
 		fdesc      // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*fcgiResponse, *pair, int) bool
@@ -862,23 +862,23 @@ var ( // perfect hash table for singleton response headers
 		2: {true, fdesc{hashContentType, false, false, true, false, bytesContentType}, (*fcgiResponse).checkContentType},
 		3: {false, fdesc{hashLocation, false, false, false, false, bytesLocation}, (*fcgiResponse).checkLocation},
 	}
-	fcgiResponseSingletonHeaderFind = func(nameHash uint16) int { return (2704 / int(nameHash)) % len(fcgiResponseSingletonHeaderTable) }
+	fcgiResponseSingletonHeaderFieldFind = func(nameHash uint16) int { return (2704 / int(nameHash)) % len(fcgiResponseSingletonHeaderFieldTable) }
 )
 
-func (r *fcgiResponse) checkContentLength(header *pair, index int) bool {
-	header.zero() // we don't believe the value provided by fcgi application. we believe fcgi framing protocol
+func (r *fcgiResponse) checkContentLength(headerLine *pair, index int) bool {
+	headerLine.zero() // we don't believe the value provided by fcgi application. we believe fcgi framing protocol
 	return true
 }
-func (r *fcgiResponse) checkContentType(header *pair, index int) bool {
-	if r.indexes.contentType == 0 && !header.dataEmpty() {
+func (r *fcgiResponse) checkContentType(headerLine *pair, index int) bool {
+	if r.indexes.contentType == 0 && !headerLine.dataEmpty() {
 		r.indexes.contentType = uint8(index)
 		return true
 	}
 	r.headResult, r.failReason = StatusBadRequest, "bad or too many content-type"
 	return false
 }
-func (r *fcgiResponse) checkStatus(header *pair, index int) bool {
-	if value := header.valueAt(r.input); len(value) >= 3 {
+func (r *fcgiResponse) checkStatus(headerLine *pair, index int) bool {
+	if value := headerLine.valueAt(r.input); len(value) >= 3 {
 		if status, ok := decToI64(value[0:3]); ok {
 			r.status = int16(status)
 			return true
@@ -887,13 +887,13 @@ func (r *fcgiResponse) checkStatus(header *pair, index int) bool {
 	r.headResult, r.failReason = StatusBadRequest, "bad status"
 	return false
 }
-func (r *fcgiResponse) checkLocation(header *pair, index int) bool {
+func (r *fcgiResponse) checkLocation(headerLine *pair, index int) bool {
 	r.indexes.location = uint8(index)
 	return true
 }
 
-var ( // perfect hash table for important response headers
-	fcgiResponseImportantHeaderTable = [3]struct {
+var ( // perfect hash table for important response header fields
+	fcgiResponseImportantHeaderFieldTable = [3]struct {
 		fdesc // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*fcgiResponse, []pair, int, int) bool
 	}{ // connection transfer-encoding upgrade
@@ -901,19 +901,19 @@ var ( // perfect hash table for important response headers
 		1: {fdesc{hashConnection, false, false, false, false, bytesConnection}, (*fcgiResponse).checkConnection},
 		2: {fdesc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*fcgiResponse).checkUpgrade},
 	}
-	fcgiResponseImportantHeaderFind = func(nameHash uint16) int { return (1488 / int(nameHash)) % len(fcgiResponseImportantHeaderTable) }
+	fcgiResponseImportantHeaderFieldFind = func(nameHash uint16) int { return (1488 / int(nameHash)) % len(fcgiResponseImportantHeaderFieldTable) }
 )
 
 func (r *fcgiResponse) checkConnection(pairs []pair, from int, edge int) bool { // Connection = #connection-option
-	return r._delHeaders(pairs, from, edge)
+	return r._delHeaderLines(pairs, from, edge)
 }
 func (r *fcgiResponse) checkTransferEncoding(pairs []pair, from int, edge int) bool { // Transfer-Encoding = #transfer-coding
-	return r._delHeaders(pairs, from, edge)
+	return r._delHeaderLines(pairs, from, edge)
 }
 func (r *fcgiResponse) checkUpgrade(pairs []pair, from int, edge int) bool { // Upgrade = #protocol
-	return r._delHeaders(pairs, from, edge)
+	return r._delHeaderLines(pairs, from, edge)
 }
-func (r *fcgiResponse) _delHeaders(pairs []pair, from int, edge int) bool {
+func (r *fcgiResponse) _delHeaderLines(pairs []pair, from int, edge int) bool {
 	for i := from; i < edge; i++ {
 		pairs[i].zero()
 	}
@@ -998,23 +998,23 @@ func (r *fcgiResponse) readContent() (data []byte, err error) {
 	}
 }
 
-func (r *fcgiResponse) HasTrailers() bool { return false } // fcgi doesn't support trailers
-func (r *fcgiResponse) examineTail() bool { return true }  // fcgi doesn't support trailers
+func (r *fcgiResponse) HasTrailers() bool { return false } // fcgi doesn't support http trailers
+func (r *fcgiResponse) examineTail() bool { return true }  // fcgi doesn't support http trailers
 
-func (r *fcgiResponse) proxyDelHopHeaders()  {} // for fcgi, nothing to delete
-func (r *fcgiResponse) proxyDelHopTrailers() {} // fcgi doesn't support trailers
+func (r *fcgiResponse) proxyDelHopHeaderFields() {} // for fcgi, nothing to delete
+func (r *fcgiResponse) proxyDelHopTrailers()     {} // fcgi doesn't support http trailers
 
-func (r *fcgiResponse) proxyWalkHeaders(callback func(header *pair, name []byte, value []byte) bool) bool { // excluding sub headers
+func (r *fcgiResponse) proxyWalkHeaderLines(callback func(headerLine *pair, name []byte, value []byte) bool) bool { // excluding sub header lines
 	for i := 1; i < len(r.primes); i++ { // r.primes[0] is not used
-		if header := &r.primes[i]; header.nameHash != 0 && !header.isSubField() {
-			if !callback(header, header.nameAt(r.input), header.valueAt(r.input)) {
+		if headerLine := &r.primes[i]; headerLine.nameHash != 0 && !headerLine.isSubField() {
+			if !callback(headerLine, headerLine.nameAt(r.input), headerLine.valueAt(r.input)) {
 				return false
 			}
 		}
 	}
 	return true
 }
-func (r *fcgiResponse) proxyWalkTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // fcgi doesn't support trailers
+func (r *fcgiResponse) proxyWalkTrailers(callback func(trailer *pair, name []byte, value []byte) bool) bool { // fcgi doesn't support http trailers
 	return true
 }
 
@@ -1078,7 +1078,7 @@ recv:
 }
 func (r *fcgiResponse) fcgiRecvRecord() (kind byte, from int32, edge int32, err error) { // r.records[from:edge] is the record payload.
 	remainSize := r.recordsEdge - r.recordsFrom
-	// At least an fcgi header must be immediate
+	// At least an fcgi record header must be immediate
 	if remainSize < fcgiHeaderSize {
 		if n, e := r.fcgiGrowRecords(fcgiHeaderSize - int(remainSize)); e == nil {
 			remainSize += int32(n)
@@ -1087,7 +1087,7 @@ func (r *fcgiResponse) fcgiRecvRecord() (kind byte, from int32, edge int32, err 
 			return
 		}
 	}
-	// FCGI header is now immediate.
+	// FCGI record header is now immediate.
 	payloadLen := int32(r.records[r.recordsFrom+4])<<8 + int32(r.records[r.recordsFrom+5])
 	paddingLen := int32(r.records[r.recordsFrom+6])
 	recordSize := fcgiHeaderSize + payloadLen + paddingLen // with padding
@@ -1200,7 +1200,7 @@ func (r *fcgiRequest) onEnd() {
 	r._fcgiRequest0 = _fcgiRequest0{}
 }
 
-func (r *fcgiRequest) proxyCopyHeaders(httpReq ServerRequest, proxyConfig *FCGIExchanProxyConfig) bool {
+func (r *fcgiRequest) proxyCopyHeaderLines(httpReq ServerRequest, proxyConfig *FCGIExchanProxyConfig) bool {
 	// Add meta params
 	if !r._addMetaParam(fcgiBytesGatewayInterface, fcgiBytesCGI1_1) { // GATEWAY_INTERFACE
 		return false
@@ -1264,8 +1264,8 @@ func (r *fcgiRequest) proxyCopyHeaders(httpReq ServerRequest, proxyConfig *FCGIE
 	}
 
 	// Add http params
-	if !httpReq.proxyWalkHeaders(func(header *pair, name []byte, value []byte) bool {
-		return r._addHTTPParam(header, name, value)
+	if !httpReq.proxyWalkHeaderLines(func(headerLine *pair, name []byte, value []byte) bool {
+		return r._addHTTPParam(headerLine, name, value)
 	}) {
 		return false
 	}
@@ -1277,9 +1277,9 @@ func (r *fcgiRequest) proxyCopyHeaders(httpReq ServerRequest, proxyConfig *FCGIE
 func (r *fcgiRequest) _addMetaParam(name []byte, value []byte) bool { // like: REQUEST_METHOD
 	return r._addParam(name, value, false)
 }
-func (r *fcgiRequest) _addHTTPParam(header *pair, name []byte, value []byte) bool { // like: HTTP_USER_AGENT
-	if header.isUnderscore() {
-		// TODO: got a "foo_bar" header and user prefer it. avoid name conflicts with header which is like "foo-bar"
+func (r *fcgiRequest) _addHTTPParam(headerLine *pair, name []byte, value []byte) bool { // like: HTTP_USER_AGENT
+	if headerLine.isUnderscore() {
+		// TODO: got a "foo_bar" header line and user prefer it. avoid name conflicts with header line which is like "foo-bar"
 		return true
 	} else {
 		return r._addParam(name, value, true)

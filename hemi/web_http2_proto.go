@@ -400,7 +400,7 @@ var ( // HTTP/2 byteses
 
 // http2Buffer
 type http2Buffer struct {
-	buf [9 + http2MaxFrameSize]byte // header + payload
+	buf [9 + http2MaxFrameSize]byte // frame header + frame payload
 	ref atomic.Int32
 }
 

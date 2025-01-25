@@ -158,7 +158,7 @@ func WebExchanReverseProxy(servReq ServerRequest, servResp ServerResponse, hcach
 	defer backend.StoreStream(backStream)
 
 	backReq := backStream.Request()
-	if !backReq.proxyCopyHeaders(servReq, proxyConfig) {
+	if !backReq.proxyCopyHeaderLines(servReq, proxyConfig) {
 		backStream.markBroken()
 		servResp.SendBadGateway(nil)
 		return
@@ -179,7 +179,7 @@ func WebExchanReverseProxy(servReq ServerRequest, servResp ServerResponse, hcach
 		}
 	} else if backErr = backReq.proxyPassMessage(servReq); backErr != nil {
 		backStream.markBroken()
-	} else if backReq.isVague() { // must write the last chunk and trailers (if exist)
+	} else if backReq.isVague() { // must write the last chunk and trailer fields (if exist)
 		if backErr = backReq.endVague(); backErr != nil {
 			backStream.markBroken()
 		}
@@ -237,7 +237,7 @@ func WebExchanReverseProxy(servReq ServerRequest, servResp ServerResponse, hcach
 		}
 	}
 
-	if !servResp.proxyCopyHeaders(backResp, proxyConfig) {
+	if !servResp.proxyCopyHeaderLines(backResp, proxyConfig) {
 		backStream.markBroken()
 		return
 	}
@@ -294,10 +294,10 @@ func (c *Hcache_) todo() {
 // Hobject represents an HTTP object in Hcache.
 type Hobject struct {
 	// TODO
-	uri      []byte
-	headers  any
-	content  any
-	trailers any
+	uri           []byte
+	headerFields  any
+	content       any
+	trailerFields any
 }
 
 func (o *Hobject) todo() {

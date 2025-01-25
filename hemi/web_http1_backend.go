@@ -391,7 +391,7 @@ func (r *backend1Response) onEnd() {
 	r.in1.onEnd()
 }
 
-func (r *backend1Response) recvHead() { // status-line + headers
+func (r *backend1Response) recvHead() { // control data + header section
 	// The entire response head must be received within one read timeout
 	if err := r.stream.setReadDeadline(); err != nil {
 		r.headResult = -1
@@ -401,7 +401,7 @@ func (r *backend1Response) recvHead() { // status-line + headers
 		// r.headResult is set.
 		return
 	}
-	if !r._recvStatusLine() || !r.in1.recvHeaders() || !r.examineHead() {
+	if !r._recvControlData() || !r.in1.recvHeaderLines() || !r.examineHead() {
 		// r.headResult is set.
 		return
 	}
@@ -410,7 +410,7 @@ func (r *backend1Response) recvHead() { // status-line + headers
 		Printf("[backend1Stream=%d]=======> [%s]\n", r.stream.ID(), r.input[r.head.from:r.head.edge])
 	}
 }
-func (r *backend1Response) _recvStatusLine() bool { // status-line = HTTP-version SP status-code SP [ reason-phrase ] CRLF
+func (r *backend1Response) _recvControlData() bool { // status-line = HTTP-version SP status-code SP [ reason-phrase ] CRLF
 	// HTTP-version = HTTP-name "/" DIGIT "." DIGIT
 	// HTTP-name = %x48.54.54.50 ; "HTTP", case-sensitive
 	if have := r.inputEdge - r.elemFore; have >= 9 {
@@ -607,7 +607,7 @@ func (r *backend1Request) AddCookie(name string, value string) bool { // cookie:
 	// TODO. need some space to place the cookie. use stream.unsafeMake()?
 	return false
 }
-func (r *backend1Request) proxyCopyCookies(servReq ServerRequest) bool { // NOTE: merge all cookies into one "cookie" header
+func (r *backend1Request) proxyCopyCookies(servReq ServerRequest) bool { // NOTE: merge all cookies into one "cookie" header field
 	headerSize := len(bytesCookie) + len(bytesColonSpace) // `cookie: `
 	servReq.proxyWalkCookies(func(cookie *pair, name []byte, value []byte) bool {
 		headerSize += len(name) + 1 + len(value) + 2 // `name=value; `

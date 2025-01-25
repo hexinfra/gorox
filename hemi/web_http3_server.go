@@ -360,10 +360,10 @@ func (r *server3Response) addTrailer(name []byte, value []byte) bool {
 func (r *server3Response) trailer(name []byte) (value []byte, ok bool) { return r.out3.trailer(name) }
 
 func (r *server3Response) proxyPass1xx(backResp BackendResponse) bool {
-	backResp.proxyDelHopHeaders()
+	backResp.proxyDelHopHeaderFields()
 	r.status = backResp.Status()
-	if !backResp.proxyWalkHeaders(func(header *pair, name []byte, value []byte) bool {
-		return r.insertHeader(header.nameHash, name, value) // some headers (e.g. "connection") are restricted
+	if !backResp.proxyWalkHeaderLines(func(headerLine *pair, name []byte, value []byte) bool {
+		return r.insertHeader(headerLine.nameHash, name, value) // some header fields (e.g. "connection") are restricted
 	}) {
 		return false
 	}

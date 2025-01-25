@@ -10,6 +10,7 @@ package hemi
 import (
 	"bytes"
 	"errors"
+	"sync"
 	"time"
 )
 
@@ -86,6 +87,62 @@ func (n *httpNode_[B]) onConfigure() {
 func (n *httpNode_[B]) onPrepare() {
 	n.Node_.OnPrepare()
 	n._httpHolder_.onPrepare(n, 0755)
+}
+
+type poolConn struct {
+	next *poolConn
+}
+
+type connPool struct {
+	sync.Mutex
+	head *poolConn
+	tail *poolConn
+	qnty int
+}
+
+func (p *connPool) pullConn() *poolConn {
+	p.Lock()
+	defer p.Unlock()
+
+	if p.qnty == 0 {
+		return nil
+	}
+	conn := p.head
+	p.head = conn.next
+	conn.next = nil
+	p.qnty--
+	return conn
+}
+func (p *connPool) pushConn(conn *poolConn) {
+	p.Lock()
+	defer p.Unlock()
+
+	if p.qnty == 0 {
+		p.head = conn
+		p.tail = conn
+	} else {
+		p.tail.next = conn
+		p.tail = conn
+	}
+	p.qnty++
+}
+func (p *connPool) closeIdle(closeFunc func(conn *poolConn) error) int {
+	p.Lock()
+	defer p.Unlock()
+
+	conn := p.head
+	for conn != nil {
+		next := conn.next
+		conn.next = nil
+		closeFunc(conn)
+		conn = next
+	}
+	qnty := p.qnty
+	p.qnty = 0
+	p.head = nil
+	p.tail = nil
+
+	return qnty
 }
 
 // backendConn

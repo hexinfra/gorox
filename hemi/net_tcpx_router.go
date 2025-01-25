@@ -239,7 +239,7 @@ func (g *tcpxGate) Serve() { // runner
 
 func (g *tcpxGate) serveUDS() {
 	listener := g.listener.(*net.UnixListener)
-	connID := int64(0)
+	connID := int64(1)
 	for {
 		udsConn, err := listener.AcceptUnix()
 		if err != nil {
@@ -272,7 +272,7 @@ func (g *tcpxGate) serveUDS() {
 }
 func (g *tcpxGate) serveTLS() {
 	listener := g.listener.(*net.TCPListener)
-	connID := int64(0)
+	connID := int64(1)
 	for {
 		tcpConn, err := listener.AcceptTCP()
 		if err != nil {
@@ -306,7 +306,7 @@ func (g *tcpxGate) serveTLS() {
 }
 func (g *tcpxGate) serveTCP() {
 	listener := g.listener.(*net.TCPListener)
-	connID := int64(0)
+	connID := int64(1)
 	for {
 		tcpConn, err := listener.AcceptTCP()
 		if err != nil {

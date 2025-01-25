@@ -100,7 +100,7 @@ func (g *echoGate) Shut() error {
 }
 
 func (g *echoGate) Serve() { // runner
-	connID := int64(0)
+	connID := int64(1)
 	for {
 		tcpConn, err := g.listener.AcceptTCP()
 		if err != nil {

@@ -96,7 +96,7 @@ func (n *http1Node) Maintain() { // runner
 		// TODO: health check, markDown, markUp()
 	})
 	n.markDown()
-	if size := n.closeFree(); size > 0 {
+	if size := n.closeIdle(); size > 0 {
 		n.DecSubConns(size)
 	}
 	n.WaitSubConns() // TODO: max timeout?
@@ -243,7 +243,7 @@ func (n *http1Node) pushConn(conn *backend1Conn) {
 	}
 	list.qnty++
 }
-func (n *http1Node) closeFree() int {
+func (n *http1Node) closeIdle() int {
 	list := &n.connPool
 
 	list.Lock()
@@ -258,7 +258,8 @@ func (n *http1Node) closeFree() int {
 	}
 	qnty := list.qnty
 	list.qnty = 0
-	list.head, list.tail = nil, nil
+	list.head = nil
+	list.tail = nil
 
 	return qnty
 }
@@ -315,7 +316,7 @@ func (c *backend1Conn) onPut() {
 
 func (c *backend1Conn) fetchStream() (*backend1Stream, error) {
 	backStream := &c.stream
-	backStream.onUse()
+	backStream.onUse(c.nextStreamID())
 	return backStream, nil
 }
 func (c *backend1Conn) storeStream(backStream *backend1Stream) {
@@ -344,8 +345,8 @@ type backend1Stream struct {
 	// Stream states (zeros)
 }
 
-func (s *backend1Stream) onUse() { // for non-zeros
-	s.http1Stream_.onUse()
+func (s *backend1Stream) onUse(id int64) { // for non-zeros
+	s.http1Stream_.onUse(id)
 	s._backendStream_.onUse()
 
 	s.response.onUse()
@@ -406,7 +407,7 @@ func (r *backend1Response) recvHead() { // status-line + headers
 	}
 	r.tidyInput()
 	if DebugLevel() >= 2 {
-		Printf("[backend1Stream=%d]<======= [%s]\n", r.stream.Conn().ID(), r.input[r.head.from:r.head.edge])
+		Printf("[backend1Stream=%d]=======> [%s]\n", r.stream.ID(), r.input[r.head.from:r.head.edge])
 	}
 }
 func (r *backend1Response) _recvStatusLine() bool { // status-line = HTTP-version SP status-code SP [ reason-phrase ] CRLF

@@ -39,6 +39,7 @@ type http1Conn_ struct {
 	rawConn    syscall.RawConn // for syscall, only usable when netConn is TCP/UDS
 	persistent bool            // keep the connection after current stream? true by default, will be changed by "connection: close" header received from the remote side
 	// Conn states (zeros)
+	streamID int64 // next stream id
 }
 
 func (c *http1Conn_) onGet(id int64, holder holder, netConn net.Conn, rawConn syscall.RawConn) {
@@ -51,8 +52,14 @@ func (c *http1Conn_) onGet(id int64, holder holder, netConn net.Conn, rawConn sy
 func (c *http1Conn_) onPut() {
 	c.netConn = nil
 	c.rawConn = nil
+	c.streamID = 0
 
 	c.httpConn_.onPut()
+}
+
+func (c *http1Conn_) nextStreamID() int64 {
+	c.streamID++
+	return c.streamID
 }
 
 func (c *http1Conn_) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
@@ -97,15 +104,19 @@ type http1Stream_[C http1Conn] struct {
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non zeros)
+	id int64 // the stream id
 	// Stream states (zeros)
 }
 
-func (s *http1Stream_[C]) onUse() {
+func (s *http1Stream_[C]) onUse(id int64) {
 	s.httpStream_.onUse()
+	s.id = id
 }
 func (s *http1Stream_[C]) onEnd() {
 	s.httpStream_.onEnd()
 }
+
+func (s *http1Stream_[C]) ID() int64 { return s.id }
 
 func (s *http1Stream_[C]) Conn() httpConn       { return s.conn }
 func (s *http1Stream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }
@@ -179,10 +190,10 @@ func (r *_http1In_) growHead() bool { // HTTP/1.x is not a binary protocol, we d
 func (r *_http1In_) recvHeaders() bool { // *( field-name ":" OWS field-value OWS CRLF ) CRLF
 	r.headers.from = uint8(len(r.primes))
 	r.headers.edge = r.headers.from
-	header := &r.mainPair
-	header.zero()
-	header.kind = pairHeader
-	header.place = placeInput // all received headers are in r.input
+	headerLine := &r.mainPair
+	headerLine.zero()
+	headerLine.kind = pairHeader
+	headerLine.place = placeInput // all received headers are in r.input
 	// r.elemFore is at headers (if any) or end of headers (if none).
 	for { // each header
 		// End of headers?
@@ -200,7 +211,7 @@ func (r *_http1In_) recvHeaders() bool { // *( field-name ":" OWS field-value OW
 			break
 		}
 
-		// header-field = field-name ":" OWS field-value OWS
+		// field-line = field-name ":" OWS field-value OWS
 
 		// field-name = token
 		// token = 1*tchar
@@ -214,20 +225,20 @@ func (r *_http1In_) recvHeaders() bool { // *( field-name ":" OWS field-value OW
 				b += 0x20 // to lower
 				r.input[r.elemFore] = b
 			} else if t == 3 { // '_'
-				header.setUnderscore()
+				headerLine.setUnderscore()
 			} else if b == ':' {
 				break
 			} else {
 				r.headResult, r.failReason = StatusBadRequest, "header name contains bad character"
 				return false
 			}
-			header.nameHash += uint16(b)
+			headerLine.nameHash += uint16(b)
 			if r.elemFore++; r.elemFore == r.inputEdge && !r.growHead() {
 				return false
 			}
 		}
 		if nameSize := r.elemFore - r.elemBack; nameSize > 0 && nameSize <= 255 {
-			header.nameFrom, header.nameSize = r.elemBack, uint8(nameSize)
+			headerLine.nameFrom, headerLine.nameSize = r.elemBack, uint8(nameSize)
 		} else {
 			r.headResult, r.failReason = StatusBadRequest, "header name out of range"
 			return false
@@ -281,10 +292,10 @@ func (r *_http1In_) recvHeaders() bool { // *( field-name ":" OWS field-value OW
 				fore--
 			}
 		}
-		header.value.set(r.elemBack, fore)
+		headerLine.value.set(r.elemBack, fore)
 
 		// Header is received in general algorithm. Now add it
-		if !r.addHeader(header) {
+		if !r.addHeaderLine(headerLine) {
 			// r.headResult is set.
 			return false
 		}
@@ -294,7 +305,7 @@ func (r *_http1In_) recvHeaders() bool { // *( field-name ":" OWS field-value OW
 			return false
 		}
 		// r.elemFore is now at the next header or end of headers.
-		header.nameHash, header.flags = 0, 0 // reset for next header
+		headerLine.nameHash, headerLine.flags = 0, 0 // reset for next header
 	}
 	r.receiving = httpSectionContent
 	// Skip end of headers
@@ -516,10 +527,10 @@ func (r *_http1In_) recvTrailers() bool { // trailer-section = *( field-line CRL
 
 	r.trailers.from = uint8(len(r.primes))
 	r.trailers.edge = r.trailers.from
-	trailer := &r.mainPair
-	trailer.zero()
-	trailer.kind = pairTrailer
-	trailer.place = placeArray // all received trailers are placed in r.array
+	trailerLine := &r.mainPair
+	trailerLine.zero()
+	trailerLine.kind = pairTrailer
+	trailerLine.place = placeArray // all received trailers are placed in r.array
 	for {
 		if b := r.bodyWindow[r.elemFore]; b == '\r' {
 			// Skip '\r'
@@ -543,19 +554,19 @@ func (r *_http1In_) recvTrailers() bool { // trailer-section = *( field-line CRL
 				b += 0x20 // to lower
 				r.bodyWindow[r.elemFore] = b
 			} else if t == 3 { // '_'
-				trailer.setUnderscore()
+				trailerLine.setUnderscore()
 			} else if b == ':' {
 				break
 			} else {
 				return false
 			}
-			trailer.nameHash += uint16(b)
+			trailerLine.nameHash += uint16(b)
 			if r.elemFore++; r.elemFore == r.chunkEdge && !r.growChunked() {
 				return false
 			}
 		}
 		if nameSize := r.elemFore - r.elemBack; nameSize > 0 && nameSize <= 255 {
-			trailer.nameFrom, trailer.nameSize = r.elemBack, uint8(nameSize)
+			trailerLine.nameFrom, trailerLine.nameSize = r.elemBack, uint8(nameSize)
 		} else {
 			return false
 		}
@@ -600,22 +611,22 @@ func (r *_http1In_) recvTrailers() bool { // trailer-section = *( field-line CRL
 				fore--
 			}
 		}
-		trailer.value.set(r.elemBack, fore)
+		trailerLine.value.set(r.elemBack, fore)
 
 		// Copy trailer data to r.array
 		fore = r.arrayEdge
-		if !r.arrayCopy(trailer.nameAt(r.bodyWindow)) {
+		if !r.arrayCopy(trailerLine.nameAt(r.bodyWindow)) {
 			return false
 		}
-		trailer.nameFrom = fore
+		trailerLine.nameFrom = fore
 		fore = r.arrayEdge
-		if !r.arrayCopy(trailer.valueAt(r.bodyWindow)) {
+		if !r.arrayCopy(trailerLine.valueAt(r.bodyWindow)) {
 			return false
 		}
-		trailer.value.set(fore, r.arrayEdge)
+		trailerLine.value.set(fore, r.arrayEdge)
 
 		// Trailer is received in general algorithm. Now add it
-		if !r.addTrailer(trailer) {
+		if !r.addTrailerLine(trailerLine) {
 			return false
 		}
 
@@ -624,7 +635,7 @@ func (r *_http1In_) recvTrailers() bool { // trailer-section = *( field-line CRL
 			return false
 		}
 		// r.elemFore is now at the next trailer or end of trailers.
-		trailer.nameHash, trailer.flags = 0, 0 // reset for next trailer
+		trailerLine.nameHash, trailerLine.flags = 0, 0 // reset for next trailer
 	}
 	r.chunkFore = r.elemFore // r.chunkFore must ends at the last '\n'
 	return true
@@ -793,11 +804,10 @@ func (r *_http1Out_) _sendEntireChain() error {
 	vector := r._prepareVector() // waiting to write
 	if DebugLevel() >= 2 {
 		if r.asRequest {
-			Printf("[backend1Stream=%d]=======> ", r.stream.Conn().ID())
+			Printf("[backend1Stream=%d]<=======[%s%s%s]\n", r.stream.ID(), vector[0], vector[1], vector[2])
 		} else {
-			Printf("[server1Stream=%d]-------> ", r.stream.Conn().ID())
+			Printf("[server1Stream=%d]------->[%s%s%s]\n", r.stream.ID(), vector[0], vector[1], vector[2])
 		}
-		Printf("[%s%s%s]\n", vector[0], vector[1], vector[2])
 	}
 	vectorFrom, vectorEdge := 0, 3
 	for piece := r.chain.head; piece != nil; piece = piece.next {
@@ -949,11 +959,10 @@ func (r *_http1Out_) writeHeaders() error { // used by echo and pass
 	r.vector[2] = r.outMessage.fixedHeaders()
 	if DebugLevel() >= 2 {
 		if r.asRequest {
-			Printf("[backend1Stream=%d]", r.stream.Conn().ID())
+			Printf("[backend1Stream=%d]<=======", r.stream.ID(), r.vector[0], r.vector[1], r.vector[2])
 		} else {
-			Printf("[server1Stream=%d]", r.stream.Conn().ID())
+			Printf("[server1Stream=%d]------->[%s%s%s]", r.stream.ID(), r.vector[0], r.vector[1], r.vector[2])
 		}
-		Printf("-------> [%s%s%s]\n", r.vector[0], r.vector[1], r.vector[2])
 	}
 	if err := r.writeVector(); err != nil {
 		return err

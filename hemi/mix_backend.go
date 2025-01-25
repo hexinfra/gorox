@@ -143,7 +143,7 @@ type Node_[B Backend] struct {
 	// Mixins
 	_holder_
 	// Assocs
-	backend B
+	backend B // the containing backend
 	// States
 	dialTimeout time.Duration // dial remote timeout
 	weight      int32         // 1, 22, 333, ...

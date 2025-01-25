@@ -88,7 +88,7 @@ func (c *server1Conn) onPut() {
 func (c *server1Conn) manager() { // runner
 	stream := &c.stream
 	for c.persistent { // each queued stream
-		stream.onUse()
+		stream.onUse(c.nextStreamID())
 		stream.execute()
 		stream.onEnd()
 	}
@@ -146,8 +146,8 @@ type server1Stream struct {
 	// Stream states (zeros)
 }
 
-func (s *server1Stream) onUse() { // for non-zeros
-	s.http1Stream_.onUse()
+func (s *server1Stream) onUse(id int64) { // for non-zeros
+	s.http1Stream_.onUse(id)
 	s._serverStream_.onUse()
 
 	s.request.onUse()
@@ -382,7 +382,7 @@ func (r *server1Request) recvHead() { // request-line + headers
 	}
 	r.tidyInput()
 	if DebugLevel() >= 2 {
-		Printf("[server1Stream=%d]<------- [%s]\n", r.stream.Conn().ID(), r.input[r.head.from:r.head.edge])
+		Printf("[server1Stream=%d]<-------[%s]\n", r.stream.ID(), r.input[r.head.from:r.head.edge])
 	}
 }
 func (r *server1Request) _recvRequestLine() bool { // request-line = method SP request-target SP HTTP-version CRLF

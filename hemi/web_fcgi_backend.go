@@ -70,8 +70,8 @@ type fcgiNode struct {
 	// Mixins
 	_contentSaver_ // so fcgi responses can save their large contents in local file system.
 	// States
-	idleTimeout                 time.Duration // conn idle timeout
 	keepConn                    bool          // instructs FCGI server to keep conn?
+	idleTimeout                 time.Duration // conn idle timeout
 	keepAliveConns              int32         // max conns to keep alive. requires keepConn to be true
 	maxCumulativeExchansPerConn int32         // max exchans of one conn. 0 means infinite
 	connPool                    struct {      // free list of conns in this node
@@ -90,18 +90,18 @@ func (n *fcgiNode) OnConfigure() {
 	n.Node_.OnConfigure()
 	n._contentSaver_.onConfigure(n, 0*time.Second, 0*time.Second, TmpDir()+"/web/backends/"+n.backend.compName+"/"+n.compName)
 
-	// .idleTimeout
-	n.ConfigureDuration("idleTimeout", &n.idleTimeout, func(value time.Duration) error {
-		if value > 0 {
-			return nil
-		}
-		return errors.New(".idleTimeout has an invalid value")
-	}, 2*time.Second)
-
 	// .keepConn
 	n.ConfigureBool("keepConn", &n.keepConn, true)
 
 	if n.keepConn {
+		// .idleTimeout
+		n.ConfigureDuration("idleTimeout", &n.idleTimeout, func(value time.Duration) error {
+			if value > 0 {
+				return nil
+			}
+			return errors.New(".idleTimeout has an invalid value")
+		}, 2*time.Second)
+
 		// .keepAliveConns
 		n.ConfigureInt32("keepAliveConns", &n.keepAliveConns, func(value int32) error {
 			if value > 0 {
@@ -129,7 +129,7 @@ func (n *fcgiNode) Maintain() { // runner
 		// TODO: health check, markDown, markUp()
 	})
 	n.markDown()
-	if size := n.closeFree(); size > 0 {
+	if size := n.closeIdle(); size > 0 {
 		n.DecSubConns(size)
 	}
 	n.WaitSubConns() // TODO: max timeout?
@@ -266,7 +266,7 @@ func (n *fcgiNode) pushConn(conn *fcgiConn) {
 	}
 	list.qnty++
 }
-func (n *fcgiNode) closeFree() int {
+func (n *fcgiNode) closeIdle() int {
 	list := &n.connPool
 
 	list.Lock()
@@ -281,7 +281,8 @@ func (n *fcgiNode) closeFree() int {
 	}
 	qnty := list.qnty
 	list.qnty = 0
-	list.head, list.tail = nil, nil
+	list.head = nil
+	list.tail = nil
 
 	return qnty
 }

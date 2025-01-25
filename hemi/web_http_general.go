@@ -123,6 +123,7 @@ func (c *httpConn_) isBroken() bool { return c.broken.Load() }
 // httpStream
 type httpStream interface {
 	Holder() httpHolder
+	ID() int64
 	Conn() httpConn
 
 	remoteAddr() net.Addr
@@ -194,10 +195,10 @@ type _httpIn_ struct { // incoming. needs parsing
 	maxContentSize       int64         // max content size allowed for current message. if the content is vague, size will be calculated on receiving
 	maxMemoryContentSize int32         // max content size allowed for loading the content into memory
 	_                    int32         // padding
-	contentSize          int64         // size info about incoming content. >=0: content size, -1: no content, -2: vague content
+	contentSize          int64         // size info about incoming content. -2: vague content, -1: no content, >=0: content size
 	httpVersion          uint8         // Version1_0, Version1_1, Version2, Version3
 	asResponse           bool          // treat this incoming message as a response?
-	keepAlive            int8          // used by HTTP/1.x only. -1: no connection header, 0: connection close, 1: connection keep-alive
+	keepAlive            int8          // -1: no connection header, 0: connection close, 1: connection keep-alive
 	_                    byte          // padding
 	headResult           int16         // result of receiving message head. values are as same as http status for convenience
 	bodyResult           int16         // result of receiving message body. values are as same as http status for convenience
@@ -344,12 +345,12 @@ func (r *_httpIn_) IsHTTP3() bool         { return r.httpVersion == Version3 }
 func (r *_httpIn_) Version() string       { return httpVersionStrings[r.httpVersion] }
 func (r *_httpIn_) UnsafeVersion() []byte { return httpVersionByteses[r.httpVersion] }
 
-func (r *_httpIn_) KeepAlive() bool   { return r.keepAlive == 1 } // -1 was excluded priorly
+func (r *_httpIn_) KeepAlive() bool   { return r.keepAlive == 1 } // -1 was excluded priorly. either 0 or 1 here
 func (r *_httpIn_) HeadResult() int16 { return r.headResult }
 func (r *_httpIn_) BodyResult() int16 { return r.bodyResult }
 
-func (r *_httpIn_) addHeader(header *pair) bool { // as prime
-	if edge, ok := r._addPrime(header); ok {
+func (r *_httpIn_) addHeaderLine(headerLine *pair) bool { // as prime
+	if edge, ok := r._addPrime(headerLine); ok {
 		r.headers.edge = edge
 		return true
 	}
@@ -808,18 +809,10 @@ func (r *_httpIn_) checkConnection(pairs []pair, from uint8, edge uint8) bool { 
 	for i := from; i < edge; i++ {
 		data := pairs[i].dataAt(r.input)
 		bytesToLower(data) // connection options are case-insensitive.
-		if bytes.Equal(data, bytesKeepAlive) {
-			if r.httpVersion == Version1_0 { // we don't support persistent HTTP/1.0 connections, disable it explicitly
-				r.keepAlive = 0
-			} else {
-				r.keepAlive = 1
-			}
-		} else if bytes.Equal(data, bytesClose) {
-			// Furthermore, the header field-name "Close" has been registered as
-			// "reserved", since using that name as an HTTP header field might
-			// conflict with the "close" connection option of the Connection header
-			// field (Section 6.1).
+		if bytes.Equal(data, bytesClose) {
 			r.keepAlive = 0
+		} else {
+			// We don't support "keep-alive" connection option as it's not formal in HTTP/1.0.
 		}
 	}
 	return true
@@ -1070,8 +1063,8 @@ func (r *_httpIn_) _recvContent(retain bool) any { // to []byte (for small conte
 	}
 }
 
-func (r *_httpIn_) addTrailer(trailer *pair) bool { // as prime
-	if edge, ok := r._addPrime(trailer); ok {
+func (r *_httpIn_) addTrailerLine(trailerLine *pair) bool { // as prime
+	if edge, ok := r._addPrime(trailerLine); ok {
 		r.trailers.edge = edge
 		return true
 	}
@@ -1240,7 +1233,7 @@ func (r *_httpIn_) getPair(name string, nameHash uint16, primes zone, extraKind 
 					if !prime.isParsed() && !r._splitField(prime, defaultFdesc, p) {
 						continue
 					}
-					if !prime.isCommaValue() {
+					if !prime.isCommaValue() { // not a comma field, collect it
 						return prime.dataAt(p), true
 					}
 				}
@@ -1248,7 +1241,7 @@ func (r *_httpIn_) getPair(name string, nameHash uint16, primes zone, extraKind 
 		}
 		if r.hasExtra[extraKind] {
 			for i := 0; i < len(r.extras); i++ {
-				if extra := &r.extras[i]; extra.nameHash == nameHash && extra.kind == extraKind && !extra.isCommaValue() {
+				if extra := &r.extras[i]; extra.nameHash == nameHash && extra.kind == extraKind && !extra.isCommaValue() { // not a comma field, collect it
 					if p := r._placeOf(extra); extra.nameEqualString(p, name) {
 						return extra.dataAt(p), true
 					}
@@ -1287,7 +1280,7 @@ func (r *_httpIn_) getPairs(name string, nameHash uint16, primes zone, extraKind
 					if !prime.isParsed() && !r._splitField(prime, defaultFdesc, p) {
 						continue
 					}
-					if !prime.isCommaValue() {
+					if !prime.isCommaValue() { // not a comma field, collect it
 						values = append(values, string(prime.dataAt(p)))
 					}
 				}
@@ -1295,7 +1288,7 @@ func (r *_httpIn_) getPairs(name string, nameHash uint16, primes zone, extraKind
 		}
 		if r.hasExtra[extraKind] {
 			for i := 0; i < len(r.extras); i++ {
-				if extra := &r.extras[i]; extra.nameHash == nameHash && extra.kind == extraKind && !extra.isCommaValue() {
+				if extra := &r.extras[i]; extra.nameHash == nameHash && extra.kind == extraKind && !extra.isCommaValue() { // not a comma field, collect it
 					if p := r._placeOf(extra); extra.nameEqualString(p, name) {
 						values = append(values, string(extra.dataAt(p)))
 					}

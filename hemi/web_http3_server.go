@@ -97,7 +97,7 @@ func (g *http3Gate) serveUDS() {
 	// TODO
 }
 func (g *http3Gate) serveTLS() {
-	connID := int64(0)
+	connID := int64(1)
 	for {
 		quicConn, err := g.listener.Accept()
 		if err != nil {

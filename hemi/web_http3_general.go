@@ -65,7 +65,6 @@ type http3Stream interface {
 	// Imports
 	httpStream
 	// Methods
-	getID() int64
 }
 
 // http3Stream_ is the parent for server3Stream and backend3Stream.
@@ -97,7 +96,7 @@ func (s *http3Stream_[C]) onEnd() {
 	s.httpStream_.onEnd()
 }
 
-func (s *http3Stream_[C]) getID() int64 { return s.quicStream.ID() }
+func (s *http3Stream_[C]) ID() int64 { return s.quicStream.ID() }
 
 func (s *http3Stream_[C]) Conn() httpConn       { return s.conn }
 func (s *http3Stream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }

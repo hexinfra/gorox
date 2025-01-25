@@ -120,7 +120,7 @@ func (n *http3Node) pullConn() *backend3Conn {
 func (n *http3Node) pushConn(conn *backend3Conn) {
 	// TODO
 }
-func (n *http3Node) closeFree() int {
+func (n *http3Node) closeIdle() int {
 	// TODO
 	return 0
 }

@@ -128,7 +128,7 @@ func (n *http2Node) pullConn() *backend2Conn {
 func (n *http2Node) pushConn(conn *backend2Conn) {
 	// TODO
 }
-func (n *http2Node) closeFree() int {
+func (n *http2Node) closeIdle() int {
 	// TODO
 	return 0
 }

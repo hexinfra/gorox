@@ -497,7 +497,7 @@ type http2Stream interface {
 	// Imports
 	httpStream
 	// Methods
-	getID() uint32
+	getID() uint32        // http/2 native stream id
 	getIndex() uint8      // at activeStreams
 	setIndex(index uint8) // at activeStreams
 }
@@ -537,6 +537,7 @@ func (s *http2Stream_[C]) getID() uint32 { return s.id }
 func (s *http2Stream_[C]) getIndex() uint8      { return s.index }
 func (s *http2Stream_[C]) setIndex(index uint8) { s.index = index }
 
+func (s *http2Stream_[C]) ID() int64            { return int64(s.id) }
 func (s *http2Stream_[C]) Conn() httpConn       { return s.conn }
 func (s *http2Stream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }
 

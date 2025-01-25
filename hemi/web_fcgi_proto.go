@@ -77,7 +77,7 @@ var ( // fcgi request param names
 	fcgiBytesDocumentURI      = []byte("DOCUMENT_URI")
 	fcgiBytesGatewayInterface = []byte("GATEWAY_INTERFACE")
 	fcgiBytesHTTP_            = []byte("HTTP_") // prefix
-	fcgiBytesHTTPS            = []byte("HTTPS")
+	fcgiBytesHTTPS            = []byte("HTTPS") // scheme
 	fcgiBytesPathInfo         = []byte("PATH_INFO")
 	fcgiBytesPathTranslated   = []byte("PATH_TRANSLATED")
 	fcgiBytesQueryString      = []byte("QUERY_STRING")
@@ -98,7 +98,7 @@ var ( // fcgi request param names
 
 var ( // fcgi request param values
 	fcgiBytesCGI1_1 = []byte("CGI/1.1")
-	fcgiBytesON     = []byte("on")
+	fcgiBytesON     = []byte("ON")
 	fcgiBytes200    = []byte("200")
 )
 

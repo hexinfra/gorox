@@ -173,11 +173,11 @@ type httpIn interface {
 // _httpIn_ is a mixin for serverRequest_ and backendResponse_.
 type _httpIn_ struct { // incoming. needs parsing
 	// Assocs
-	stream    httpStream // *server[1-3]Stream, *backend[1-3]Stream
-	inMessage httpIn     // *server[1-3]Request, *backend[1-3]Response
+	stream    httpStream // *backend[1-3]Stream, *server[1-3]Stream
+	inMessage httpIn     // *backend[1-3]Response, *server[1-3]Request
 	// Stream states (stocks)
-	stockPrimes [40]pair   // for r.primes
-	stockExtras [30]pair   // for r.extras
+	stockPrimes [40]pair   // for r.primes. 960B
+	stockExtras [30]pair   // for r.extras. 720B
 	stockArray  [768]byte  // for r.array
 	stockInput  [1536]byte // for r.input
 	// Stream states (controlled)
@@ -193,11 +193,11 @@ type _httpIn_ struct { // incoming. needs parsing
 	input                []byte        // bytes of raw incoming message heads. [<r.stockInput>/4K/16K]
 	recvTimeout          time.Duration // timeout to recv the whole message content. zero means no timeout
 	maxContentSize       int64         // max content size allowed for current message. if the content is vague, size will be calculated on receiving
-	maxMemoryContentSize int32         // max content size allowed for loading the content into memory
+	maxMemoryContentSize int32         // max content size allowed for loading the content into memory. some content types are not allowed to load into memory
 	_                    int32         // padding
 	contentSize          int64         // size info about incoming content. -2: vague content, -1: no content, >=0: content size
 	httpVersion          uint8         // Version1_0, Version1_1, Version2, Version3
-	asResponse           bool          // treat this incoming message as a response?
+	asResponse           bool          // treat this incoming message as a response? i.e. backend response
 	keepAlive            int8          // -1: no connection header field, 0: connection close, 1: connection keep-alive
 	_                    byte          // padding
 	headResult           int16         // result of receiving message head. values are as same as http status for convenience
@@ -207,7 +207,7 @@ type _httpIn_ struct { // incoming. needs parsing
 	bodyWindow  []byte    // a window used for receiving body. for HTTP/1.x, sizes must be same with r.input. [HTTP/1.x=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
 	bodyTime    time.Time // the time when first body read operation is performed on this stream
 	contentText []byte    // if loadable, the received and loaded content of current message is at r.contentText[:r.receivedSize]. [<none>/r.input/4K/16K/64K1/(make)]
-	contentFile *os.File  // used by r.holdContent(), if content is tempFile. will be closed on stream ends
+	contentFile *os.File  // used by r.takeContent(), if content is tempFile. will be closed on stream ends
 	_httpIn0              // all values in this struct must be zero by default!
 }
 type _httpIn0 struct { // for fast reset, entirely
@@ -217,14 +217,14 @@ type _httpIn0 struct { // for fast reset, entirely
 	imme              span    // HTTP/1.x only. immediate data after current message head is at r.input[r.imme.from:r.imme.edge]
 	hasExtra          [8]bool // has extra pairs? see pairXXX for indexes
 	dateTime          int64   // parsed unix time of the date header field
-	arrayEdge         int32   // next usable position of r.array is at r.array[r.arrayEdge]. used when writing r.array
+	arrayEdge         int32   // next usable position of r.array begins from r.array[r.arrayEdge]. used when writing r.array
 	arrayKind         int8    // kind of current r.array. see arrayKindXXX
-	receiving         int8    // what section of the message are we currently receiving. see httpSectionXXX
+	receiving         int8    // what message section are we currently receiving? see httpSectionXXX
 	headerLines       zone    // header lines ->r.primes
 	hasRevisers       bool    // are there any incoming revisers hooked on this incoming message?
 	upgradeSocket     bool    // upgrade: websocket?
-	acceptGzip        bool    // does the peer accept gzip content coding? i.e. accept-encoding: gzip, deflate
-	acceptBrotli      bool    // does the peer accept brotli content coding? i.e. accept-encoding: gzip, br
+	acceptGzip        bool    // does the peer accept gzip content coding? i.e. accept-encoding: gzip
+	acceptBrotli      bool    // does the peer accept brotli content coding? i.e. accept-encoding: br
 	numContentCodings int8    // num of content-encoding flags, controls r.contentCodings
 	numAcceptCodings  int8    // num of accept-encoding flags, controls r.acceptCodings
 	iContentLength    uint8   // index of content-length header line in r.primes
@@ -238,9 +238,9 @@ type _httpIn0 struct { // for fast reset, entirely
 	zContentLanguage  zone    // zone of content-language header lines in r.primes. may not be continuous
 	zTrailer          zone    // zone of trailer header lines in r.primes. may not be continuous
 	zVia              zone    // zone of via header lines in r.primes. may not be continuous
-	contentReceived   bool    // is the content received? true if the message has no content or the content is received
+	contentReceived   bool    // is the content received? true if the message has no content or the content is received, otherwise false
 	contentTextKind   int8    // kind of current r.contentText if it is text. see httpContentTextXXX
-	receivedSize      int64   // bytes of currently received content. used by both sized & vague content receiver
+	receivedSize      int64   // bytes of currently received content. used and calculated by both sized & vague content receiver when receiving
 	chunkSize         int64   // left size of current chunk if the chunk is too large to receive in one call. HTTP/1.1 chunked only
 	chunkBack         int32   // for parsing chunked elements. HTTP/1.1 chunked only
 	chunkFore         int32   // for parsing chunked elements. HTTP/1.1 chunked only
@@ -254,10 +254,10 @@ func (r *_httpIn_) onUse(httpVersion uint8, asResponse bool) { // for non-zeros
 	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of pair indexes.
 	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
 	r.array = r.stockArray[:]
-	if httpVersion >= Version2 || asResponse {
+	if httpVersion >= Version2 || asResponse { // we don't use http/1.1 request pipelining in the backend side.
 		r.input = r.stockInput[:]
-	} else {
-		// HTTP/1.1 supports request pipelining, so input related are not set here.
+	} else { // http/1.x server side.
+		// HTTP/1.1 servers support request pipelining, so input related are not set here.
 	}
 	httpHolder := r.stream.Holder()
 	r.recvTimeout = httpHolder.RecvTimeout()
@@ -1566,8 +1566,8 @@ type httpOut interface {
 // _httpOut_ is a mixin for serverResponse_ and backendRequest_.
 type _httpOut_ struct { // outgoing. needs building
 	// Assocs
-	stream     httpStream // *server[1-3]Stream, *backend[1-3]Stream
-	outMessage httpOut    // *server[1-3]Response, *backend[1-3]Request
+	stream     httpStream // *backend[1-3]Stream, *server[1-3]Stream
+	outMessage httpOut    // *backend[1-3]Request, *server[1-3]Response
 	// Stream states (stocks)
 	stockFields [1536]byte // for r.fields
 	// Stream states (controlled)
@@ -2024,8 +2024,8 @@ type httpSocket interface {
 // _httpSocket_ is a mixin for serverSocket_ and backendSocket_.
 type _httpSocket_ struct { // incoming and outgoing
 	// Assocs
-	stream httpStream // *server[1-3]Stream, *backend[1-3]Stream
-	socket httpSocket // *server[1-3]Socket, *backend[1-3]Socket
+	stream httpStream // *backend[1-3]Stream, *server[1-3]Stream
+	socket httpSocket // *backend[1-3]Socket, *server[1-3]Socket
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)

@@ -288,10 +288,12 @@ func (r *backendResponse_) examineHead() bool {
 		}
 	}
 	if DebugLevel() >= 3 {
+		Println("======primes======")
 		for i := 0; i < len(r.primes); i++ {
 			prime := &r.primes[i]
 			prime.show(r._placeOf(prime))
 		}
+		Println("======extras======")
 		for i := 0; i < len(r.extras); i++ {
 			extra := &r.extras[i]
 			extra.show(r._placeOf(extra))
@@ -328,8 +330,8 @@ func (r *backendResponse_) examineHead() bool {
 }
 func (r *backendResponse_) applyHeaderLine(index uint8) bool {
 	headerLine := &r.primes[index]
-	name := headerLine.nameAt(r.input)
-	if sh := &backendResponseSingletonHeaderFieldTable[backendResponseSingletonHeaderFieldFind(headerLine.nameHash)]; sh.nameHash == headerLine.nameHash && bytes.Equal(sh.name, name) {
+	headerName := headerLine.nameAt(r.input)
+	if sh := &backendResponseSingletonHeaderFieldTable[backendResponseSingletonHeaderFieldFind(headerLine.nameHash)]; sh.nameHash == headerLine.nameHash && bytes.Equal(sh.name, headerName) {
 		headerLine.setSingleton()
 		if !sh.parse { // unnecessary to parse generally
 			headerLine.setParsed()
@@ -342,7 +344,7 @@ func (r *backendResponse_) applyHeaderLine(index uint8) bool {
 			// r.headResult is set.
 			return false
 		}
-	} else if mh := &backendResponseImportantHeaderFieldTable[backendResponseImportantHeaderFieldFind(headerLine.nameHash)]; mh.nameHash == headerLine.nameHash && bytes.Equal(mh.name, name) {
+	} else if mh := &backendResponseImportantHeaderFieldTable[backendResponseImportantHeaderFieldFind(headerLine.nameHash)]; mh.nameHash == headerLine.nameHash && bytes.Equal(mh.name, headerName) {
 		extraFrom := uint8(len(r.extras))
 		if !r._splitFieldLine(headerLine, &mh.fdesc, r.input) {
 			r.headResult = StatusBadRequest
@@ -394,6 +396,16 @@ func (r *backendResponse_) checkAge(headerLine *pair, index uint8) bool { // Age
 	}
 	// TODO: check and write to r.age
 	return true
+}
+func (r *backendResponse_) checkContentLength(headerLine *pair, index uint8) bool {
+	if r.status < StatusOK || r.status == StatusNoContent {
+		r.headResult, r.failReason = StatusBadRequest, "content-length is not allowed in 1xx and 204 responses"
+		return false
+	}
+	if r.status == StatusNotModified {
+		// TODO
+	}
+	return r._httpIn_.checkContentLength(headerLine, index)
 }
 func (r *backendResponse_) checkETag(headerLine *pair, index uint8) bool { // ETag = entity-tag
 	// TODO: check
@@ -571,6 +583,11 @@ func (r *backendResponse_) checkVary(pairs []pair, from uint8, edge uint8) bool 
 	return true
 }
 
+func (r *backendResponse_) parseSetCookie() bool {
+	// TODO
+	return false
+}
+
 func (r *backendResponse_) unsafeDate() []byte {
 	if r.iDate == 0 {
 		return nil
@@ -582,6 +599,10 @@ func (r *backendResponse_) unsafeLastModified() []byte {
 		return nil
 	}
 	return r.primes[r.indexes.lastModified].valueAt(r.input)
+}
+
+func (r *backendResponse_) proxyXXX() {
+	// TODO
 }
 
 func (r *backendResponse_) HasContent() bool {

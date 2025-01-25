@@ -744,7 +744,7 @@ func (r *serverRequest_) examineHead() bool {
 		r.cookies.from = uint8(len(r.primes))
 		for i := cookies.from; i < cookies.edge; i++ {
 			cookie := &r.primes[i]
-			if cookie.nameHash != hashCookie || !cookie.nameEqualBytes(r.input, bytesCookie) { // cookies may not be consecutive
+			if cookie.nameHash != hashCookie || !cookie.nameEqualBytes(r.input, bytesCookie) { // cookies may not be consecutive in http/2 and http/3
 				continue
 			}
 			if !r.parseCookie(cookie.value) { // r.cookies.edge is set in r.addCookie().

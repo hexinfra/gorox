@@ -500,7 +500,7 @@ func putPairs(pairs []pair) {
 // |foobar-types: "text/plain"; ;charset="utf-8";langs="en,zh" ,,; ;charset="" ,,application/octet-stream ;,image/png|
 // +-----------------------------------------------------------------------------------------------------------------+
 
-const ( // pair kinds
+const ( // pair kinds, max 8 kinds allowed
 	pairUnknown = iota
 	pairQuery   // plain kv
 	pairHeader  // field

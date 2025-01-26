@@ -25,22 +25,20 @@ func init() {
 // HTTP3Backend
 type HTTP3Backend struct {
 	// Parent
-	httpBackend_[*http3Node]
+	Backend_[*http3Node]
 	// States
 }
 
 func (b *HTTP3Backend) onCreate(compName string, stage *Stage) {
-	b.httpBackend_.onCreate(compName, stage)
+	b.Backend_.OnCreate(compName, stage)
 }
 
 func (b *HTTP3Backend) OnConfigure() {
-	b.httpBackend_.onConfigure()
-
+	b.Backend_.OnConfigure()
 	b.ConfigureNodes()
 }
 func (b *HTTP3Backend) OnPrepare() {
-	b.httpBackend_.onPrepare()
-
+	b.Backend_.OnPrepare()
 	b.PrepareNodes()
 }
 
@@ -195,9 +193,9 @@ type backend3Stream struct {
 	// Mixins
 	_backendStream_
 	// Assocs
-	response backend3Response
-	request  backend3Request
-	socket   *backend3Socket
+	response backend3Response // the backend-side http/3 response
+	request  backend3Request  // the backend-side http/3 request
+	socket   *backend3Socket  // the backend-side http/3 webSocket
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -213,12 +211,12 @@ func getBackend3Stream(conn *backend3Conn, quicStream *tcp2.Stream) *backend3Str
 	var backStream *backend3Stream
 	if x := poolBackend3Stream.Get(); x == nil {
 		backStream = new(backend3Stream)
-		resp, req := &backStream.response, &backStream.request
-		resp.stream = backStream
-		resp.inMessage = resp
-		req.stream = backStream
-		req.outMessage = req
-		req.response = resp
+		backResp, backReq := &backStream.response, &backStream.request
+		backResp.stream = backStream
+		backResp.inMessage = backResp
+		backReq.stream = backStream
+		backReq.outMessage = backReq
+		backReq.response = backResp
 	} else {
 		backStream = x.(*backend3Stream)
 	}

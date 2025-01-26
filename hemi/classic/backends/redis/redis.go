@@ -41,12 +41,10 @@ func (b *RedisBackend) onCreate(compName string, stage *Stage) {
 
 func (b *RedisBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
-
 	b.ConfigureNodes()
 }
 func (b *RedisBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
-
 	b.PrepareNodes()
 }
 

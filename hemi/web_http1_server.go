@@ -42,12 +42,12 @@ func getServer1Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall
 		servConn = new(server1Conn)
 		servStream := &servConn.stream
 		servStream.conn = servConn
-		req, resp := &servStream.request, &servStream.response
-		req.stream = servStream
-		req.inMessage = req
-		resp.stream = servStream
-		resp.outMessage = resp
-		resp.request = req
+		servReq, servResp := &servStream.request, &servStream.response
+		servReq.stream = servStream
+		servReq.inMessage = servReq
+		servResp.stream = servStream
+		servResp.outMessage = servResp
+		servResp.request = servReq
 	} else {
 		servConn = x.(*server1Conn)
 	}

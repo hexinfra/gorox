@@ -29,22 +29,20 @@ func init() {
 // HTTP1Backend
 type HTTP1Backend struct {
 	// Parent
-	httpBackend_[*http1Node]
+	Backend_[*http1Node]
 	// States
 }
 
 func (b *HTTP1Backend) onCreate(compName string, stage *Stage) {
-	b.httpBackend_.onCreate(compName, stage)
+	b.Backend_.OnCreate(compName, stage)
 }
 
 func (b *HTTP1Backend) OnConfigure() {
-	b.httpBackend_.onConfigure()
-
+	b.Backend_.OnConfigure()
 	b.ConfigureNodes()
 }
 func (b *HTTP1Backend) OnPrepare() {
-	b.httpBackend_.onPrepare()
-
+	b.Backend_.OnPrepare()
 	b.PrepareNodes()
 }
 
@@ -287,12 +285,12 @@ func getBackend1Conn(id int64, node *http1Node, netConn net.Conn, rawConn syscal
 		backConn = new(backend1Conn)
 		backStream := &backConn.stream
 		backStream.conn = backConn
-		resp, req := &backStream.response, &backStream.request
-		resp.stream = backStream
-		resp.inMessage = resp
-		req.stream = backStream
-		req.outMessage = req
-		req.response = resp
+		backResp, backReq := &backStream.response, &backStream.request
+		backResp.stream = backStream
+		backResp.inMessage = backResp
+		backReq.stream = backStream
+		backReq.outMessage = backReq
+		backReq.response = backResp
 	} else {
 		backConn = x.(*backend1Conn)
 	}
@@ -341,7 +339,7 @@ type backend1Stream struct {
 	socket   *backend1Socket  // the backend-side http/1.x webSocket
 	// Stream states (stocks)
 	// Stream states (controlled)
-	// Stream states (non zeros)
+	// Stream states (non-zeros)
 	// Stream states (zeros)
 }
 

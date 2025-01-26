@@ -26,22 +26,20 @@ func init() {
 // HTTP2Backend
 type HTTP2Backend struct {
 	// Parent
-	httpBackend_[*http2Node]
+	Backend_[*http2Node]
 	// States
 }
 
 func (b *HTTP2Backend) onCreate(compName string, stage *Stage) {
-	b.httpBackend_.onCreate(compName, stage)
+	b.Backend_.OnCreate(compName, stage)
 }
 
 func (b *HTTP2Backend) OnConfigure() {
-	b.httpBackend_.onConfigure()
-
+	b.Backend_.OnConfigure()
 	b.ConfigureNodes()
 }
 func (b *HTTP2Backend) OnPrepare() {
-	b.httpBackend_.onPrepare()
-
+	b.Backend_.OnPrepare()
 	b.PrepareNodes()
 }
 
@@ -265,9 +263,9 @@ type backend2Stream struct {
 	// Mixins
 	_backendStream_
 	// Assocs
-	response backend2Response
-	request  backend2Request
-	socket   *backend2Socket
+	response backend2Response // the backend-side http/2 response
+	request  backend2Request  // the backend-side http/2 request
+	socket   *backend2Socket  // the backend-side http/2 webSocket
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -283,12 +281,12 @@ func getBackend2Stream(conn *backend2Conn, id uint32) *backend2Stream {
 	var backStream *backend2Stream
 	if x := poolBackend2Stream.Get(); x == nil {
 		backStream = new(backend2Stream)
-		resp, req := &backStream.response, &backStream.request
-		resp.stream = backStream
-		resp.inMessage = resp
-		req.stream = backStream
-		req.outMessage = req
-		req.response = resp
+		backResp, backReq := &backStream.response, &backStream.request
+		backResp.stream = backStream
+		backResp.inMessage = backResp
+		backReq.stream = backStream
+		backReq.outMessage = backReq
+		backReq.response = backResp
 	} else {
 		backStream = x.(*backend2Stream)
 	}

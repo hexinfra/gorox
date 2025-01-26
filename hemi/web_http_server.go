@@ -734,7 +734,7 @@ func (r *serverRequest_) AddQuery(name string, value string) bool { // as extra,
 
 func (r *serverRequest_) examineHead() bool {
 	for i := r.headerLines.from; i < r.headerLines.edge; i++ {
-		if !r.applyHeaderLine(i) {
+		if !r._applyHeaderLine(i) {
 			// r.headResult is set.
 			return false
 		}
@@ -903,8 +903,8 @@ func (r *serverRequest_) examineHead() bool {
 
 	return true
 }
-func (r *serverRequest_) applyHeaderLine(index uint8) bool {
-	headerLine := &r.primes[index]
+func (r *serverRequest_) _applyHeaderLine(lineIndex uint8) bool {
+	headerLine := &r.primes[lineIndex]
 	headerName := headerLine.nameAt(r.input)
 	if sh := &serverRequestSingletonHeaderFieldTable[serverRequestSingletonHeaderFieldFind(headerLine.nameHash)]; sh.nameHash == headerLine.nameHash && bytes.Equal(sh.name, headerName) {
 		headerLine.setSingleton()
@@ -915,7 +915,7 @@ func (r *serverRequest_) applyHeaderLine(index uint8) bool {
 			r.headResult = StatusBadRequest
 			return false
 		}
-		if !sh.check(r, headerLine, index) {
+		if !sh.check(r, headerLine, lineIndex) {
 			// r.headResult is set.
 			return false
 		}
@@ -930,7 +930,7 @@ func (r *serverRequest_) applyHeaderLine(index uint8) bool {
 				// r.headResult is set.
 				return false
 			}
-		} else if !mh.check(r, r.primes, index, index+1) { // no sub header lines. check it
+		} else if !mh.check(r, r.primes, lineIndex, lineIndex+1) { // no sub header lines. check it
 			// r.headResult is set.
 			return false
 		}
@@ -965,7 +965,7 @@ var ( // perfect hash table for singleton request header fields
 	}
 )
 
-func (r *serverRequest_) checkAuthorization(headerLine *pair, index uint8) bool { // Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
+func (r *serverRequest_) checkAuthorization(headerLine *pair, lineIndex uint8) bool { // Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
 	// auth-scheme = token
 	// token68     = 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" ) *"="
 	// auth-param  = token BWS "=" BWS ( token / quoted-string )
@@ -974,27 +974,27 @@ func (r *serverRequest_) checkAuthorization(headerLine *pair, index uint8) bool 
 		r.headResult, r.failReason = StatusBadRequest, "duplicated authorization header field"
 		return false
 	}
-	r.indexes.authorization = index
+	r.indexes.authorization = lineIndex
 	return true
 }
-func (r *serverRequest_) checkCookie(headerLine *pair, index uint8) bool { // Cookie = cookie-string
+func (r *serverRequest_) checkCookie(headerLine *pair, lineIndex uint8) bool { // Cookie = cookie-string
 	if headerLine.value.isEmpty() {
 		r.headResult, r.failReason = StatusBadRequest, "empty cookie"
 		return false
 	}
-	if index == 255 {
+	if lineIndex == 255 {
 		r.headResult, r.failReason = StatusBadRequest, "too many pairs"
 		return false
 	}
 	// HTTP/2 and HTTP/3 allows multiple cookie header fields, so we have to mark all the cookie header fields.
 	if r.cookies.isEmpty() {
-		r.cookies.from = index
+		r.cookies.from = lineIndex
 	}
 	// And we can't inject cookies into header lines zone while receiving header lines, this will break the continuous nature of header lines zone.
-	r.cookies.edge = index + 1 // so we postpone cookie parsing after the request head is entirely received. only mark the edge
+	r.cookies.edge = lineIndex + 1 // so we postpone cookie parsing after the request head is entirely received. only mark the edge
 	return true
 }
-func (r *serverRequest_) checkHost(headerLine *pair, index uint8) bool { // Host = host [ ":" port ]
+func (r *serverRequest_) checkHost(headerLine *pair, lineIndex uint8) bool { // Host = host [ ":" port ]
 	// RFC 9112 (section 3.2):
 	// A server MUST respond with a 400 (Bad Request) status code to any HTTP/1.1 request message that lacks a Host header field and
 	// to any request message that contains more than one Host header field line or a Host header field with an invalid field value.
@@ -1013,13 +1013,13 @@ func (r *serverRequest_) checkHost(headerLine *pair, index uint8) bool { // Host
 			return false
 		}
 	}
-	r.indexes.host = index
+	r.indexes.host = lineIndex
 	return true
 }
-func (r *serverRequest_) checkIfModifiedSince(headerLine *pair, index uint8) bool { // If-Modified-Since = HTTP-date
-	return r._checkHTTPDate(headerLine, index, &r.indexes.ifModifiedSince, &r.unixTimes.ifModifiedSince)
+func (r *serverRequest_) checkIfModifiedSince(headerLine *pair, lineIndex uint8) bool { // If-Modified-Since = HTTP-date
+	return r._checkHTTPDate(headerLine, lineIndex, &r.indexes.ifModifiedSince, &r.unixTimes.ifModifiedSince)
 }
-func (r *serverRequest_) checkIfRange(headerLine *pair, index uint8) bool { // If-Range = entity-tag / HTTP-date
+func (r *serverRequest_) checkIfRange(headerLine *pair, lineIndex uint8) bool { // If-Range = entity-tag / HTTP-date
 	if r.indexes.ifRange != 0 {
 		r.headResult, r.failReason = StatusBadRequest, "duplicated if-range header field"
 		return false
@@ -1027,22 +1027,22 @@ func (r *serverRequest_) checkIfRange(headerLine *pair, index uint8) bool { // I
 	if date, ok := clockParseHTTPDate(headerLine.valueAt(r.input)); ok {
 		r.unixTimes.ifRange = date
 	}
-	r.indexes.ifRange = index
+	r.indexes.ifRange = lineIndex
 	return true
 }
-func (r *serverRequest_) checkIfUnmodifiedSince(headerLine *pair, index uint8) bool { // If-Unmodified-Since = HTTP-date
-	return r._checkHTTPDate(headerLine, index, &r.indexes.ifUnmodifiedSince, &r.unixTimes.ifUnmodifiedSince)
+func (r *serverRequest_) checkIfUnmodifiedSince(headerLine *pair, lineIndex uint8) bool { // If-Unmodified-Since = HTTP-date
+	return r._checkHTTPDate(headerLine, lineIndex, &r.indexes.ifUnmodifiedSince, &r.unixTimes.ifUnmodifiedSince)
 }
-func (r *serverRequest_) checkMaxForwards(headerLine *pair, index uint8) bool { // Max-Forwards = Max-Forwards = 1*DIGIT
+func (r *serverRequest_) checkMaxForwards(headerLine *pair, lineIndex uint8) bool { // Max-Forwards = Max-Forwards = 1*DIGIT
 	if r.indexes.maxForwards != 0 {
 		r.headResult, r.failReason = StatusBadRequest, "duplicated max-forwards header field"
 		return false
 	}
 	// TODO: parse headerLine.valueAt(r.input) as 1*DIGIT into r.maxForwards
-	r.indexes.maxForwards = index
+	r.indexes.maxForwards = lineIndex
 	return true
 }
-func (r *serverRequest_) checkProxyAuthorization(headerLine *pair, index uint8) bool { // Proxy-Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
+func (r *serverRequest_) checkProxyAuthorization(headerLine *pair, lineIndex uint8) bool { // Proxy-Authorization = auth-scheme [ 1*SP ( token68 / #auth-param ) ]
 	// auth-scheme = token
 	// token68     = 1*( ALPHA / DIGIT / "-" / "." / "_" / "~" / "+" / "/" ) *"="
 	// auth-param  = token BWS "=" BWS ( token / quoted-string )
@@ -1051,14 +1051,14 @@ func (r *serverRequest_) checkProxyAuthorization(headerLine *pair, index uint8) 
 		return false
 	}
 	// TODO: check
-	r.indexes.proxyAuthorization = index
+	r.indexes.proxyAuthorization = lineIndex
 	return true
 }
-func (r *serverRequest_) checkRange(headerLine *pair, index uint8) bool { // Range = ranges-specifier
+func (r *serverRequest_) checkRange(headerLine *pair, lineIndex uint8) bool { // Range = ranges-specifier
 	if !r.IsGET() {
 		// A server MUST ignore a Range header field received with a request method that is unrecognized or for which range handling is not defined.
 		// For this specification, GET is the only method for which range handling is defined.
-		r._delPrime(index)
+		r._delPrime(lineIndex)
 		return true
 	}
 	if r.numRanges > 0 { // we have already got a valid range header field
@@ -1187,12 +1187,12 @@ func (r *serverRequest_) _addRange(rang Range) bool {
 	r.numRanges++
 	return true
 }
-func (r *serverRequest_) checkUserAgent(headerLine *pair, index uint8) bool { // User-Agent = product *( RWS ( product / comment ) )
+func (r *serverRequest_) checkUserAgent(headerLine *pair, lineIndex uint8) bool { // User-Agent = product *( RWS ( product / comment ) )
 	if r.indexes.userAgent != 0 {
 		r.headResult, r.failReason = StatusBadRequest, "duplicated user-agent header field"
 		return false
 	}
-	r.indexes.userAgent = index
+	r.indexes.userAgent = lineIndex
 	return true
 }
 
@@ -1224,39 +1224,39 @@ var ( // perfect hash table for important request header fields
 	}
 )
 
-func (r *serverRequest_) checkAcceptLanguage(pairs []pair, from uint8, edge uint8) bool { // Accept-Language = #( language-range [ weight ] )
+func (r *serverRequest_) checkAcceptLanguage(subs []pair, subFrom uint8, subEdge uint8) bool { // Accept-Language = #( language-range [ weight ] )
 	// language-range = <language-range, see [RFC4647], Section 2.1>
 	// weight = OWS ";" OWS "q=" qvalue
 	// qvalue = ( "0" [ "." *3DIGIT ] ) / ( "1" [ "." *3"0" ] )
 	if r.zones.acceptLanguage.isEmpty() {
-		r.zones.acceptLanguage.from = from
+		r.zones.acceptLanguage.from = subFrom
 	}
-	r.zones.acceptLanguage.edge = edge
-	for i := from; i < edge; i++ {
+	r.zones.acceptLanguage.edge = subEdge
+	for i := subFrom; i < subEdge; i++ {
 		// TODO: check syntax
 	}
 	return true
 }
-func (r *serverRequest_) checkCacheControl(pairs []pair, from uint8, edge uint8) bool { // Cache-Control = #cache-directive
+func (r *serverRequest_) checkCacheControl(subs []pair, subFrom uint8, subEdge uint8) bool { // Cache-Control = #cache-directive
 	// cache-directive = token [ "=" ( token / quoted-string ) ]
-	for i := from; i < edge; i++ {
+	for i := subFrom; i < subEdge; i++ {
 		// TODO
 	}
 	return true
 }
-func (r *serverRequest_) checkExpect(pairs []pair, from uint8, edge uint8) bool { // Expect = #expectation
+func (r *serverRequest_) checkExpect(subs []pair, subFrom uint8, subEdge uint8) bool { // Expect = #expectation
 	// expectation = token [ "=" ( token / quoted-string ) parameters ]
 	if r.httpVersion >= Version1_1 {
 		if r.zones.expect.isEmpty() {
-			r.zones.expect.from = from
+			r.zones.expect.from = subFrom
 		}
-		r.zones.expect.edge = edge
-		for i := from; i < edge; i++ {
-			pair := &pairs[i]
-			if pair.kind != pairHeader {
+		r.zones.expect.edge = subEdge
+		for i := subFrom; i < subEdge; i++ {
+			sub := &subs[i]
+			if sub.kind != pairHeader {
 				continue
 			}
-			data := pair.dataAt(r.input)
+			data := sub.dataAt(r.input)
 			bytesToLower(data) // the Expect field-value is case-insensitive.
 			if bytes.Equal(data, bytes100Continue) {
 				r.expectContinue = true
@@ -1267,14 +1267,14 @@ func (r *serverRequest_) checkExpect(pairs []pair, from uint8, edge uint8) bool 
 	} else { // HTTP/1.0
 		// RFC 9110 (section 10.1.1):
 		// A server that receives a 100-continue expectation in an HTTP/1.0 request MUST ignore that expectation.
-		for i := from; i < edge; i++ {
-			pairs[i].zero() // since HTTP/1.0 doesn't support 1xx status codes, we delete the expect.
+		for i := subFrom; i < subEdge; i++ {
+			subs[i].zero() // since HTTP/1.0 doesn't support 1xx status codes, we delete the expect.
 		}
 	}
 	return true
 }
-func (r *serverRequest_) checkForwarded(pairs []pair, from uint8, edge uint8) bool { // Forwarded = 1#forwarded-element
-	if from == edge {
+func (r *serverRequest_) checkForwarded(subs []pair, subFrom uint8, subEdge uint8) bool { // Forwarded = 1#forwarded-element
+	if subFrom == subEdge {
 		r.headResult, r.failReason = StatusBadRequest, "forwarded = 1#forwarded-element"
 		return false
 	}
@@ -1282,24 +1282,24 @@ func (r *serverRequest_) checkForwarded(pairs []pair, from uint8, edge uint8) bo
 	// forwarded-pair    = token "=" value
 	// value             = token / quoted-string
 	if r.zones.forwarded.isEmpty() {
-		r.zones.forwarded.from = from
+		r.zones.forwarded.from = subFrom
 	}
-	r.zones.forwarded.edge = edge
+	r.zones.forwarded.edge = subEdge
 	return true
 }
-func (r *serverRequest_) checkIfMatch(pairs []pair, from uint8, edge uint8) bool { // If-Match = "*" / #entity-tag
-	return r._checkMatch(pairs, from, edge, &r.zones.ifMatch, &r.ifMatch)
+func (r *serverRequest_) checkIfMatch(subs []pair, subFrom uint8, subEdge uint8) bool { // If-Match = "*" / #entity-tag
+	return r._checkMatch(subs, subFrom, subEdge, &r.zones.ifMatch, &r.ifMatch)
 }
-func (r *serverRequest_) checkIfNoneMatch(pairs []pair, from uint8, edge uint8) bool { // If-None-Match = "*" / #entity-tag
-	return r._checkMatch(pairs, from, edge, &r.zones.ifNoneMatch, &r.ifNoneMatch)
+func (r *serverRequest_) checkIfNoneMatch(subs []pair, subFrom uint8, subEdge uint8) bool { // If-None-Match = "*" / #entity-tag
+	return r._checkMatch(subs, subFrom, subEdge, &r.zones.ifNoneMatch, &r.ifNoneMatch)
 }
-func (r *serverRequest_) _checkMatch(pairs []pair, from uint8, edge uint8, zMatch *zone, match *int8) bool {
+func (r *serverRequest_) _checkMatch(subs []pair, subFrom uint8, subEdge uint8, zMatch *zone, match *int8) bool {
 	if zMatch.isEmpty() {
-		zMatch.from = from
+		zMatch.from = subFrom
 	}
-	zMatch.edge = edge
-	for i := from; i < edge; i++ {
-		data := pairs[i].dataAt(r.input)
+	zMatch.edge = subEdge
+	for i := subFrom; i < subEdge; i++ {
+		data := subs[i].dataAt(r.input)
 		nMatch := *match // -1:*, 0:nonexist, >0:num
 		if len(data) == 1 && data[0] == '*' {
 			if nMatch != 0 {
@@ -1321,15 +1321,15 @@ func (r *serverRequest_) _checkMatch(pairs []pair, from uint8, edge uint8, zMatc
 	}
 	return true
 }
-func (r *serverRequest_) checkTE(pairs []pair, from uint8, edge uint8) bool { // TE = #t-codings
+func (r *serverRequest_) checkTE(subs []pair, subFrom uint8, subEdge uint8) bool { // TE = #t-codings
 	// t-codings = "trailers" / ( transfer-coding [ t-ranking ] )
 	// t-ranking = OWS ";" OWS "q=" rank
-	for i := from; i < edge; i++ {
-		pair := &pairs[i]
-		if pair.kind != pairHeader {
+	for i := subFrom; i < subEdge; i++ {
+		sub := &subs[i]
+		if sub.kind != pairHeader {
 			continue
 		}
-		data := pair.dataAt(r.input)
+		data := sub.dataAt(r.input)
 		bytesToLower(data)
 		if bytes.Equal(data, bytesTrailers) {
 			r.acceptTrailers = true
@@ -1340,7 +1340,7 @@ func (r *serverRequest_) checkTE(pairs []pair, from uint8, edge uint8) bool { //
 	}
 	return true
 }
-func (r *serverRequest_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { // Upgrade = #protocol
+func (r *serverRequest_) checkUpgrade(subs []pair, subFrom uint8, subEdge uint8) bool { // Upgrade = #protocol
 	if r.httpVersion > Version1_1 {
 		r.headResult, r.failReason = StatusBadRequest, "http upgrade is only supported in http/1.1"
 		return false
@@ -1353,8 +1353,8 @@ func (r *serverRequest_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool
 		// protocol         = protocol-name ["/" protocol-version]
 		// protocol-name    = token
 		// protocol-version = token
-		for i := from; i < edge; i++ {
-			data := pairs[i].dataAt(r.input)
+		for i := subFrom; i < subEdge; i++ {
+			data := subs[i].dataAt(r.input)
 			bytesToLower(data)
 			if bytes.Equal(data, bytesWebSocket) {
 				r.upgradeSocket = true
@@ -1365,22 +1365,22 @@ func (r *serverRequest_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool
 	} else { // HTTP/1.0
 		// RFC 9110 (section 7.8):
 		// A server that receives an Upgrade header field in an HTTP/1.0 request MUST ignore that Upgrade field.
-		for i := from; i < edge; i++ {
-			pairs[i].zero() // we delete it.
+		for i := subFrom; i < subEdge; i++ {
+			subs[i].zero() // we delete it.
 		}
 	}
 	return true
 }
-func (r *serverRequest_) checkXForwardedFor(pairs []pair, from uint8, edge uint8) bool { // X-Forwarded-For: <client>, <proxy1>, <proxy2>
-	if from == edge {
+func (r *serverRequest_) checkXForwardedFor(subs []pair, subFrom uint8, subEdge uint8) bool { // X-Forwarded-For: <client>, <proxy1>, <proxy2>
+	if subFrom == subEdge {
 		r.headResult, r.failReason = StatusBadRequest, "empty x-forwarded-for"
 		return false
 	}
 	if r.zones.xForwardedFor.isEmpty() {
-		r.zones.xForwardedFor.from = from
+		r.zones.xForwardedFor.from = subFrom
 	}
-	r.zones.xForwardedFor.edge = edge
-	for i := from; i < edge; i++ {
+	r.zones.xForwardedFor.edge = subEdge
+	for i := subFrom; i < subEdge; i++ {
 		// TODO: check syntax
 	}
 	return true
@@ -2468,8 +2468,8 @@ func (r *serverRequest_) examineTail() bool {
 	}
 	return true
 }
-func (r *serverRequest_) applyTrailerLine(index uint8) bool {
-	//trailerLine := &r.primes[index]
+func (r *serverRequest_) applyTrailerLine(lineIndex uint8) bool {
+	//trailerLine := &r.primes[lineIndex]
 	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
 }

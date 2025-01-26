@@ -40,12 +40,10 @@ func (b *FCGIBackend) onCreate(compName string, stage *Stage) {
 
 func (b *FCGIBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
-
 	b.ConfigureNodes()
 }
 func (b *FCGIBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
-
 	b.PrepareNodes()
 }
 
@@ -301,6 +299,7 @@ type fcgiConn struct {
 	netConn net.Conn        // *net.TCPConn or *net.UnixConn
 	rawConn syscall.RawConn // for syscall
 	// Conn states (zeros)
+	exchanID          int64        // next exchan id
 	cumulativeExchans atomic.Int32 // how many exchans have been used?
 	broken            atomic.Bool  // is conn broken?
 	counter           atomic.Int64 // can be used to generate a random number
@@ -349,6 +348,11 @@ func (c *fcgiConn) onPut() {
 	c.lastRead = time.Time{}
 }
 
+func (c *fcgiConn) nextExchanID() int64 {
+	c.exchanID++
+	return c.exchanID
+}
+
 func (c *fcgiConn) MakeTempName(dst []byte, unixTime int64) int {
 	return makeTempName(dst, c.node.Stage().ID(), unixTime, c.id, c.counter.Add(1))
 }
@@ -357,7 +361,7 @@ func (c *fcgiConn) isAlive() bool { return c.expireTime.IsZero() || time.Now().B
 
 func (c *fcgiConn) fetchExchan() (*fcgiExchan, error) {
 	exchan := &c.exchan
-	exchan.onUse()
+	exchan.onUse(c.nextExchanID())
 	return exchan, nil
 }
 func (c *fcgiConn) storeExchan(exchan *fcgiExchan) {
@@ -409,11 +413,13 @@ type fcgiExchan struct {
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Exchan states (controlled)
 	// Exchan states (non-zeros)
+	id     int64  // the exchan id
 	region Region // a region-based memory pool
 	// Exchan states (zeros)
 }
 
-func (x *fcgiExchan) onUse() { // for non-zeros
+func (x *fcgiExchan) onUse(id int64) { // for non-zeros
+	x.id = id
 	x.region.Init()
 	x.response.onUse()
 	x.request.onUse()
@@ -423,6 +429,9 @@ func (x *fcgiExchan) onEnd() { // for zeros
 	x.response.onEnd()
 	x.region.Free()
 }
+
+func (x *fcgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
+func (x *fcgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }
 
 func (x *fcgiExchan) markBroken()    { x.conn.markBroken() }
 func (x *fcgiExchan) isBroken() bool { return x.conn.isBroken() }
@@ -436,9 +445,6 @@ func (x *fcgiExchan) readAtLeast(dst []byte, min int) (int, error) {
 }
 func (x *fcgiExchan) write(src []byte) (int, error)             { return x.conn.write(src) }
 func (x *fcgiExchan) writev(srcVec *net.Buffers) (int64, error) { return x.conn.writev(srcVec) }
-
-func (x *fcgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
-func (x *fcgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }
 
 // fcgiResponse is the FCGI response in a FCGI exchange. It must implements the BackendResponse interface.
 type fcgiResponse struct { // incoming. needs parsing
@@ -783,7 +789,7 @@ func (r *fcgiResponse) IsVague() bool      { return true } // fcgi is vague by d
 
 func (r *fcgiResponse) examineHead() bool {
 	for i := 1; i < len(r.primes); i++ { // r.primes[0] is not used
-		if !r.applyHeaderLine(i) {
+		if !r._applyHeaderLine(i) {
 			// r.headResult is set.
 			return false
 		}
@@ -791,7 +797,7 @@ func (r *fcgiResponse) examineHead() bool {
 	// content length is not known at this time, can't check.
 	return true
 }
-func (r *fcgiResponse) applyHeaderLine(index int) bool {
+func (r *fcgiResponse) _applyHeaderLine(index int) bool {
 	headerLine := &r.primes[index]
 	headerName := headerLine.nameAt(r.input)
 	if sh := &fcgiResponseSingletonHeaderFieldTable[fcgiResponseSingletonHeaderFieldFind(headerLine.nameHash)]; sh.nameHash == headerLine.nameHash && bytes.Equal(sh.name, headerName) {
@@ -865,19 +871,19 @@ var ( // perfect hash table for singleton response header fields
 	fcgiResponseSingletonHeaderFieldFind = func(nameHash uint16) int { return (2704 / int(nameHash)) % len(fcgiResponseSingletonHeaderFieldTable) }
 )
 
-func (r *fcgiResponse) checkContentLength(headerLine *pair, index int) bool {
+func (r *fcgiResponse) checkContentLength(headerLine *pair, lineIndex int) bool {
 	headerLine.zero() // we don't believe the value provided by fcgi application. we believe fcgi framing protocol
 	return true
 }
-func (r *fcgiResponse) checkContentType(headerLine *pair, index int) bool {
+func (r *fcgiResponse) checkContentType(headerLine *pair, lineIndex int) bool {
 	if r.indexes.contentType == 0 && !headerLine.dataEmpty() {
-		r.indexes.contentType = uint8(index)
+		r.indexes.contentType = uint8(lineIndex)
 		return true
 	}
 	r.headResult, r.failReason = StatusBadRequest, "bad or too many content-type"
 	return false
 }
-func (r *fcgiResponse) checkStatus(headerLine *pair, index int) bool {
+func (r *fcgiResponse) checkStatus(headerLine *pair, lineIndex int) bool {
 	if value := headerLine.valueAt(r.input); len(value) >= 3 {
 		if status, ok := decToI64(value[0:3]); ok {
 			r.status = int16(status)
@@ -887,8 +893,8 @@ func (r *fcgiResponse) checkStatus(headerLine *pair, index int) bool {
 	r.headResult, r.failReason = StatusBadRequest, "bad status"
 	return false
 }
-func (r *fcgiResponse) checkLocation(headerLine *pair, index int) bool {
-	r.indexes.location = uint8(index)
+func (r *fcgiResponse) checkLocation(headerLine *pair, lineIndex int) bool {
+	r.indexes.location = uint8(lineIndex)
 	return true
 }
 
@@ -904,18 +910,18 @@ var ( // perfect hash table for important response header fields
 	fcgiResponseImportantHeaderFieldFind = func(nameHash uint16) int { return (1488 / int(nameHash)) % len(fcgiResponseImportantHeaderFieldTable) }
 )
 
-func (r *fcgiResponse) checkConnection(pairs []pair, from int, edge int) bool { // Connection = #connection-option
-	return r._delHeaderLines(pairs, from, edge)
+func (r *fcgiResponse) checkConnection(subs []pair, subFrom int, subEdge int) bool { // Connection = #connection-option
+	return r._delHeaderLines(subs, subFrom, subEdge)
 }
-func (r *fcgiResponse) checkTransferEncoding(pairs []pair, from int, edge int) bool { // Transfer-Encoding = #transfer-coding
-	return r._delHeaderLines(pairs, from, edge)
+func (r *fcgiResponse) checkTransferEncoding(subs []pair, subFrom int, subEdge int) bool { // Transfer-Encoding = #transfer-coding
+	return r._delHeaderLines(subs, subFrom, subEdge)
 }
-func (r *fcgiResponse) checkUpgrade(pairs []pair, from int, edge int) bool { // Upgrade = #protocol
-	return r._delHeaderLines(pairs, from, edge)
+func (r *fcgiResponse) checkUpgrade(subs []pair, subFrom int, subEdge int) bool { // Upgrade = #protocol
+	return r._delHeaderLines(subs, subFrom, subEdge)
 }
-func (r *fcgiResponse) _delHeaderLines(pairs []pair, from int, edge int) bool {
-	for i := from; i < edge; i++ {
-		pairs[i].zero()
+func (r *fcgiResponse) _delHeaderLines(subs []pair, subFrom int, subEdge int) bool {
+	for i := subFrom; i < subEdge; i++ {
+		subs[i].zero()
 	}
 	return true
 }
@@ -1541,4 +1547,103 @@ func (r *fcgiRequest) _isLongTime() bool {
 var ( // fcgi request errors
 	fcgiWriteLongTime = errors.New("fcgi: write costs a long time")
 	fcgiWriteBroken   = errors.New("fcgi: write broken")
+)
+
+// FCGI Record = FCGI Header(8) + payload[65535] + padding[255]
+// FCGI Header = version(1) + type(1) + requestId(2) + payloadLen(2) + paddingLen(1) + reserved(1)
+
+// Discrete records are standalone.
+// Streamed records end with an empty record (payloadLen=0).
+
+const ( // fcgi constants
+	fcgiHeaderSize = 8
+	fcgiMaxPayload = 65535
+	fcgiMaxPadding = 255
+	fcgiMaxRecords = fcgiHeaderSize + fcgiMaxPayload + fcgiMaxPadding
+)
+
+var poolFCGIRecords sync.Pool
+
+func getFCGIRecords() []byte {
+	if x := poolFCGIRecords.Get(); x == nil {
+		return make([]byte, fcgiMaxRecords)
+	} else {
+		return x.([]byte)
+	}
+}
+func putFCGIRecords(records []byte) {
+	if cap(records) != fcgiMaxRecords {
+		BugExitln("fcgi: bad records")
+	}
+	poolFCGIRecords.Put(records)
+}
+
+var ( // fcgi request records
+	fcgiBeginKeepConn = []byte{ // 16 bytes
+		1, 1, // version, FCGI_BEGIN_REQUEST
+		0, 1, // request id = 1. we don't support pipelining or multiplex, only one request at a time, so request id is always 1. same below
+		0, 8, // payload length = 8
+		0, 0, // padding length = 0, reserved = 0
+		0, 1, 1, 0, 0, 0, 0, 0, // role=responder, flags=keepConn
+	}
+	fcgiBeginDontKeep = []byte{ // 16 bytes
+		1, 1, // version, FCGI_BEGIN_REQUEST
+		0, 1, // request id = 1
+		0, 8, // payload length = 8
+		0, 0, // padding length = 0, reserved = 0
+		0, 1, 0, 0, 0, 0, 0, 0, // role=responder, flags=dontKeep
+	}
+	fcgiEmptyParams = []byte{ // end of params, 8 bytes
+		1, 4, // version, FCGI_PARAMS
+		0, 1, // request id = 1
+		0, 0, // payload length = 0
+		0, 0, // padding length = 0, reserved = 0
+	}
+	fcgiEmptyStdin = []byte{ // end of stdins, 8 bytes
+		1, 5, // version, FCGI_STDIN
+		0, 1, // request id = 1
+		0, 0, // payload length = 0
+		0, 0, // padding length = 0, reserved = 0
+	}
+)
+
+var ( // fcgi request param names
+	fcgiBytesAuthType         = []byte("AUTH_TYPE")
+	fcgiBytesContentLength    = []byte("CONTENT_LENGTH")
+	fcgiBytesContentType      = []byte("CONTENT_TYPE")
+	fcgiBytesDocumentRoot     = []byte("DOCUMENT_ROOT")
+	fcgiBytesDocumentURI      = []byte("DOCUMENT_URI")
+	fcgiBytesGatewayInterface = []byte("GATEWAY_INTERFACE")
+	fcgiBytesHTTP_            = []byte("HTTP_") // prefix
+	fcgiBytesHTTPS            = []byte("HTTPS") // scheme
+	fcgiBytesPathInfo         = []byte("PATH_INFO")
+	fcgiBytesPathTranslated   = []byte("PATH_TRANSLATED")
+	fcgiBytesQueryString      = []byte("QUERY_STRING")
+	fcgiBytesRedirectStatus   = []byte("REDIRECT_STATUS")
+	fcgiBytesRemoteAddr       = []byte("REMOTE_ADDR")
+	fcgiBytesRemoteHost       = []byte("REMOTE_HOST")
+	fcgiBytesRequestMethod    = []byte("REQUEST_METHOD")
+	fcgiBytesRequestScheme    = []byte("REQUEST_SCHEME")
+	fcgiBytesRequestURI       = []byte("REQUEST_URI")
+	fcgiBytesScriptFilename   = []byte("SCRIPT_FILENAME")
+	fcgiBytesScriptName       = []byte("SCRIPT_NAME")
+	fcgiBytesServerAddr       = []byte("SERVER_ADDR")
+	fcgiBytesServerName       = []byte("SERVER_NAME")
+	fcgiBytesServerPort       = []byte("SERVER_PORT")
+	fcgiBytesServerProtocol   = []byte("SERVER_PROTOCOL")
+	fcgiBytesServerSoftware   = []byte("SERVER_SOFTWARE")
+)
+
+var ( // fcgi request param values
+	fcgiBytesCGI1_1 = []byte("CGI/1.1")
+	fcgiBytesON     = []byte("ON")
+	fcgiBytes200    = []byte("200")
+)
+
+const ( // fcgi response header field hashes
+	fcgiHashStatus = 676
+)
+
+var ( // fcgi response header field names
+	fcgiBytesStatus = []byte("status")
 )

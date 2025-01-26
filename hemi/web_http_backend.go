@@ -23,24 +23,6 @@ type HTTPBackend interface { // for *HTTP[1-3]Backend
 	StoreStream(backStream BackendStream)
 }
 
-// httpBackend_ is the parent for http[1-3]Backend.
-type httpBackend_[N HTTPNode] struct {
-	// Parent
-	Backend_[N]
-	// States
-}
-
-func (b *httpBackend_[N]) onCreate(compName string, stage *Stage) {
-	b.Backend_.OnCreate(compName, stage)
-}
-
-func (b *httpBackend_[N]) onConfigure() {
-	b.Backend_.OnConfigure()
-}
-func (b *httpBackend_[N]) onPrepare() {
-	b.Backend_.OnPrepare()
-}
-
 // HTTPNode
 type HTTPNode interface {
 	// Imports
@@ -147,7 +129,6 @@ func (p *connPool) closeIdle(closeFunc func(conn *poolConn) error) int {
 
 // backendConn
 type backendConn interface {
-	isAlive() bool
 }
 
 // _backendConn_ is a mixin for backend[1-3]Conn.
@@ -207,8 +188,8 @@ type BackendResponse interface { // for *backend[1-3]Response
 	recvHead()
 	reuse()
 	examineTail() bool
-	proxyTakeContent() any
 	readContent() (data []byte, err error)
+	proxyTakeContent() any
 	proxyDelHopHeaderFields()
 	proxyDelHopTrailerFields()
 	proxyWalkHeaderLines(callback func(headerLine *pair, headerName []byte, lineValue []byte) bool) bool
@@ -282,7 +263,7 @@ func (r *backendResponse_) Status() int16 { return r.status }
 
 func (r *backendResponse_) examineHead() bool {
 	for i := r.headerLines.from; i < r.headerLines.edge; i++ {
-		if !r.applyHeaderLine(i) {
+		if !r._applyHeaderLine(i) {
 			// r.headResult is set.
 			return false
 		}
@@ -328,8 +309,8 @@ func (r *backendResponse_) examineHead() bool {
 
 	return true
 }
-func (r *backendResponse_) applyHeaderLine(index uint8) bool {
-	headerLine := &r.primes[index]
+func (r *backendResponse_) _applyHeaderLine(lineIndex uint8) bool {
+	headerLine := &r.primes[lineIndex]
 	headerName := headerLine.nameAt(r.input)
 	if sh := &backendResponseSingletonHeaderFieldTable[backendResponseSingletonHeaderFieldFind(headerLine.nameHash)]; sh.nameHash == headerLine.nameHash && bytes.Equal(sh.name, headerName) {
 		headerLine.setSingleton()
@@ -340,7 +321,7 @@ func (r *backendResponse_) applyHeaderLine(index uint8) bool {
 			r.headResult = StatusBadRequest
 			return false
 		}
-		if !sh.check(r, headerLine, index) {
+		if !sh.check(r, headerLine, lineIndex) {
 			// r.headResult is set.
 			return false
 		}
@@ -355,7 +336,7 @@ func (r *backendResponse_) applyHeaderLine(index uint8) bool {
 				// r.headResult is set.
 				return false
 			}
-		} else if !mh.check(r, r.primes, index, index+1) { // no sub header lines. check it
+		} else if !mh.check(r, r.primes, lineIndex, lineIndex+1) { // no sub header lines. check it
 			// r.headResult is set.
 			return false
 		}
@@ -389,7 +370,7 @@ var ( // perfect hash table for singleton response header fields
 	}
 )
 
-func (r *backendResponse_) checkAge(headerLine *pair, index uint8) bool { // Age = delta-seconds
+func (r *backendResponse_) checkAge(headerLine *pair, lineIndex uint8) bool { // Age = delta-seconds
 	if headerLine.value.isEmpty() {
 		r.headResult, r.failReason = StatusBadRequest, "empty age"
 		return false
@@ -397,7 +378,7 @@ func (r *backendResponse_) checkAge(headerLine *pair, index uint8) bool { // Age
 	// TODO: check and write to r.age
 	return true
 }
-func (r *backendResponse_) checkContentLength(headerLine *pair, index uint8) bool {
+func (r *backendResponse_) checkContentLength(headerLine *pair, lineIndex uint8) bool {
 	if r.status < StatusOK || r.status == StatusNoContent {
 		r.headResult, r.failReason = StatusBadRequest, "content-length is not allowed in 1xx and 204 responses"
 		return false
@@ -405,35 +386,35 @@ func (r *backendResponse_) checkContentLength(headerLine *pair, index uint8) boo
 	if r.status == StatusNotModified {
 		// TODO
 	}
-	return r._httpIn_.checkContentLength(headerLine, index)
+	return r._httpIn_.checkContentLength(headerLine, lineIndex)
 }
-func (r *backendResponse_) checkETag(headerLine *pair, index uint8) bool { // ETag = entity-tag
+func (r *backendResponse_) checkETag(headerLine *pair, lineIndex uint8) bool { // ETag = entity-tag
 	// TODO: check
-	r.indexes.etag = index
+	r.indexes.etag = lineIndex
 	return true
 }
-func (r *backendResponse_) checkExpires(headerLine *pair, index uint8) bool { // Expires = HTTP-date
-	return r._checkHTTPDate(headerLine, index, &r.indexes.expires, &r.unixTimes.expires)
+func (r *backendResponse_) checkExpires(headerLine *pair, lineIndex uint8) bool { // Expires = HTTP-date
+	return r._checkHTTPDate(headerLine, lineIndex, &r.indexes.expires, &r.unixTimes.expires)
 }
-func (r *backendResponse_) checkLastModified(headerLine *pair, index uint8) bool { // Last-Modified = HTTP-date
-	return r._checkHTTPDate(headerLine, index, &r.indexes.lastModified, &r.unixTimes.lastModified)
+func (r *backendResponse_) checkLastModified(headerLine *pair, lineIndex uint8) bool { // Last-Modified = HTTP-date
+	return r._checkHTTPDate(headerLine, lineIndex, &r.indexes.lastModified, &r.unixTimes.lastModified)
 }
-func (r *backendResponse_) checkLocation(headerLine *pair, index uint8) bool { // Location = URI-reference
+func (r *backendResponse_) checkLocation(headerLine *pair, lineIndex uint8) bool { // Location = URI-reference
 	// TODO: check
-	r.indexes.location = index
+	r.indexes.location = lineIndex
 	return true
 }
-func (r *backendResponse_) checkRetryAfter(headerLine *pair, index uint8) bool { // Retry-After = HTTP-date / delay-seconds
+func (r *backendResponse_) checkRetryAfter(headerLine *pair, lineIndex uint8) bool { // Retry-After = HTTP-date / delay-seconds
 	// TODO: check
-	r.indexes.retryAfter = index
+	r.indexes.retryAfter = lineIndex
 	return true
 }
-func (r *backendResponse_) checkServer(headerLine *pair, index uint8) bool { // Server = product *( RWS ( product / comment ) )
+func (r *backendResponse_) checkServer(headerLine *pair, lineIndex uint8) bool { // Server = product *( RWS ( product / comment ) )
 	// TODO: check
-	r.indexes.server = index
+	r.indexes.server = lineIndex
 	return true
 }
-func (r *backendResponse_) checkSetCookie(headerLine *pair, index uint8) bool { // Set-Cookie = set-cookie-string
+func (r *backendResponse_) checkSetCookie(headerLine *pair, lineIndex uint8) bool { // Set-Cookie = set-cookie-string
 	// set-cookie-string = cookie-pair *( ";" SP cookie-av )
 	// cookie-pair = token "=" cookie-value
 	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
@@ -479,13 +460,13 @@ var ( // perfect hash table for important response header fields
 	}
 )
 
-func (r *backendResponse_) checkAcceptRanges(pairs []pair, from uint8, edge uint8) bool { // Accept-Ranges = 1#range-unit
-	if from == edge {
+func (r *backendResponse_) checkAcceptRanges(subs []pair, subFrom uint8, subEdge uint8) bool { // Accept-Ranges = 1#range-unit
+	if subFrom == subEdge {
 		r.headResult, r.failReason = StatusBadRequest, "accept-ranges = 1#range-unit"
 		return false
 	}
-	for i := from; i < edge; i++ {
-		data := pairs[i].dataAt(r.input)
+	for i := subFrom; i < subEdge; i++ {
+		data := subs[i].dataAt(r.input)
 		bytesToLower(data) // range unit names are case-insensitive
 		if bytes.Equal(data, bytesBytes) {
 			r.acceptBytes = true
@@ -495,65 +476,65 @@ func (r *backendResponse_) checkAcceptRanges(pairs []pair, from uint8, edge uint
 	}
 	return true
 }
-func (r *backendResponse_) checkAllow(pairs []pair, from uint8, edge uint8) bool { // Allow = #method
+func (r *backendResponse_) checkAllow(subs []pair, subFrom uint8, subEdge uint8) bool { // Allow = #method
 	r.hasAllow = true
 	if r.zones.allow.isEmpty() {
-		r.zones.allow.from = from
+		r.zones.allow.from = subFrom
 	}
-	r.zones.allow.edge = edge
-	for i := from; i < edge; i++ {
+	r.zones.allow.edge = subEdge
+	for i := subFrom; i < subEdge; i++ {
 		// TODO: check syntax
 	}
 	return true
 }
-func (r *backendResponse_) checkAltSvc(pairs []pair, from uint8, edge uint8) bool { // Alt-Svc = clear / 1#alt-value
-	if from == edge {
+func (r *backendResponse_) checkAltSvc(subs []pair, subFrom uint8, subEdge uint8) bool { // Alt-Svc = clear / 1#alt-value
+	if subFrom == subEdge {
 		r.headResult, r.failReason = StatusBadRequest, "alt-svc = clear / 1#alt-value"
 		return false
 	}
 	if r.zones.altSvc.isEmpty() {
-		r.zones.altSvc.from = from
+		r.zones.altSvc.from = subFrom
 	}
-	r.zones.altSvc.edge = edge
-	for i := from; i < edge; i++ {
+	r.zones.altSvc.edge = subEdge
+	for i := subFrom; i < subEdge; i++ {
 		// TODO: check syntax
 	}
 	return true
 }
-func (r *backendResponse_) checkCacheControl(pairs []pair, from uint8, edge uint8) bool { // Cache-Control = #cache-directive
+func (r *backendResponse_) checkCacheControl(subs []pair, subFrom uint8, subEdge uint8) bool { // Cache-Control = #cache-directive
 	// cache-directive = token [ "=" ( token / quoted-string ) ]
-	for i := from; i < edge; i++ {
+	for i := subFrom; i < subEdge; i++ {
 		// TODO
 	}
 	return true
 }
-func (r *backendResponse_) checkCacheStatus(pairs []pair, from uint8, edge uint8) bool { // ?
-	for i := from; i < edge; i++ {
+func (r *backendResponse_) checkCacheStatus(subs []pair, subFrom uint8, subEdge uint8) bool { // ?
+	for i := subFrom; i < subEdge; i++ {
 		// TODO
 	}
 	return true
 }
-func (r *backendResponse_) checkCDNCacheControl(pairs []pair, from uint8, edge uint8) bool { // ?
-	for i := from; i < edge; i++ {
+func (r *backendResponse_) checkCDNCacheControl(subs []pair, subFrom uint8, subEdge uint8) bool { // ?
+	for i := subFrom; i < subEdge; i++ {
 		// TODO
 	}
 	return true
 }
-func (r *backendResponse_) checkProxyAuthenticate(pairs []pair, from uint8, edge uint8) bool { // Proxy-Authenticate = #challenge
+func (r *backendResponse_) checkProxyAuthenticate(subs []pair, subFrom uint8, subEdge uint8) bool { // Proxy-Authenticate = #challenge
 	// TODO; use r._checkChallenge
 	return true
 }
-func (r *backendResponse_) checkWWWAuthenticate(pairs []pair, from uint8, edge uint8) bool { // WWW-Authenticate = #challenge
+func (r *backendResponse_) checkWWWAuthenticate(subs []pair, subFrom uint8, subEdge uint8) bool { // WWW-Authenticate = #challenge
 	// TODO; use r._checkChallenge
 	return true
 }
-func (r *backendResponse_) _checkChallenge(pairs []pair, from uint8, edge uint8) bool { // challenge = auth-scheme [ 1*SP ( token68 / [ auth-param *( OWS "," OWS auth-param ) ] ) ]
-	for i := from; i < edge; i++ {
+func (r *backendResponse_) _checkChallenge(subs []pair, subFrom uint8, subEdge uint8) bool { // challenge = auth-scheme [ 1*SP ( token68 / [ auth-param *( OWS "," OWS auth-param ) ] ) ]
+	for i := subFrom; i < subEdge; i++ {
 		// TODO
 	}
 	return true
 }
-func (r *backendResponse_) checkTransferEncoding(pairs []pair, from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
+func (r *backendResponse_) checkTransferEncoding(subs []pair, subFrom uint8, subEdge uint8) bool { // Transfer-Encoding = #transfer-coding
 	if r.status < StatusOK || r.status == StatusNoContent {
 		r.headResult, r.failReason = StatusBadRequest, "transfer-encoding is not allowed in 1xx and 204 responses"
 		return false
@@ -561,9 +542,9 @@ func (r *backendResponse_) checkTransferEncoding(pairs []pair, from uint8, edge 
 	if r.status == StatusNotModified {
 		// TODO
 	}
-	return r._httpIn_.checkTransferEncoding(pairs, from, edge)
+	return r._httpIn_.checkTransferEncoding(subs, subFrom, subEdge)
 }
-func (r *backendResponse_) checkUpgrade(pairs []pair, from uint8, edge uint8) bool { // Upgrade = #protocol
+func (r *backendResponse_) checkUpgrade(subs []pair, subFrom uint8, subEdge uint8) bool { // Upgrade = #protocol
 	if r.httpVersion >= Version2 {
 		r.headResult, r.failReason = StatusBadRequest, "upgrade is not supported in http/2 and http/3"
 		return false
@@ -572,12 +553,12 @@ func (r *backendResponse_) checkUpgrade(pairs []pair, from uint8, edge uint8) bo
 	r.headResult, r.failReason = StatusBadRequest, "upgrade is not supported in exchan mode"
 	return false
 }
-func (r *backendResponse_) checkVary(pairs []pair, from uint8, edge uint8) bool { // Vary = #( "*" / field-name )
+func (r *backendResponse_) checkVary(subs []pair, subFrom uint8, subEdge uint8) bool { // Vary = #( "*" / field-name )
 	if r.zones.vary.isEmpty() {
-		r.zones.vary.from = from
+		r.zones.vary.from = subFrom
 	}
-	r.zones.vary.edge = edge
-	for i := from; i < edge; i++ {
+	r.zones.vary.edge = subEdge
+	for i := subFrom; i < subEdge; i++ {
 		// TODO
 	}
 	return true
@@ -625,8 +606,8 @@ func (r *backendResponse_) examineTail() bool {
 	}
 	return true
 }
-func (r *backendResponse_) applyTrailerLine(index uint8) bool {
-	//trailerLine := &r.primes[index]
+func (r *backendResponse_) applyTrailerLine(lineIndex uint8) bool {
+	//trailerLine := &r.primes[lineIndex]
 	// TODO: Pseudo-header fields MUST NOT appear in a trailer section.
 	return true
 }

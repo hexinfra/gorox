@@ -35,12 +35,10 @@ func (b *QUIXBackend) onCreate(compName string, stage *Stage) {
 
 func (b *QUIXBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
-
 	b.ConfigureNodes()
 }
 func (b *QUIXBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
-
 	b.PrepareNodes()
 }
 

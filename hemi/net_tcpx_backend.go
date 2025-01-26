@@ -36,12 +36,10 @@ func (b *TCPXBackend) onCreate(compName string, stage *Stage) {
 
 func (b *TCPXBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
-
 	b.ConfigureNodes()
 }
 func (b *TCPXBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
-
 	b.PrepareNodes()
 }
 

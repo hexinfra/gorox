@@ -78,15 +78,15 @@ func TCPXReverseProxy(servConn *TCPXConn, backend *TCPXBackend, proxyConfig *TCP
 	// Pass inbound data
 	go func() {
 		var (
-			servErr  error
-			backErr  error
-			servData []byte
+			servErr error
+			backErr error
+			inData  []byte
 		)
 		for {
 			if servErr = servConn.SetReadDeadline(); servErr == nil {
-				if servData, servErr = servConn.Recv(); len(servData) > 0 {
+				if inData, servErr = servConn.Recv(); len(inData) > 0 {
 					if backErr = backConn.SetWriteDeadline(); backErr == nil {
-						backErr = backConn.Send(servData)
+						backErr = backConn.Send(inData)
 					}
 				}
 			}
@@ -100,15 +100,15 @@ func TCPXReverseProxy(servConn *TCPXConn, backend *TCPXBackend, proxyConfig *TCP
 	}()
 	// Pass outbound data
 	var (
-		backErr  error
-		servErr  error
-		backData []byte
+		backErr error
+		servErr error
+		outData []byte
 	)
 	for {
 		if backErr = backConn.SetReadDeadline(); backErr == nil {
-			if backData, backErr = backConn.Recv(); len(backData) > 0 {
+			if outData, backErr = backConn.Recv(); len(outData) > 0 {
 				if servErr = servConn.SetWriteDeadline(); servErr == nil {
-					servErr = servConn.Send(backData)
+					servErr = servConn.Send(outData)
 				}
 			}
 		}

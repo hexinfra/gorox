@@ -34,12 +34,10 @@ func (b *MysqlBackend) onCreate(compName string, stage *Stage) {
 
 func (b *MysqlBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
-
 	b.ConfigureNodes()
 }
 func (b *MysqlBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
-
 	b.PrepareNodes()
 }
 

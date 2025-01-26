@@ -219,12 +219,12 @@ func getServer3Stream(conn *server3Conn, quicStream *tcp2.Stream) *server3Stream
 	var servStream *server3Stream
 	if x := poolServer3Stream.Get(); x == nil {
 		servStream = new(server3Stream)
-		req, resp := &servStream.request, &servStream.response
-		req.stream = servStream
-		req.inMessage = req
-		resp.stream = servStream
-		resp.outMessage = resp
-		resp.request = req
+		servReq, servResp := &servStream.request, &servStream.response
+		servReq.stream = servStream
+		servReq.inMessage = servReq
+		servResp.stream = servStream
+		servResp.outMessage = servResp
+		servResp.request = servReq
 	} else {
 		servStream = x.(*server3Stream)
 	}

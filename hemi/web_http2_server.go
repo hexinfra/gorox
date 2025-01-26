@@ -672,12 +672,12 @@ func getServer2Stream(conn *server2Conn, id uint32, outWindow int32) *server2Str
 	var servStream *server2Stream
 	if x := poolServer2Stream.Get(); x == nil {
 		servStream = new(server2Stream)
-		req, resp := &servStream.request, &servStream.response
-		req.stream = servStream
-		req.inMessage = req
-		resp.stream = servStream
-		resp.outMessage = resp
-		resp.request = req
+		servReq, servResp := &servStream.request, &servStream.response
+		servReq.stream = servStream
+		servReq.inMessage = servReq
+		servResp.stream = servStream
+		servResp.outMessage = servResp
+		servResp.request = servReq
 	} else {
 		servStream = x.(*server2Stream)
 	}

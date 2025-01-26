@@ -688,7 +688,7 @@ func (r *_httpIn_) _parseFieldLine(field *pair, fdesc *fdesc, p []byte, fully bo
 	}
 }
 
-func (r *_httpIn_) checkContentLength(headerLine *pair, index uint8) bool { // Content-Length = 1*DIGIT
+func (r *_httpIn_) checkContentLength(headerLine *pair, lineIndex uint8) bool { // Content-Length = 1*DIGIT
 	// RFC 9110 (section 8.6):
 	// Likewise, a sender MUST NOT forward a message with a Content-Length
 	// header field value that does not match the ABNF above, with one
@@ -701,51 +701,51 @@ func (r *_httpIn_) checkContentLength(headerLine *pair, index uint8) bool { // C
 	if r.contentSize == -1 { // r.contentSize can only be -1 or >= 0 here. -2 is set after the header section is received if the content is vague
 		if size, ok := decToI64(headerLine.valueAt(r.input)); ok {
 			r.contentSize = size
-			r.iContentLength = index
+			r.iContentLength = lineIndex
 			return true
 		}
 	}
 	r.headResult, r.failReason = StatusBadRequest, "bad content-length"
 	return false
 }
-func (r *_httpIn_) checkContentLocation(headerLine *pair, index uint8) bool { // Content-Location = absolute-URI / partial-URI
+func (r *_httpIn_) checkContentLocation(headerLine *pair, lineIndex uint8) bool { // Content-Location = absolute-URI / partial-URI
 	if r.iContentLocation == 0 && headerLine.value.notEmpty() {
 		// TODO: check syntax
-		r.iContentLocation = index
+		r.iContentLocation = lineIndex
 		return true
 	}
 	r.headResult, r.failReason = StatusBadRequest, "bad or too many content-location"
 	return false
 }
-func (r *_httpIn_) checkContentRange(headerLine *pair, index uint8) bool { // Content-Range = range-unit SP ( range-resp / unsatisfied-range )
+func (r *_httpIn_) checkContentRange(headerLine *pair, lineIndex uint8) bool { // Content-Range = range-unit SP ( range-resp / unsatisfied-range )
 	if r.iContentRange == 0 && headerLine.value.notEmpty() {
 		// TODO: check syntax
-		r.iContentRange = index
+		r.iContentRange = lineIndex
 		return true
 	}
 	r.headResult, r.failReason = StatusBadRequest, "bad or too many content-range"
 	return false
 }
-func (r *_httpIn_) checkContentType(headerLine *pair, index uint8) bool { // Content-Type = media-type
+func (r *_httpIn_) checkContentType(headerLine *pair, lineIndex uint8) bool { // Content-Type = media-type
 	// media-type = type "/" subtype *( OWS ";" OWS parameter )
 	// type = token
 	// subtype = token
 	// parameter = token "=" ( token / quoted-string )
 	if r.iContentType == 0 && !headerLine.dataEmpty() {
 		// TODO: check syntax
-		r.iContentType = index
+		r.iContentType = lineIndex
 		return true
 	}
 	r.headResult, r.failReason = StatusBadRequest, "bad or too many content-type"
 	return false
 }
-func (r *_httpIn_) checkDate(headerLine *pair, index uint8) bool { // Date = HTTP-date
-	return r._checkHTTPDate(headerLine, index, &r.iDate, &r.dateTime)
+func (r *_httpIn_) checkDate(headerLine *pair, lineIndex uint8) bool { // Date = HTTP-date
+	return r._checkHTTPDate(headerLine, lineIndex, &r.iDate, &r.dateTime)
 }
-func (r *_httpIn_) _checkHTTPDate(headerLine *pair, index uint8, pIndex *uint8, toTime *int64) bool { // HTTP-date = day-name "," SP day SP month SP year SP hour ":" minute ":" second SP GMT
+func (r *_httpIn_) _checkHTTPDate(headerLine *pair, lineIndex uint8, pIndex *uint8, toTime *int64) bool { // HTTP-date = day-name "," SP day SP month SP year SP hour ":" minute ":" second SP GMT
 	if *pIndex == 0 {
 		if httpDate, ok := clockParseHTTPDate(headerLine.valueAt(r.input)); ok {
-			*pIndex = index
+			*pIndex = lineIndex
 			*toTime = httpDate
 			return true
 		}
@@ -754,28 +754,28 @@ func (r *_httpIn_) _checkHTTPDate(headerLine *pair, index uint8, pIndex *uint8, 
 	return false
 }
 
-func (r *_httpIn_) checkAccept(pairs []pair, from uint8, edge uint8) bool { // Accept = #( media-range [ weight ] )
+func (r *_httpIn_) checkAccept(subs []pair, subFrom uint8, subEdge uint8) bool { // Accept = #( media-range [ weight ] )
 	if r.zAccept.isEmpty() {
-		r.zAccept.from = from
+		r.zAccept.from = subFrom
 	}
-	r.zAccept.edge = edge
-	for i := from; i < edge; i++ {
+	r.zAccept.edge = subEdge
+	for i := subFrom; i < subEdge; i++ {
 		// TODO: check syntax
 	}
 	return true
 }
-func (r *_httpIn_) checkAcceptEncoding(pairs []pair, from uint8, edge uint8) bool { // Accept-Encoding = #( codings [ weight ] )
+func (r *_httpIn_) checkAcceptEncoding(subs []pair, subFrom uint8, subEdge uint8) bool { // Accept-Encoding = #( codings [ weight ] )
 	// codings = content-coding / "identity" / "*"
 	// content-coding = token
-	for i := from; i < edge; i++ {
+	for i := subFrom; i < subEdge; i++ {
 		if r.numAcceptCodings == int8(cap(r.acceptCodings)) {
 			break // ignore too many codings
 		}
-		pair := &pairs[i]
-		if pair.kind != pairHeader {
+		sub := &subs[i]
+		if sub.kind != pairHeader {
 			continue
 		}
-		data := pair.dataAt(r.input)
+		data := sub.dataAt(r.input)
 		bytesToLower(data)
 		var coding uint8
 		if bytes.Equal(data, bytesGzip) {
@@ -798,18 +798,18 @@ func (r *_httpIn_) checkAcceptEncoding(pairs []pair, from uint8, edge uint8) boo
 	}
 	return true
 }
-func (r *_httpIn_) checkConnection(pairs []pair, from uint8, edge uint8) bool { // Connection = #connection-option
+func (r *_httpIn_) checkConnection(subs []pair, subFrom uint8, subEdge uint8) bool { // Connection = #connection-option
 	if r.httpVersion >= Version2 {
 		r.headResult, r.failReason = StatusBadRequest, "connection header field is not allowed in HTTP/2 and HTTP/3"
 		return false
 	}
 	if r.zConnection.isEmpty() {
-		r.zConnection.from = from
+		r.zConnection.from = subFrom
 	}
-	r.zConnection.edge = edge
+	r.zConnection.edge = subEdge
 	// connection-option = token
-	for i := from; i < edge; i++ {
-		data := pairs[i].dataAt(r.input)
+	for i := subFrom; i < subEdge; i++ {
+		data := subs[i].dataAt(r.input)
 		bytesToLower(data) // connection options are case-insensitive.
 		if bytes.Equal(data, bytesClose) {
 			r.keepAlive = 0
@@ -819,14 +819,14 @@ func (r *_httpIn_) checkConnection(pairs []pair, from uint8, edge uint8) bool { 
 	}
 	return true
 }
-func (r *_httpIn_) checkContentEncoding(pairs []pair, from uint8, edge uint8) bool { // Content-Encoding = #content-coding
+func (r *_httpIn_) checkContentEncoding(subs []pair, subFrom uint8, subEdge uint8) bool { // Content-Encoding = #content-coding
 	// content-coding = token
-	for i := from; i < edge; i++ {
+	for i := subFrom; i < subEdge; i++ {
 		if r.numContentCodings == int8(cap(r.contentCodings)) {
 			r.headResult, r.failReason = StatusBadRequest, "too many content codings applied to content"
 			return false
 		}
-		data := pairs[i].dataAt(r.input)
+		data := subs[i].dataAt(r.input)
 		bytesToLower(data)
 		var coding uint8
 		if bytes.Equal(data, bytesGzip) {
@@ -845,35 +845,35 @@ func (r *_httpIn_) checkContentEncoding(pairs []pair, from uint8, edge uint8) bo
 	}
 	return true
 }
-func (r *_httpIn_) checkContentLanguage(pairs []pair, from uint8, edge uint8) bool { // Content-Language = #language-tag
+func (r *_httpIn_) checkContentLanguage(subs []pair, subFrom uint8, subEdge uint8) bool { // Content-Language = #language-tag
 	if r.zContentLanguage.isEmpty() {
-		r.zContentLanguage.from = from
+		r.zContentLanguage.from = subFrom
 	}
-	r.zContentLanguage.edge = edge
-	for i := from; i < edge; i++ {
+	r.zContentLanguage.edge = subEdge
+	for i := subFrom; i < subEdge; i++ {
 		// TODO: check syntax
 	}
 	return true
 }
-func (r *_httpIn_) checkTrailer(pairs []pair, from uint8, edge uint8) bool { // Trailer = #field-name
+func (r *_httpIn_) checkTrailer(subs []pair, subFrom uint8, subEdge uint8) bool { // Trailer = #field-name
 	if r.zTrailer.isEmpty() {
-		r.zTrailer.from = from
+		r.zTrailer.from = subFrom
 	}
-	r.zTrailer.edge = edge
+	r.zTrailer.edge = subEdge
 	// field-name = token
-	for i := from; i < edge; i++ {
+	for i := subFrom; i < subEdge; i++ {
 		// TODO: check syntax
 	}
 	return true
 }
-func (r *_httpIn_) checkTransferEncoding(pairs []pair, from uint8, edge uint8) bool { // Transfer-Encoding = #transfer-coding
+func (r *_httpIn_) checkTransferEncoding(subs []pair, subFrom uint8, subEdge uint8) bool { // Transfer-Encoding = #transfer-coding
 	if r.httpVersion != Version1_1 {
 		r.headResult, r.failReason = StatusBadRequest, "transfer-encoding is only allowed in http/1.1"
 		return false
 	}
 	// transfer-coding = "chunked" / "compress" / "deflate" / "gzip"
-	for i := from; i < edge; i++ {
-		data := pairs[i].dataAt(r.input)
+	for i := subFrom; i < subEdge; i++ {
+		data := subs[i].dataAt(r.input)
 		bytesToLower(data)
 		if bytes.Equal(data, bytesChunked) {
 			r.transferChunked = true
@@ -886,12 +886,12 @@ func (r *_httpIn_) checkTransferEncoding(pairs []pair, from uint8, edge uint8) b
 	}
 	return true
 }
-func (r *_httpIn_) checkVia(pairs []pair, from uint8, edge uint8) bool { // Via = #( received-protocol RWS received-by [ RWS comment ] )
+func (r *_httpIn_) checkVia(subs []pair, subFrom uint8, subEdge uint8) bool { // Via = #( received-protocol RWS received-by [ RWS comment ] )
 	if r.zVia.isEmpty() {
-		r.zVia.from = from
+		r.zVia.from = subFrom
 	}
-	r.zVia.edge = edge
-	for i := from; i < edge; i++ {
+	r.zVia.edge = subEdge
+	for i := subFrom; i < subEdge; i++ {
 		// TODO: check syntax
 	}
 	return true

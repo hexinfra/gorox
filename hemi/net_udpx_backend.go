@@ -35,12 +35,10 @@ func (b *UDPXBackend) onCreate(compName string, stage *Stage) {
 
 func (b *UDPXBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
-
 	b.ConfigureNodes()
 }
 func (b *UDPXBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
-
 	b.PrepareNodes()
 }
 

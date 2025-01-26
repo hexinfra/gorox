@@ -37,12 +37,10 @@ func (b *SCGIBackend) onCreate(compName string, stage *Stage) {
 
 func (b *SCGIBackend) OnConfigure() {
 	b.Backend_.OnConfigure()
-
 	b.ConfigureNodes()
 }
 func (b *SCGIBackend) OnPrepare() {
 	b.Backend_.OnPrepare()
-
 	b.PrepareNodes()
 }
 
@@ -201,6 +199,9 @@ func (x *scgiExchan) onEnd() {
 	x.rawConn = nil
 }
 
+func (x *scgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
+func (x *scgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }
+
 func (x *scgiExchan) MakeTempName(dst []byte, unixTime int64) int {
 	return makeTempName(dst, x.node.Stage().ID(), unixTime, x.id, 0)
 }
@@ -230,9 +231,6 @@ func (x *scgiExchan) readAtLeast(dst []byte, min int) (int, error) {
 }
 func (x *scgiExchan) write(src []byte) (int, error)             { return x.netConn.Write(src) }
 func (x *scgiExchan) writev(srcVec *net.Buffers) (int64, error) { return srcVec.WriteTo(x.netConn) }
-
-func (x *scgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
-func (x *scgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }
 
 func (x *scgiExchan) Close() error {
 	netConn := x.netConn

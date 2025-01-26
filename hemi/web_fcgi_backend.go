@@ -910,18 +910,18 @@ var ( // perfect hash table for important response header fields
 	fcgiResponseImportantHeaderFieldFind = func(nameHash uint16) int { return (1488 / int(nameHash)) % len(fcgiResponseImportantHeaderFieldTable) }
 )
 
-func (r *fcgiResponse) checkConnection(subs []pair, subFrom int, subEdge int) bool { // Connection = #connection-option
-	return r._delHeaderLines(subs, subFrom, subEdge)
+func (r *fcgiResponse) checkConnection(subLines []pair, subFrom int, subEdge int) bool { // Connection = #connection-option
+	return r._delHeaderLines(subLines, subFrom, subEdge)
 }
-func (r *fcgiResponse) checkTransferEncoding(subs []pair, subFrom int, subEdge int) bool { // Transfer-Encoding = #transfer-coding
-	return r._delHeaderLines(subs, subFrom, subEdge)
+func (r *fcgiResponse) checkTransferEncoding(subLines []pair, subFrom int, subEdge int) bool { // Transfer-Encoding = #transfer-coding
+	return r._delHeaderLines(subLines, subFrom, subEdge)
 }
-func (r *fcgiResponse) checkUpgrade(subs []pair, subFrom int, subEdge int) bool { // Upgrade = #protocol
-	return r._delHeaderLines(subs, subFrom, subEdge)
+func (r *fcgiResponse) checkUpgrade(subLines []pair, subFrom int, subEdge int) bool { // Upgrade = #protocol
+	return r._delHeaderLines(subLines, subFrom, subEdge)
 }
-func (r *fcgiResponse) _delHeaderLines(subs []pair, subFrom int, subEdge int) bool {
+func (r *fcgiResponse) _delHeaderLines(subLines []pair, subFrom int, subEdge int) bool {
 	for i := subFrom; i < subEdge; i++ {
-		subs[i].zero()
+		subLines[i].zero()
 	}
 	return true
 }

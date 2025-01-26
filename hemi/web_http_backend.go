@@ -10,7 +10,6 @@ package hemi
 import (
 	"bytes"
 	"errors"
-	"sync"
 	"time"
 )
 
@@ -69,62 +68,6 @@ func (n *httpNode_[B]) onConfigure() {
 func (n *httpNode_[B]) onPrepare() {
 	n.Node_.OnPrepare()
 	n._httpHolder_.onPrepare(n, 0755)
-}
-
-type poolConn struct {
-	next *poolConn
-}
-
-type connPool struct {
-	sync.Mutex
-	head *poolConn
-	tail *poolConn
-	qnty int
-}
-
-func (p *connPool) pullConn() *poolConn {
-	p.Lock()
-	defer p.Unlock()
-
-	if p.qnty == 0 {
-		return nil
-	}
-	conn := p.head
-	p.head = conn.next
-	conn.next = nil
-	p.qnty--
-	return conn
-}
-func (p *connPool) pushConn(conn *poolConn) {
-	p.Lock()
-	defer p.Unlock()
-
-	if p.qnty == 0 {
-		p.head = conn
-		p.tail = conn
-	} else {
-		p.tail.next = conn
-		p.tail = conn
-	}
-	p.qnty++
-}
-func (p *connPool) closeIdle(closeFunc func(conn *poolConn) error) int {
-	p.Lock()
-	defer p.Unlock()
-
-	conn := p.head
-	for conn != nil {
-		next := conn.next
-		conn.next = nil
-		closeFunc(conn)
-		conn = next
-	}
-	qnty := p.qnty
-	p.qnty = 0
-	p.head = nil
-	p.tail = nil
-
-	return qnty
 }
 
 // backendConn
@@ -460,15 +403,15 @@ var ( // perfect hash table for important response header fields
 	}
 )
 
-func (r *backendResponse_) checkAcceptRanges(subs []pair, subFrom uint8, subEdge uint8) bool { // Accept-Ranges = 1#range-unit
+func (r *backendResponse_) checkAcceptRanges(subLines []pair, subFrom uint8, subEdge uint8) bool { // Accept-Ranges = 1#range-unit
 	if subFrom == subEdge {
 		r.headResult, r.failReason = StatusBadRequest, "accept-ranges = 1#range-unit"
 		return false
 	}
 	for i := subFrom; i < subEdge; i++ {
-		data := subs[i].dataAt(r.input)
-		bytesToLower(data) // range unit names are case-insensitive
-		if bytes.Equal(data, bytesBytes) {
+		subData := subLines[i].dataAt(r.input)
+		bytesToLower(subData) // range unit names are case-insensitive
+		if bytes.Equal(subData, bytesBytes) {
 			r.acceptBytes = true
 		} else {
 			// Ignore
@@ -476,7 +419,7 @@ func (r *backendResponse_) checkAcceptRanges(subs []pair, subFrom uint8, subEdge
 	}
 	return true
 }
-func (r *backendResponse_) checkAllow(subs []pair, subFrom uint8, subEdge uint8) bool { // Allow = #method
+func (r *backendResponse_) checkAllow(subLines []pair, subFrom uint8, subEdge uint8) bool { // Allow = #method
 	r.hasAllow = true
 	if r.zones.allow.isEmpty() {
 		r.zones.allow.from = subFrom
@@ -487,7 +430,7 @@ func (r *backendResponse_) checkAllow(subs []pair, subFrom uint8, subEdge uint8)
 	}
 	return true
 }
-func (r *backendResponse_) checkAltSvc(subs []pair, subFrom uint8, subEdge uint8) bool { // Alt-Svc = clear / 1#alt-value
+func (r *backendResponse_) checkAltSvc(subLines []pair, subFrom uint8, subEdge uint8) bool { // Alt-Svc = clear / 1#alt-value
 	if subFrom == subEdge {
 		r.headResult, r.failReason = StatusBadRequest, "alt-svc = clear / 1#alt-value"
 		return false
@@ -501,40 +444,40 @@ func (r *backendResponse_) checkAltSvc(subs []pair, subFrom uint8, subEdge uint8
 	}
 	return true
 }
-func (r *backendResponse_) checkCacheControl(subs []pair, subFrom uint8, subEdge uint8) bool { // Cache-Control = #cache-directive
+func (r *backendResponse_) checkCacheControl(subLines []pair, subFrom uint8, subEdge uint8) bool { // Cache-Control = #cache-directive
 	// cache-directive = token [ "=" ( token / quoted-string ) ]
 	for i := subFrom; i < subEdge; i++ {
 		// TODO
 	}
 	return true
 }
-func (r *backendResponse_) checkCacheStatus(subs []pair, subFrom uint8, subEdge uint8) bool { // ?
+func (r *backendResponse_) checkCacheStatus(subLines []pair, subFrom uint8, subEdge uint8) bool { // ?
 	for i := subFrom; i < subEdge; i++ {
 		// TODO
 	}
 	return true
 }
-func (r *backendResponse_) checkCDNCacheControl(subs []pair, subFrom uint8, subEdge uint8) bool { // ?
+func (r *backendResponse_) checkCDNCacheControl(subLines []pair, subFrom uint8, subEdge uint8) bool { // ?
 	for i := subFrom; i < subEdge; i++ {
 		// TODO
 	}
 	return true
 }
-func (r *backendResponse_) checkProxyAuthenticate(subs []pair, subFrom uint8, subEdge uint8) bool { // Proxy-Authenticate = #challenge
+func (r *backendResponse_) checkProxyAuthenticate(subLines []pair, subFrom uint8, subEdge uint8) bool { // Proxy-Authenticate = #challenge
 	// TODO; use r._checkChallenge
 	return true
 }
-func (r *backendResponse_) checkWWWAuthenticate(subs []pair, subFrom uint8, subEdge uint8) bool { // WWW-Authenticate = #challenge
+func (r *backendResponse_) checkWWWAuthenticate(subLines []pair, subFrom uint8, subEdge uint8) bool { // WWW-Authenticate = #challenge
 	// TODO; use r._checkChallenge
 	return true
 }
-func (r *backendResponse_) _checkChallenge(subs []pair, subFrom uint8, subEdge uint8) bool { // challenge = auth-scheme [ 1*SP ( token68 / [ auth-param *( OWS "," OWS auth-param ) ] ) ]
+func (r *backendResponse_) _checkChallenge(subLines []pair, subFrom uint8, subEdge uint8) bool { // challenge = auth-scheme [ 1*SP ( token68 / [ auth-param *( OWS "," OWS auth-param ) ] ) ]
 	for i := subFrom; i < subEdge; i++ {
 		// TODO
 	}
 	return true
 }
-func (r *backendResponse_) checkTransferEncoding(subs []pair, subFrom uint8, subEdge uint8) bool { // Transfer-Encoding = #transfer-coding
+func (r *backendResponse_) checkTransferEncoding(subLines []pair, subFrom uint8, subEdge uint8) bool { // Transfer-Encoding = #transfer-coding
 	if r.status < StatusOK || r.status == StatusNoContent {
 		r.headResult, r.failReason = StatusBadRequest, "transfer-encoding is not allowed in 1xx and 204 responses"
 		return false
@@ -542,9 +485,9 @@ func (r *backendResponse_) checkTransferEncoding(subs []pair, subFrom uint8, sub
 	if r.status == StatusNotModified {
 		// TODO
 	}
-	return r._httpIn_.checkTransferEncoding(subs, subFrom, subEdge)
+	return r._httpIn_.checkTransferEncoding(subLines, subFrom, subEdge)
 }
-func (r *backendResponse_) checkUpgrade(subs []pair, subFrom uint8, subEdge uint8) bool { // Upgrade = #protocol
+func (r *backendResponse_) checkUpgrade(subLines []pair, subFrom uint8, subEdge uint8) bool { // Upgrade = #protocol
 	if r.httpVersion >= Version2 {
 		r.headResult, r.failReason = StatusBadRequest, "upgrade is not supported in http/2 and http/3"
 		return false
@@ -553,7 +496,7 @@ func (r *backendResponse_) checkUpgrade(subs []pair, subFrom uint8, subEdge uint
 	r.headResult, r.failReason = StatusBadRequest, "upgrade is not supported in exchan mode"
 	return false
 }
-func (r *backendResponse_) checkVary(subs []pair, subFrom uint8, subEdge uint8) bool { // Vary = #( "*" / field-name )
+func (r *backendResponse_) checkVary(subLines []pair, subFrom uint8, subEdge uint8) bool { // Vary = #( "*" / field-name )
 	if r.zones.vary.isEmpty() {
 		r.zones.vary.from = subFrom
 	}

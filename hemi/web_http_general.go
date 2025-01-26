@@ -754,7 +754,7 @@ func (r *_httpIn_) _checkHTTPDate(headerLine *pair, lineIndex uint8, pIndex *uin
 	return false
 }
 
-func (r *_httpIn_) checkAccept(subs []pair, subFrom uint8, subEdge uint8) bool { // Accept = #( media-range [ weight ] )
+func (r *_httpIn_) checkAccept(subLines []pair, subFrom uint8, subEdge uint8) bool { // Accept = #( media-range [ weight ] )
 	if r.zAccept.isEmpty() {
 		r.zAccept.from = subFrom
 	}
@@ -764,31 +764,31 @@ func (r *_httpIn_) checkAccept(subs []pair, subFrom uint8, subEdge uint8) bool {
 	}
 	return true
 }
-func (r *_httpIn_) checkAcceptEncoding(subs []pair, subFrom uint8, subEdge uint8) bool { // Accept-Encoding = #( codings [ weight ] )
+func (r *_httpIn_) checkAcceptEncoding(subLines []pair, subFrom uint8, subEdge uint8) bool { // Accept-Encoding = #( codings [ weight ] )
 	// codings = content-coding / "identity" / "*"
 	// content-coding = token
 	for i := subFrom; i < subEdge; i++ {
 		if r.numAcceptCodings == int8(cap(r.acceptCodings)) {
 			break // ignore too many codings
 		}
-		sub := &subs[i]
-		if sub.kind != pairHeader {
+		subLine := &subLines[i]
+		if subLine.kind != pairHeader {
 			continue
 		}
-		data := sub.dataAt(r.input)
-		bytesToLower(data)
+		subData := subLine.dataAt(r.input)
+		bytesToLower(subData)
 		var coding uint8
-		if bytes.Equal(data, bytesGzip) {
+		if bytes.Equal(subData, bytesGzip) {
 			r.acceptGzip = true
 			coding = httpCodingGzip
-		} else if bytes.Equal(data, bytesBrotli) {
+		} else if bytes.Equal(subData, bytesBrotli) {
 			r.acceptBrotli = true
 			coding = httpCodingBrotli
-		} else if bytes.Equal(data, bytesDeflate) {
+		} else if bytes.Equal(subData, bytesDeflate) {
 			coding = httpCodingDeflate
-		} else if bytes.Equal(data, bytesCompress) {
+		} else if bytes.Equal(subData, bytesCompress) {
 			coding = httpCodingCompress
-		} else if bytes.Equal(data, bytesIdentity) {
+		} else if bytes.Equal(subData, bytesIdentity) {
 			coding = httpCodingIdentity
 		} else {
 			coding = httpCodingUnknown
@@ -798,7 +798,7 @@ func (r *_httpIn_) checkAcceptEncoding(subs []pair, subFrom uint8, subEdge uint8
 	}
 	return true
 }
-func (r *_httpIn_) checkConnection(subs []pair, subFrom uint8, subEdge uint8) bool { // Connection = #connection-option
+func (r *_httpIn_) checkConnection(subLines []pair, subFrom uint8, subEdge uint8) bool { // Connection = #connection-option
 	if r.httpVersion >= Version2 {
 		r.headResult, r.failReason = StatusBadRequest, "connection header field is not allowed in HTTP/2 and HTTP/3"
 		return false
@@ -809,9 +809,9 @@ func (r *_httpIn_) checkConnection(subs []pair, subFrom uint8, subEdge uint8) bo
 	r.zConnection.edge = subEdge
 	// connection-option = token
 	for i := subFrom; i < subEdge; i++ {
-		data := subs[i].dataAt(r.input)
-		bytesToLower(data) // connection options are case-insensitive.
-		if bytes.Equal(data, bytesClose) {
+		subData := subLines[i].dataAt(r.input)
+		bytesToLower(subData) // connection options are case-insensitive.
+		if bytes.Equal(subData, bytesClose) {
 			r.keepAlive = 0
 		} else {
 			// We don't support "keep-alive" connection option as it's not formal in HTTP/1.0.
@@ -819,23 +819,23 @@ func (r *_httpIn_) checkConnection(subs []pair, subFrom uint8, subEdge uint8) bo
 	}
 	return true
 }
-func (r *_httpIn_) checkContentEncoding(subs []pair, subFrom uint8, subEdge uint8) bool { // Content-Encoding = #content-coding
+func (r *_httpIn_) checkContentEncoding(subLines []pair, subFrom uint8, subEdge uint8) bool { // Content-Encoding = #content-coding
 	// content-coding = token
 	for i := subFrom; i < subEdge; i++ {
 		if r.numContentCodings == int8(cap(r.contentCodings)) {
 			r.headResult, r.failReason = StatusBadRequest, "too many content codings applied to content"
 			return false
 		}
-		data := subs[i].dataAt(r.input)
-		bytesToLower(data)
+		subData := subLines[i].dataAt(r.input)
+		bytesToLower(subData)
 		var coding uint8
-		if bytes.Equal(data, bytesGzip) {
+		if bytes.Equal(subData, bytesGzip) {
 			coding = httpCodingGzip
-		} else if bytes.Equal(data, bytesBrotli) {
+		} else if bytes.Equal(subData, bytesBrotli) {
 			coding = httpCodingBrotli
-		} else if bytes.Equal(data, bytesDeflate) { // this is in fact zlib format
+		} else if bytes.Equal(subData, bytesDeflate) { // this is in fact zlib format
 			coding = httpCodingDeflate // some non-conformant implementations send the "deflate" compressed data without the zlib wrapper :(
-		} else if bytes.Equal(data, bytesCompress) {
+		} else if bytes.Equal(subData, bytesCompress) {
 			coding = httpCodingCompress
 		} else {
 			coding = httpCodingUnknown
@@ -845,7 +845,7 @@ func (r *_httpIn_) checkContentEncoding(subs []pair, subFrom uint8, subEdge uint
 	}
 	return true
 }
-func (r *_httpIn_) checkContentLanguage(subs []pair, subFrom uint8, subEdge uint8) bool { // Content-Language = #language-tag
+func (r *_httpIn_) checkContentLanguage(subLines []pair, subFrom uint8, subEdge uint8) bool { // Content-Language = #language-tag
 	if r.zContentLanguage.isEmpty() {
 		r.zContentLanguage.from = subFrom
 	}
@@ -855,7 +855,7 @@ func (r *_httpIn_) checkContentLanguage(subs []pair, subFrom uint8, subEdge uint
 	}
 	return true
 }
-func (r *_httpIn_) checkTrailer(subs []pair, subFrom uint8, subEdge uint8) bool { // Trailer = #field-name
+func (r *_httpIn_) checkTrailer(subLines []pair, subFrom uint8, subEdge uint8) bool { // Trailer = #field-name
 	if r.zTrailer.isEmpty() {
 		r.zTrailer.from = subFrom
 	}
@@ -866,16 +866,16 @@ func (r *_httpIn_) checkTrailer(subs []pair, subFrom uint8, subEdge uint8) bool 
 	}
 	return true
 }
-func (r *_httpIn_) checkTransferEncoding(subs []pair, subFrom uint8, subEdge uint8) bool { // Transfer-Encoding = #transfer-coding
+func (r *_httpIn_) checkTransferEncoding(subLines []pair, subFrom uint8, subEdge uint8) bool { // Transfer-Encoding = #transfer-coding
 	if r.httpVersion != Version1_1 {
 		r.headResult, r.failReason = StatusBadRequest, "transfer-encoding is only allowed in http/1.1"
 		return false
 	}
 	// transfer-coding = "chunked" / "compress" / "deflate" / "gzip"
 	for i := subFrom; i < subEdge; i++ {
-		data := subs[i].dataAt(r.input)
-		bytesToLower(data)
-		if bytes.Equal(data, bytesChunked) {
+		subData := subLines[i].dataAt(r.input)
+		bytesToLower(subData)
+		if bytes.Equal(subData, bytesChunked) {
 			r.transferChunked = true
 		} else {
 			// RFC 9112 (section 6.1):
@@ -886,7 +886,7 @@ func (r *_httpIn_) checkTransferEncoding(subs []pair, subFrom uint8, subEdge uin
 	}
 	return true
 }
-func (r *_httpIn_) checkVia(subs []pair, subFrom uint8, subEdge uint8) bool { // Via = #( received-protocol RWS received-by [ RWS comment ] )
+func (r *_httpIn_) checkVia(subLines []pair, subFrom uint8, subEdge uint8) bool { // Via = #( received-protocol RWS received-by [ RWS comment ] )
 	if r.zVia.isEmpty() {
 		r.zVia.from = subFrom
 	}

@@ -1224,7 +1224,7 @@ var ( // perfect hash table for important request header fields
 	}
 )
 
-func (r *serverRequest_) checkAcceptLanguage(subs []pair, subFrom uint8, subEdge uint8) bool { // Accept-Language = #( language-range [ weight ] )
+func (r *serverRequest_) checkAcceptLanguage(subLines []pair, subFrom uint8, subEdge uint8) bool { // Accept-Language = #( language-range [ weight ] )
 	// language-range = <language-range, see [RFC4647], Section 2.1>
 	// weight = OWS ";" OWS "q=" qvalue
 	// qvalue = ( "0" [ "." *3DIGIT ] ) / ( "1" [ "." *3"0" ] )
@@ -1237,14 +1237,14 @@ func (r *serverRequest_) checkAcceptLanguage(subs []pair, subFrom uint8, subEdge
 	}
 	return true
 }
-func (r *serverRequest_) checkCacheControl(subs []pair, subFrom uint8, subEdge uint8) bool { // Cache-Control = #cache-directive
+func (r *serverRequest_) checkCacheControl(subLines []pair, subFrom uint8, subEdge uint8) bool { // Cache-Control = #cache-directive
 	// cache-directive = token [ "=" ( token / quoted-string ) ]
 	for i := subFrom; i < subEdge; i++ {
 		// TODO
 	}
 	return true
 }
-func (r *serverRequest_) checkExpect(subs []pair, subFrom uint8, subEdge uint8) bool { // Expect = #expectation
+func (r *serverRequest_) checkExpect(subLines []pair, subFrom uint8, subEdge uint8) bool { // Expect = #expectation
 	// expectation = token [ "=" ( token / quoted-string ) parameters ]
 	if r.httpVersion >= Version1_1 {
 		if r.zones.expect.isEmpty() {
@@ -1252,13 +1252,13 @@ func (r *serverRequest_) checkExpect(subs []pair, subFrom uint8, subEdge uint8) 
 		}
 		r.zones.expect.edge = subEdge
 		for i := subFrom; i < subEdge; i++ {
-			sub := &subs[i]
-			if sub.kind != pairHeader {
+			subLine := &subLines[i]
+			if subLine.kind != pairHeader {
 				continue
 			}
-			data := sub.dataAt(r.input)
-			bytesToLower(data) // the Expect field-value is case-insensitive.
-			if bytes.Equal(data, bytes100Continue) {
+			subData := subLine.dataAt(r.input)
+			bytesToLower(subData) // the Expect field-value is case-insensitive.
+			if bytes.Equal(subData, bytes100Continue) {
 				r.expectContinue = true
 			} else {
 				// Unknown expectation, ignored.
@@ -1268,12 +1268,12 @@ func (r *serverRequest_) checkExpect(subs []pair, subFrom uint8, subEdge uint8) 
 		// RFC 9110 (section 10.1.1):
 		// A server that receives a 100-continue expectation in an HTTP/1.0 request MUST ignore that expectation.
 		for i := subFrom; i < subEdge; i++ {
-			subs[i].zero() // since HTTP/1.0 doesn't support 1xx status codes, we delete the expect.
+			subLines[i].zero() // since HTTP/1.0 doesn't support 1xx status codes, we delete the expect.
 		}
 	}
 	return true
 }
-func (r *serverRequest_) checkForwarded(subs []pair, subFrom uint8, subEdge uint8) bool { // Forwarded = 1#forwarded-element
+func (r *serverRequest_) checkForwarded(subLines []pair, subFrom uint8, subEdge uint8) bool { // Forwarded = 1#forwarded-element
 	if subFrom == subEdge {
 		r.headResult, r.failReason = StatusBadRequest, "forwarded = 1#forwarded-element"
 		return false
@@ -1287,21 +1287,21 @@ func (r *serverRequest_) checkForwarded(subs []pair, subFrom uint8, subEdge uint
 	r.zones.forwarded.edge = subEdge
 	return true
 }
-func (r *serverRequest_) checkIfMatch(subs []pair, subFrom uint8, subEdge uint8) bool { // If-Match = "*" / #entity-tag
-	return r._checkMatch(subs, subFrom, subEdge, &r.zones.ifMatch, &r.ifMatch)
+func (r *serverRequest_) checkIfMatch(subLines []pair, subFrom uint8, subEdge uint8) bool { // If-Match = "*" / #entity-tag
+	return r._checkMatch(subLines, subFrom, subEdge, &r.zones.ifMatch, &r.ifMatch)
 }
-func (r *serverRequest_) checkIfNoneMatch(subs []pair, subFrom uint8, subEdge uint8) bool { // If-None-Match = "*" / #entity-tag
-	return r._checkMatch(subs, subFrom, subEdge, &r.zones.ifNoneMatch, &r.ifNoneMatch)
+func (r *serverRequest_) checkIfNoneMatch(subLines []pair, subFrom uint8, subEdge uint8) bool { // If-None-Match = "*" / #entity-tag
+	return r._checkMatch(subLines, subFrom, subEdge, &r.zones.ifNoneMatch, &r.ifNoneMatch)
 }
-func (r *serverRequest_) _checkMatch(subs []pair, subFrom uint8, subEdge uint8, zMatch *zone, match *int8) bool {
+func (r *serverRequest_) _checkMatch(subLines []pair, subFrom uint8, subEdge uint8, zMatch *zone, match *int8) bool {
 	if zMatch.isEmpty() {
 		zMatch.from = subFrom
 	}
 	zMatch.edge = subEdge
 	for i := subFrom; i < subEdge; i++ {
-		data := subs[i].dataAt(r.input)
+		subData := subLines[i].dataAt(r.input)
 		nMatch := *match // -1:*, 0:nonexist, >0:num
-		if len(data) == 1 && data[0] == '*' {
+		if len(subData) == 1 && subData[0] == '*' {
 			if nMatch != 0 {
 				r.headResult, r.failReason = StatusBadRequest, "mix using of * and entity-tag"
 				return false
@@ -1321,17 +1321,17 @@ func (r *serverRequest_) _checkMatch(subs []pair, subFrom uint8, subEdge uint8, 
 	}
 	return true
 }
-func (r *serverRequest_) checkTE(subs []pair, subFrom uint8, subEdge uint8) bool { // TE = #t-codings
+func (r *serverRequest_) checkTE(subLines []pair, subFrom uint8, subEdge uint8) bool { // TE = #t-codings
 	// t-codings = "trailers" / ( transfer-coding [ t-ranking ] )
 	// t-ranking = OWS ";" OWS "q=" rank
 	for i := subFrom; i < subEdge; i++ {
-		sub := &subs[i]
-		if sub.kind != pairHeader {
+		subLine := &subLines[i]
+		if subLine.kind != pairHeader {
 			continue
 		}
-		data := sub.dataAt(r.input)
-		bytesToLower(data)
-		if bytes.Equal(data, bytesTrailers) {
+		subData := subLine.dataAt(r.input)
+		bytesToLower(subData)
+		if bytes.Equal(subData, bytesTrailers) {
 			r.acceptTrailers = true
 		} else if r.httpVersion > Version1_1 {
 			r.headResult, r.failReason = StatusBadRequest, "te codings other than trailers are not allowed in http/2 and http/3"
@@ -1340,7 +1340,7 @@ func (r *serverRequest_) checkTE(subs []pair, subFrom uint8, subEdge uint8) bool
 	}
 	return true
 }
-func (r *serverRequest_) checkUpgrade(subs []pair, subFrom uint8, subEdge uint8) bool { // Upgrade = #protocol
+func (r *serverRequest_) checkUpgrade(subLines []pair, subFrom uint8, subEdge uint8) bool { // Upgrade = #protocol
 	if r.httpVersion > Version1_1 {
 		r.headResult, r.failReason = StatusBadRequest, "http upgrade is only supported in http/1.1"
 		return false
@@ -1354,9 +1354,9 @@ func (r *serverRequest_) checkUpgrade(subs []pair, subFrom uint8, subEdge uint8)
 		// protocol-name    = token
 		// protocol-version = token
 		for i := subFrom; i < subEdge; i++ {
-			data := subs[i].dataAt(r.input)
-			bytesToLower(data)
-			if bytes.Equal(data, bytesWebSocket) {
+			subData := subLines[i].dataAt(r.input)
+			bytesToLower(subData)
+			if bytes.Equal(subData, bytesWebSocket) {
 				r.upgradeSocket = true
 			} else {
 				// Unknown protocol. Ignored. We don't support "Upgrade: h2c" either.
@@ -1366,12 +1366,12 @@ func (r *serverRequest_) checkUpgrade(subs []pair, subFrom uint8, subEdge uint8)
 		// RFC 9110 (section 7.8):
 		// A server that receives an Upgrade header field in an HTTP/1.0 request MUST ignore that Upgrade field.
 		for i := subFrom; i < subEdge; i++ {
-			subs[i].zero() // we delete it.
+			subLines[i].zero() // we delete it.
 		}
 	}
 	return true
 }
-func (r *serverRequest_) checkXForwardedFor(subs []pair, subFrom uint8, subEdge uint8) bool { // X-Forwarded-For: <client>, <proxy1>, <proxy2>
+func (r *serverRequest_) checkXForwardedFor(subLines []pair, subFrom uint8, subEdge uint8) bool { // X-Forwarded-For: <client>, <proxy1>, <proxy2>
 	if subFrom == subEdge {
 		r.headResult, r.failReason = StatusBadRequest, "empty x-forwarded-for"
 		return false

@@ -64,17 +64,17 @@ func (c *server1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn
 	c.closeSafe = true
 
 	// Input is conn scoped but put in stream scoped request for convenience
-	req := &c.stream.request
-	req.input = req.stockInput[:]
+	servReq := &c.stream.request
+	servReq.input = servReq.stockInput[:]
 }
 func (c *server1Conn) onPut() {
 	// Input, inputNext, and inputEdge are conn scoped but put in stream scoped request for convenience
-	req := &c.stream.request
-	if cap(req.input) != cap(req.stockInput) { // fetched from pool
-		PutNK(req.input)
-		req.input = nil
+	servReq := &c.stream.request
+	if cap(servReq.input) != cap(servReq.stockInput) { // fetched from pool
+		PutNK(servReq.input)
+		servReq.input = nil
 	}
-	req.inputNext, req.inputEdge = 0, 0
+	servReq.inputNext, servReq.inputEdge = 0, 0
 
 	c._serverConn_.onPut()
 	c.gate = nil // put here due to Go's limitation

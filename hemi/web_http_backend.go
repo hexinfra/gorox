@@ -88,15 +88,15 @@ func (c *_backendConn_[N]) onGet(node N) {
 	c.node = node
 }
 func (c *_backendConn_[N]) onPut() {
-	// c.node will be set as nil by upper code.
 	c.expireTime = time.Time{}
+	// c.node will be set as nil by upper code.
 }
-
-func (c *_backendConn_[N]) Holder() httpHolder { return c.node }
 
 func (c *_backendConn_[N]) isAlive() bool {
 	return c.expireTime.IsZero() || time.Now().Before(c.expireTime)
 }
+
+func (c *_backendConn_[N]) Holder() httpHolder { return c.node }
 
 // BackendStream
 type BackendStream interface { // for *backend[1-3]Stream

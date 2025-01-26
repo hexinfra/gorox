@@ -440,11 +440,11 @@ func (c *http2Conn_) joinStream(stream http2Stream) {
 	}
 	if index != http2MaxConcurrentStreams {
 		if DebugLevel() >= 2 {
-			Printf("conn=%d joinStream=%d at %d\n", c.id, stream.getID(), index)
+			Printf("conn=%d joinStream=%d at %d\n", c.id, stream.nativeID(), index)
 		}
 		stream.setIndex(index)
 		c.activeStreams[index] = stream
-		c.activeStreamIDs[index] = stream.getID()
+		c.activeStreamIDs[index] = stream.nativeID()
 	} else { // this MUST not happen
 		BugExitln("joinStream cannot find an empty slot")
 	}
@@ -497,7 +497,7 @@ type http2Stream interface {
 	// Imports
 	httpStream
 	// Methods
-	getID() uint32        // http/2 native stream id
+	nativeID() uint32     // http/2 native stream id
 	getIndex() uint8      // at activeStreams
 	setIndex(index uint8) // at activeStreams
 }
@@ -505,12 +505,11 @@ type http2Stream interface {
 // http2Stream_ is the parent for server2Stream and backend2Stream.
 type http2Stream_[C http2Conn] struct {
 	// Parent
-	httpStream_
+	httpStream_[C]
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	id   uint32 // the stream id
-	conn C      // the http/2 connection
+	id uint32 // the stream id. we use 4 byte instead of int64 to save memory space! see activeStreamIDs
 	// Stream states (zeros)
 	_http2Stream0 // all values in this struct must be zero by default!
 }
@@ -520,26 +519,21 @@ type _http2Stream0 struct { // for fast reset, entirely
 }
 
 func (s *http2Stream_[C]) onUse(id uint32, conn C) {
-	s.httpStream_.onUse()
+	s.httpStream_.onUse(conn)
 
 	s.id = id
-	s.conn = conn
 }
 func (s *http2Stream_[C]) onEnd() {
 	s._http2Stream0 = _http2Stream0{}
 
-	// s.conn will be set as nil by upper code
 	s.httpStream_.onEnd()
 }
 
-func (s *http2Stream_[C]) getID() uint32 { return s.id }
-
+func (s *http2Stream_[C]) nativeID() uint32     { return s.id }
 func (s *http2Stream_[C]) getIndex() uint8      { return s.index }
 func (s *http2Stream_[C]) setIndex(index uint8) { s.index = index }
 
-func (s *http2Stream_[C]) ID() int64            { return int64(s.id) }
-func (s *http2Stream_[C]) Conn() httpConn       { return s.conn }
-func (s *http2Stream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }
+func (s *http2Stream_[C]) ID() int64 { return int64(s.id) }
 
 func (s *http2Stream_[C]) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream?
 func (s *http2Stream_[C]) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream?

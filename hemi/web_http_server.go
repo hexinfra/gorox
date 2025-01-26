@@ -193,17 +193,22 @@ type serverConn interface {
 }
 
 // _serverConn_ is a mixin for server[1-3]Conn.
-type _serverConn_ struct {
+type _serverConn_[G httpGate] struct {
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
+	gate G // the gate to which the conn belongs
 	// Conn states (zeros)
 }
 
-func (c *_serverConn_) onGet() {
+func (c *_serverConn_[G]) onGet(gate G) {
+	c.gate = gate
 }
-func (c *_serverConn_) onPut() {
+func (c *_serverConn_[G]) onPut() {
+	// c.gate will be set as nil by upper code.
 }
+
+func (c *_serverConn_[G]) Holder() httpHolder { return c.gate }
 
 // serverStream
 type serverStream interface {
@@ -2096,7 +2101,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 							return
 						}
 						nameBuffer := r.stream.buffer256() // enough for tempName
-						m := r.stream.Conn().MakeTempName(nameBuffer, time.Now().Unix())
+						m := r.stream.MakeTempName(nameBuffer, time.Now().Unix())
 						if !r.arrayCopy(nameBuffer[:m]) { // add "391384576"
 							r.stream.markBroken()
 							return

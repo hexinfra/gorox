@@ -294,11 +294,10 @@ type server2Conn struct {
 	// Parent
 	http2Conn_
 	// Mixins
-	_serverConn_
+	_serverConn_[*httpxGate]
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	gate *httpxGate // the gate to which the connection belongs
 	// Conn states (zeros)
 	_server2Conn0 // all values in this struct must be zero by default!
 }
@@ -328,15 +327,13 @@ func putServer2Conn(servConn *server2Conn) {
 
 func (c *server2Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
 	c.http2Conn_.onGet(id, gate, netConn, rawConn)
-	c._serverConn_.onGet()
-
-	c.gate = gate
+	c._serverConn_.onGet(gate)
 }
 func (c *server2Conn) onPut() {
 	c._server2Conn0 = _server2Conn0{}
-	c.gate = nil
 
 	c._serverConn_.onPut()
+	c.gate = nil // put here due to Go's limitation
 	c.http2Conn_.onPut()
 }
 
@@ -711,8 +708,6 @@ func (s *server2Stream) onEnd() { // for zeros
 	s.http2Stream_.onEnd()
 	s.conn = nil // we can't do this in http2Stream_.onEnd() due to Go's limit, so put here
 }
-
-func (s *server2Stream) Holder() httpHolder { return s.conn.gate }
 
 func (s *server2Stream) execute() { // runner
 	defer putServer2Stream(s)

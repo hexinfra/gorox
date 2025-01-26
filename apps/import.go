@@ -1,5 +1,5 @@
 package apps
 
-import ( // import your webapps here
+import ( // import all of your webapps here
 	_ "github.com/hexinfra/gorox/apps/examples/hello"
 )

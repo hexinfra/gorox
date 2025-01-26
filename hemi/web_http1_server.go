@@ -23,14 +23,13 @@ type server1Conn struct {
 	// Parent
 	http1Conn_
 	// Mixins
-	_serverConn_
+	_serverConn_[*httpxGate]
 	// Assocs
 	stream server1Stream // an http/1.x connection has exactly one stream
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	gate      *httpxGate // the gate to which the conn belongs
-	closeSafe bool       // if false, send a FIN first to avoid TCP's RST following immediate close(). true by default
+	closeSafe bool // if false, send a FIN first to avoid TCP's RST following immediate close(). true by default
 	// Conn states (zeros)
 }
 
@@ -41,7 +40,6 @@ func getServer1Conn(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall
 	if x := poolServer1Conn.Get(); x == nil {
 		servConn = new(server1Conn)
 		servStream := &servConn.stream
-		servStream.conn = servConn
 		servReq, servResp := &servStream.request, &servStream.response
 		servReq.stream = servStream
 		servReq.inMessage = servReq
@@ -61,9 +59,8 @@ func putServer1Conn(servConn *server1Conn) {
 
 func (c *server1Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn syscall.RawConn) {
 	c.http1Conn_.onGet(id, gate, netConn, rawConn)
-	c._serverConn_.onGet()
+	c._serverConn_.onGet(gate)
 
-	c.gate = gate
 	c.closeSafe = true
 
 	// Input is conn scoped but put in stream scoped request for convenience
@@ -79,16 +76,15 @@ func (c *server1Conn) onPut() {
 	}
 	req.inputNext, req.inputEdge = 0, 0
 
-	c.gate = nil
-
 	c._serverConn_.onPut()
+	c.gate = nil // put here due to Go's limitation
 	c.http1Conn_.onPut()
 }
 
 func (c *server1Conn) manager() { // runner
 	stream := &c.stream
 	for c.persistent { // each queued stream
-		stream.onUse(c.nextStreamID())
+		stream.onUse(c.nextStreamID(), c)
 		stream.execute()
 		stream.onEnd()
 	}
@@ -146,8 +142,8 @@ type server1Stream struct {
 	// Stream states (zeros)
 }
 
-func (s *server1Stream) onUse(id int64) { // for non-zeros
-	s.http1Stream_.onUse(id)
+func (s *server1Stream) onUse(id int64, conn *server1Conn) { // for non-zeros
+	s.http1Stream_.onUse(id, conn)
 	s._serverStream_.onUse()
 
 	s.request.onUse()
@@ -163,9 +159,8 @@ func (s *server1Stream) onEnd() { // for zeros
 
 	s._serverStream_.onEnd()
 	s.http1Stream_.onEnd()
+	s.conn = nil // we can't do this in http1Stream_.onEnd() due to Go's limit, so put here
 }
-
-func (s *server1Stream) Holder() httpHolder { return s.conn.gate }
 
 func (s *server1Stream) execute() {
 	req, resp := &s.request, &s.response

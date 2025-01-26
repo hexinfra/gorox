@@ -125,10 +125,13 @@ Performance
 ===========
 
 Gorox is fast. You can use your favorite HTTP benchmarking tool (like wrk) to
-perform a benchmark against the following URLs:
+perform a benchmark against these URLs (ensure your local gorox is running):
 
   * http://localhost:3080/bench
   * http://localhost:3080/bench.html
+
+If you have two machines connected with a fast network, you can run gorox at one
+machine and run wrk at the other.
 
 Generally, the result is about 80% of nginx and slightly faster than fasthttp.
 

@@ -430,6 +430,10 @@ func (x *fcgiExchan) onEnd() { // for zeros
 	x.region.Free()
 }
 
+func (x *fcgiExchan) MakeTempName(dst []byte, unixTime int64) int {
+	return x.conn.MakeTempName(dst, unixTime)
+}
+
 func (x *fcgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
 func (x *fcgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }
 
@@ -1032,7 +1036,7 @@ func (r *fcgiResponse) _newTempFile() (tempFile, error) { // to save content to
 	filesDir := r.saveContentFilesDir()
 	filePath := r.exchan.unsafeMake(len(filesDir) + 19) // 19 bytes is enough for an int64
 	n := copy(filePath, filesDir)
-	n += r.exchan.conn.MakeTempName(filePath[n:], time.Now().Unix())
+	n += r.exchan.MakeTempName(filePath[n:], time.Now().Unix())
 	return os.OpenFile(WeakString(filePath[:n]), os.O_RDWR|os.O_CREATE, 0644)
 }
 

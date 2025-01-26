@@ -98,9 +98,8 @@ type http1Stream interface {
 // http1Stream_ is the parent for server1Stream and backend1Stream.
 type http1Stream_[C http1Conn] struct {
 	// Parent
-	httpStream_
+	httpStream_[C]
 	// Assocs
-	conn C // the http/1.x connection
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -108,8 +107,8 @@ type http1Stream_[C http1Conn] struct {
 	// Stream states (zeros)
 }
 
-func (s *http1Stream_[C]) onUse(id int64) {
-	s.httpStream_.onUse()
+func (s *http1Stream_[C]) onUse(id int64, conn C) {
+	s.httpStream_.onUse(conn)
 	s.id = id
 }
 func (s *http1Stream_[C]) onEnd() {
@@ -117,9 +116,6 @@ func (s *http1Stream_[C]) onEnd() {
 }
 
 func (s *http1Stream_[C]) ID() int64 { return s.id }
-
-func (s *http1Stream_[C]) Conn() httpConn       { return s.conn }
-func (s *http1Stream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }
 
 func (s *http1Stream_[C]) markBroken()    { s.conn.markBroken() }
 func (s *http1Stream_[C]) isBroken() bool { return s.conn.isBroken() }

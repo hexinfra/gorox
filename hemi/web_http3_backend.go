@@ -249,8 +249,6 @@ func (s *backend3Stream) onEnd() { // for zeros
 	s.conn = nil // we can't do this in http3Stream_.onEnd() due to Go's limit, so put here
 }
 
-func (s *backend3Stream) Holder() httpHolder { return s.conn.node }
-
 func (s *backend3Stream) Response() BackendResponse { return &s.response }
 func (s *backend3Stream) Request() BackendRequest   { return &s.request }
 func (s *backend3Stream) Socket() BackendSocket     { return nil } // TODO. See RFC 9220

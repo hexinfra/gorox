@@ -134,11 +134,10 @@ type server3Conn struct {
 	// Parent
 	http3Conn_
 	// Mixins
-	_serverConn_
+	_serverConn_[*http3Gate]
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	gate *http3Gate
 	// Conn states (zeros)
 	_server3Conn0 // all values in this struct must be zero by default!
 }
@@ -164,15 +163,13 @@ func putServer3Conn(servConn *server3Conn) {
 
 func (c *server3Conn) onGet(id int64, gate *http3Gate, quicConn *tcp2.Conn) {
 	c.http3Conn_.onGet(id, gate, quicConn)
-	c._serverConn_.onGet()
-
-	c.gate = gate
+	c._serverConn_.onGet(gate)
 }
 func (c *server3Conn) onPut() {
 	c._server3Conn0 = _server3Conn0{}
-	c.gate = nil
 
 	c._serverConn_.onPut()
+	c.gate = nil // put here due to Go's limitation
 	c.http3Conn_.onPut()
 }
 
@@ -256,8 +253,6 @@ func (s *server3Stream) onEnd() { // for zeros
 	s.http3Stream_.onEnd()
 	s.conn = nil // we can't do this in http3Stream_.onEnd() due to Go's limit, so put here
 }
-
-func (s *server3Stream) Holder() httpHolder { return s.conn.gate }
 
 func (s *server3Stream) execute() { // runner
 	// TODO ...

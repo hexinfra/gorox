@@ -284,7 +284,6 @@ func getBackend1Conn(id int64, node *http1Node, netConn net.Conn, rawConn syscal
 	if x := poolBackend1Conn.Get(); x == nil {
 		backConn = new(backend1Conn)
 		backStream := &backConn.stream
-		backStream.conn = backConn
 		backResp, backReq := &backStream.response, &backStream.request
 		backResp.stream = backStream
 		backResp.inMessage = backResp
@@ -314,7 +313,7 @@ func (c *backend1Conn) onPut() {
 
 func (c *backend1Conn) fetchStream() (*backend1Stream, error) {
 	backStream := &c.stream
-	backStream.onUse(c.nextStreamID())
+	backStream.onUse(c.nextStreamID(), c)
 	return backStream, nil
 }
 func (c *backend1Conn) storeStream(backStream *backend1Stream) {
@@ -343,8 +342,8 @@ type backend1Stream struct {
 	// Stream states (zeros)
 }
 
-func (s *backend1Stream) onUse(id int64) { // for non-zeros
-	s.http1Stream_.onUse(id)
+func (s *backend1Stream) onUse(id int64, conn *backend1Conn) { // for non-zeros
+	s.http1Stream_.onUse(id, conn)
 	s._backendStream_.onUse()
 
 	s.response.onUse()
@@ -360,9 +359,8 @@ func (s *backend1Stream) onEnd() { // for zeros
 
 	s._backendStream_.onEnd()
 	s.http1Stream_.onEnd()
+	s.conn = nil // we can't do this in http1Stream_.onEnd() due to Go's limit, so put here
 }
-
-func (s *backend1Stream) Holder() httpHolder { return s.conn.node }
 
 func (s *backend1Stream) Response() BackendResponse { return &s.response }
 func (s *backend1Stream) Request() BackendRequest   { return &s.request }
@@ -571,7 +569,7 @@ func (r *backend1Request) setMethodURI(method []byte, uri []byte, hasContent boo
 	}
 }
 func (r *backend1Request) proxySetAuthority(hostname []byte, colonport []byte) bool {
-	if r.stream.Conn().TLSMode() {
+	if r.stream.TLSMode() {
 		if bytes.Equal(colonport, bytesColonport443) {
 			colonport = nil
 		}

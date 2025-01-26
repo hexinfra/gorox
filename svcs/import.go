@@ -1,7 +1,5 @@
-// Import your services.
-
 package svcs
 
-import (
+import ( // import all of your services here
 	_ "github.com/hexinfra/gorox/svcs/examples/hello"
 )

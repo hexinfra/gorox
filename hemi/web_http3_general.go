@@ -70,11 +70,10 @@ type http3Stream interface {
 // http3Stream_ is the parent for server3Stream and backend3Stream.
 type http3Stream_[C http3Conn] struct {
 	// Parent
-	httpStream_
+	httpStream_[C]
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	conn       C            // the http/3 connection
 	quicStream *tcp2.Stream // the quic stream
 	// Stream states (zeros)
 	_http3Stream0 // all values in this struct must be zero by default!
@@ -83,23 +82,18 @@ type _http3Stream0 struct { // for fast reset, entirely
 }
 
 func (s *http3Stream_[C]) onUse(conn C, quicStream *tcp2.Stream) {
-	s.httpStream_.onUse()
+	s.httpStream_.onUse(conn)
 
-	s.conn = conn
 	s.quicStream = quicStream
 }
 func (s *http3Stream_[C]) onEnd() {
 	s._http3Stream0 = _http3Stream0{}
 
-	// s.conn will be set as nil by upper code
 	s.quicStream = nil
 	s.httpStream_.onEnd()
 }
 
 func (s *http3Stream_[C]) ID() int64 { return s.quicStream.ID() }
-
-func (s *http3Stream_[C]) Conn() httpConn       { return s.conn }
-func (s *http3Stream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }
 
 func (s *http3Stream_[C]) markBroken()    {}               // TODO
 func (s *http3Stream_[C]) isBroken() bool { return false } // TODO

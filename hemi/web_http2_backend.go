@@ -319,8 +319,6 @@ func (s *backend2Stream) onEnd() { // for zeros
 	s.conn = nil // we can't do this in http2Stream_.onEnd() due to Go's limit, so put here
 }
 
-func (s *backend2Stream) Holder() httpHolder { return s.conn.node }
-
 func (s *backend2Stream) Response() BackendResponse { return &s.response }
 func (s *backend2Stream) Request() BackendRequest   { return &s.request }
 func (s *backend2Stream) Socket() BackendSocket     { return nil } // TODO. See RFC 8441: https://datatracker.ietf.org/doc/html/rfc8441

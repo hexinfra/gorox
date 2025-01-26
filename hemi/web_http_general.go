@@ -67,6 +67,7 @@ type httpConn interface {
 	UDSMode() bool
 	TLSMode() bool
 	MakeTempName(dst []byte, unixTime int64) int
+	Holder() httpHolder
 	remoteAddr() net.Addr
 	markBroken()
 	isBroken() bool
@@ -124,8 +125,9 @@ func (c *httpConn_) isBroken() bool { return c.broken.Load() }
 type httpStream interface {
 	Holder() httpHolder
 	ID() int64
-	Conn() httpConn
-
+	UDSMode() bool
+	TLSMode() bool
+	MakeTempName(dst []byte, unixTime int64) int
 	remoteAddr() net.Addr
 	buffer256() []byte
 	unsafeMake(size int) []byte
@@ -140,7 +142,9 @@ type httpStream interface {
 }
 
 // httpStream_ is the parent for http[1-3]Stream_.
-type httpStream_ struct {
+type httpStream_[C httpConn] struct {
+	// Assocs
+	conn C // the http connection
 	// Stream states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis. must be >= 256 bytes so names can be placed into
 	// Stream states (controlled)
@@ -149,15 +153,25 @@ type httpStream_ struct {
 	// Stream states (zeros)
 }
 
-func (s *httpStream_) onUse() {
+func (s *httpStream_[C]) onUse(conn C) {
+	s.conn = conn
 	s.region.Init()
 }
-func (s *httpStream_) onEnd() {
+func (s *httpStream_[C]) onEnd() {
+	// s.conn will be set as nil by upper code
 	s.region.Free()
 }
 
-func (s *httpStream_) buffer256() []byte          { return s.stockBuffer[:] }
-func (s *httpStream_) unsafeMake(size int) []byte { return s.region.Make(size) }
+func (s *httpStream_[C]) Holder() httpHolder { return s.conn.Holder() }
+func (s *httpStream_[C]) UDSMode() bool      { return s.conn.UDSMode() }
+func (s *httpStream_[C]) TLSMode() bool      { return s.conn.TLSMode() }
+func (s *httpStream_[C]) MakeTempName(dst []byte, unixTime int64) int {
+	return s.conn.MakeTempName(dst, unixTime)
+}
+func (s *httpStream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }
+
+func (s *httpStream_[C]) buffer256() []byte          { return s.stockBuffer[:] }
+func (s *httpStream_[C]) unsafeMake(size int) []byte { return s.region.Make(size) }
 
 // httpIn
 type httpIn interface {
@@ -1520,7 +1534,7 @@ func (r *_httpIn_) _newTempFile(retain bool) (tempFile, error) { // to save cont
 		filesDir := r.saveContentFilesDir()
 		pathBuffer := r.UnsafeMake(len(filesDir) + 19) // 19 bytes is enough for an int64
 		n := copy(pathBuffer, filesDir)
-		n += r.stream.Conn().MakeTempName(pathBuffer[n:], time.Now().Unix())
+		n += r.stream.MakeTempName(pathBuffer[n:], time.Now().Unix())
 		return os.OpenFile(WeakString(pathBuffer[:n]), os.O_RDWR|os.O_CREATE, 0644)
 	} else { // since data is not used by upper caller, we don't need to actually write data to file.
 		return fakeFile, nil

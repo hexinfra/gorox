@@ -7,8 +7,7 @@
 
 package exts
 
-// import the standard exts
-import _ "github.com/hexinfra/gorox/hemi/classic"
+import _ "github.com/hexinfra/gorox/hemi/classic" // the standard exts
 
 import ( // import contrib exts here
 	_ "github.com/hexinfra/gorox/hemi/contrib/handlets/access1"

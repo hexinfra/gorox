@@ -88,8 +88,11 @@ func (c *_backendConn_[N]) onGet(node N) {
 	c.node = node
 }
 func (c *_backendConn_[N]) onPut() {
+	// c.node will be set as nil by upper code.
 	c.expireTime = time.Time{}
 }
+
+func (c *_backendConn_[N]) Holder() httpHolder { return c.node }
 
 func (c *_backendConn_[N]) isAlive() bool {
 	return c.expireTime.IsZero() || time.Now().Before(c.expireTime)
@@ -754,7 +757,7 @@ func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfi
 	}
 	if r.httpVersion >= Version2 {
 		var scheme []byte
-		if r.stream.Conn().TLSMode() {
+		if r.stream.TLSMode() {
 			scheme = bytesSchemeHTTPS
 		} else {
 			scheme = bytesSchemeHTTP

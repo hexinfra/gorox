@@ -55,7 +55,7 @@ A program (like Gorox) using Hemi Engine typically has these dependencies:
 
 ```
   +-------------------------------------------------------------+
-  |                           <program>                         |
+  |                          <program>                          |
   +-------------+-------------------------------+----------+----+
                 |                               |          |
                 v                               v          v
@@ -65,7 +65,7 @@ A program (like Gorox) using Hemi Engine typically has these dependencies:
                 |                     |         |          |
                 v                     v         v          v
   +-----------------------+   +---------------------------------+
-  | <classic> & <contrib> |-->+              <hemi>             |
+  | <classic> & <contrib> +-->|              <hemi>             |
   +-----------------------+   +---------------------------------+
 ```
 

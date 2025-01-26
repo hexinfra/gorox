@@ -22,7 +22,7 @@ const ( // HTTP/2 sizes and limits for both of our HTTP/2 server and HTTP/2 back
 
 const ( // HTTP/2 frame kinds
 	http2FrameData         = 0x0
-	http2FrameFields       = 0x1
+	http2FrameFields       = 0x1 // a.k.a headers
 	http2FramePriority     = 0x2 // deprecated
 	http2FrameRSTStream    = 0x3
 	http2FrameSettings     = 0x4
@@ -48,7 +48,7 @@ const ( // HTTP/2 error codes
 	http2CodeEnhanceYourCalm    = 0xb
 	http2CodeInadequateSecurity = 0xc
 	http2CodeHTTP11Required     = 0xd
-	http2CodeMax                = http2CodeHTTP11Required
+	http2NumErrorCodes          = 14
 )
 const ( // HTTP/2 stream states
 	http2StateClosed       = 0 // must be 0
@@ -132,10 +132,10 @@ var ( // HTTP/2 errors
 type http2Error uint32
 
 func (e http2Error) Error() string {
-	if e > http2CodeMax {
-		return "UNKNOWN_ERROR"
+	if e < http2NumErrorCodes {
+		return http2CodeTexts[e]
 	}
-	return http2CodeTexts[e]
+	return "UNKNOWN_ERROR"
 }
 
 // http2StaticTable is used by HPACK decoder.

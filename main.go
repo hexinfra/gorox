@@ -10,9 +10,9 @@ package main
 import (
 	"github.com/hexinfra/gorox/hemi/procmgr"
 
-	_ "github.com/hexinfra/gorox/apps"
-	_ "github.com/hexinfra/gorox/exts"
-	_ "github.com/hexinfra/gorox/svcs"
+	_ "github.com/hexinfra/gorox/apps" // all webapps
+	_ "github.com/hexinfra/gorox/exts" // all extensions
+	_ "github.com/hexinfra/gorox/svcs" // all services
 )
 
 func main() {

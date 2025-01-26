@@ -69,6 +69,10 @@ If build failed, set CGO_ENABLED to 0 and try again:
 
 On succeed, a single "gorox" or "gorox.exe" binary will be generated.
 
+Gorox is a normal program built on the Hemi Engine which resides in "hemi/" sub
+directory. If you would like to use the Hemi Engine directly, see our examples
+at: https://github.com/hexinfra/examples.
+
 Start and stop Gorox
 --------------------
 

@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 )
 
-const Version = "0.2.2-dev"
+const Version = "0.2.2"
 
 // debug level
 var _debugLevel atomic.Int32

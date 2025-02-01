@@ -6,9 +6,9 @@ HemiWeb
 Build
 =====
 
-  shell> go build
+    shell> go build
 
 Run
 ===
 
-  shell> ./hemiweb
+    shell> ./hemiweb

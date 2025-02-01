@@ -7,10 +7,10 @@ MuleCar
 Build
 =====
 
-  shell> go build
+    shell> go build
 
 
 Run
 ===
 
-  shell> ./mulecar
+    shell> ./mulecar

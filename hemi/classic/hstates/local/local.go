@@ -61,10 +61,10 @@ func (s *localHstate) Maintain() { // runner
 	s.Stage().DecSub() // hstate
 }
 
-func (s *localHstate) Set(sid []byte, session *Session) error {
+func (s *localHstate) Set(sid []byte, sess *Session) error {
 	return nil
 }
-func (s *localHstate) Get(sid []byte) (session *Session, err error) {
+func (s *localHstate) Get(sid []byte) (sess *Session, err error) {
 	return
 }
 func (s *localHstate) Del(sid []byte) error {

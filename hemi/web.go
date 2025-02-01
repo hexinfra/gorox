@@ -23,8 +23,8 @@ type Hstate interface {
 	Component
 	// Methods
 	Maintain() // runner
-	Set(sid []byte, session *Session) error
-	Get(sid []byte) (session *Session, err error)
+	Set(sid []byte, sess *Session) error
+	Get(sid []byte) (sess *Session, err error)
 	Del(sid []byte) error
 }
 

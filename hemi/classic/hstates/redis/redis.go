@@ -53,10 +53,10 @@ func (s *redisHstate) Maintain() { // runner
 	s.Stage().DecSub() // hstate
 }
 
-func (s *redisHstate) Set(sid []byte, session *Session) error {
+func (s *redisHstate) Set(sid []byte, sess *Session) error {
 	return nil
 }
-func (s *redisHstate) Get(sid []byte) (session *Session, err error) {
+func (s *redisHstate) Get(sid []byte) (sess *Session, err error) {
 	return
 }
 func (s *redisHstate) Del(sid []byte) error {

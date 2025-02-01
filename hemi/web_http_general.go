@@ -247,9 +247,12 @@ type _httpIn0 struct { // for fast reset, entirely
 	iContentType      uint8   // index of content-type header line in r.primes
 	iDate             uint8   // index of date header line in r.primes
 	_                 byte    // padding
+	_                 [4]byte // padding
 	zAccept           zone    // zone of accept header lines in r.primes. may not be continuous
 	zConnection       zone    // zone of connection header lines in r.primes. may not be continuous
 	zContentLanguage  zone    // zone of content-language header lines in r.primes. may not be continuous
+	zKeepAlive        zone    // zone of keep-alive header lines in r.primes. may not be continuous
+	zProxyConnection  zone    // zone of proxy-connection header lines in r.primes. may not be continuous
 	zTrailer          zone    // zone of trailer header lines in r.primes. may not be continuous
 	zVia              zone    // zone of via header lines in r.primes. may not be continuous
 	contentReceived   bool    // is the content received? true if the message has no content or the content is received, otherwise false
@@ -869,6 +872,20 @@ func (r *_httpIn_) checkContentLanguage(subLines []pair, subFrom uint8, subEdge 
 	}
 	return true
 }
+func (r *_httpIn_) checkKeepAlive(subLines []pair, subFrom uint8, subEdge uint8) bool { // Keep-Alive = #keepalive-param
+	if r.zKeepAlive.isEmpty() {
+		r.zKeepAlive.from = subFrom
+	}
+	r.zKeepAlive.edge = subEdge
+	return true
+}
+func (r *_httpIn_) checkProxyConnection(subLines []pair, subFrom uint8, subEdge uint8) bool { // Proxy-Connection = #connection-option
+	if r.zProxyConnection.isEmpty() {
+		r.zProxyConnection.from = subFrom
+	}
+	r.zProxyConnection.edge = subEdge
+	return true
+}
 func (r *_httpIn_) checkTrailer(subLines []pair, subFrom uint8, subEdge uint8) bool { // Trailer = #field-name
 	if r.zTrailer.isEmpty() {
 		r.zTrailer.from = subFrom
@@ -1384,8 +1401,12 @@ func (r *_httpIn_) proxyDelHopTrailerFields() {
 }
 func (r *_httpIn_) _proxyDelHopFieldLines(fieldLines zone, extraKind int8, delField func(name []byte, nameHash uint16)) { // TODO: improve performance
 	// These fields should be removed anyway: proxy-connection, keep-alive, te, transfer-encoding, upgrade
-	delField(bytesProxyConnection, hashProxyConnection)
-	delField(bytesKeepAlive, hashKeepAlive)
+	if r.zProxyConnection.notEmpty() {
+		delField(bytesProxyConnection, hashProxyConnection)
+	}
+	if r.zKeepAlive.notEmpty() {
+		delField(bytesKeepAlive, hashKeepAlive)
+	}
 	if !r.asResponse { // as request
 		delField(bytesTE, hashTE)
 	}

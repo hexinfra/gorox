@@ -449,7 +449,8 @@ type _serverRequest0 struct { // for fast reset, entirely
 		ifMatch        zone // the zone of if-match in r.primes
 		ifNoneMatch    zone // the zone of if-none-match in r.primes
 		xForwardedFor  zone
-		_              [4]byte // padding
+		te             zone
+		_              [2]byte // padding
 	}
 	unixTimes struct { // parsed unix times in seconds
 		ifModifiedSince   int64 // parsed unix time of if-modified-since
@@ -1329,6 +1330,10 @@ func (r *serverRequest_) _checkMatch(subLines []pair, subFrom uint8, subEdge uin
 	return true
 }
 func (r *serverRequest_) checkTE(subLines []pair, subFrom uint8, subEdge uint8) bool { // TE = #t-codings
+	if r.zones.te.isEmpty() {
+		r.zones.te.from = subFrom
+	}
+	r.zones.te.edge = subEdge
 	// t-codings = "trailers" / ( transfer-coding [ t-ranking ] )
 	// t-ranking = OWS ";" OWS "q=" rank
 	for i := subFrom; i < subEdge; i++ {
@@ -1357,6 +1362,10 @@ func (r *serverRequest_) checkUpgrade(subLines []pair, subFrom uint8, subEdge ui
 		return true
 	}
 	if r.httpVersion == Version1_1 {
+		if r.zUpgrade.isEmpty() {
+			r.zUpgrade.from = subFrom
+		}
+		r.zUpgrade.edge = subEdge
 		// protocol         = protocol-name ["/" protocol-version]
 		// protocol-name    = token
 		// protocol-version = token

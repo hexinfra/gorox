@@ -497,6 +497,10 @@ func (r *backendResponse_) checkUpgrade(subLines []pair, subFrom uint8, subEdge 
 		r.headResult, r.failReason = StatusBadRequest, "upgrade is not supported in http/2 and http/3"
 		return false
 	}
+	if r.zUpgrade.isEmpty() {
+		r.zUpgrade.from = subFrom
+	}
+	r.zUpgrade.edge = subEdge
 	// TODO: what about upgrade: websocket?
 	r.headResult, r.failReason = StatusBadRequest, "upgrade is not supported in exchan mode"
 	return false

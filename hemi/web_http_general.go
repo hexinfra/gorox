@@ -247,13 +247,14 @@ type _httpIn0 struct { // for fast reset, entirely
 	iContentType      uint8   // index of content-type header line in r.primes
 	iDate             uint8   // index of date header line in r.primes
 	_                 byte    // padding
-	_                 [4]byte // padding
 	zAccept           zone    // zone of accept header lines in r.primes. may not be continuous
 	zConnection       zone    // zone of connection header lines in r.primes. may not be continuous
 	zContentLanguage  zone    // zone of content-language header lines in r.primes. may not be continuous
 	zKeepAlive        zone    // zone of keep-alive header lines in r.primes. may not be continuous
 	zProxyConnection  zone    // zone of proxy-connection header lines in r.primes. may not be continuous
 	zTrailer          zone    // zone of trailer header lines in r.primes. may not be continuous
+	zTransferEncoding zone    // zone of transfer-encoding header lines in r.primes. may not be continuous
+	zUpgrade          zone    // zone of upgrade header lines in r.primes. may not be continuous
 	zVia              zone    // zone of via header lines in r.primes. may not be continuous
 	contentReceived   bool    // is the content received? true if the message has no content or the content is received, otherwise false
 	contentTextKind   int8    // kind of current r.contentText if it is text. see httpContentTextXXX
@@ -902,6 +903,10 @@ func (r *_httpIn_) checkTransferEncoding(subLines []pair, subFrom uint8, subEdge
 		r.headResult, r.failReason = StatusBadRequest, "transfer-encoding is only allowed in http/1.1"
 		return false
 	}
+	if r.zTransferEncoding.isEmpty() {
+		r.zTransferEncoding.from = subFrom
+	}
+	r.zTransferEncoding.edge = subEdge
 	// transfer-coding = "chunked" / "compress" / "deflate" / "gzip"
 	for i := subFrom; i < subEdge; i++ {
 		subData := subLines[i].dataAt(r.input)
@@ -1410,8 +1415,12 @@ func (r *_httpIn_) _proxyDelHopFieldLines(fieldLines zone, extraKind int8, delFi
 	if !r.asResponse { // as request
 		delField(bytesTE, hashTE)
 	}
-	delField(bytesTransferEncoding, hashTransferEncoding)
-	delField(bytesUpgrade, hashUpgrade)
+	if r.zTransferEncoding.notEmpty() {
+		delField(bytesTransferEncoding, hashTransferEncoding)
+	}
+	if r.zUpgrade.notEmpty() {
+		delField(bytesUpgrade, hashUpgrade)
+	}
 
 	// Now remove connection options in primes and extras.
 	// Note: we don't remove ("connection: xxx, yyy") itself here, we simply restrict it from being copied or inserted when acting as a proxy.

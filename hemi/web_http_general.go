@@ -181,6 +181,7 @@ type httpIn interface {
 
 	readContent() (data []byte, err error)
 	examineTail() bool
+	proxyDelHopFieldLines(delField func(name []byte, nameHash uint16))
 	proxyWalkTrailerLines(callback func(trailerLine *pair, trailerName []byte, lineValue []byte) bool) bool
 }
 
@@ -1412,15 +1413,13 @@ func (r *_httpIn_) _proxyDelHopFieldLines(fieldLines zone, extraKind int8, delFi
 	if r.zKeepAlive.notEmpty() {
 		delField(bytesKeepAlive, hashKeepAlive)
 	}
-	if !r.asResponse { // as request
-		delField(bytesTE, hashTE)
-	}
 	if r.zTransferEncoding.notEmpty() {
 		delField(bytesTransferEncoding, hashTransferEncoding)
 	}
 	if r.zUpgrade.notEmpty() {
 		delField(bytesUpgrade, hashUpgrade)
 	}
+	r.inMessage.proxyDelHopFieldLines(delField)
 
 	// Now remove connection options in primes and extras.
 	// Note: we don't remove ("connection: xxx, yyy") itself here, we simply restrict it from being copied or inserted when acting as a proxy.

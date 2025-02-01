@@ -377,6 +377,7 @@ type ServerRequest interface { // for *server[1-3]Request
 	contentIsEncoded() bool
 	proxyDelHopHeaderFields()
 	proxyDelHopTrailerFields()
+	proxyDelHopFieldLines(delField func(name []byte, nameHash uint16))
 	proxyWalkHeaderLines(callback func(headerLine *pair, headerName []byte, lineValue []byte) bool) bool
 	proxyWalkHeaderFields(callback func(headerName []byte, headerValue []byte) bool) bool // used by cgi-based protocols like cgi and fcgi
 	proxyWalkTrailerLines(callback func(trailerLine *pair, trailerName []byte, lineValue []byte) bool) bool
@@ -442,7 +443,7 @@ type _serverRequest0 struct { // for fast reset, entirely
 		proxyAuthorization uint8 // proxy-authorization header field ->r.input
 		userAgent          uint8 // user-agent header field ->r.input
 	}
-	zones struct { // zones (may not be continuous) of some selected header fields, for fast accessing
+	zones struct { // zones (may not be continuous) of some selected important header fields, for fast accessing
 		acceptLanguage zone
 		expect         zone
 		forwarded      zone
@@ -1783,6 +1784,11 @@ func (r *serverRequest_) EvalRanges(contentSize int64) []Range { // returned ran
 
 func (r *serverRequest_) proxyUnsetHost() {
 	r._delPrime(r.indexes.host) // zero safe
+}
+func (r *serverRequest_) proxyDelHopFieldLines(delField func(name []byte, nameHash uint16)) {
+	if r.zones.te.notEmpty() {
+		delField(bytesTE, hashTE)
+	}
 }
 func (r *serverRequest_) proxyWalkHeaderFields(callback func(headerName []byte, headerValue []byte) bool) bool {
 	// TODO

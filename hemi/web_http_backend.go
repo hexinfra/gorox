@@ -138,6 +138,7 @@ type BackendResponse interface { // for *backend[1-3]Response
 	proxyTakeContent() any
 	proxyDelHopHeaderFields()
 	proxyDelHopTrailerFields()
+	proxyDelHopFieldLines(delField func(name []byte, nameHash uint16))
 	proxyWalkHeaderLines(callback func(headerLine *pair, headerName []byte, lineValue []byte) bool) bool
 	proxyWalkTrailerLines(callback func(trailerLine *pair, trailerName []byte, lineValue []byte) bool) bool
 }
@@ -166,7 +167,7 @@ type _backendResponse0 struct { // for fast reset, entirely
 		server       uint8   // server header line ->r.input
 		_            [2]byte // padding
 	}
-	zones struct { // zones of some selected header fields, for fast accessing
+	zones struct { // zones (may not be continuous) of some selected important header fields, for fast accessing
 		allow  zone
 		altSvc zone
 		vary   zone
@@ -536,6 +537,9 @@ func (r *backendResponse_) unsafeLastModified() []byte {
 
 func (r *backendResponse_) proxyUnsetXXX() {
 	// TODO
+}
+func (r *backendResponse_) proxyDelHopFieldLines(delField func(name []byte, nameHash uint16)) {
+	// Currently nothing.
 }
 
 func (r *backendResponse_) HasContent() bool {

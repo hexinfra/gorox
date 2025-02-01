@@ -502,7 +502,7 @@ type _fcgiResponse0 struct { // for fast reset, entirely
 		xPoweredBy   uint8
 		_            byte // padding
 	}
-	zones struct { // zones of some selected header fields, for fast accessing
+	zones struct { // zones (may not be continuous) of some selected important header fields, for fast accessing
 		allow           zone
 		contentLanguage zone
 		_               [4]byte // padding
@@ -1011,8 +1011,9 @@ func (r *fcgiResponse) readContent() (data []byte, err error) {
 func (r *fcgiResponse) HasTrailers() bool { return false } // fcgi doesn't support http trailers
 func (r *fcgiResponse) examineTail() bool { return true }  // fcgi doesn't support http trailers
 
-func (r *fcgiResponse) proxyDelHopHeaderFields()  {} // for fcgi, nothing to delete
-func (r *fcgiResponse) proxyDelHopTrailerFields() {} // fcgi doesn't support http trailers
+func (r *fcgiResponse) proxyDelHopHeaderFields()                                          {} // for fcgi, nothing to delete
+func (r *fcgiResponse) proxyDelHopTrailerFields()                                         {} // fcgi doesn't support http trailers
+func (r *fcgiResponse) proxyDelHopFieldLines(delField func(name []byte, nameHash uint16)) {}
 
 func (r *fcgiResponse) proxyWalkHeaderLines(callback func(headerLine *pair, headerName []byte, lineValue []byte) bool) bool { // excluding sub header lines
 	for i := 1; i < len(r.primes); i++ { // r.primes[0] is not used

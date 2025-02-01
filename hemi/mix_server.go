@@ -116,7 +116,7 @@ func (s *Server_[G]) IncSubGate()   { s.IncSub() }
 func (s *Server_[G]) DecSubGate()   { s.DecSub() }
 func (s *Server_[G]) WaitSubGates() { s.WaitSubs() }
 
-func (s *Server_[G]) holder() _holder_ { return s._holder_ } // copy configs
+func (s *Server_[G]) holder() _holder_ { return s._holder_ } // for copying configs
 
 // Gate is the interface for all gates. Gates are not components.
 type Gate interface {

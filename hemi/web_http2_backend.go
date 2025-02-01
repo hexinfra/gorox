@@ -50,7 +50,7 @@ func (b *HTTP2Backend) CreateNode(compName string) Node {
 	return node
 }
 
-func (b *HTTP2Backend) FetchStream(req ServerRequest) (BackendStream, error) {
+func (b *HTTP2Backend) FetchStream(servReq ServerRequest) (BackendStream, error) {
 	return b.nodes[b.nodeIndexGet()].fetchStream()
 }
 func (b *HTTP2Backend) StoreStream(backStream BackendStream) {

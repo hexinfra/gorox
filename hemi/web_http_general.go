@@ -63,11 +63,11 @@ func (h *_httpHolder_) MaxMemoryContentSize() int32 { return h.maxMemoryContentS
 
 // httpConn
 type httpConn interface {
+	Holder() httpHolder
 	ID() int64
 	UDSMode() bool
 	TLSMode() bool
 	MakeTempName(dst []byte, unixTime int64) int
-	Holder() httpHolder
 	remoteAddr() net.Addr
 	markBroken()
 	isBroken() bool

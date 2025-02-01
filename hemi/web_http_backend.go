@@ -18,7 +18,7 @@ type HTTPBackend interface { // for *HTTP[1-3]Backend
 	// Imports
 	Backend
 	// Methods
-	FetchStream(req ServerRequest) (BackendStream, error)
+	FetchStream(servReq ServerRequest) (BackendStream, error)
 	StoreStream(backStream BackendStream)
 }
 
@@ -92,11 +92,11 @@ func (c *_backendConn_[N]) onPut() {
 	// c.node will be set as nil by upper code.
 }
 
+func (c *_backendConn_[N]) Holder() httpHolder { return c.node }
+
 func (c *_backendConn_[N]) isAlive() bool {
 	return c.expireTime.IsZero() || time.Now().Before(c.expireTime)
 }
-
-func (c *_backendConn_[N]) Holder() httpHolder { return c.node }
 
 // BackendStream
 type BackendStream interface { // for *backend[1-3]Stream
@@ -528,7 +528,7 @@ func (r *backendResponse_) unsafeLastModified() []byte {
 	return r.primes[r.indexes.lastModified].valueAt(r.input)
 }
 
-func (r *backendResponse_) proxyXXX() {
+func (r *backendResponse_) proxyUnsetXXX() {
 	// TODO
 }
 
@@ -588,7 +588,8 @@ type backendRequest_ struct { // outgoing. needs building
 	_backendRequest0 // all values in this struct must be zero by default!
 }
 type _backendRequest0 struct { // for fast reset, entirely
-	indexes struct {
+	addTETrailers bool // add "te: trailers" in finalizeHeaders()?
+	indexes       struct {
 		host              uint8
 		ifModifiedSince   uint8
 		ifUnmodifiedSince uint8
@@ -777,8 +778,7 @@ func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfi
 		return false
 	}
 	if servReq.AcceptTrailers() {
-		// TODO: add te: trailers
-		// TODO: add connection: te
+		r.addTETrailers = true
 	}
 
 	// copy added header fields
@@ -807,8 +807,8 @@ func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfi
 		return false
 	}
 
-	for _, name := range proxyConfig.DelRequestHeaders {
-		r.outMessage.delHeader(name)
+	for _, headerName := range proxyConfig.DelRequestHeaders {
+		r.outMessage.delHeader(headerName)
 	}
 
 	return true

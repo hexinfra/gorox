@@ -154,7 +154,7 @@ func (s *httpServer_[G]) findWebapp(hostname []byte) *Webapp {
 	return s.defaultWebapp // may be nil
 }
 
-func (s *httpServer_[G]) httpHolder() _httpHolder_ { return s._httpHolder_ } // copy configs
+func (s *httpServer_[G]) httpHolder() _httpHolder_ { return s._httpHolder_ } // for copying configs
 
 // httpGate
 type httpGate interface {
@@ -2786,24 +2786,24 @@ footer{padding:20px;}
 }()
 
 func (r *serverResponse_) beforeSend() {
-	resp := r.outMessage.(ServerResponse)
+	servResp := r.outMessage.(ServerResponse)
 	for _, id := range r.revisers {
 		if id == 0 { // id of effective reviser is ensured to be > 0
 			continue
 		}
 		reviser := r.webapp.reviserByID(id)
-		reviser.BeforeSend(resp.Request(), resp) // revise header fields
+		reviser.BeforeSend(servResp.Request(), servResp) // revise header fields
 	}
 }
 func (r *serverResponse_) doSend() error {
 	if r.hasRevisers {
-		resp := r.outMessage.(ServerResponse)
+		servResp := r.outMessage.(ServerResponse)
 		for _, id := range r.revisers { // revise sized content
 			if id == 0 {
 				continue
 			}
 			reviser := r.webapp.reviserByID(id)
-			reviser.OnOutput(resp.Request(), resp, &r.chain)
+			reviser.OnOutput(servResp.Request(), servResp, &r.chain)
 		}
 		// Because r.chain may be altered by revisers, content size must be recalculated
 		if contentSize, ok := r.chain.Size(); ok {
@@ -2816,13 +2816,13 @@ func (r *serverResponse_) doSend() error {
 }
 
 func (r *serverResponse_) beforeEcho() {
-	resp := r.outMessage.(ServerResponse)
+	servResp := r.outMessage.(ServerResponse)
 	for _, id := range r.revisers { // revise header fields
 		if id == 0 { // id of effective reviser is ensured to be > 0
 			continue
 		}
 		reviser := r.webapp.reviserByID(id)
-		reviser.BeforeEcho(resp.Request(), resp)
+		reviser.BeforeEcho(servResp.Request(), servResp)
 	}
 }
 func (r *serverResponse_) doEcho() error {
@@ -2832,13 +2832,13 @@ func (r *serverResponse_) doEcho() error {
 	r.chain.PushTail(&r.piece)
 	defer r.chain.free()
 	if r.hasRevisers {
-		resp := r.outMessage.(ServerResponse)
+		servResp := r.outMessage.(ServerResponse)
 		for _, id := range r.revisers { // revise vague content
 			if id == 0 { // id of effective reviser is ensured to be > 0
 				continue
 			}
 			reviser := r.webapp.reviserByID(id)
-			reviser.OnOutput(resp.Request(), resp, &r.chain)
+			reviser.OnOutput(servResp.Request(), servResp, &r.chain)
 		}
 	}
 	return r.outMessage.echoChain()
@@ -2848,13 +2848,13 @@ func (r *serverResponse_) endVague() error {
 		return httpOutWriteBroken
 	}
 	if r.hasRevisers {
-		resp := r.outMessage.(ServerResponse)
+		servResp := r.outMessage.(ServerResponse)
 		for _, id := range r.revisers { // finish vague content
 			if id == 0 { // id of effective reviser is ensured to be > 0
 				continue
 			}
 			reviser := r.webapp.reviserByID(id)
-			reviser.FinishEcho(resp.Request(), resp)
+			reviser.FinishEcho(servResp.Request(), servResp)
 		}
 	}
 	return r.outMessage.finalizeVague()
@@ -2939,8 +2939,8 @@ func (r *serverResponse_) proxyCopyHeaderLines(backResp BackendResponse, proxyCo
 		return false
 	}
 
-	for _, name := range proxyConfig.DelResponseHeaders {
-		r.outMessage.delHeader(name)
+	for _, headerName := range proxyConfig.DelResponseHeaders {
+		r.outMessage.delHeader(headerName)
 	}
 
 	return true

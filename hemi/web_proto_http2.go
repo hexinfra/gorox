@@ -22,7 +22,7 @@ const ( // HTTP/2 sizes and limits for both of our HTTP/2 server and HTTP/2 back
 
 const ( // HTTP/2 frame kinds
 	http2FrameData         = 0x0
-	http2FrameFields       = 0x1 // a.k.a headers
+	http2FrameFields       = 0x1 // a.k.a. headers
 	http2FramePriority     = 0x2 // deprecated
 	http2FrameRSTStream    = 0x3
 	http2FrameSettings     = 0x4
@@ -85,7 +85,7 @@ var http2InitialSettings = http2Settings{ // default settings for both server an
 }
 var http2FrameNames = [http2NumFrameKinds]string{
 	http2FrameData:         "DATA",
-	http2FrameFields:       "FIELDS",
+	http2FrameFields:       "FIELDS",   // a.k.a. headers
 	http2FramePriority:     "PRIORITY", // deprecated
 	http2FrameRSTStream:    "RST_STREAM",
 	http2FrameSettings:     "SETTINGS",

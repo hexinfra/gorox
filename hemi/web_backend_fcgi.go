@@ -54,7 +54,7 @@ func (b *FCGIBackend) CreateNode(compName string) Node {
 	return node
 }
 
-func (b *FCGIBackend) FetchExchan(req ServerRequest) (*fcgiExchan, error) {
+func (b *FCGIBackend) FetchExchan(httpReq ServerRequest) (*fcgiExchan, error) {
 	return b.nodes[b.nodeIndexGet()].fetchExchan()
 }
 func (b *FCGIBackend) StoreExchan(exchan *fcgiExchan) {

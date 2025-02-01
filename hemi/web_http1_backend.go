@@ -53,7 +53,7 @@ func (b *HTTP1Backend) CreateNode(compName string) Node {
 	return node
 }
 
-func (b *HTTP1Backend) FetchStream(req ServerRequest) (BackendStream, error) {
+func (b *HTTP1Backend) FetchStream(servReq ServerRequest) (BackendStream, error) {
 	return b.nodes[b.nodeIndexGet()].fetchStream()
 }
 func (b *HTTP1Backend) StoreStream(backStream BackendStream) {
@@ -669,8 +669,13 @@ func (r *backend1Request) finalizeHeaders() { // add at most 256 bytes
 			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeStream))
 		}
 	}
-	// connection: keep-alive\r\n
-	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
+	if r.addTETrailers {
+		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTETrailers))
+		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionAliveTE))
+	} else {
+		// connection: keep-alive\r\n
+		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
+	}
 }
 func (r *backend1Request) finalizeVague() error { return r.out1.finalizeVague() } // we always use http/1.1 in the backend side.
 

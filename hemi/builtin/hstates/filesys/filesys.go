@@ -3,9 +3,9 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// Local hstate implementation.
+// Filesystem hstate implementation.
 
-package local
+package filesys
 
 import (
 	"errors"
@@ -16,27 +16,27 @@ import (
 )
 
 func init() {
-	RegisterHstate("localHstate", func(compName string, stage *Stage) Hstate {
-		s := new(localHstate)
+	RegisterHstate("filesysHstate", func(compName string, stage *Stage) Hstate {
+		s := new(filesysHstate)
 		s.onCreate(compName, stage)
 		return s
 	})
 }
 
-// localHstate
-type localHstate struct {
+// filesysHstate
+type filesysHstate struct {
 	// Parent
 	Hstate_
 	// States
 	stateDir string // /path/to/dir
 }
 
-func (s *localHstate) onCreate(compName string, stage *Stage) {
+func (s *filesysHstate) onCreate(compName string, stage *Stage) {
 	s.Hstate_.OnCreate(compName, stage)
 }
-func (s *localHstate) OnShutdown() { close(s.ShutChan) } // notifies Maintain()
+func (s *filesysHstate) OnShutdown() { close(s.ShutChan) } // notifies Maintain()
 
-func (s *localHstate) OnConfigure() {
+func (s *filesysHstate) OnConfigure() {
 	// .stateDir
 	s.ConfigureString("stateDir", &s.stateDir, func(value string) error {
 		if value != "" {
@@ -45,28 +45,28 @@ func (s *localHstate) OnConfigure() {
 		return errors.New(".stateDir has an invalid value")
 	}, VarDir()+"/hstates/"+s.CompName())
 }
-func (s *localHstate) OnPrepare() {
+func (s *filesysHstate) OnPrepare() {
 	if err := os.MkdirAll(s.stateDir, 0755); err != nil {
 		EnvExitln(err.Error())
 	}
 }
 
-func (s *localHstate) Maintain() { // runner
+func (s *filesysHstate) Maintain() { // runner
 	s.LoopRun(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if DebugLevel() >= 2 {
-		Printf("localHstate=%s done\n", s.CompName())
+		Printf("filesysHstate=%s done\n", s.CompName())
 	}
 	s.Stage().DecSub() // hstate
 }
 
-func (s *localHstate) Set(sid []byte, sess *Session) error {
+func (s *filesysHstate) Set(sid []byte, sess *Session) error {
 	return nil
 }
-func (s *localHstate) Get(sid []byte) (sess *Session, err error) {
+func (s *filesysHstate) Get(sid []byte) (sess *Session, err error) {
 	return
 }
-func (s *localHstate) Del(sid []byte) error {
+func (s *filesysHstate) Del(sid []byte) error {
 	return nil
 }

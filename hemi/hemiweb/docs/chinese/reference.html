@@ -120,9 +120,9 @@ article table.none tr td {
 		<li>stage &gt; udpxRouter &gt; [case &gt;] dnsProxy</li>
 		<li>stage &gt; udpxRouter &gt; [case &gt;] udpxProxy</li>
 		<li><a href="#stage-service">stage &gt; service</a></li>
-		<li>stage &gt; localHstate</li>
+		<li>stage &gt; filesysHstate</li>
 		<li>stage &gt; redisHstate</li>
-		<li><a href="#stage-localHcache">stage &gt; localHcache</a></li>
+		<li><a href="#stage-filesysHcache">stage &gt; filesysHcache</a></li>
 		<li><a href="#stage-redisHcache">stage &gt; redisHcache</a></li>
 		<li><a href="#stage-webapp">stage &gt; webapp</a></li>
 		<li><a href="#stage-webapp-rule">stage &gt; webapp &gt; rule</a></li>
@@ -455,9 +455,9 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 			<h4>stage &gt; service </h4>
 		</li>
 
-		<li id="stage-localHcache">
-			<h4>stage &gt; localHcache</h4>
-			<p>localHcache：本地 HTTP 缓存，根据 HTTP 的 header 信息把远端的数据缓存在本地。</p>
+		<li id="stage-filesysHcache">
+			<h4>stage &gt; filesysHcache</h4>
+			<p>filesysHcache：本地文件系统 HTTP 缓存，根据 HTTP 的 header 信息把远端的数据缓存在本地文件系统。</p>
 			<ul>
 				<li>
 					<p>.cacheDir 缓存目录</p>

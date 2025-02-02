@@ -30,8 +30,8 @@ COMPONENTS
       dealet (quixProxy, tcpxProxy, udpxProxy, ...)
       [case]
     [service]
-    hstate (localHstate, redisHstate, ...)
-    hcache (localHcache, redisHcache, ...)
+    hstate (filesysHstate, redisHstate, ...)
+    hcache (filesysHcache, redisHcache, ...)
     [webapp]
       handlet (hello, static, ...)
       reviser (gzip, head, ...)

@@ -3,9 +3,9 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// Local Hcache implementation.
+// Filesystem Hcache implementation.
 
-package local
+package filesys
 
 import (
 	"errors"
@@ -16,27 +16,27 @@ import (
 )
 
 func init() {
-	RegisterHcache("localHcache", func(compName string, stage *Stage) Hcache {
-		c := new(localHcache)
+	RegisterHcache("filesysHcache", func(compName string, stage *Stage) Hcache {
+		c := new(filesysHcache)
 		c.onCreate(compName, stage)
 		return c
 	})
 }
 
-// localHcache caches hobjects in local file system.
-type localHcache struct {
+// filesysHcache caches hobjects in local file system.
+type filesysHcache struct {
 	// Parent
 	Hcache_
 	// States
 	cacheDir string // /path/to/dir
 }
 
-func (c *localHcache) onCreate(compName string, stage *Stage) {
+func (c *filesysHcache) onCreate(compName string, stage *Stage) {
 	c.Hcache_.OnCreate(compName, stage)
 }
-func (c *localHcache) OnShutdown() { close(c.ShutChan) } // notifies Maintain()
+func (c *filesysHcache) OnShutdown() { close(c.ShutChan) } // notifies Maintain()
 
-func (c *localHcache) OnConfigure() {
+func (c *filesysHcache) OnConfigure() {
 	// .cacheDir
 	c.ConfigureString("cacheDir", &c.cacheDir, func(value string) error {
 		if value != "" {
@@ -45,30 +45,30 @@ func (c *localHcache) OnConfigure() {
 		return errors.New(".cacheDir has an invalid value")
 	}, VarDir()+"/hcaches/"+c.CompName())
 }
-func (c *localHcache) OnPrepare() {
+func (c *filesysHcache) OnPrepare() {
 	if err := os.MkdirAll(c.cacheDir, 0755); err != nil {
 		EnvExitln(err.Error())
 	}
 }
 
-func (c *localHcache) Maintain() { // runner
+func (c *filesysHcache) Maintain() { // runner
 	c.LoopRun(time.Second, func(now time.Time) {
 		// TODO
 	})
 	if DebugLevel() >= 2 {
-		Printf("localHcache=%s done\n", c.CompName())
+		Printf("filesysHcache=%s done\n", c.CompName())
 	}
 	c.Stage().DecSub() // hcache
 }
 
-func (c *localHcache) Set(key []byte, hobject *Hobject) {
+func (c *filesysHcache) Set(key []byte, hobject *Hobject) {
 	// TODO
 }
-func (c *localHcache) Get(key []byte) (hobject *Hobject) {
+func (c *filesysHcache) Get(key []byte) (hobject *Hobject) {
 	// TODO
 	return
 }
-func (c *localHcache) Del(key []byte) bool {
+func (c *filesysHcache) Del(key []byte) bool {
 	// TODO
 	return false
 }

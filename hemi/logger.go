@@ -11,6 +11,22 @@ import (
 	"sync"
 )
 
+// Logger
+type Logger interface {
+	Log(v ...any)
+	Logln(v ...any)
+	Logf(f string, v ...any)
+	Close()
+}
+
+// LogConfig
+type LogConfig struct {
+	Target  string   // "/path/to/file.log", "1.2.3.4:5678", ...
+	Rotate  string   // "day", "hour", ...
+	Fields  []string // ("uri", "status"), ...
+	BufSize int32    // size of log buffer
+}
+
 var (
 	loggersLock    sync.RWMutex
 	loggerCreators = make(map[string]func(config *LogConfig) Logger) // indexed by loggerSign
@@ -39,22 +55,6 @@ func createLogger(loggerSign string, config *LogConfig) Logger {
 		return create(config)
 	}
 	return nil
-}
-
-// LogConfig
-type LogConfig struct {
-	Target  string   // "/path/to/file.log", "1.2.3.4:5678", ...
-	Rotate  string   // "day", "hour", ...
-	Fields  []string // ("uri", "status"), ...
-	BufSize int32    // size of log buffer
-}
-
-// Logger is logger for routers, services, and webapps.
-type Logger interface {
-	Log(v ...any)
-	Logln(v ...any)
-	Logf(f string, v ...any)
-	Close()
 }
 
 func init() {

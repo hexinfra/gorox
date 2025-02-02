@@ -283,9 +283,9 @@ func getBackend2Stream(conn *backend2Conn, id uint32) *backend2Stream {
 		backStream = new(backend2Stream)
 		backResp, backReq := &backStream.response, &backStream.request
 		backResp.stream = backStream
-		backResp.inMessage = backResp
+		backResp.in = backResp
 		backReq.stream = backStream
-		backReq.outMessage = backReq
+		backReq.out = backReq
 		backReq.response = backResp
 	} else {
 		backStream = x.(*backend2Stream)

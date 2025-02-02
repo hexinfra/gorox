@@ -286,9 +286,9 @@ func getBackend1Conn(id int64, node *http1Node, netConn net.Conn, rawConn syscal
 		backStream := &backConn.stream
 		backResp, backReq := &backStream.response, &backStream.request
 		backResp.stream = backStream
-		backResp.inMessage = backResp
+		backResp.in = backResp
 		backReq.stream = backStream
-		backReq.outMessage = backReq
+		backReq.out = backReq
 		backReq.response = backResp
 	} else {
 		backConn = x.(*backend1Conn)

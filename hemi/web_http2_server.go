@@ -671,9 +671,9 @@ func getServer2Stream(conn *server2Conn, id uint32, outWindow int32) *server2Str
 		servStream = new(server2Stream)
 		servReq, servResp := &servStream.request, &servStream.response
 		servReq.stream = servStream
-		servReq.inMessage = servReq
+		servReq.in = servReq
 		servResp.stream = servStream
-		servResp.outMessage = servResp
+		servResp.out = servResp
 		servResp.request = servReq
 	} else {
 		servStream = x.(*server2Stream)

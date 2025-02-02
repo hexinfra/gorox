@@ -188,8 +188,8 @@ type httpIn interface {
 // _httpIn_ is a mixin for serverRequest_ and backendResponse_.
 type _httpIn_ struct { // incoming. needs parsing
 	// Assocs
-	stream    httpStream // *backend[1-3]Stream, *server[1-3]Stream
-	inMessage httpIn     // *backend[1-3]Response, *server[1-3]Request
+	stream httpStream // *backend[1-3]Stream, *server[1-3]Stream
+	in     httpIn     // *backend[1-3]Response, *server[1-3]Request
 	// Stream states (stocks)
 	stockPrimes [40]pair   // for r.primes. 960B
 	stockExtras [30]pair   // for r.extras. 720B
@@ -1054,7 +1054,7 @@ func (r *_httpIn_) _recvContent(retain bool) any { // to []byte (for small conte
 		}
 		var data []byte
 		for {
-			data, err = r.inMessage.readContent()
+			data, err = r.in.readContent()
 			if len(data) > 0 { // skip 0, nothing to write
 				if _, e := contentFile.Write(data); e != nil {
 					err = e
@@ -1424,7 +1424,7 @@ func (r *_httpIn_) _proxyDelHopFieldLines(fieldLines zone, extraKind int8) { // 
 	if r.zUpgrade.notEmpty() {
 		delField(bytesUpgrade, hashUpgrade)
 	}
-	r.inMessage.proxyDelHopFieldLines(extraKind) // don't pass delField as parameter, it causes delField escapes to heap
+	r.in.proxyDelHopFieldLines(extraKind) // don't pass delField as parameter, it causes delField escapes to heap
 
 	// Now remove connection options in primes and extras.
 	// Note: we don't remove ("connection: xxx, yyy") itself here, we simply restrict it from being copied or inserted when acting as a proxy.
@@ -1614,8 +1614,8 @@ type httpOut interface {
 // _httpOut_ is a mixin for serverResponse_ and backendRequest_.
 type _httpOut_ struct { // outgoing. needs building
 	// Assocs
-	stream     httpStream // *backend[1-3]Stream, *server[1-3]Stream
-	outMessage httpOut    // *backend[1-3]Request, *server[1-3]Response
+	stream httpStream // *backend[1-3]Stream, *server[1-3]Stream
+	out    httpOut    // *backend[1-3]Request, *server[1-3]Response
 	// Stream states (stocks)
 	stockFields [1536]byte // for r.fields
 	// Stream states (controlled)
@@ -1684,11 +1684,11 @@ func (r *_httpOut_) AddContentTypeBytes(contentType []byte) bool {
 }
 
 func (r *_httpOut_) Header(name string) (value string, ok bool) {
-	v, ok := r.outMessage.header(ConstBytes(name))
+	v, ok := r.out.header(ConstBytes(name))
 	return string(v), ok
 }
 func (r *_httpOut_) HasHeader(name string) bool {
-	return r.outMessage.hasHeader(ConstBytes(name))
+	return r.out.hasHeader(ConstBytes(name))
 }
 func (r *_httpOut_) AddHeader(name string, value string) bool {
 	return r.AddHeaderBytes(ConstBytes(name), ConstBytes(value))
@@ -1703,7 +1703,7 @@ func (r *_httpOut_) AddHeaderBytes(name []byte, value []byte) bool {
 			return false
 		}
 	}
-	return r.outMessage.insertHeader(nameHash, lower, value) // some header fields (e.g. "connection") are restricted
+	return r.out.insertHeader(nameHash, lower, value) // some header fields (e.g. "connection") are restricted
 }
 func (r *_httpOut_) DelHeader(name string) bool {
 	return r.DelHeaderBytes(ConstBytes(name))
@@ -1713,7 +1713,7 @@ func (r *_httpOut_) DelHeaderBytes(name []byte) bool {
 	if !valid {
 		return false
 	}
-	return r.outMessage.removeHeader(nameHash, lower)
+	return r.out.removeHeader(nameHash, lower)
 }
 func (r *_httpOut_) _nameCheck(name []byte) (nameHash uint16, valid bool, lower []byte) { // TODO: improve performance
 	n := len(name)
@@ -1757,7 +1757,7 @@ func (r *_httpOut_) _insertDate(date []byte) (ok bool) { // rarely used in backe
 	return r._appendSingleton(&r.iDate, bytesDate, date)
 }
 func (r *_httpOut_) _appendSingleton(pIndex *uint8, name []byte, value []byte) bool {
-	if *pIndex > 0 || !r.outMessage.addHeader(name, value) {
+	if *pIndex > 0 || !r.out.addHeader(name, value) {
 		return false
 	}
 	*pIndex = r.numHeaderFields - 1 // r.numHeaderFields begins from 1, so must minus one
@@ -1770,7 +1770,7 @@ func (r *_httpOut_) _deleteSingleton(pIndex *uint8) bool {
 	if *pIndex == 0 { // not exist
 		return false
 	}
-	r.outMessage.delHeaderAt(*pIndex)
+	r.out.delHeaderAt(*pIndex)
 	*pIndex = 0
 	return true
 }
@@ -1780,7 +1780,7 @@ func (r *_httpOut_) _setUnixTime(pUnixTime *int64, pIndex *uint8, unixTime int64
 		return false
 	}
 	if *pUnixTime == -2 { // was set through general api, must delete it
-		r.outMessage.delHeaderAt(*pIndex)
+		r.out.delHeaderAt(*pIndex)
 		*pIndex = 0
 	}
 	*pUnixTime = unixTime
@@ -1788,12 +1788,12 @@ func (r *_httpOut_) _setUnixTime(pUnixTime *int64, pIndex *uint8, unixTime int64
 }
 func (r *_httpOut_) _addUnixTime(pUnixTime *int64, pIndex *uint8, name []byte, httpDate []byte) bool {
 	if *pUnixTime == -2 { // was set through general api, must delete it
-		r.outMessage.delHeaderAt(*pIndex)
+		r.out.delHeaderAt(*pIndex)
 		*pIndex = 0
 	} else { // >= 0 or -1
 		*pUnixTime = -2
 	}
-	if !r.outMessage.addHeader(name, httpDate) {
+	if !r.out.addHeader(name, httpDate) {
 		return false
 	}
 	*pIndex = r.numHeaderFields - 1 // r.numHeaderFields begins from 1, so must minus one
@@ -1804,7 +1804,7 @@ func (r *_httpOut_) _delUnixTime(pUnixTime *int64, pIndex *uint8) bool {
 		return false
 	}
 	if *pUnixTime == -2 { // was set through general api, must delete it
-		r.outMessage.delHeaderAt(*pIndex)
+		r.out.delHeaderAt(*pIndex)
 		*pIndex = 0
 	}
 	*pUnixTime = -1
@@ -1862,27 +1862,27 @@ func (r *_httpOut_) AddTrailerBytes(name []byte, value []byte) bool {
 	if !r.isSent { // trailer fields must be added after header fields & content was sent, otherwise r.fields will be messed up
 		return false
 	}
-	return r.outMessage.addTrailer(name, value)
+	return r.out.addTrailer(name, value)
 }
 func (r *_httpOut_) Trailer(name string) (value string, ok bool) {
-	v, ok := r.outMessage.trailer(ConstBytes(name))
+	v, ok := r.out.trailer(ConstBytes(name))
 	return string(v), ok
 }
 
-func (r *_httpOut_) _proxyPassMessage(inMessage httpIn) error {
-	proxyPass := r.outMessage.proxyPassBytes
-	if inMessage.IsVague() || r.hasRevisers { // if we need to revise, we always use vague no matter the original content is sized or vague
+func (r *_httpOut_) _proxyPassMessage(in httpIn) error {
+	proxyPass := r.out.proxyPassBytes
+	if in.IsVague() || r.hasRevisers { // if we need to revise, we always use vague no matter the original content is sized or vague
 		proxyPass = r.EchoBytes
-	} else { // inMessage is sized and there are no revisers, use proxyPassBytes
+	} else { // in is sized and there are no revisers, use proxyPassBytes
 		r.isSent = true
-		r.contentSize = inMessage.ContentSize()
+		r.contentSize = in.ContentSize()
 		// TODO: find a way to reduce i/o syscalls if content is small?
-		if err := r.outMessage.proxyPassHeaders(); err != nil {
+		if err := r.out.proxyPassHeaders(); err != nil {
 			return err
 		}
 	}
 	for {
-		data, err := inMessage.readContent()
+		data, err := in.readContent()
 		if len(data) >= 0 {
 			if e := proxyPass(data); e != nil {
 				return e
@@ -1895,8 +1895,8 @@ func (r *_httpOut_) _proxyPassMessage(inMessage httpIn) error {
 			return err
 		}
 	}
-	if inMessage.HasTrailers() {
-		if !inMessage.proxyWalkTrailerLines(r.outMessage, func(out httpOut, trailerLine *pair, trailerName []byte, lineValue []byte) bool {
+	if in.HasTrailers() {
+		if !in.proxyWalkTrailerLines(r.out, func(out httpOut, trailerLine *pair, trailerName []byte, lineValue []byte) bool {
 			return out.addTrailer(trailerName, lineValue) // added trailer fields will be written by upper code eventually.
 		}) {
 			return httpOutTrailerFailed
@@ -1927,7 +1927,7 @@ func (r *_httpOut_) proxyPostMessage(content any, hasTrailers bool) error {
 			return err
 		}
 		r.forbidContent = true
-		return r.outMessage.doSend()
+		return r.out.doSend()
 	}
 }
 
@@ -1938,7 +1938,7 @@ func (r *_httpOut_) sendText(content []byte) error {
 	r.piece.SetText(content)
 	r.chain.PushTail(&r.piece)
 	r.contentSize = int64(len(content)) // initial size, may be changed by revisers
-	return r.outMessage.doSend()
+	return r.out.doSend()
 }
 func (r *_httpOut_) sendFile(content *os.File, info os.FileInfo, shut bool) error {
 	if err := r._beforeSend(); err != nil {
@@ -1947,7 +1947,7 @@ func (r *_httpOut_) sendFile(content *os.File, info os.FileInfo, shut bool) erro
 	r.piece.SetFile(content, info, shut)
 	r.chain.PushTail(&r.piece)
 	r.contentSize = info.Size() // initial size, may be changed by revisers
-	return r.outMessage.doSend()
+	return r.out.doSend()
 }
 func (r *_httpOut_) _beforeSend() error {
 	if r.isSent {
@@ -1955,7 +1955,7 @@ func (r *_httpOut_) _beforeSend() error {
 	}
 	r.isSent = true
 	if r.hasRevisers {
-		r.outMessage.beforeSend()
+		r.out.beforeSend()
 	}
 	return nil
 }
@@ -1969,7 +1969,7 @@ func (r *_httpOut_) echoText(chunk []byte) error {
 	}
 	r.piece.SetText(chunk)
 	defer r.piece.zero()
-	return r.outMessage.doEcho()
+	return r.out.doEcho()
 }
 func (r *_httpOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error {
 	if err := r._beforeEcho(); err != nil {
@@ -1983,7 +1983,7 @@ func (r *_httpOut_) echoFile(chunk *os.File, info os.FileInfo, shut bool) error 
 	}
 	r.piece.SetFile(chunk, info, shut)
 	defer r.piece.zero()
-	return r.outMessage.doEcho()
+	return r.out.doEcho()
 }
 func (r *_httpOut_) _beforeEcho() error {
 	if r.stream.isBroken() {
@@ -1998,9 +1998,9 @@ func (r *_httpOut_) _beforeEcho() error {
 	r.isSent = true
 	r.contentSize = -2 // vague
 	if r.hasRevisers {
-		r.outMessage.beforeEcho()
+		r.out.beforeEcho()
 	}
-	return r.outMessage.echoHeaders()
+	return r.out.echoHeaders()
 }
 
 func (r *_httpOut_) growHeaders(size int) (from int, edge int, ok bool) { // header fields and trailer fields are not manipulated at the same time

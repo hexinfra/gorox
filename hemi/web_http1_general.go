@@ -450,7 +450,7 @@ func (r *_http1In_) _readVagueContent() ([]byte, error) {
 				}
 			} else if r.bodyWindow[r.chunkFore] != '\n' { // must be trailer-section = *( field-line CRLF)
 				r.receiving = httpSectionTrailers
-				if !r.recvTrailerLines() || !r.inMessage.examineTail() {
+				if !r.recvTrailerLines() || !r.in.examineTail() {
 					goto badRead
 				}
 				// r.recvTrailerLines() must ends with r.chunkFore being at the last '\n' after trailer-section.
@@ -787,7 +787,7 @@ func (r *_http1Out_) sendChain() error { // TODO: if conn is TLS, don't use writ
 	}
 	// Partial content.
 	if !r.asRequest { // as response
-		r.outMessage.(ServerResponse).SetStatus(StatusPartialContent)
+		r.out.(ServerResponse).SetStatus(StatusPartialContent)
 	}
 	if numRanges == 1 {
 		return r._sendSingleRange()
@@ -796,7 +796,7 @@ func (r *_http1Out_) sendChain() error { // TODO: if conn is TLS, don't use writ
 	}
 }
 func (r *_http1Out_) _sendEntireChain() error {
-	r.outMessage.finalizeHeaders()
+	r.out.finalizeHeaders()
 	vector := r._prepareVector() // waiting to write
 	if DebugLevel() >= 2 {
 		if r.asRequest {
@@ -882,9 +882,9 @@ func (r *_http1Out_) _prepareVector() [][]byte {
 	} else { // numPieces >= 2
 		vector = make([][]byte, 3+numPieces) // TODO(diogin): get from pool? defer pool.put()
 	}
-	vector[0] = r.outMessage.controlData()
-	vector[1] = r.outMessage.addedHeaders()
-	vector[2] = r.outMessage.fixedHeaders()
+	vector[0] = r.out.controlData()
+	vector[1] = r.out.addedHeaders()
+	vector[2] = r.out.fixedHeaders()
 	return vector
 }
 
@@ -948,11 +948,11 @@ func (r *_http1Out_) finalizeVague() error {
 }
 
 func (r *_http1Out_) writeHeaders() error { // used by echo and pass
-	r.outMessage.finalizeHeaders()
+	r.out.finalizeHeaders()
 	r.vector = r.fixedVector[0:3]
-	r.vector[0] = r.outMessage.controlData()
-	r.vector[1] = r.outMessage.addedHeaders()
-	r.vector[2] = r.outMessage.fixedHeaders()
+	r.vector[0] = r.out.controlData()
+	r.vector[1] = r.out.addedHeaders()
+	r.vector[2] = r.out.fixedHeaders()
 	if DebugLevel() >= 2 {
 		if r.asRequest {
 			Printf("[backend1Stream=%d]<=======", r.stream.ID(), r.vector[0], r.vector[1], r.vector[2])

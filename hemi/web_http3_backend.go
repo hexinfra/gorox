@@ -213,9 +213,9 @@ func getBackend3Stream(conn *backend3Conn, quicStream *tcp2.Stream) *backend3Str
 		backStream = new(backend3Stream)
 		backResp, backReq := &backStream.response, &backStream.request
 		backResp.stream = backStream
-		backResp.inMessage = backResp
+		backResp.in = backResp
 		backReq.stream = backStream
-		backReq.outMessage = backReq
+		backReq.out = backReq
 		backReq.response = backResp
 	} else {
 		backStream = x.(*backend3Stream)

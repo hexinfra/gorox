@@ -636,7 +636,7 @@ func (r *backendRequest_) SetIfUnmodifiedSince(since int64) bool {
 
 func (r *backendRequest_) beforeSend() {} // revising is not supported in backend side.
 func (r *backendRequest_) doSend() error { // revising is not supported in backend side.
-	return r.outMessage.sendChain()
+	return r.out.sendChain()
 }
 
 func (r *backendRequest_) beforeEcho() {} // revising is not supported in backend side.
@@ -646,13 +646,13 @@ func (r *backendRequest_) doEcho() error { // revising is not supported in backe
 	}
 	r.chain.PushTail(&r.piece)
 	defer r.chain.free()
-	return r.outMessage.echoChain()
+	return r.out.echoChain()
 }
 func (r *backendRequest_) endVague() error { // revising is not supported in backend side.
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
-	return r.outMessage.finalizeVague()
+	return r.out.finalizeVague()
 }
 
 var ( // perfect hash table for request critical header fields
@@ -688,7 +688,7 @@ func (r *backendRequest_) insertHeader(nameHash uint16, name []byte, value []byt
 		}
 		return h.fAdd(r, value)
 	}
-	return r.outMessage.addHeader(name, value)
+	return r.out.addHeader(name, value)
 }
 func (r *backendRequest_) _insertHost(host []byte) (ok bool) {
 	return r._appendSingleton(&r.indexes.host, bytesHost, host)
@@ -711,7 +711,7 @@ func (r *backendRequest_) removeHeader(nameHash uint16, name []byte) bool {
 		}
 		return h.fDel(r)
 	}
-	return r.outMessage.delHeader(name)
+	return r.out.delHeader(name)
 }
 func (r *backendRequest_) _removeHost() (deleted bool) {
 	return r._deleteSingleton(&r.indexes.host)
@@ -740,7 +740,7 @@ func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfi
 		// then the last proxy on the request chain MUST send a request-target of "*" when it forwards the request to the indicated origin server.
 		uri = bytesAsterisk
 	}
-	if !r.outMessage.(BackendRequest).proxySetMethodURI(servReq.UnsafeMethod(), uri, servReq.HasContent()) {
+	if !r.out.(BackendRequest).proxySetMethodURI(servReq.UnsafeMethod(), uri, servReq.HasContent()) {
 		return false
 	}
 	if len(proxyConfig.Hostname) != 0 || len(proxyConfig.Colonport) != 0 { // custom authority (hostname or colonport)
@@ -759,7 +759,7 @@ func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfi
 		} else {
 			colonport = proxyConfig.Colonport
 		}
-		if !r.outMessage.(BackendRequest).proxySetAuthority(hostname, colonport) {
+		if !r.out.(BackendRequest).proxySetAuthority(hostname, colonport) {
 			return false
 		}
 	}
@@ -778,10 +778,10 @@ func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfi
 	}
 
 	// copy selective forbidden header fields (including cookie) from servReq
-	if servReq.HasCookies() && !r.outMessage.(BackendRequest).proxyCopyCookies(servReq) {
+	if servReq.HasCookies() && !r.out.(BackendRequest).proxyCopyCookies(servReq) {
 		return false
 	}
-	if !r.outMessage.addHeader(bytesVia, proxyConfig.InboundViaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
+	if !r.out.addHeader(bytesVia, proxyConfig.InboundViaName) { // an HTTP-to-HTTP gateway MUST send an appropriate Via header field in each inbound request message
 		return false
 	}
 	if servReq.AcceptTrailers() {
@@ -798,13 +798,13 @@ func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfi
 		} else {
 			// Invalid values are treated as empty
 		}
-		if !r.outMessage.addHeader(ConstBytes(headerName), headerValue) {
+		if !r.out.addHeader(ConstBytes(headerName), headerValue) {
 			return false
 		}
 	}
 
 	// copy remaining header fields from servReq
-	if !servReq.proxyWalkHeaderLines(r.outMessage, func(out httpOut, headerLine *pair, headerName []byte, lineValue []byte) bool {
+	if !servReq.proxyWalkHeaderLines(r.out, func(out httpOut, headerLine *pair, headerName []byte, lineValue []byte) bool {
 		if false { // TODO: are there any special header fields that should be copied directly?
 			return out.addHeader(headerName, lineValue)
 		} else {
@@ -815,13 +815,13 @@ func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfi
 	}
 
 	for _, headerName := range proxyConfig.DelRequestHeaders {
-		r.outMessage.delHeader(headerName)
+		r.out.delHeader(headerName)
 	}
 
 	return true
 }
 func (r *backendRequest_) proxyCopyTrailerLines(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool {
-	return servReq.proxyWalkTrailerLines(r.outMessage, func(out httpOut, trailerLine *pair, trailerName []byte, lineValue []byte) bool {
+	return servReq.proxyWalkTrailerLines(r.out, func(out httpOut, trailerLine *pair, trailerName []byte, lineValue []byte) bool {
 		return out.addTrailer(trailerName, lineValue)
 	})
 }

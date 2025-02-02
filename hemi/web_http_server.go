@@ -2773,7 +2773,7 @@ func (r *serverResponse_) sendError(status int16, content []byte) error {
 	r.piece.SetText(content)
 	r.chain.PushTail(&r.piece)
 	r.contentSize = int64(len(content))
-	return r.outMessage.sendChain()
+	return r.out.sendChain()
 }
 
 var serverErrorPages = func() map[int16][]byte {
@@ -2808,7 +2808,7 @@ footer{padding:20px;}
 }()
 
 func (r *serverResponse_) beforeSend() {
-	servResp := r.outMessage.(ServerResponse)
+	servResp := r.out.(ServerResponse)
 	for _, id := range r.revisers {
 		if id == 0 { // id of effective reviser is ensured to be > 0
 			continue
@@ -2819,7 +2819,7 @@ func (r *serverResponse_) beforeSend() {
 }
 func (r *serverResponse_) doSend() error {
 	if r.hasRevisers {
-		servResp := r.outMessage.(ServerResponse)
+		servResp := r.out.(ServerResponse)
 		for _, id := range r.revisers { // revise sized content
 			if id == 0 {
 				continue
@@ -2834,11 +2834,11 @@ func (r *serverResponse_) doSend() error {
 			return httpOutTooLarge
 		}
 	}
-	return r.outMessage.sendChain()
+	return r.out.sendChain()
 }
 
 func (r *serverResponse_) beforeEcho() {
-	servResp := r.outMessage.(ServerResponse)
+	servResp := r.out.(ServerResponse)
 	for _, id := range r.revisers { // revise header fields
 		if id == 0 { // id of effective reviser is ensured to be > 0
 			continue
@@ -2854,7 +2854,7 @@ func (r *serverResponse_) doEcho() error {
 	r.chain.PushTail(&r.piece)
 	defer r.chain.free()
 	if r.hasRevisers {
-		servResp := r.outMessage.(ServerResponse)
+		servResp := r.out.(ServerResponse)
 		for _, id := range r.revisers { // revise vague content
 			if id == 0 { // id of effective reviser is ensured to be > 0
 				continue
@@ -2863,14 +2863,14 @@ func (r *serverResponse_) doEcho() error {
 			reviser.OnOutput(servResp.Request(), servResp, &r.chain)
 		}
 	}
-	return r.outMessage.echoChain()
+	return r.out.echoChain()
 }
 func (r *serverResponse_) endVague() error {
 	if r.stream.isBroken() {
 		return httpOutWriteBroken
 	}
 	if r.hasRevisers {
-		servResp := r.outMessage.(ServerResponse)
+		servResp := r.out.(ServerResponse)
 		for _, id := range r.revisers { // finish vague content
 			if id == 0 { // id of effective reviser is ensured to be > 0
 				continue
@@ -2879,7 +2879,7 @@ func (r *serverResponse_) endVague() error {
 			reviser.FinishEcho(servResp.Request(), servResp)
 		}
 	}
-	return r.outMessage.finalizeVague()
+	return r.out.finalizeVague()
 }
 
 var ( // perfect hash table for response critical header fields
@@ -2913,7 +2913,7 @@ func (r *serverResponse_) insertHeader(nameHash uint16, name []byte, value []byt
 		}
 		return h.fAdd(r, value)
 	}
-	return r.outMessage.addHeader(name, value)
+	return r.out.addHeader(name, value)
 }
 func (r *serverResponse_) _insertExpires(expires []byte) (ok bool) {
 	return r._addUnixTime(&r.unixTimes.expires, &r.indexes.expires, bytesExpires, expires)
@@ -2930,7 +2930,7 @@ func (r *serverResponse_) removeHeader(nameHash uint16, name []byte) bool {
 		}
 		return h.fDel(r)
 	}
-	return r.outMessage.delHeader(name)
+	return r.out.delHeader(name)
 }
 func (r *serverResponse_) _removeExpires() (deleted bool) {
 	return r._delUnixTime(&r.unixTimes.expires, &r.indexes.expires)
@@ -2951,7 +2951,7 @@ func (r *serverResponse_) proxyCopyHeaderLines(backResp BackendResponse, proxyCo
 	// copy selective forbidden header fields (excluding set-cookie, which is copied directly) from backResp
 
 	// copy remaining header fields from backResp
-	if !backResp.proxyWalkHeaderLines(r.outMessage, func(out httpOut, headerLine *pair, headerName []byte, lineValue []byte) bool {
+	if !backResp.proxyWalkHeaderLines(r.out, func(out httpOut, headerLine *pair, headerName []byte, lineValue []byte) bool {
 		if headerLine.nameHash == hashSetCookie && bytes.Equal(headerName, bytesSetCookie) { // set-cookie is copied directly
 			return out.addHeader(headerName, lineValue)
 		} else {
@@ -2962,13 +2962,13 @@ func (r *serverResponse_) proxyCopyHeaderLines(backResp BackendResponse, proxyCo
 	}
 
 	for _, headerName := range proxyConfig.DelResponseHeaders {
-		r.outMessage.delHeader(headerName)
+		r.out.delHeader(headerName)
 	}
 
 	return true
 }
 func (r *serverResponse_) proxyCopyTrailerLines(backResp BackendResponse, proxyConfig *WebExchanProxyConfig) bool {
-	return backResp.proxyWalkTrailerLines(r.outMessage, func(out httpOut, trailerLine *pair, trailerName []byte, lineValue []byte) bool {
+	return backResp.proxyWalkTrailerLines(r.out, func(out httpOut, trailerLine *pair, trailerName []byte, lineValue []byte) bool {
 		return out.addTrailer(trailerName, lineValue)
 	})
 }

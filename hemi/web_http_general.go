@@ -1015,28 +1015,6 @@ func (r *_httpIn_) _loadContent() { // into memory. [0, r.maxContentSize]
 		r.stream.markBroken()
 	}
 }
-func (r *_httpIn_) proxyTakeContent() any {
-	if r.contentReceived {
-		if r.contentFile == nil {
-			return r.contentText // immediate
-		}
-		return r.contentFile
-	}
-	r.contentReceived = true
-	switch content := r._recvContent(true).(type) { // retain
-	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
-		r.contentText = content
-		r.contentTextKind = httpContentTextPool // so r.contentText can be freed on end
-		return r.contentText[0:r.receivedSize]
-	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is vague.
-		r.contentFile = content.(*os.File)
-		return r.contentFile
-	case error: // i/o error or unexpected EOF
-		// TODO: log err?
-	}
-	r.stream.markBroken()
-	return nil
-}
 func (r *_httpIn_) _dropContent() { // if message content is not received, this will be called at last
 	switch content := r._recvContent(false).(type) { // don't retain
 	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
@@ -1397,6 +1375,29 @@ func (r *_httpIn_) _placeOf(pair *pair) []byte {
 		BugExitln("unknown pair.place")
 	}
 	return place
+}
+
+func (r *_httpIn_) proxyTakeContent() any {
+	if r.contentReceived {
+		if r.contentFile == nil {
+			return r.contentText // immediate
+		}
+		return r.contentFile
+	}
+	r.contentReceived = true
+	switch content := r._recvContent(true).(type) { // retain
+	case []byte: // (0, 64K1]. case happens when sized content <= 64K1
+		r.contentText = content
+		r.contentTextKind = httpContentTextPool // so r.contentText can be freed on end
+		return r.contentText[0:r.receivedSize]
+	case tempFile: // [0, r.maxContentSize]. case happens when sized content > 64K1, or content is vague.
+		r.contentFile = content.(*os.File)
+		return r.contentFile
+	case error: // i/o error or unexpected EOF
+		// TODO: log err?
+	}
+	r.stream.markBroken()
+	return nil
 }
 
 func (r *_httpIn_) proxyDelHopHeaderFields() {

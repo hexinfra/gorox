@@ -570,7 +570,7 @@ func (r *backendResponse_) applyTrailerLine(lineIndex uint8) bool {
 
 // BackendRequest is the backend-side http request.
 type BackendRequest interface { // for *backend[1-3]Request
-	setMethodURI(method []byte, uri []byte, hasContent bool) bool
+	proxySetMethodURI(method []byte, uri []byte, hasContent bool) bool
 	proxySetAuthority(hostname []byte, colonport []byte) bool
 	proxyCopyCookies(servReq ServerRequest) bool // NOTE: HTTP 1.x/2/3 have different requirements on the "cookie" header field
 	proxyCopyHeaderLines(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool
@@ -621,9 +621,6 @@ func (r *backendRequest_) onEnd() { // for zeros
 
 func (r *backendRequest_) Response() BackendResponse { return r.response }
 
-func (r *backendRequest_) SetMethodURI(method string, uri string, hasContent bool) bool {
-	return r.outMessage.(BackendRequest).setMethodURI(ConstBytes(method), ConstBytes(uri), hasContent)
-}
 func (r *backendRequest_) setScheme(scheme []byte) bool { // used by http/2 and http/3 only. http/1.x doesn't use this!
 	// TODO: copy `:scheme $scheme` to r.fields
 	return false
@@ -743,7 +740,7 @@ func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfi
 		// then the last proxy on the request chain MUST send a request-target of "*" when it forwards the request to the indicated origin server.
 		uri = bytesAsterisk
 	}
-	if !r.outMessage.(BackendRequest).setMethodURI(servReq.UnsafeMethod(), uri, servReq.HasContent()) {
+	if !r.outMessage.(BackendRequest).proxySetMethodURI(servReq.UnsafeMethod(), uri, servReq.HasContent()) {
 		return false
 	}
 	if len(proxyConfig.Hostname) != 0 || len(proxyConfig.Colonport) != 0 { // custom authority (hostname or colonport)

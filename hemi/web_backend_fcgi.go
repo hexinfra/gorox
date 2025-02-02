@@ -947,20 +947,6 @@ func (r *fcgiResponse) HasContent() bool {
 	// All other responses do include content, although that content might be of zero length.
 	return true
 }
-func (r *fcgiResponse) proxyTakeContent() any { // to tempFile since we don't know the size of vague content
-	switch content := r._recvContent().(type) {
-	case tempFile: // [0, r.maxContentSize]
-		r.contentFile = content.(*os.File)
-		return r.contentFile
-	case error: // i/o error or unexpected EOF
-		// TODO: log err?
-		if DebugLevel() >= 2 {
-			Println(content.Error())
-		}
-	}
-	r.exchan.markBroken()
-	return nil
-}
 func (r *fcgiResponse) _recvContent() any { // to tempFile
 	contentFile, err := r._newTempFile()
 	if err != nil {
@@ -1010,6 +996,21 @@ func (r *fcgiResponse) readContent() (data []byte, err error) {
 
 func (r *fcgiResponse) HasTrailers() bool { return false } // fcgi doesn't support http trailers
 func (r *fcgiResponse) examineTail() bool { return true }  // fcgi doesn't support http trailers
+
+func (r *fcgiResponse) proxyTakeContent() any { // to tempFile since we don't know the size of vague content
+	switch content := r._recvContent().(type) {
+	case tempFile: // [0, r.maxContentSize]
+		r.contentFile = content.(*os.File)
+		return r.contentFile
+	case error: // i/o error or unexpected EOF
+		// TODO: log err?
+		if DebugLevel() >= 2 {
+			Println(content.Error())
+		}
+	}
+	r.exchan.markBroken()
+	return nil
+}
 
 func (r *fcgiResponse) proxyDelHopHeaderFields()        {} // for fcgi, nothing to delete
 func (r *fcgiResponse) proxyDelHopTrailerFields()       {} // fcgi doesn't support http trailers

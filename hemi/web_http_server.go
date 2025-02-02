@@ -1623,25 +1623,6 @@ func (r *serverRequest_) DelCookie(name string) (deleted bool) {
 func (r *serverRequest_) AddCookie(name string, value string) bool { // as extra, by webapp
 	return r.addExtra(name, value, 0, pairCookie)
 }
-func (r *serverRequest_) proxyWalkCookies(callback func(cookie *pair, cookieName []byte, cookieValue []byte) bool) bool { // TODO: closure escapes to heap?
-	for i := r.cookies.from; i < r.cookies.edge; i++ {
-		if cookie := &r.primes[i]; cookie.nameHash != 0 {
-			if !callback(cookie, cookie.nameAt(r.input), cookie.valueAt(r.input)) {
-				return false
-			}
-		}
-	}
-	if r.hasExtra[pairCookie] {
-		for i := 0; i < len(r.extras); i++ {
-			if extra := &r.extras[i]; extra.nameHash != 0 && extra.kind == pairCookie {
-				if !callback(extra, extra.nameAt(r.array), extra.valueAt(r.array)) {
-					return false
-				}
-			}
-		}
-	}
-	return true
-}
 
 func (r *serverRequest_) EvalPreconditions(date int64, etag []byte, asOrigin bool) (status int16, normal bool) { // to test against preconditons intentionally
 	// Get effective etag without ""
@@ -1799,6 +1780,26 @@ func (r *serverRequest_) proxyWalkHeaderFields(callback func(headerName []byte, 
 	// RFC 3875 (section 4.1.18): If multiple header fields with the same field-name are received then the server MUST rewrite them as a single value having the same semantics.
 	// Note: check headerLine.isUnderscore()
 	// Note: // TODO: got a "foo_bar" header line and user prefer it. avoid name conflicts with header line which is like "foo-bar"
+	return true
+}
+
+func (r *serverRequest_) proxyWalkCookies(callback func(cookie *pair, cookieName []byte, cookieValue []byte) bool) bool { // TODO: closure escapes to heap?
+	for i := r.cookies.from; i < r.cookies.edge; i++ {
+		if cookie := &r.primes[i]; cookie.nameHash != 0 {
+			if !callback(cookie, cookie.nameAt(r.input), cookie.valueAt(r.input)) {
+				return false
+			}
+		}
+	}
+	if r.hasExtra[pairCookie] {
+		for i := 0; i < len(r.extras); i++ {
+			if extra := &r.extras[i]; extra.nameHash != 0 && extra.kind == pairCookie {
+				if !callback(extra, extra.nameAt(r.array), extra.valueAt(r.array)) {
+					return false
+				}
+			}
+		}
+	}
 	return true
 }
 

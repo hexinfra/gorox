@@ -546,51 +546,6 @@ func (r *backend1Request) onEnd() {
 	r.out1.onEnd()
 }
 
-func (r *backend1Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // METHOD uri HTTP/1.1\r\n
-	controlSize := len(method) + 1 + len(uri) + 1 + len(bytesHTTP1_1) + len(bytesCRLF)
-	if from, edge, ok := r._growFields(controlSize); ok {
-		from += copy(r.fields[from:], method)
-		r.fields[from] = ' '
-		from++
-		from += copy(r.fields[from:], uri)
-		r.fields[from] = ' '
-		from++
-		from += copy(r.fields[from:], bytesHTTP1_1) // we always use HTTP/1.1
-		r.fields[from] = '\r'
-		r.fields[from+1] = '\n'
-		if !hasContent {
-			r.forbidContent = true
-			r.forbidFraming = true
-		}
-		r.controlEdge = uint16(edge)
-		return true
-	} else {
-		return false
-	}
-}
-func (r *backend1Request) proxySetAuthority(hostname []byte, colonport []byte) bool {
-	if r.stream.TLSMode() {
-		if bytes.Equal(colonport, bytesColonport443) {
-			colonport = nil
-		}
-	} else if bytes.Equal(colonport, bytesColonport80) {
-		colonport = nil
-	}
-	headerSize := len(bytesHost) + len(bytesColonSpace) + len(hostname) + len(colonport) + len(bytesCRLF) // host: xxx\r\n
-	if from, _, ok := r._growFields(headerSize); ok {
-		from += copy(r.fields[from:], bytesHost)
-		r.fields[from] = ':'
-		r.fields[from+1] = ' '
-		from += 2
-		from += copy(r.fields[from:], hostname)
-		from += copy(r.fields[from:], colonport)
-		r.out1._addCRLFHeader(from)
-		return true
-	} else {
-		return false
-	}
-}
-
 func (r *backend1Request) addHeader(name []byte, value []byte) bool {
 	return r.out1.addHeader(name, value)
 }
@@ -641,6 +596,51 @@ func (r *backend1Request) addTrailer(name []byte, value []byte) bool {
 	return r.out1.addTrailer(name, value)
 }
 func (r *backend1Request) trailer(name []byte) (value []byte, ok bool) { return r.out1.trailer(name) }
+
+func (r *backend1Request) proxySetMethodURI(method []byte, uri []byte, hasContent bool) bool { // METHOD uri HTTP/1.1\r\n
+	controlSize := len(method) + 1 + len(uri) + 1 + len(bytesHTTP1_1) + len(bytesCRLF)
+	if from, edge, ok := r._growFields(controlSize); ok {
+		from += copy(r.fields[from:], method)
+		r.fields[from] = ' '
+		from++
+		from += copy(r.fields[from:], uri)
+		r.fields[from] = ' '
+		from++
+		from += copy(r.fields[from:], bytesHTTP1_1) // we always use HTTP/1.1
+		r.fields[from] = '\r'
+		r.fields[from+1] = '\n'
+		if !hasContent {
+			r.forbidContent = true
+			r.forbidFraming = true
+		}
+		r.controlEdge = uint16(edge)
+		return true
+	} else {
+		return false
+	}
+}
+func (r *backend1Request) proxySetAuthority(hostname []byte, colonport []byte) bool {
+	if r.stream.TLSMode() {
+		if bytes.Equal(colonport, bytesColonport443) {
+			colonport = nil
+		}
+	} else if bytes.Equal(colonport, bytesColonport80) {
+		colonport = nil
+	}
+	headerSize := len(bytesHost) + len(bytesColonSpace) + len(hostname) + len(colonport) + len(bytesCRLF) // host: xxx\r\n
+	if from, _, ok := r._growFields(headerSize); ok {
+		from += copy(r.fields[from:], bytesHost)
+		r.fields[from] = ':'
+		r.fields[from+1] = ' '
+		from += 2
+		from += copy(r.fields[from:], hostname)
+		from += copy(r.fields[from:], colonport)
+		r.out1._addCRLFHeader(from)
+		return true
+	} else {
+		return false
+	}
+}
 
 func (r *backend1Request) proxyPassHeaders() error          { return r.out1.writeHeaders() }
 func (r *backend1Request) proxyPassBytes(data []byte) error { return r.out1.proxyPassBytes(data) }

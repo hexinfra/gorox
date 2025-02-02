@@ -371,15 +371,6 @@ func (r *backend2Request) onEnd() {
 	r.out2.onEnd()
 }
 
-func (r *backend2Request) setMethodURI(method []byte, uri []byte, hasContent bool) bool { // :method = method, :path = uri
-	// TODO: set :method and :path
-	return false
-}
-func (r *backend2Request) proxySetAuthority(hostname []byte, colonport []byte) bool {
-	// TODO: set :authority
-	return false
-}
-
 func (r *backend2Request) addHeader(name []byte, value []byte) bool {
 	return r.out2.addHeader(name, value)
 }
@@ -406,6 +397,15 @@ func (r *backend2Request) addTrailer(name []byte, value []byte) bool {
 	return r.out2.addTrailer(name, value)
 }
 func (r *backend2Request) trailer(name []byte) (value []byte, ok bool) { return r.out2.trailer(name) }
+
+func (r *backend2Request) proxySetMethodURI(method []byte, uri []byte, hasContent bool) bool { // :method = method, :path = uri
+	// TODO: set :method and :path
+	return false
+}
+func (r *backend2Request) proxySetAuthority(hostname []byte, colonport []byte) bool {
+	// TODO: set :authority
+	return false
+}
 
 func (r *backend2Request) proxyPassHeaders() error          { return r.out2.writeHeaders() }
 func (r *backend2Request) proxyPassBytes(data []byte) error { return r.out2.proxyPassBytes(data) }

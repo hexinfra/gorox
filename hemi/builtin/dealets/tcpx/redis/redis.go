@@ -9,7 +9,7 @@ package redis
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
-	. "github.com/hexinfra/gorox/hemi/classic/backends/redis"
+	. "github.com/hexinfra/gorox/hemi/builtin/backends/redis"
 )
 
 func init() {

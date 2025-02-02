@@ -6,7 +6,7 @@
 package english
 
 import (
-	"github.com/hexinfra/gorox/hemi/classic/handlets/sitex"
+	"github.com/hexinfra/gorox/hemi/builtin/handlets/sitex"
 
 	. "github.com/hexinfra/gorox/hemi"
 )

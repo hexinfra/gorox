@@ -18,7 +18,7 @@ Here, x.y.z is the version of Hemi. Then import it to your "main.go":
 
 If you would like to use the standard components too, import them with:
 
-    import _ "github.com/hexinfra/gorox/hemi/classic"
+    import _ "github.com/hexinfra/gorox/hemi/builtin"
 
 For examples showing how to use the Hemi Engine in your programs, please see our
 examples repository at: https://github.com/hexinfra/examples.
@@ -30,7 +30,7 @@ Layout
 In addition to the *.go files in current directory that implement the core of
 the Hemi Engine, we also have these sub directories that supplement Hemi:
 
-  * classic/  - Place standard Hemi components,
+  * builtin/  - Place standard Hemi components,
   * contrib/  - Place community contributed Hemi components,
   * library/  - Place general purpose libraries,
   * procmgr/  - A process manager for programs using Hemi.
@@ -65,7 +65,7 @@ A program (like Gorox) using Hemi Engine typically has these dependencies:
                 |                     |         |          |
                 v                     v         v          v
   +-----------------------+   +---------------------------------+
-  | <classic> & <contrib> +-->|              <hemi>             |
+  | <builtin> & <contrib> +-->|              <hemi>             |
   +-----------------------+   +---------------------------------+
 ```
 

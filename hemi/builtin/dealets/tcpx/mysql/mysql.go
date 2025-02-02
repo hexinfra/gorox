@@ -9,7 +9,7 @@ package mysql
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
-	. "github.com/hexinfra/gorox/hemi/classic/backends/mysql"
+	. "github.com/hexinfra/gorox/hemi/builtin/backends/mysql"
 )
 
 func init() {

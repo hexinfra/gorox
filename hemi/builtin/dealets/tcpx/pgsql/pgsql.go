@@ -9,7 +9,7 @@ package pgsql
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
-	. "github.com/hexinfra/gorox/hemi/classic/backends/pgsql"
+	. "github.com/hexinfra/gorox/hemi/builtin/backends/pgsql"
 )
 
 func init() {

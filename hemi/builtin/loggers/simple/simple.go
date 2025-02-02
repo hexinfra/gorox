@@ -15,7 +15,21 @@ import (
 )
 
 func init() {
-	RegisterLogger("simple", newSimpleLogger)
+	RegisterLogger("simple", func(config *LogConfig) Logger {
+		file, err := os.OpenFile(config.Target, os.O_WRONLY|os.O_CREATE, 0700)
+		if err != nil {
+			return nil
+		}
+		l := new(simpleLogger)
+		l.config = config
+		l.file = file
+		l.queue = make(chan string)
+		l.buffer = make([]byte, config.BufSize)
+		l.size = len(l.buffer)
+		l.used = 0
+		go l.saver()
+		return l
+	})
 }
 
 // simpleLogger implements Logger.
@@ -26,22 +40,6 @@ type simpleLogger struct {
 	buffer []byte
 	size   int
 	used   int
-}
-
-func newSimpleLogger(config *LogConfig) Logger {
-	file, err := os.OpenFile(config.Target, os.O_WRONLY|os.O_CREATE, 0700)
-	if err != nil {
-		return nil
-	}
-	l := new(simpleLogger)
-	l.config = config
-	l.file = file
-	l.queue = make(chan string)
-	l.buffer = make([]byte, config.BufSize)
-	l.size = len(l.buffer)
-	l.used = 0
-	go l.saver()
-	return l
 }
 
 func (l *simpleLogger) Log(v ...any) {
@@ -110,4 +108,6 @@ func (l *simpleLogger) clear() {
 		l.used = 0
 	}
 }
-func (l *simpleLogger) flush(logs []byte) { l.file.Write(logs) }
+func (l *simpleLogger) flush(logs []byte) {
+	l.file.Write(logs)
+}

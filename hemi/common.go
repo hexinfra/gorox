@@ -20,29 +20,29 @@ import (
 	"unsafe"
 )
 
-func Print(args ...any) {
+func Print(v ...any) {
 	_printTime(os.Stdout)
-	fmt.Fprint(os.Stdout, args...)
+	fmt.Fprint(os.Stdout, v...)
 }
-func Println(args ...any) {
+func Println(v ...any) {
 	_printTime(os.Stdout)
-	fmt.Fprintln(os.Stdout, args...)
+	fmt.Fprintln(os.Stdout, v...)
 }
-func Printf(format string, args ...any) {
+func Printf(f string, v ...any) {
 	_printTime(os.Stdout)
-	fmt.Fprintf(os.Stdout, format, args...)
+	fmt.Fprintf(os.Stdout, f, v...)
 }
-func Error(args ...any) {
+func Error(v ...any) {
 	_printTime(os.Stderr)
-	fmt.Fprint(os.Stderr, args...)
+	fmt.Fprint(os.Stderr, v...)
 }
-func Errorln(args ...any) {
+func Errorln(v ...any) {
 	_printTime(os.Stderr)
-	fmt.Fprintln(os.Stderr, args...)
+	fmt.Fprintln(os.Stderr, v...)
 }
-func Errorf(format string, args ...any) {
+func Errorf(f string, v ...any) {
 	_printTime(os.Stderr)
-	fmt.Fprintf(os.Stderr, format, args...)
+	fmt.Fprintf(os.Stderr, f, v...)
 }
 func _printTime(file *os.File) {
 	fmt.Fprintf(file, "[%s] ", time.Now().Format("2006-01-02 15:04:05 MST"))
@@ -54,19 +54,19 @@ const ( // exit codes
 	CodeEnv = 22
 )
 
-func BugExitln(args ...any)               { _exitln(CodeBug, "[BUG] ", args...) }
-func UseExitln(args ...any)               { _exitln(CodeUse, "[USE] ", args...) }
-func EnvExitln(args ...any)               { _exitln(CodeEnv, "[ENV] ", args...) }
-func BugExitf(format string, args ...any) { _exitf(CodeBug, "[BUG] ", format, args...) }
-func UseExitf(format string, args ...any) { _exitf(CodeUse, "[USE] ", format, args...) }
-func EnvExitf(format string, args ...any) { _exitf(CodeEnv, "[ENV] ", format, args...) }
-func _exitln(exitCode int, prefix string, args ...any) {
+func BugExitln(v ...any)          { _exitln(CodeBug, "[BUG] ", v...) }
+func UseExitln(v ...any)          { _exitln(CodeUse, "[USE] ", v...) }
+func EnvExitln(v ...any)          { _exitln(CodeEnv, "[ENV] ", v...) }
+func BugExitf(f string, v ...any) { _exitf(CodeBug, "[BUG] ", f, v...) }
+func UseExitf(f string, v ...any) { _exitf(CodeUse, "[USE] ", f, v...) }
+func EnvExitf(f string, v ...any) { _exitf(CodeEnv, "[ENV] ", f, v...) }
+func _exitln(exitCode int, prefix string, v ...any) {
 	fmt.Fprint(os.Stderr, prefix)
-	fmt.Fprintln(os.Stderr, args...)
+	fmt.Fprintln(os.Stderr, v...)
 	os.Exit(exitCode)
 }
-func _exitf(exitCode int, prefix, format string, args ...any) {
-	fmt.Fprintf(os.Stderr, prefix+format, args...)
+func _exitf(exitCode int, prefix, f string, v ...any) {
+	fmt.Fprintf(os.Stderr, prefix+f, v...)
 	os.Exit(exitCode)
 }
 

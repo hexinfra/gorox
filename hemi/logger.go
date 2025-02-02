@@ -59,16 +59,12 @@ type Logger interface {
 
 func init() {
 	RegisterLogger("noop", func(config *LogConfig) Logger {
-		l := new(noopLogger)
-		l.config = config
-		return l
+		return noopLogger{}
 	})
 }
 
 // noopLogger
-type noopLogger struct {
-	config *LogConfig
-}
+type noopLogger struct{}
 
 func (noopLogger) Log(v ...any)            {}
 func (noopLogger) Logln(v ...any)          {}

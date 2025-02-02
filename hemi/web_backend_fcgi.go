@@ -1011,21 +1011,21 @@ func (r *fcgiResponse) readContent() (data []byte, err error) {
 func (r *fcgiResponse) HasTrailers() bool { return false } // fcgi doesn't support http trailers
 func (r *fcgiResponse) examineTail() bool { return true }  // fcgi doesn't support http trailers
 
-func (r *fcgiResponse) proxyDelHopHeaderFields()                                          {} // for fcgi, nothing to delete
-func (r *fcgiResponse) proxyDelHopTrailerFields()                                         {} // fcgi doesn't support http trailers
-func (r *fcgiResponse) proxyDelHopFieldLines(delField func(name []byte, nameHash uint16)) {}
+func (r *fcgiResponse) proxyDelHopHeaderFields()        {} // for fcgi, nothing to delete
+func (r *fcgiResponse) proxyDelHopTrailerFields()       {} // fcgi doesn't support http trailers
+func (r *fcgiResponse) proxyDelHopFieldLines(kind int8) {}
 
-func (r *fcgiResponse) proxyWalkHeaderLines(callback func(headerLine *pair, headerName []byte, lineValue []byte) bool) bool { // excluding sub header lines
+func (r *fcgiResponse) proxyWalkHeaderLines(out httpOut, callback func(out httpOut, headerLine *pair, headerName []byte, lineValue []byte) bool) bool { // excluding sub header lines
 	for i := 1; i < len(r.primes); i++ { // r.primes[0] is not used
 		if headerLine := &r.primes[i]; headerLine.nameHash != 0 && !headerLine.isSubField() {
-			if !callback(headerLine, headerLine.nameAt(r.input), headerLine.valueAt(r.input)) {
+			if !callback(out, headerLine, headerLine.nameAt(r.input), headerLine.valueAt(r.input)) {
 				return false
 			}
 		}
 	}
 	return true
 }
-func (r *fcgiResponse) proxyWalkTrailerLines(callback func(trailerLine *pair, trailerName []byte, lineValue []byte) bool) bool { // fcgi doesn't support http trailers
+func (r *fcgiResponse) proxyWalkTrailerLines(out httpOut, callback func(out httpOut, trailerLine *pair, trailerName []byte, lineValue []byte) bool) bool { // fcgi doesn't support http trailers
 	return true
 }
 
@@ -1275,7 +1275,7 @@ func (r *fcgiRequest) proxyCopyHeaderLines(httpReq ServerRequest, proxyConfig *F
 	}
 
 	// Add HTTP header fields.
-	if !httpReq.proxyWalkHeaderFields(r._addHTTPParam) {
+	if !httpReq.proxyWalkHeaderFields(r._addHTTPParam) { // TODO: r._addHTTPParam escapes to heap
 		return false
 	}
 

@@ -181,8 +181,8 @@ type httpIn interface {
 
 	readContent() (data []byte, err error)
 	examineTail() bool
-	proxyDelHopFieldLines(delField func(name []byte, nameHash uint16))
-	proxyWalkTrailerLines(callback func(trailerLine *pair, trailerName []byte, lineValue []byte) bool) bool
+	proxyDelHopFieldLines(kind int8)
+	proxyWalkTrailerLines(out httpOut, callback func(out httpOut, trailerLine *pair, trailerName []byte, lineValue []byte) bool) bool
 }
 
 // _httpIn_ is a mixin for serverRequest_ and backendResponse_.
@@ -1400,13 +1400,17 @@ func (r *_httpIn_) _placeOf(pair *pair) []byte {
 }
 
 func (r *_httpIn_) proxyDelHopHeaderFields() {
-	r._proxyDelHopFieldLines(r.headerLines, pairHeader, r.delHeader)
+	r._proxyDelHopFieldLines(r.headerLines, pairHeader)
 }
 func (r *_httpIn_) proxyDelHopTrailerFields() {
-	r._proxyDelHopFieldLines(r.trailerLines, pairTrailer, r.delTrailer)
+	r._proxyDelHopFieldLines(r.trailerLines, pairTrailer)
 }
-func (r *_httpIn_) _proxyDelHopFieldLines(fieldLines zone, extraKind int8, delField func(name []byte, nameHash uint16)) { // TODO: improve performance
+func (r *_httpIn_) _proxyDelHopFieldLines(fieldLines zone, extraKind int8) { // TODO: improve performance
 	// These fields should be removed anyway: proxy-connection, keep-alive, te, transfer-encoding, upgrade
+	delField := r.delHeader
+	if extraKind == pairTrailer {
+		delField = r.delTrailer
+	}
 	if r.zProxyConnection.notEmpty() {
 		delField(bytesProxyConnection, hashProxyConnection)
 	}
@@ -1419,7 +1423,7 @@ func (r *_httpIn_) _proxyDelHopFieldLines(fieldLines zone, extraKind int8, delFi
 	if r.zUpgrade.notEmpty() {
 		delField(bytesUpgrade, hashUpgrade)
 	}
-	r.inMessage.proxyDelHopFieldLines(delField)
+	r.inMessage.proxyDelHopFieldLines(extraKind) // don't pass delField as parameter, it causes delField escapes to heap
 
 	// Now remove connection options in primes and extras.
 	// Note: we don't remove ("connection: xxx, yyy") itself here, we simply restrict it from being copied or inserted when acting as a proxy.
@@ -1454,17 +1458,17 @@ func (r *_httpIn_) _proxyDelHopFieldLines(fieldLines zone, extraKind int8, delFi
 	}
 }
 
-func (r *_httpIn_) proxyWalkHeaderLines(callback func(headerLine *pair, headerName []byte, lineValue []byte) bool) bool { // excluding sub header lines
-	return r._proxyWalkMainFields(r.headerLines, pairHeader, callback)
+func (r *_httpIn_) proxyWalkHeaderLines(out httpOut, callback func(out httpOut, headerLine *pair, headerName []byte, lineValue []byte) bool) bool { // excluding sub header lines
+	return r._proxyWalkMainFields(r.headerLines, pairHeader, out, callback)
 }
-func (r *_httpIn_) proxyWalkTrailerLines(callback func(trailerLine *pair, trailerName []byte, lineValue []byte) bool) bool { // excluding sub trailer lines
-	return r._proxyWalkMainFields(r.trailerLines, pairTrailer, callback)
+func (r *_httpIn_) proxyWalkTrailerLines(out httpOut, callback func(out httpOut, trailerLine *pair, trailerName []byte, lineValue []byte) bool) bool { // excluding sub trailer lines
+	return r._proxyWalkMainFields(r.trailerLines, pairTrailer, out, callback)
 }
-func (r *_httpIn_) _proxyWalkMainFields(fieldLines zone, extraKind int8, callback func(fieldLine *pair, fieldName []byte, lineValue []byte) bool) bool {
+func (r *_httpIn_) _proxyWalkMainFields(fieldLines zone, extraKind int8, out httpOut, callback func(out httpOut, fieldLine *pair, fieldName []byte, lineValue []byte) bool) bool {
 	for i := fieldLines.from; i < fieldLines.edge; i++ {
 		if fieldLine := &r.primes[i]; fieldLine.nameHash != 0 {
 			p := r._placeOf(fieldLine)
-			if !callback(fieldLine, fieldLine.nameAt(p), fieldLine.valueAt(p)) {
+			if !callback(out, fieldLine, fieldLine.nameAt(p), fieldLine.valueAt(p)) {
 				return false
 			}
 		}
@@ -1472,7 +1476,7 @@ func (r *_httpIn_) _proxyWalkMainFields(fieldLines zone, extraKind int8, callbac
 	if r.hasExtra[extraKind] {
 		for i := 0; i < len(r.extras); i++ {
 			if field := &r.extras[i]; field.nameHash != 0 && field.kind == extraKind && !field.isSubField() {
-				if !callback(field, field.nameAt(r.array), field.valueAt(r.array)) {
+				if !callback(out, field, field.nameAt(r.array), field.valueAt(r.array)) {
 					return false
 				}
 			}
@@ -1891,8 +1895,8 @@ func (r *_httpOut_) _proxyPassMessage(inMessage httpIn) error {
 		}
 	}
 	if inMessage.HasTrailers() {
-		if !inMessage.proxyWalkTrailerLines(func(trailerLine *pair, trailerName []byte, lineValue []byte) bool {
-			return r.outMessage.addTrailer(trailerName, lineValue) // added trailer fields will be written by upper code eventually.
+		if !inMessage.proxyWalkTrailerLines(r.outMessage, func(out httpOut, trailerLine *pair, trailerName []byte, lineValue []byte) bool {
+			return out.addTrailer(trailerName, lineValue) // added trailer fields will be written by upper code eventually.
 		}) {
 			return httpOutTrailerFailed
 		}

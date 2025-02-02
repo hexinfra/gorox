@@ -297,7 +297,7 @@ func (c *http2Conn_) sendOutFrame(outFrame *http2OutFrame) error {
 	return err
 }
 
-func (c *http2Conn_) _decodeFields(fields []byte, join func(p []byte) bool) bool {
+func (c *http2Conn_) _decodeFields(fields []byte, join func(p []byte) bool) bool { // TODO: method value escapes to heap?
 	var (
 		I  uint32
 		j  int

@@ -937,8 +937,8 @@ func (r *server1Response) trailer(name []byte) (value []byte, ok bool) { return 
 func (r *server1Response) proxyPass1xx(backResp BackendResponse) bool {
 	backResp.proxyDelHopHeaderFields()
 	r.status = backResp.Status()
-	if !backResp.proxyWalkHeaderLines(func(headerLine *pair, headerName []byte, lineValue []byte) bool {
-		return r.insertHeader(headerLine.nameHash, headerName, lineValue) // some header fields (e.g. "connection") are restricted
+	if !backResp.proxyWalkHeaderLines(r, func(out httpOut, headerLine *pair, headerName []byte, lineValue []byte) bool {
+		return out.insertHeader(headerLine.nameHash, headerName, lineValue) // some header fields (e.g. "connection") are restricted
 	}) {
 		return false
 	}

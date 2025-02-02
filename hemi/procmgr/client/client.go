@@ -58,7 +58,7 @@ var calls = map[string]func(){ // indexed by action
 func _call(comd uint8, flag uint16, args map[string]string) (*msgx.Message, error) {
 	cmdConn, err := net.Dial("tcp", common.TargetAddr)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to call gorox leader at %s: %s\n", common.TargetAddr, err.Error())
+		fmt.Fprintf(os.Stderr, "failed to call leader at %s: %s\n", common.TargetAddr, err.Error())
 		return nil, err
 	}
 	defer cmdConn.Close()
@@ -83,14 +83,14 @@ var tells = map[string]func(){ // indexed by action
 func _tell(comd uint8, flag uint16, args map[string]string) {
 	cmdConn, err := net.Dial("tcp", common.TargetAddr)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to tell gorox leader at %s: %s\n", common.TargetAddr, err.Error())
+		fmt.Fprintf(os.Stderr, "failed to tell leader at %s: %s\n", common.TargetAddr, err.Error())
 		return
 	}
 	defer cmdConn.Close()
 
 	if err := msgx.Tell(cmdConn, msgx.NewMessage(comd, flag, args)); err == nil {
-		fmt.Printf("tell gorox leader at %s: ok!\n", common.TargetAddr)
+		fmt.Printf("tell leader at %s: ok!\n", common.TargetAddr)
 	} else {
-		fmt.Fprintf(os.Stderr, "tell gorox leader at %s: %s\n", common.TargetAddr, err.Error())
+		fmt.Fprintf(os.Stderr, "tell leader at %s: %s\n", common.TargetAddr, err.Error())
 	}
 }

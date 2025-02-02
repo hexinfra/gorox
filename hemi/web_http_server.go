@@ -377,10 +377,10 @@ type ServerRequest interface { // for *server[1-3]Request
 	contentIsEncoded() bool
 	proxyDelHopHeaderFields()
 	proxyDelHopTrailerFields()
-	proxyDelHopFieldLines(delField func(name []byte, nameHash uint16))
-	proxyWalkHeaderLines(callback func(headerLine *pair, headerName []byte, lineValue []byte) bool) bool
+	proxyDelHopFieldLines(kind int8)
+	proxyWalkHeaderLines(out httpOut, callback func(out httpOut, headerLine *pair, headerName []byte, lineValue []byte) bool) bool
 	proxyWalkHeaderFields(callback func(headerName []byte, headerValue []byte) bool) bool // used by cgi-based protocols like cgi and fcgi
-	proxyWalkTrailerLines(callback func(trailerLine *pair, trailerName []byte, lineValue []byte) bool) bool
+	proxyWalkTrailerLines(out httpOut, callback func(out httpOut, trailerLine *pair, trailerName []byte, lineValue []byte) bool) bool
 	proxyWalkCookies(callback func(cookie *pair, cookieName []byte, cookieValue []byte) bool) bool
 	proxyUnsetHost()
 	proxyTakeContent() any
@@ -1623,7 +1623,7 @@ func (r *serverRequest_) DelCookie(name string) (deleted bool) {
 func (r *serverRequest_) AddCookie(name string, value string) bool { // as extra, by webapp
 	return r.addExtra(name, value, 0, pairCookie)
 }
-func (r *serverRequest_) proxyWalkCookies(callback func(cookie *pair, cookieName []byte, cookieValue []byte) bool) bool {
+func (r *serverRequest_) proxyWalkCookies(callback func(cookie *pair, cookieName []byte, cookieValue []byte) bool) bool { // TODO: closure escapes to heap?
 	for i := r.cookies.from; i < r.cookies.edge; i++ {
 		if cookie := &r.primes[i]; cookie.nameHash != 0 {
 			if !callback(cookie, cookie.nameAt(r.input), cookie.valueAt(r.input)) {
@@ -1785,12 +1785,16 @@ func (r *serverRequest_) EvalRanges(contentSize int64) []Range { // returned ran
 func (r *serverRequest_) proxyUnsetHost() {
 	r._delPrime(r.indexes.host) // zero safe
 }
-func (r *serverRequest_) proxyDelHopFieldLines(delField func(name []byte, nameHash uint16)) {
+func (r *serverRequest_) proxyDelHopFieldLines(kind int8) {
+	delField := r.delHeader
+	if kind == pairTrailer {
+		delField = r.delTrailer
+	}
 	if r.zones.te.notEmpty() {
 		delField(bytesTE, hashTE)
 	}
 }
-func (r *serverRequest_) proxyWalkHeaderFields(callback func(headerName []byte, headerValue []byte) bool) bool {
+func (r *serverRequest_) proxyWalkHeaderFields(callback func(headerName []byte, headerValue []byte) bool) bool { // TODO: closure escapes to heap?
 	// TODO
 	// RFC 3875 (section 4.1.18): If multiple header fields with the same field-name are received then the server MUST rewrite them as a single value having the same semantics.
 	// Note: check headerLine.isUnderscore()
@@ -1935,7 +1939,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 			} else {
 				r.formWindow = Get16K()
 			}
-			defer func() {
+			defer func() { // TODO: closure escapes to heap
 				PutNK(r.formWindow)
 				r.formWindow = nil
 			}()
@@ -2946,11 +2950,11 @@ func (r *serverResponse_) proxyCopyHeaderLines(backResp BackendResponse, proxyCo
 	// copy selective forbidden header fields (excluding set-cookie, which is copied directly) from backResp
 
 	// copy remaining header fields from backResp
-	if !backResp.proxyWalkHeaderLines(func(headerLine *pair, headerName []byte, lineValue []byte) bool {
+	if !backResp.proxyWalkHeaderLines(r.outMessage, func(out httpOut, headerLine *pair, headerName []byte, lineValue []byte) bool {
 		if headerLine.nameHash == hashSetCookie && bytes.Equal(headerName, bytesSetCookie) { // set-cookie is copied directly
-			return r.outMessage.addHeader(headerName, lineValue)
+			return out.addHeader(headerName, lineValue)
 		} else {
-			return r.outMessage.insertHeader(headerLine.nameHash, headerName, lineValue) // some header fields (e.g. "connection") are restricted
+			return out.insertHeader(headerLine.nameHash, headerName, lineValue) // some header fields (e.g. "connection") are restricted
 		}
 	}) {
 		return false
@@ -2963,8 +2967,8 @@ func (r *serverResponse_) proxyCopyHeaderLines(backResp BackendResponse, proxyCo
 	return true
 }
 func (r *serverResponse_) proxyCopyTrailerLines(backResp BackendResponse, proxyConfig *WebExchanProxyConfig) bool {
-	return backResp.proxyWalkTrailerLines(func(trailerLine *pair, trailerName []byte, lineValue []byte) bool {
-		return r.outMessage.addTrailer(trailerName, lineValue)
+	return backResp.proxyWalkTrailerLines(r.outMessage, func(out httpOut, trailerLine *pair, trailerName []byte, lineValue []byte) bool {
+		return out.addTrailer(trailerName, lineValue)
 	})
 }
 

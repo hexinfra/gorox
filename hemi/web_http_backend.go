@@ -138,9 +138,9 @@ type BackendResponse interface { // for *backend[1-3]Response
 	proxyTakeContent() any
 	proxyDelHopHeaderFields()
 	proxyDelHopTrailerFields()
-	proxyDelHopFieldLines(delField func(name []byte, nameHash uint16))
-	proxyWalkHeaderLines(callback func(headerLine *pair, headerName []byte, lineValue []byte) bool) bool
-	proxyWalkTrailerLines(callback func(trailerLine *pair, trailerName []byte, lineValue []byte) bool) bool
+	proxyDelHopFieldLines(kind int8)
+	proxyWalkHeaderLines(out httpOut, callback func(out httpOut, headerLine *pair, headerName []byte, lineValue []byte) bool) bool
+	proxyWalkTrailerLines(out httpOut, callback func(out httpOut, trailerLine *pair, trailerName []byte, lineValue []byte) bool) bool
 }
 
 // backendResponse_ is the parent for backend[1-3]Response.
@@ -538,7 +538,7 @@ func (r *backendResponse_) unsafeLastModified() []byte {
 func (r *backendResponse_) proxyUnsetXXX() {
 	// TODO
 }
-func (r *backendResponse_) proxyDelHopFieldLines(delField func(name []byte, nameHash uint16)) {
+func (r *backendResponse_) proxyDelHopFieldLines(kind int8) {
 	// Currently nothing.
 }
 
@@ -807,11 +807,11 @@ func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfi
 	}
 
 	// copy remaining header fields from servReq
-	if !servReq.proxyWalkHeaderLines(func(headerLine *pair, headerName []byte, lineValue []byte) bool {
+	if !servReq.proxyWalkHeaderLines(r.outMessage, func(out httpOut, headerLine *pair, headerName []byte, lineValue []byte) bool {
 		if false { // TODO: are there any special header fields that should be copied directly?
-			return r.outMessage.addHeader(headerName, lineValue)
+			return out.addHeader(headerName, lineValue)
 		} else {
-			return r.outMessage.insertHeader(headerLine.nameHash, headerName, lineValue) // some header fields (e.g. "connection") are restricted
+			return out.insertHeader(headerLine.nameHash, headerName, lineValue) // some header fields (e.g. "connection") are restricted
 		}
 	}) {
 		return false
@@ -824,8 +824,8 @@ func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfi
 	return true
 }
 func (r *backendRequest_) proxyCopyTrailerLines(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool {
-	return servReq.proxyWalkTrailerLines(func(trailerLine *pair, trailerName []byte, lineValue []byte) bool {
-		return r.outMessage.addTrailer(trailerName, lineValue)
+	return servReq.proxyWalkTrailerLines(r.outMessage, func(out httpOut, trailerLine *pair, trailerName []byte, lineValue []byte) bool {
+		return out.addTrailer(trailerName, lineValue)
 	})
 }
 

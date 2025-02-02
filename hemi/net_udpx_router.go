@@ -25,8 +25,6 @@ type UDPXRouter struct {
 	dealets compDict[UDPXDealet] // defined dealets. indexed by component name
 	cases   []*udpxCase          // defined cases. the order must be kept, so we use list. TODO: use ordered map?
 	// States
-	accessLog *LogConfig // ...
-	logger    *Logger    // router access logger
 }
 
 func (r *UDPXRouter) onCreate(compName string, stage *Stage) {
@@ -38,7 +36,7 @@ func (r *UDPXRouter) OnConfigure() {
 	r.Server_.OnConfigure()
 	r._udpxHolder_.onConfigure(r)
 
-	// accessLog, TODO
+	// logConfig, TODO
 
 	// sub components
 	r.dealets.walk(UDPXDealet.OnConfigure)
@@ -49,11 +47,6 @@ func (r *UDPXRouter) OnConfigure() {
 func (r *UDPXRouter) OnPrepare() {
 	r.Server_.OnPrepare()
 	r._udpxHolder_.onPrepare(r)
-
-	// accessLog, TODO
-	if r.accessLog != nil {
-		//r.logger = NewLogger(r.accessLog)
-	}
 
 	// sub components
 	r.dealets.walk(UDPXDealet.OnPrepare)
@@ -116,29 +109,11 @@ func (r *UDPXRouter) Serve() { // runner
 	r.dealets.goWalk(UDPXDealet.OnShutdown)
 	r.WaitSubs() // dealets, cases
 
-	if r.logger != nil {
-		r.logger.Close()
-	}
+	r.logger.Close()
 	if DebugLevel() >= 2 {
 		Printf("udpxRouter=%s done\n", r.CompName())
 	}
 	r.stage.DecSub() // router
-}
-
-func (r *UDPXRouter) Log(str string) {
-	if r.logger != nil {
-		r.logger.Log(str)
-	}
-}
-func (r *UDPXRouter) Logln(str string) {
-	if r.logger != nil {
-		r.logger.Logln(str)
-	}
-}
-func (r *UDPXRouter) Logf(format string, args ...any) {
-	if r.logger != nil {
-		r.logger.Logf(format, args...)
-	}
 }
 
 func (r *UDPXRouter) udpxHolder() _udpxHolder_ { return r._udpxHolder_ }

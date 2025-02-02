@@ -29,6 +29,7 @@ import ( // preload all
 	_ "github.com/hexinfra/gorox/hemi/builtin/hcaches/redis"
 	_ "github.com/hexinfra/gorox/hemi/builtin/hstates/local"
 	_ "github.com/hexinfra/gorox/hemi/builtin/hstates/redis"
+	_ "github.com/hexinfra/gorox/hemi/builtin/loggers/simple"
 	_ "github.com/hexinfra/gorox/hemi/builtin/mappers/simple"
 	_ "github.com/hexinfra/gorox/hemi/builtin/revisers/gunzip"
 	_ "github.com/hexinfra/gorox/hemi/builtin/revisers/gzip"

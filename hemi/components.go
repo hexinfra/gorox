@@ -149,14 +149,14 @@ var ( // initializers of services & webapps
 	webappInits  = make(map[string]func(webapp *Webapp) error)
 )
 
-func RegisterServiceInit(compName string, init func(service *Service) error) {
+func RegisterServiceInit(serviceName string, init func(service *Service) error) {
 	initsLock.Lock()
-	serviceInits[compName] = init
+	serviceInits[serviceName] = init
 	initsLock.Unlock()
 }
-func RegisterWebappInit(compName string, init func(webapp *Webapp) error) {
+func RegisterWebappInit(webappName string, init func(webapp *Webapp) error) {
 	initsLock.Lock()
-	webappInits[compName] = init
+	webappInits[webappName] = init
 	initsLock.Unlock()
 }
 

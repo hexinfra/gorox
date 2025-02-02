@@ -27,9 +27,7 @@ type QUIXRouter struct {
 	dealets compDict[QUIXDealet] // defined dealets. indexed by component name
 	cases   []*quixCase          // defined cases. the order must be kept, so we use list. TODO: use ordered map?
 	// States
-	maxConcurrentConnsPerGate int32      // max concurrent connections allowed per gate
-	accessLog                 *LogConfig // ...
-	logger                    *Logger    // router access logger
+	maxConcurrentConnsPerGate int32 // max concurrent connections allowed per gate
 }
 
 func (r *QUIXRouter) onCreate(compName string, stage *Stage) {
@@ -58,11 +56,6 @@ func (r *QUIXRouter) OnConfigure() {
 func (r *QUIXRouter) OnPrepare() {
 	r.Server_.OnPrepare()
 	r._quixHolder_.onPrepare(r)
-
-	// accessLog, TODO
-	if r.accessLog != nil {
-		//r.logger = NewLogger(r.accessLog)
-	}
 
 	// sub components
 	r.dealets.walk(QUIXDealet.OnPrepare)
@@ -127,29 +120,11 @@ func (r *QUIXRouter) Serve() { // runner
 	r.dealets.goWalk(QUIXDealet.OnShutdown)
 	r.WaitSubs() // dealets, cases
 
-	if r.logger != nil {
-		r.logger.Close()
-	}
+	r.logger.Close()
 	if DebugLevel() >= 2 {
 		Printf("quixRouter=%s done\n", r.CompName())
 	}
 	r.stage.DecSub() // router
-}
-
-func (r *QUIXRouter) Log(str string) {
-	if r.logger != nil {
-		r.logger.Log(str)
-	}
-}
-func (r *QUIXRouter) Logln(str string) {
-	if r.logger != nil {
-		r.logger.Logln(str)
-	}
-}
-func (r *QUIXRouter) Logf(format string, args ...any) {
-	if r.logger != nil {
-		r.logger.Logf(format, args...)
-	}
 }
 
 func (r *QUIXRouter) quixHolder() _quixHolder_ { return r._quixHolder_ }

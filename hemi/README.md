@@ -152,7 +152,7 @@ TODO
 * web application framework implementation.
 * documentation.
 * hemiweb.
-* logger implementation.
+* logger design and implementation.
 * rperf design and implementation.
 * more unit tests.
 * black/white box tests.

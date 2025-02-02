@@ -1407,11 +1407,11 @@ func (r *_httpIn_) proxyDelHopTrailerFields() {
 	r._proxyDelHopFieldLines(r.trailerLines, pairTrailer)
 }
 func (r *_httpIn_) _proxyDelHopFieldLines(fieldLines zone, extraKind int8) { // TODO: improve performance
-	// These fields should be removed anyway: proxy-connection, keep-alive, te, transfer-encoding, upgrade
 	delField := r.delHeader
 	if extraKind == pairTrailer {
 		delField = r.delTrailer
 	}
+	// These fields should be removed anyway: proxy-connection, keep-alive, te, transfer-encoding, upgrade
 	if r.zProxyConnection.notEmpty() {
 		delField(bytesProxyConnection, hashProxyConnection)
 	}
@@ -1716,12 +1716,12 @@ func (r *_httpOut_) DelHeaderBytes(name []byte) bool {
 	return r.out.removeHeader(nameHash, lower)
 }
 func (r *_httpOut_) _nameCheck(name []byte) (nameHash uint16, valid bool, lower []byte) { // TODO: improve performance
-	n := len(name)
-	if n == 0 || n > 255 {
+	nameSize := len(name)
+	if nameSize == 0 || nameSize > 255 {
 		return 0, false, nil
 	}
 	allLower := true
-	for i := 0; i < n; i++ {
+	for i := 0; i < nameSize; i++ {
 		if b := name[i]; b >= 'a' && b <= 'z' || b == '-' {
 			nameHash += uint16(b)
 		} else {
@@ -1734,7 +1734,7 @@ func (r *_httpOut_) _nameCheck(name []byte) (nameHash uint16, valid bool, lower 
 		return nameHash, true, name
 	}
 	nameBuffer := r.stream.buffer256()
-	for i := 0; i < n; i++ {
+	for i := 0; i < nameSize; i++ {
 		b := name[i]
 		if b >= 'A' && b <= 'Z' {
 			b += 0x20 // to lower
@@ -1744,7 +1744,7 @@ func (r *_httpOut_) _nameCheck(name []byte) (nameHash uint16, valid bool, lower 
 		nameHash += uint16(b)
 		nameBuffer[i] = b
 	}
-	return nameHash, true, nameBuffer[:n]
+	return nameHash, true, nameBuffer[:nameSize]
 }
 
 func (r *_httpOut_) isVague() bool { return r.contentSize == -2 }

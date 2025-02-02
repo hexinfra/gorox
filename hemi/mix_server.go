@@ -30,6 +30,7 @@ type Server_[G Gate] struct {
 	Component_
 	// Mixins
 	_holder_ // to carry configs used by gates
+	_accessLogger_
 	// Assocs
 	gates []G // a server has many gates
 	// States
@@ -53,6 +54,7 @@ func (s *Server_[G]) OnShutdown() {
 
 func (s *Server_[G]) OnConfigure() {
 	s._holder_.onConfigure(s, 60*time.Second, 60*time.Second)
+	s._accessLogger_.onConfigure(s)
 
 	// .address
 	if v, ok := s.Find("address"); ok {
@@ -85,6 +87,7 @@ func (s *Server_[G]) OnConfigure() {
 }
 func (s *Server_[G]) OnPrepare() {
 	s._holder_.onPrepare(s)
+	s._accessLogger_.onPrepare(s)
 
 	if s.udsMode {
 		s.udsColonportBytes = []byte(s.udsColonport)

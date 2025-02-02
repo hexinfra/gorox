@@ -496,7 +496,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 	webapp "proxy" {
 		.hostnames = ("example.com" "*.example.com" "www.example*")
 		.webRoot = %topDir + "/apps/proxy/root"
-		.accessLog = [
+		.logConfig = [
 			"target": %logDir + "/apps/proxy.log",
 			"rotate": "day",
 			"format": "%T",

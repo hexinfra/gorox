@@ -14,6 +14,52 @@ import (
 	"time"
 )
 
+// _accessLogger_ is a mixin.
+type _accessLogger_ struct {
+	// States
+	useLogger string    // "noop", "simple", ...
+	logConfig LogConfig // used to configure logger
+	logger    Logger    // the logger
+}
+
+func (l *_accessLogger_) onConfigure(comp Component) {
+	// .useLogger
+	comp.ConfigureString("useLogger", &l.useLogger, func(value string) error {
+		if loggerRegistered(value) {
+			return nil
+		}
+		return errors.New(".useLogger has an unknown value")
+	}, "noop")
+
+	// .logConfig
+	if v, ok := comp.Find("logConfig"); ok {
+		vLogConfig, ok := v.Dict()
+		if !ok {
+			UseExitln(".logConfig must be a dict")
+		}
+		vTarget, ok := vLogConfig["target"]
+		if !ok {
+			UseExitln("target is required in .logConfig")
+		}
+		if target, ok := vTarget.String(); ok {
+			l.logConfig.target = target
+		} else {
+			UseExitln("target in .logConfig must be a string")
+		}
+	}
+}
+func (l *_accessLogger_) onPrepare(comp Component) {
+	logger := createLogger(l.useLogger, &l.logConfig)
+	if logger == nil {
+		UseExitln("cannot create logger")
+	}
+	l.logger = logger
+}
+
+func (l *_accessLogger_) Log(v ...any)            { l.logger.Log(v) }
+func (l *_accessLogger_) Logln(v ...any)          { l.logger.Logln(v) }
+func (l *_accessLogger_) Logf(f string, v ...any) { l.logger.Logf(f, v...) }
+
 // holder collects shared methods between Gate and Node.
 type holder interface {
 	Stage() *Stage

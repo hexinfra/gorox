@@ -24,13 +24,13 @@ type RPCServer interface { // for *hrpcServer and *grpcServer
 type Service struct {
 	// Parent
 	Component_
+	// Mixins
+	_accessLogger_
 	// Assocs
 	stage   *Stage      // current stage
 	servers []RPCServer // bound rpc servers. may be empty
 	// States
 	hostnames       [][]byte           // ...
-	accessLog       *LogConfig         // ...
-	logger          *Logger            // service access logger
 	maxContentSize  int64              // max content size allowed
 	exactHostnames  [][]byte           // like: ("example.com")
 	suffixHostnames [][]byte           // like: ("*.example.com")
@@ -45,6 +45,8 @@ func (s *Service) onCreate(compName string, stage *Stage) {
 func (s *Service) OnShutdown() { close(s.ShutChan) } // notifies maintain() which shutdown sub components
 
 func (s *Service) OnConfigure() {
+	s._accessLogger_.onConfigure(s)
+
 	// .maxContentSize
 	s.ConfigureInt64("maxContentSize", &s.maxContentSize, func(value int64) error {
 		if value > 0 && value <= _1G {
@@ -54,9 +56,7 @@ func (s *Service) OnConfigure() {
 	}, _16M)
 }
 func (s *Service) OnPrepare() {
-	if s.accessLog != nil {
-		//s.logger = NewLogger(s.accessLog)
-	}
+	s._accessLogger_.onPrepare(s)
 
 	initsLock.RLock()
 	serviceInit := serviceInits[s.compName]
@@ -72,9 +72,7 @@ func (s *Service) maintain() { // runner
 	s.LoopRun(time.Second, func(now time.Time) {
 		// TODO
 	})
-	if s.logger != nil {
-		s.logger.Close()
-	}
+	s.logger.Close()
 	if DebugLevel() >= 2 {
 		Printf("service=%s done\n", s.CompName())
 	}
@@ -83,22 +81,6 @@ func (s *Service) maintain() { // runner
 
 func (s *Service) BindServer(server RPCServer) { s.servers = append(s.servers, server) }
 func (s *Service) Servers() []RPCServer        { return s.servers }
-
-func (s *Service) Log(str string) {
-	if s.logger != nil {
-		s.logger.Log(str)
-	}
-}
-func (s *Service) Logln(str string) {
-	if s.logger != nil {
-		s.logger.Logln(str)
-	}
-}
-func (s *Service) Logf(format string, args ...any) {
-	if s.logger != nil {
-		s.logger.Logf(format, args...)
-	}
-}
 
 /*
 func (s *Service) dispatch(exchan) {

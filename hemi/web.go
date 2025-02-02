@@ -70,6 +70,8 @@ func (s *Session) Del(name string)               { delete(s.states, name) }
 type Webapp struct {
 	// Parent
 	Component_
+	// Mixins
+	_accessLogger_
 	// Assocs
 	stage    *Stage            // current stage
 	hstate   Hstate            // the hstate which is used by this webapp
@@ -85,8 +87,6 @@ type Webapp struct {
 	text404          []byte            // bytes of the default 404 file
 	tlsCertificate   string            // tls certificate file, in pem format
 	tlsPrivateKey    string            // tls private key file, in pem format
-	accessLog        *LogConfig        // ...
-	logger           *Logger           // webapp access logger
 	maxMultiformSize int64             // max content size when content type is multipart/form-data
 	settings         map[string]string // webapp settings defined and used by users
 	settingsLock     sync.RWMutex      // protects settings
@@ -109,6 +109,8 @@ func (a *Webapp) onCreate(compName string, stage *Stage) {
 func (a *Webapp) OnShutdown() { close(a.ShutChan) } // notifies maintain() which shutdown sub components
 
 func (a *Webapp) OnConfigure() {
+	a._accessLogger_.onConfigure(a)
+
 	// .hostnames
 	if v, ok := a.Find("hostnames"); ok {
 		hostnames, ok := v.StringList()
@@ -184,8 +186,6 @@ func (a *Webapp) OnConfigure() {
 		return errors.New(".tlsCertificate has an invalid value")
 	}, "")
 
-	// accessLog, TODO
-
 	// .maxMultiformSize
 	a.ConfigureInt64("maxMultiformSize", &a.maxMultiformSize, func(value int64) error {
 		if value > 0 && value <= _1T {
@@ -219,9 +219,8 @@ func (a *Webapp) OnConfigure() {
 	}
 }
 func (a *Webapp) OnPrepare() {
-	if a.accessLog != nil {
-		//a.logger = NewLogger(a.accessLog)
-	}
+	a._accessLogger_.onPrepare(a)
+
 	if a.file404 != "" {
 		if data, err := os.ReadFile(a.file404); err == nil {
 			a.text404 = data
@@ -264,9 +263,7 @@ func (a *Webapp) maintain() { // runner
 	a.handlets.goWalk(Handlet.OnShutdown)
 	a.WaitSubs() // handlets, revisers, socklets, rules
 
-	if a.logger != nil {
-		a.logger.Close()
-	}
+	a.logger.Close()
 	if DebugLevel() >= 2 {
 		Printf("webapp=%s done\n", a.CompName())
 	}
@@ -363,22 +360,6 @@ func (a *Webapp) Setting(name string) (value string, ok bool) {
 	return
 }
 
-func (a *Webapp) Log(str string) {
-	if a.logger != nil {
-		a.logger.Log(str)
-	}
-}
-func (a *Webapp) Logln(str string) {
-	if a.logger != nil {
-		a.logger.Logln(str)
-	}
-}
-func (a *Webapp) Logf(format string, args ...any) {
-	if a.logger != nil {
-		a.logger.Logf(format, args...)
-	}
-}
-
 func (a *Webapp) dispatchExchan(req ServerRequest, resp ServerResponse) {
 	req.makeAbsPath() // for fs check rules, if any
 	for _, rule := range a.rules {
@@ -386,8 +367,8 @@ func (a *Webapp) dispatchExchan(req ServerRequest, resp ServerResponse) {
 			continue
 		}
 		if handled := rule.executeExchan(req, resp); handled {
-			if rule.logAccess && a.logger != nil {
-				//a.logger.logf("status=%d %s %s\n", resp.Status(), req.Method(), req.UnsafeURI())
+			if rule.logAccess {
+				//a.Logf("status=%d %s %s\n", resp.Status(), req.Method(), req.UnsafeURI())
 			}
 			return
 		}
@@ -402,7 +383,7 @@ func (a *Webapp) dispatchSocket(req ServerRequest, sock ServerSocket) {
 			continue
 		}
 		if served := rule.executeSocket(req, sock); served {
-			if rule.logAccess && a.logger != nil {
+			if rule.logAccess {
 				// TODO: log?
 			}
 			return

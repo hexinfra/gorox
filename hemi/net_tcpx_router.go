@@ -32,9 +32,7 @@ type TCPXRouter struct {
 	dealets compDict[TCPXDealet] // defined dealets. indexed by component name
 	cases   []*tcpxCase          // defined cases. the order must be kept, so we use list. TODO: use ordered map?
 	// States
-	maxConcurrentConnsPerGate int32      // max concurrent connections allowed per gate
-	accessLog                 *LogConfig // ...
-	logger                    *Logger    // router access logger
+	maxConcurrentConnsPerGate int32 // max concurrent connections allowed per gate
 }
 
 func (r *TCPXRouter) onCreate(compName string, stage *Stage) {
@@ -53,7 +51,7 @@ func (r *TCPXRouter) OnConfigure() {
 		}
 		return errors.New(".maxConcurrentConnsPerGate has an invalid value")
 	}, 10000)
-	// accessLog, TODO
+	// logConfig, TODO
 
 	// sub components
 	r.dealets.walk(TCPXDealet.OnConfigure)
@@ -64,11 +62,6 @@ func (r *TCPXRouter) OnConfigure() {
 func (r *TCPXRouter) OnPrepare() {
 	r.Server_.OnPrepare()
 	r._tcpxHolder_.onPrepare(r)
-
-	// accessLog, TODO
-	if r.accessLog != nil {
-		//r.logger = NewLogger(r.accessLog)
-	}
 
 	// sub components
 	r.dealets.walk(TCPXDealet.OnPrepare)
@@ -133,29 +126,11 @@ func (r *TCPXRouter) Serve() { // runner
 	r.dealets.goWalk(TCPXDealet.OnShutdown)
 	r.WaitSubs() // dealets, cases
 
-	if r.logger != nil {
-		r.logger.Close()
-	}
+	r.logger.Close()
 	if DebugLevel() >= 2 {
 		Printf("tcpxRouter=%s done\n", r.CompName())
 	}
 	r.stage.DecSub() // router
-}
-
-func (r *TCPXRouter) Log(str string) {
-	if r.logger != nil {
-		r.logger.Log(str)
-	}
-}
-func (r *TCPXRouter) Logln(str string) {
-	if r.logger != nil {
-		r.logger.Logln(str)
-	}
-}
-func (r *TCPXRouter) Logf(format string, args ...any) {
-	if r.logger != nil {
-		r.logger.Logf(format, args...)
-	}
 }
 
 func (r *TCPXRouter) tcpxHolder() _tcpxHolder_ { return r._tcpxHolder_ }

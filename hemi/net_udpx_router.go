@@ -21,6 +21,7 @@ type UDPXRouter struct {
 	Server_[*udpxGate]
 	// Mixins
 	_udpxHolder_ // to carry configs used by gates
+	_accessLogger_
 	// Assocs
 	dealets compDict[UDPXDealet] // defined dealets. indexed by component name
 	cases   []*udpxCase          // defined cases. the order must be kept, so we use list. TODO: use ordered map?
@@ -35,8 +36,7 @@ func (r *UDPXRouter) onCreate(compName string, stage *Stage) {
 func (r *UDPXRouter) OnConfigure() {
 	r.Server_.OnConfigure()
 	r._udpxHolder_.onConfigure(r)
-
-	// logConfig, TODO
+	r._accessLogger_.onConfigure(r)
 
 	// sub components
 	r.dealets.walk(UDPXDealet.OnConfigure)
@@ -47,6 +47,7 @@ func (r *UDPXRouter) OnConfigure() {
 func (r *UDPXRouter) OnPrepare() {
 	r.Server_.OnPrepare()
 	r._udpxHolder_.onPrepare(r)
+	r._accessLogger_.onPrepare(r)
 
 	// sub components
 	r.dealets.walk(UDPXDealet.OnPrepare)
@@ -109,7 +110,7 @@ func (r *UDPXRouter) Serve() { // runner
 	r.dealets.goWalk(UDPXDealet.OnShutdown)
 	r.WaitSubs() // dealets, cases
 
-	r.logger.Close()
+	r.CloseLog()
 	if DebugLevel() >= 2 {
 		Printf("udpxRouter=%s done\n", r.CompName())
 	}

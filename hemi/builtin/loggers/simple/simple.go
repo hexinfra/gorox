@@ -8,16 +8,14 @@
 package simple
 
 import (
-	. "github.com/hexinfra/gorox/hemi"
+	"fmt"
 	"os"
+
+	. "github.com/hexinfra/gorox/hemi"
 )
 
 func init() {
-	RegisterLogger("simple", func(config *LogConfig) Logger {
-		l := new(simpleLogger)
-		l.init(config)
-		return l
-	})
+	RegisterLogger("simple", newSimpleLogger)
 }
 
 // simpleLogger implements Logger.
@@ -30,66 +28,41 @@ type simpleLogger struct {
 	used   int
 }
 
-func (l *simpleLogger) init(config *LogConfig) {
-	l.config = config
-}
-
-func (l *simpleLogger) Log(v ...any) {
-}
-func (l *simpleLogger) Logln(v ...any) {
-}
-func (l *simpleLogger) Logf(f string, v ...any) {
-}
-
-func (l *simpleLogger) Close() {
-}
-
-/*
-
-type L struct {
-	config *LogConfig
-	file   *os.File
-	queue  chan string
-	buffer []byte
-	size   int
-	used   int
-}
-
-func NewLogger(config *LogConfig) (*L, error) {
-	file, err := os.OpenFile(config.target, os.O_WRONLY|os.O_CREATE, 0700)
+func newSimpleLogger(config *LogConfig) Logger {
+	file, err := os.OpenFile(config.Target, os.O_WRONLY|os.O_CREATE, 0700)
 	if err != nil {
-		return nil, err
+		return nil
 	}
-	l := new(L)
+	l := new(simpleLogger)
 	l.config = config
 	l.file = file
 	l.queue = make(chan string)
-	l.buffer = make([]byte, 1048576)
+	l.buffer = make([]byte, config.BufSize)
 	l.size = len(l.buffer)
 	l.used = 0
 	go l.saver()
-	return l, nil
+	return l
 }
 
-func (l *L) Log(v ...any) {
+func (l *simpleLogger) Log(v ...any) {
 	if s := fmt.Sprint(v...); s != "" {
 		l.queue <- s
 	}
 }
-func (l *L) Logln(v ...any) {
+func (l *simpleLogger) Logln(v ...any) {
 	if s := fmt.Sprintln(v...); s != "" {
 		l.queue <- s
 	}
 }
-func (l *L) Logf(f string, v ...any) {
+func (l *simpleLogger) Logf(f string, v ...any) {
 	if s := fmt.Sprintf(f, v...); s != "" {
 		l.queue <- s
 	}
 }
 
-func (l *L) Close() { l.queue <- "" }
+func (l *simpleLogger) Close() { l.queue <- "" }
 
-func (l *L) saver() { // runner
+func (l *simpleLogger) saver() { // runner
 	for {
 		s := <-l.queue
 		if s == "" {
@@ -114,7 +87,7 @@ over:
 	l.clear()
 	l.file.Close()
 }
-func (l *L) write(s string) {
+func (l *simpleLogger) write(s string) {
 	n := len(s)
 	if n >= l.size {
 		l.clear()
@@ -131,11 +104,10 @@ func (l *L) write(s string) {
 		}
 	}
 }
-func (l *L) clear() {
+func (l *simpleLogger) clear() {
 	if l.used > 0 {
 		l.flush(l.buffer[:l.used])
 		l.used = 0
 	}
 }
-func (l *L) flush(logs []byte) { l.file.Write(logs) }
-*/
+func (l *simpleLogger) flush(logs []byte) { l.file.Write(logs) }

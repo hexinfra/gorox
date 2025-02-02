@@ -23,6 +23,7 @@ type QUIXRouter struct {
 	Server_[*quixGate]
 	// Mixins
 	_quixHolder_ // to carry configs used by gates
+	_accessLogger_
 	// Assocs
 	dealets compDict[QUIXDealet] // defined dealets. indexed by component name
 	cases   []*quixCase          // defined cases. the order must be kept, so we use list. TODO: use ordered map?
@@ -38,6 +39,7 @@ func (r *QUIXRouter) onCreate(compName string, stage *Stage) {
 func (r *QUIXRouter) OnConfigure() {
 	r.Server_.OnConfigure()
 	r._quixHolder_.onConfigure(r)
+	r._accessLogger_.onConfigure(r)
 
 	// .maxConcurrentConnsPerGate
 	r.ConfigureInt32("maxConcurrentConnsPerGate", &r.maxConcurrentConnsPerGate, func(value int32) error {
@@ -56,6 +58,7 @@ func (r *QUIXRouter) OnConfigure() {
 func (r *QUIXRouter) OnPrepare() {
 	r.Server_.OnPrepare()
 	r._quixHolder_.onPrepare(r)
+	r._accessLogger_.onPrepare(r)
 
 	// sub components
 	r.dealets.walk(QUIXDealet.OnPrepare)
@@ -120,7 +123,7 @@ func (r *QUIXRouter) Serve() { // runner
 	r.dealets.goWalk(QUIXDealet.OnShutdown)
 	r.WaitSubs() // dealets, cases
 
-	r.logger.Close()
+	r.CloseLog()
 	if DebugLevel() >= 2 {
 		Printf("quixRouter=%s done\n", r.CompName())
 	}

@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// Logger for net, rpc, and web.
+// Loggers log events.
 
 package hemi
 
@@ -43,10 +43,10 @@ func createLogger(loggerSign string, config *LogConfig) Logger {
 
 // LogConfig
 type LogConfig struct {
-	target  string // "/path/to/file.log", "1.2.3.4:5678", ...
-	rotate  string // "day", "hour", ...
-	format  string // ...
-	bufSize int    // size of log buffer
+	Target  string   // "/path/to/file.log", "1.2.3.4:5678", ...
+	Rotate  string   // "day", "hour", ...
+	Fields  []string // ("uri", "status"), ...
+	BufSize int32    // size of log buffer
 }
 
 // Logger is logger for routers, services, and webapps.

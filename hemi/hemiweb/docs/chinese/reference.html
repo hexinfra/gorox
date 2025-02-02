@@ -496,10 +496,11 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 	webapp "proxy" {
 		.hostnames = ("example.com" "*.example.com" "www.example*")
 		.webRoot = %topDir + "/apps/proxy/root"
+		.useLogger = "simple"
 		.logConfig = [
 			"target": %logDir + "/apps/proxy.log",
+			"fields": ("uri", "status"),
 			"rotate": "day",
-			"format": "%T",
 		]
 		.maxMultiformSize = 128M
 		.settings = []
@@ -601,7 +602,7 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 					<p>rule 属性说明。</p>
 					<p>.logAccess 是否记录访问日志。</p>
 					<code>语法：.logAccess = false
-						默认值： false
+						默认值： true
 						取值范围：true | false
 					</code>
 

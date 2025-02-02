@@ -72,7 +72,7 @@ func (s *Service) maintain() { // runner
 	s.LoopRun(time.Second, func(now time.Time) {
 		// TODO
 	})
-	s.logger.Close()
+	s.CloseLog()
 	if DebugLevel() >= 2 {
 		Printf("service=%s done\n", s.CompName())
 	}

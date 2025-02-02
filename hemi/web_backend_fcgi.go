@@ -568,7 +568,7 @@ func (r *fcgiResponse) onEnd() {
 		if DebugLevel() >= 2 {
 			Println("contentFile is left as is, not removed!")
 		} else if err := os.Remove(r.contentFile.Name()); err != nil {
-			// TODO: log?
+			// TODO: log err?
 		}
 		r.contentFile = nil
 	}

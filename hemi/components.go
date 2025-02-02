@@ -445,7 +445,7 @@ func (s *Stage) OnShutdown() {
 	// Stage
 	if DebugLevel() >= 2 {
 		// TODO
-		Println("stage close log file")
+		Println("stage closed log file")
 	}
 }
 

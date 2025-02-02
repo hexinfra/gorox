@@ -14,52 +14,6 @@ import (
 	"time"
 )
 
-// _accessLogger_ is a mixin.
-type _accessLogger_ struct {
-	// States
-	useLogger string    // "noop", "simple", ...
-	logConfig LogConfig // used to configure logger
-	logger    Logger    // the logger
-}
-
-func (l *_accessLogger_) onConfigure(comp Component) {
-	// .useLogger
-	comp.ConfigureString("useLogger", &l.useLogger, func(value string) error {
-		if loggerRegistered(value) {
-			return nil
-		}
-		return errors.New(".useLogger has an unknown value")
-	}, "noop")
-
-	// .logConfig
-	if v, ok := comp.Find("logConfig"); ok {
-		vLogConfig, ok := v.Dict()
-		if !ok {
-			UseExitln(".logConfig must be a dict")
-		}
-		vTarget, ok := vLogConfig["target"]
-		if !ok {
-			UseExitln("target is required in .logConfig")
-		}
-		if target, ok := vTarget.String(); ok {
-			l.logConfig.target = target
-		} else {
-			UseExitln("target in .logConfig must be a string")
-		}
-	}
-}
-func (l *_accessLogger_) onPrepare(comp Component) {
-	logger := createLogger(l.useLogger, &l.logConfig)
-	if logger == nil {
-		UseExitln("cannot create logger")
-	}
-	l.logger = logger
-}
-
-func (l *_accessLogger_) Log(v ...any)            { l.logger.Log(v) }
-func (l *_accessLogger_) Logln(v ...any)          { l.logger.Logln(v) }
-func (l *_accessLogger_) Logf(f string, v ...any) { l.logger.Logf(f, v...) }
-
 // holder collects shared methods between Gate and Node.
 type holder interface {
 	Stage() *Stage
@@ -117,6 +71,66 @@ func (h *_holder_) TLSMode() bool               { return h.tlsMode }
 func (h *_holder_) TLSConfig() *tls.Config      { return h.tlsConfig }
 func (h *_holder_) ReadTimeout() time.Duration  { return h.readTimeout }
 func (h *_holder_) WriteTimeout() time.Duration { return h.writeTimeout }
+
+// _accessLogger_ is a mixin.
+type _accessLogger_ struct {
+	// States
+	useLogger string    // "noop", "simple", ...
+	logConfig LogConfig // used to configure logger
+	logger    Logger    // the logger
+}
+
+func (l *_accessLogger_) onConfigure(comp Component) {
+	// .useLogger
+	comp.ConfigureString("useLogger", &l.useLogger, func(value string) error {
+		if loggerRegistered(value) {
+			return nil
+		}
+		return errors.New(".useLogger has an unknown value")
+	}, "noop")
+
+	// .logConfig
+	if v, ok := comp.Find("logConfig"); ok {
+		vLogConfig, ok := v.Dict()
+		if !ok {
+			UseExitln(".logConfig must be a dict")
+		}
+		// target
+		vTarget, ok := vLogConfig["target"]
+		if !ok {
+			UseExitln("target is required in .logConfig")
+		}
+		if target, ok := vTarget.String(); ok {
+			l.logConfig.Target = target
+		} else {
+			UseExitln("target in .logConfig must be a string")
+		}
+		// bufSize
+		vBufSize, ok := vLogConfig["bufSize"]
+		if ok {
+			if bufSize, ok := vBufSize.Int32(); ok && bufSize >= _1K {
+				l.logConfig.BufSize = bufSize
+			} else {
+				UseExitln("invalid bufSize in .logConfig")
+			}
+		} else {
+			l.logConfig.BufSize = _4K
+		}
+	}
+}
+func (l *_accessLogger_) onPrepare(comp Component) {
+	logger := createLogger(l.useLogger, &l.logConfig)
+	if logger == nil {
+		UseExitln("cannot create logger")
+	}
+	l.logger = logger
+}
+
+func (l *_accessLogger_) Log(v ...any)            { l.logger.Log(v) }
+func (l *_accessLogger_) Logln(v ...any)          { l.logger.Logln(v) }
+func (l *_accessLogger_) Logf(f string, v ...any) { l.logger.Logf(f, v...) }
+
+func (l *_accessLogger_) CloseLog() { l.logger.Close() }
 
 // contentSaver
 type contentSaver interface {

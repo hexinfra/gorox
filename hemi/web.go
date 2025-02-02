@@ -263,7 +263,7 @@ func (a *Webapp) maintain() { // runner
 	a.handlets.goWalk(Handlet.OnShutdown)
 	a.WaitSubs() // handlets, revisers, socklets, rules
 
-	a.logger.Close()
+	a.CloseLog()
 	if DebugLevel() >= 2 {
 		Printf("webapp=%s done\n", a.CompName())
 	}
@@ -368,7 +368,7 @@ func (a *Webapp) dispatchExchan(req ServerRequest, resp ServerResponse) {
 		}
 		if handled := rule.executeExchan(req, resp); handled {
 			if rule.logAccess {
-				//a.Logf("status=%d %s %s\n", resp.Status(), req.Method(), req.UnsafeURI())
+				a.Logf("status=%d %s %s\n", resp.Status(), req.Method(), req.UnsafeURI())
 			}
 			return
 		}
@@ -384,7 +384,7 @@ func (a *Webapp) dispatchSocket(req ServerRequest, sock ServerSocket) {
 		}
 		if served := rule.executeSocket(req, sock); served {
 			if rule.logAccess {
-				// TODO: log?
+				// TODO: log access?
 			}
 			return
 		}

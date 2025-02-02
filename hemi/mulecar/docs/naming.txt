@@ -31,7 +31,7 @@ COMPONENTS
       [case]
     [service]
     hstate (filesysHstate, redisHstate, ...)
-    hcache (filesysHcache, redisHcache, ...)
+    hcache (filesysHcache, memoryHcache, ...)
     [webapp]
       handlet (hello, static, ...)
       reviser (gzip, head, ...)

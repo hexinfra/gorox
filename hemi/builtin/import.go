@@ -26,7 +26,6 @@ import ( // preload all
 	_ "github.com/hexinfra/gorox/hemi/builtin/handlets/webdav"
 	_ "github.com/hexinfra/gorox/hemi/builtin/hcaches/filesys"
 	_ "github.com/hexinfra/gorox/hemi/builtin/hcaches/memory"
-	_ "github.com/hexinfra/gorox/hemi/builtin/hcaches/redis"
 	_ "github.com/hexinfra/gorox/hemi/builtin/hstates/filesys"
 	_ "github.com/hexinfra/gorox/hemi/builtin/hstates/redis"
 	_ "github.com/hexinfra/gorox/hemi/builtin/loggers/simple"

@@ -123,7 +123,7 @@ article table.none tr td {
 		<li>stage &gt; filesysHstate</li>
 		<li>stage &gt; redisHstate</li>
 		<li><a href="#stage-filesysHcache">stage &gt; filesysHcache</a></li>
-		<li><a href="#stage-redisHcache">stage &gt; redisHcache</a></li>
+		<li><a href="#stage-memoryHcache">stage &gt; memoryHcache</a></li>
 		<li><a href="#stage-webapp">stage &gt; webapp</a></li>
 		<li><a href="#stage-webapp-rule">stage &gt; webapp &gt; rule</a></li>
 		<li><a href="#stage-webapp-access1Checker">stage &gt; webapp &gt; [rule &gt;] access1Checker</a></li>
@@ -469,9 +469,9 @@ Dicts:       [], ["a" : 1, "b" : ("two")]
 			</ul>
 		</li>
 
-		<li id="stage-redisHcache">
-			<h4>stage &gt; redisHcache</h4>
-			<p>redisHcache：根据 HTTP 的 header 信息把远端的数据缓存在 redis 中。</p>
+		<li id="stage-memoryHcache">
+			<h4>stage &gt; memoryHcache</h4>
+			<p>memoryHcache：根据 HTTP 的 header 信息把远端的数据缓存在内存中。</p>
 		</li>
 
 		<li id="stage-webapp">

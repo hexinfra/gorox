@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-package shared
+package hemiapp
 
 import (
 	"fmt"
@@ -11,21 +11,21 @@ import (
 	. "github.com/hexinfra/gorox/hemi"
 )
 
-func (h *sharedHandlet) GET_form_urlencoded(req ServerRequest, resp ServerResponse) {
+func (h *hemiappHandlet) GET_form_urlencoded(req ServerRequest, resp ServerResponse) {
 	resp.Send(`<form action="/form?a=aa&b=bb" method="post">
 	<input type="text" name="title">
 	<textarea name="content"></textarea>
 	<input type="submit" value="submit">
 	</form>`)
 }
-func (h *sharedHandlet) GET_form_multipart(req ServerRequest, resp ServerResponse) {
+func (h *hemiappHandlet) GET_form_multipart(req ServerRequest, resp ServerResponse) {
 	resp.Send(`<form action="/form?a=aa&b=bb" method="post" enctype="multipart/form-data">
 	<input type="text" name="title">
 	<textarea name="content"></textarea>
 	<input type="submit" value="submit">
 	</form>`)
 }
-func (h *sharedHandlet) POST_form(req ServerRequest, resp ServerResponse) {
+func (h *hemiappHandlet) POST_form(req ServerRequest, resp ServerResponse) {
 	a := req.Q("a")
 	b := req.Q("b")
 	title := req.F("title")

@@ -8,5 +8,5 @@
 package apps
 
 import (
-	_ "github.com/hexinfra/gorox/hemi/mulecar/apps/shared"
+	_ "github.com/hexinfra/gorox/hemi/mulecar/apps/hemiapp"
 )

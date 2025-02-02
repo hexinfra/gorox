@@ -3,19 +3,19 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-package shared
+package hemiapp
 
 import (
 	. "github.com/hexinfra/gorox/hemi"
 )
 
-func (h *sharedHandlet) GET_useragent(req ServerRequest, resp ServerResponse) {
+func (h *hemiappHandlet) GET_useragent(req ServerRequest, resp ServerResponse) {
 	resp.Send(req.UserAgent())
 }
-func (h *sharedHandlet) GET_authority(req ServerRequest, resp ServerResponse) {
+func (h *hemiappHandlet) GET_authority(req ServerRequest, resp ServerResponse) {
 	resp.SendBytes(req.UnsafeAuthority())
 }
-func (h *sharedHandlet) GET_single(req ServerRequest, resp ServerResponse) {
+func (h *hemiappHandlet) GET_single(req ServerRequest, resp ServerResponse) {
 	accept, ok := req.Header("accept")
 	if !ok {
 		resp.Send("please provide accept header")
@@ -23,7 +23,7 @@ func (h *sharedHandlet) GET_single(req ServerRequest, resp ServerResponse) {
 	}
 	resp.Send(accept)
 }
-func (h *sharedHandlet) GET_multi(req ServerRequest, resp ServerResponse) {
+func (h *hemiappHandlet) GET_multi(req ServerRequest, resp ServerResponse) {
 	accepts, ok := req.Headers("accept")
 	if !ok {
 		resp.Send("please provide accept header")
@@ -33,7 +33,7 @@ func (h *sharedHandlet) GET_multi(req ServerRequest, resp ServerResponse) {
 		resp.Echo(accept + "<br>")
 	}
 }
-func (h *sharedHandlet) GET_multi2(req ServerRequest, resp ServerResponse) {
+func (h *hemiappHandlet) GET_multi2(req ServerRequest, resp ServerResponse) {
 	uas, ok := req.Headers("sec-ch-ua")
 	if !ok {
 		resp.Send("please provide sec-ch-ua header")

@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-package shared
+package hemiapp
 
 import (
 	"github.com/hexinfra/gorox/hemi/builtin/mappers/simple"
@@ -12,45 +12,45 @@ import (
 )
 
 func init() {
-	RegisterWebappInit("shared", func(webapp *Webapp) error {
+	RegisterWebappInit("hemiapp", func(webapp *Webapp) error {
 		return nil
 	})
 }
 
 func init() {
-	RegisterHandlet("sharedHandlet", func(compName string, stage *Stage, webapp *Webapp) Handlet {
-		h := new(sharedHandlet)
+	RegisterHandlet("hemiappHandlet", func(compName string, stage *Stage, webapp *Webapp) Handlet {
+		h := new(hemiappHandlet)
 		h.onCreate(compName, stage, webapp)
 		return h
 	})
 }
 
-// sharedHandlet
-type sharedHandlet struct {
+// hemiappHandlet
+type hemiappHandlet struct {
 	// Parent
 	Handlet_
 	// States
 }
 
-func (h *sharedHandlet) onCreate(compName string, stage *Stage, webapp *Webapp) {
+func (h *hemiappHandlet) onCreate(compName string, stage *Stage, webapp *Webapp) {
 	h.Handlet_.OnCreate(compName, stage, webapp)
 }
-func (h *sharedHandlet) OnShutdown() {
+func (h *hemiappHandlet) OnShutdown() {
 	h.Webapp().DecSub() // handlet
 }
 
-func (h *sharedHandlet) OnConfigure() {
+func (h *hemiappHandlet) OnConfigure() {
 }
-func (h *sharedHandlet) OnPrepare() {
+func (h *hemiappHandlet) OnPrepare() {
 	m := simple.New()
 
 	h.UseMapper(h, m)
 }
 
-func (h *sharedHandlet) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
+func (h *hemiappHandlet) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
 	h.Dispatch(req, resp, h.notFound)
 	return true
 }
-func (h *sharedHandlet) notFound(req ServerRequest, resp ServerResponse) {
+func (h *hemiappHandlet) notFound(req ServerRequest, resp ServerResponse) {
 	resp.Send("404 handle not found!")
 }

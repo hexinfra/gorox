@@ -18,13 +18,13 @@ import (
 
 const ( // basic http constants
 	// version codes
-	Version1_0 = 0 // must be 0
+	Version1_0 = 0 // must be 0, default value
 	Version1_1 = 1
 	Version2   = 2
 	Version3   = 3
 
 	// scheme codes
-	SchemeHTTP  = 0 // must be 0
+	SchemeHTTP  = 0 // must be 0, default value
 	SchemeHTTPS = 1
 
 	// best known http method codes
@@ -133,23 +133,23 @@ var httpSchemeByteses = [...][]byte{
 var httpStatus = [11]byte{':', 's', 't', 'a', 't', 'u', 's', ' ', 'n', 'n', 'n'} // used by http/2 and http/3
 
 const ( // misc http type constants
-	httpSectionControl  = 0 // must be 0
+	httpSectionControl  = 0 // must be 0, default value
 	httpSectionHeaders  = 1
 	httpSectionContent  = 2
 	httpSectionTrailers = 3
 
-	httpCodingIdentity = 0 // must be 0
+	httpCodingIdentity = 0 // must be 0, default value
 	httpCodingCompress = 1
 	httpCodingDeflate  = 2 // this is in fact zlib format
 	httpCodingGzip     = 3
 	httpCodingBrotli   = 4
 	httpCodingUnknown  = 5
 
-	httpFormNotForm    = 0 // must be 0
+	httpFormNotForm    = 0 // must be 0, default value
 	httpFormURLEncoded = 1 // application/x-www-form-urlencoded
 	httpFormMultipart  = 2 // multipart/form-data
 
-	httpContentTextNone  = 0 // must be 0
+	httpContentTextNone  = 0 // must be 0, default value
 	httpContentTextInput = 1 // refers to r.input
 	httpContentTextPool  = 2 // fetched from pool
 	httpContentTextMake  = 3 // direct make

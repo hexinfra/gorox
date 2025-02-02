@@ -22,7 +22,6 @@ import ( // preload all
 	_ "github.com/hexinfra/gorox/hemi/classic/handlets/https"
 	_ "github.com/hexinfra/gorox/hemi/classic/handlets/limit"
 	_ "github.com/hexinfra/gorox/hemi/classic/handlets/mp4"
-	_ "github.com/hexinfra/gorox/hemi/classic/handlets/rewriter"
 	_ "github.com/hexinfra/gorox/hemi/classic/handlets/sitex"
 	_ "github.com/hexinfra/gorox/hemi/classic/handlets/webdav"
 	_ "github.com/hexinfra/gorox/hemi/classic/hcaches/local"

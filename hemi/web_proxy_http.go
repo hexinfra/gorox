@@ -11,125 +11,61 @@ import (
 	"strings"
 )
 
-func init() {
-	RegisterHandlet("httpProxy", func(compName string, stage *Stage, webapp *Webapp) Handlet {
-		h := new(httpProxy)
-		h.onCreate(compName, stage, webapp)
-		return h
-	})
+// Hcache component is the interface to storages of HTTP caching.
+type Hcache interface {
+	// Imports
+	Component
+	// Methods
+	Maintain() // runner
+	// TODO: design good apis
+	Set(key []byte, hobject *Hobject)
+	Get(key []byte) (hobject *Hobject)
+	Del(key []byte) bool
 }
 
-// httpProxy handlet passes http requests to http backends and caches responses.
-type httpProxy struct {
+// Hcache_ is the parent for all hcaches.
+type Hcache_ struct {
 	// Parent
-	Handlet_
+	Component_
 	// Assocs
-	backend HTTPBackend // the *HTTP[1-3]Backend to pass to
-	hcache  Hcache      // the hcache which is used by this proxy
+	stage *Stage // current stage
 	// States
-	WebExchanProxyConfig // embeded
 }
 
-func (h *httpProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
-	h.Handlet_.OnCreate(compName, stage, webapp)
-}
-func (h *httpProxy) OnShutdown() {
-	h.webapp.DecSub() // handlet
+func (c *Hcache_) OnCreate(compName string, stage *Stage) {
+	c.MakeComp(compName)
+	c.stage = stage
 }
 
-func (h *httpProxy) OnConfigure() {
-	// .toBackend
-	if v, ok := h.Find("toBackend"); ok {
-		if compName, ok := v.String(); ok && compName != "" {
-			if backend := h.stage.Backend(compName); backend == nil {
-				UseExitf("unknown backend: '%s'\n", compName)
-			} else {
-				h.backend = backend.(HTTPBackend)
-			}
-		} else {
-			UseExitln("invalid toBackend")
-		}
-	} else {
-		UseExitln("toBackend is required for http proxy")
-	}
+func (c *Hcache_) Stage() *Stage { return c.stage }
 
-	// .withHcache
-	if v, ok := h.Find("withHcache"); ok {
-		if compName, ok := v.String(); ok && compName != "" {
-			if hcache := h.stage.Hcache(compName); hcache == nil {
-				UseExitf("unknown hcache: '%s'\n", compName)
-			} else {
-				h.hcache = hcache
-			}
-		} else {
-			UseExitln("invalid withHcache")
-		}
-	}
-
-	// .addRequestHeaders
-	if v, ok := h.Find("addRequestHeaders"); ok {
-		addedHeaders := make(map[string]Value)
-		if vHeaders, ok := v.Dict(); ok {
-			for headerName, vHeaderValue := range vHeaders {
-				if vHeaderValue.IsVariable() {
-					name := vHeaderValue.name
-					if p := strings.IndexByte(name, '_'); p != -1 {
-						p++ // skip '_'
-						vHeaderValue.name = name[:p] + strings.ReplaceAll(name[p:], "_", "-")
-					}
-				} else if _, ok := vHeaderValue.Bytes(); !ok {
-					UseExitf("bad value in .addRequestHeaders")
-				}
-				addedHeaders[headerName] = vHeaderValue
-			}
-			h.AddRequestHeaders = addedHeaders
-		} else {
-			UseExitln("invalid addRequestHeaders")
-		}
-	}
-
-	// .bufferClientContent
-	h.ConfigureBool("bufferClientContent", &h.BufferClientContent, true)
-	// .hostname
-	h.ConfigureBytes("hostname", &h.Hostname, nil, nil)
-	// .colonport
-	h.ConfigureBytes("colonport", &h.Colonport, nil, nil)
-	// .inboundViaName
-	h.ConfigureBytes("inboundViaName", &h.InboundViaName, nil, bytesGorox)
-	// .delRequestHeaders
-	h.ConfigureBytesList("delRequestHeaders", &h.DelRequestHeaders, nil, [][]byte{})
-	// .bufferServerContent
-	h.ConfigureBool("bufferServerContent", &h.BufferServerContent, true)
-	// .outboundViaName
-	h.ConfigureBytes("outboundViaName", &h.OutboundViaName, nil, nil)
-	// .addResponseHeaders
-	h.ConfigureStringDict("addResponseHeaders", &h.AddResponseHeaders, nil, map[string]string{})
-	// .delResponseHeaders
-	h.ConfigureBytesList("delResponseHeaders", &h.DelResponseHeaders, nil, [][]byte{})
-}
-func (h *httpProxy) OnPrepare() {
-	// Currently nothing.
+func (c *Hcache_) todo() {
 }
 
-func (h *httpProxy) IsProxy() bool { return true } // works as a reverse proxy
-func (h *httpProxy) IsCache() bool { return h.hcache != nil }
+// Hobject represents an HTTP object in Hcache.
+type Hobject struct {
+	// TODO
+	uri           []byte
+	headerFields  any
+	content       any
+	trailerFields any
+}
 
-func (h *httpProxy) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
-	WebExchanReverseProxy(req, resp, h.hcache, h.backend, &h.WebExchanProxyConfig)
-	return true
+func (o *Hobject) todo() {
+	// TODO
 }
 
 // WebExchanProxyConfig
 type WebExchanProxyConfig struct {
-	// Inbound
+	// Inbound, to origin servers
 	BufferClientContent bool
-	Hostname            []byte // overrides client's hostname
-	Colonport           []byte // overrides client's colonport
+	Hostname            []byte // overrides client provided hostname
+	Colonport           []byte // overrides client provided colonport
 	InboundViaName      []byte
 	AppendPathPrefix    []byte
 	AddRequestHeaders   map[string]Value
 	DelRequestHeaders   [][]byte
-	// Outbound
+	// Outbound, to user agents
 	BufferServerContent bool
 	OutboundViaName     []byte
 	AddResponseHeaders  map[string]string
@@ -260,46 +196,110 @@ func WebExchanReverseProxy(servReq ServerRequest, servResp ServerResponse, hcach
 	}
 }
 
-// Hcache component is the interface to storages of HTTP caching.
-type Hcache interface {
-	// Imports
-	Component
-	// Methods
-	Maintain() // runner
-	// TODO: design good apis
-	Set(key []byte, hobject *Hobject)
-	Get(key []byte) (hobject *Hobject)
-	Del(key []byte) bool
+func init() {
+	RegisterHandlet("httpProxy", func(compName string, stage *Stage, webapp *Webapp) Handlet {
+		h := new(httpProxy)
+		h.onCreate(compName, stage, webapp)
+		return h
+	})
 }
 
-// Hcache_ is the parent for all hcaches.
-type Hcache_ struct {
+// httpProxy handlet passes http requests to http backends and caches responses.
+type httpProxy struct {
 	// Parent
-	Component_
+	Handlet_
 	// Assocs
-	stage *Stage // current stage
+	backend HTTPBackend // the *HTTP[1-3]Backend to pass to
+	hcache  Hcache      // the hcache which is used by this proxy
 	// States
+	WebExchanProxyConfig // embeded
 }
 
-func (c *Hcache_) OnCreate(compName string, stage *Stage) {
-	c.MakeComp(compName)
-	c.stage = stage
+func (h *httpProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	h.Handlet_.OnCreate(compName, stage, webapp)
+}
+func (h *httpProxy) OnShutdown() {
+	h.webapp.DecSub() // handlet
 }
 
-func (c *Hcache_) Stage() *Stage { return c.stage }
+func (h *httpProxy) OnConfigure() {
+	// .toBackend
+	if v, ok := h.Find("toBackend"); ok {
+		if compName, ok := v.String(); ok && compName != "" {
+			if backend := h.stage.Backend(compName); backend == nil {
+				UseExitf("unknown backend: '%s'\n", compName)
+			} else {
+				h.backend = backend.(HTTPBackend)
+			}
+		} else {
+			UseExitln("invalid toBackend")
+		}
+	} else {
+		UseExitln("toBackend is required for http proxy")
+	}
 
-func (c *Hcache_) todo() {
+	// .withHcache
+	if v, ok := h.Find("withHcache"); ok {
+		if compName, ok := v.String(); ok && compName != "" {
+			if hcache := h.stage.Hcache(compName); hcache == nil {
+				UseExitf("unknown hcache: '%s'\n", compName)
+			} else {
+				h.hcache = hcache
+			}
+		} else {
+			UseExitln("invalid withHcache")
+		}
+	}
+
+	// .addRequestHeaders
+	if v, ok := h.Find("addRequestHeaders"); ok {
+		addedHeaders := make(map[string]Value)
+		if vHeaders, ok := v.Dict(); ok {
+			for headerName, vHeaderValue := range vHeaders {
+				if vHeaderValue.IsVariable() {
+					name := vHeaderValue.name
+					if p := strings.IndexByte(name, '_'); p != -1 {
+						p++ // skip '_'
+						vHeaderValue.name = name[:p] + strings.ReplaceAll(name[p:], "_", "-")
+					}
+				} else if _, ok := vHeaderValue.Bytes(); !ok {
+					UseExitf("bad value in .addRequestHeaders")
+				}
+				addedHeaders[headerName] = vHeaderValue
+			}
+			h.AddRequestHeaders = addedHeaders
+		} else {
+			UseExitln("invalid addRequestHeaders")
+		}
+	}
+
+	// .bufferClientContent
+	h.ConfigureBool("bufferClientContent", &h.BufferClientContent, true)
+	// .hostname
+	h.ConfigureBytes("hostname", &h.Hostname, nil, nil)
+	// .colonport
+	h.ConfigureBytes("colonport", &h.Colonport, nil, nil)
+	// .inboundViaName
+	h.ConfigureBytes("inboundViaName", &h.InboundViaName, nil, bytesGorox)
+	// .delRequestHeaders
+	h.ConfigureBytesList("delRequestHeaders", &h.DelRequestHeaders, nil, [][]byte{})
+	// .bufferServerContent
+	h.ConfigureBool("bufferServerContent", &h.BufferServerContent, true)
+	// .outboundViaName
+	h.ConfigureBytes("outboundViaName", &h.OutboundViaName, nil, nil)
+	// .addResponseHeaders
+	h.ConfigureStringDict("addResponseHeaders", &h.AddResponseHeaders, nil, map[string]string{})
+	// .delResponseHeaders
+	h.ConfigureBytesList("delResponseHeaders", &h.DelResponseHeaders, nil, [][]byte{})
+}
+func (h *httpProxy) OnPrepare() {
+	// Currently nothing.
 }
 
-// Hobject represents an HTTP object in Hcache.
-type Hobject struct {
-	// TODO
-	uri           []byte
-	headerFields  any
-	content       any
-	trailerFields any
-}
+func (h *httpProxy) IsProxy() bool { return true }            // works as a reverse proxy
+func (h *httpProxy) IsCache() bool { return h.hcache != nil } // works as a proxy cache?
 
-func (o *Hobject) todo() {
-	// TODO
+func (h *httpProxy) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
+	WebExchanReverseProxy(req, resp, h.hcache, h.backend, &h.WebExchanProxyConfig)
+	return true
 }

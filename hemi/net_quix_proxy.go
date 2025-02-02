@@ -7,6 +7,16 @@
 
 package hemi
 
+// QUIXProxyConfig
+type QUIXProxyConfig struct {
+	// TODO
+}
+
+// QUIXReverseProxy
+func QUIXReverseProxy(servConn *QUIXConn, servStream *QUIXStream, backend *QUIXBackend, proxyConfig *QUIXProxyConfig) {
+	// TODO
+}
+
 func init() {
 	RegisterQUIXDealet("quixProxy", func(compName string, stage *Stage, router *QUIXRouter) QUIXDealet {
 		d := new(quixProxy)
@@ -58,14 +68,4 @@ func (d *quixProxy) OnPrepare() {
 func (d *quixProxy) DealWith(conn *QUIXConn, stream *QUIXStream) (dealt bool) {
 	QUIXReverseProxy(conn, stream, d.backend, &d.QUIXProxyConfig)
 	return true
-}
-
-// QUIXProxyConfig
-type QUIXProxyConfig struct {
-	// TODO
-}
-
-// QUIXReverseProxy
-func QUIXReverseProxy(servConn *QUIXConn, servStream *QUIXStream, backend *QUIXBackend, proxyConfig *QUIXProxyConfig) {
-	// TODO
 }

@@ -51,7 +51,7 @@ const ( // HTTP/2 error codes
 	http2NumErrorCodes          = 14
 )
 const ( // HTTP/2 stream states
-	http2StateClosed       = 0 // must be 0
+	http2StateClosed       = 0 // must be 0, default value
 	http2StateOpen         = 1
 	http2StateRemoteClosed = 2
 	http2StateLocalClosed  = 3

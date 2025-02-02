@@ -8,7 +8,7 @@
 package hemi
 
 func init() {
-	RegisterHandlet("cgiStarter", func(compName string, stage *Stage, webapp *Webapp) Handlet {
+	RegisterHandlet("cgi", func(compName string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(faviconHandlet)
 		h.onCreate(compName, stage, webapp)
 		return h

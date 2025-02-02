@@ -714,7 +714,7 @@ type Handlet interface {
 	Component
 	// Methods
 	IsProxy() bool // reverse proxies and origins are different, we must differentiate them
-	IsCache() bool // caches and reverse proxies are different, we must differentiate them
+	IsCache() bool // proxy caches and reverse proxies are different, we must differentiate them
 	Handle(req ServerRequest, resp ServerResponse) (handled bool)
 }
 

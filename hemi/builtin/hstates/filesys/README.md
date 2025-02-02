@@ -1,1 +1,1 @@
-Local hstate stores http sessions in local file system.
+Filesys hstate stores http sessions in local file system.

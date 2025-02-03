@@ -18,8 +18,8 @@ type HTTPBackend interface { // for *HTTP[1-3]Backend
 	// Imports
 	Backend
 	// Methods
-	FetchStream(servReq ServerRequest) (BackendStream, error)
-	StoreStream(backStream BackendStream)
+	AcquireStream(servReq ServerRequest) (BackendStream, error)
+	ReleaseStream(backStream BackendStream)
 }
 
 // HTTPNode
@@ -35,7 +35,7 @@ type httpNode_[B HTTPBackend] struct { // for http[1-3]Node
 	// Parent
 	Node_[B]
 	// Mixins
-	_httpHolder_
+	_httpHolder_ // holds conns
 	// States
 	keepAliveConns int32         // max conns to keep alive
 	idleTimeout    time.Duration // conn idle timeout
@@ -131,6 +131,8 @@ type BackendResponse interface { // for *backend[1-3]Response
 	ContentSize() int64
 	HasTrailers() bool
 	IsVague() bool
+
+	// Internal only
 	recvHead()
 	reuse()
 	examineTail() bool
@@ -157,7 +159,7 @@ type _backendResponse0 struct { // for fast reset, entirely
 	status      int16    // 200, 302, 404, ...
 	acceptBytes bool     // accept-ranges: bytes?
 	hasAllow    bool     // has "allow" header field?
-	age         int32    // age in seconds
+	ageSeconds  int32    // age in seconds
 	indexes     struct { // indexes of some selected singleton header fields, for fast accessing
 		age                uint8 // age header line ->r.input
 		contentDisposition uint8 // content-disposition header line ->r.input
@@ -329,7 +331,7 @@ func (r *backendResponse_) checkAge(headerLine *pair, lineIndex uint8) bool { //
 		r.headResult, r.failReason = StatusBadRequest, "empty age"
 		return false
 	}
-	// TODO: check and write to r.age
+	// TODO: check and write to r.ageSeconds
 	r.indexes.age = lineIndex
 	return true
 }

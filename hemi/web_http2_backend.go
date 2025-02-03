@@ -50,10 +50,10 @@ func (b *HTTP2Backend) CreateNode(compName string) Node {
 	return node
 }
 
-func (b *HTTP2Backend) FetchStream(servReq ServerRequest) (BackendStream, error) {
+func (b *HTTP2Backend) AcquireStream(servReq ServerRequest) (BackendStream, error) {
 	return b.nodes[b.nodeIndexGet()].fetchStream()
 }
-func (b *HTTP2Backend) StoreStream(backStream BackendStream) {
+func (b *HTTP2Backend) ReleaseStream(backStream BackendStream) {
 	backStream2 := backStream.(*backend2Stream)
 	backStream2.conn.node.storeStream(backStream2)
 }

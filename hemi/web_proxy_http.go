@@ -42,12 +42,12 @@ func WebExchanReverseProxy(servReq ServerRequest, servResp ServerResponse, hcach
 		}
 	}
 
-	backStream, backErr := backend.FetchStream(servReq)
+	backStream, backErr := backend.AcquireStream(servReq)
 	if backErr != nil {
 		servResp.SendBadGateway(nil)
 		return
 	}
-	defer backend.StoreStream(backStream)
+	defer backend.ReleaseStream(backStream)
 
 	backReq := backStream.Request()
 	if !backReq.proxyCopyHeaderLines(servReq, proxyConfig) {

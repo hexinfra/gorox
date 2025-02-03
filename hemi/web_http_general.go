@@ -191,21 +191,21 @@ type _httpIn_ struct { // for serverRequest_ and backendResponse_. incoming, nee
 	stream httpStream // *backend[1-3]Stream, *server[1-3]Stream
 	in     httpIn     // *backend[1-3]Response, *server[1-3]Request
 	// Stream states (stocks)
+	stockInput  [1536]byte // for r.input
+	stockArray  [768]byte  // for r.array
 	stockPrimes [40]pair   // for r.primes. 960B
 	stockExtras [30]pair   // for r.extras. 720B
-	stockArray  [768]byte  // for r.array
-	stockInput  [1536]byte // for r.input
 	// Stream states (controlled)
 	inputNext      int32    // HTTP/1.x request only. next request begins from r.input[r.inputNext]. exists because HTTP/1.1 supports pipelining
 	inputEdge      int32    // edge position of current message head is at r.input[r.inputEdge]. placed here to make it compatible with HTTP/1.1 pipelining
 	mainPair       pair     // to overcome the limitation of Go's escape analysis when receiving incoming pairs
-	contentCodings [4]uint8 // content-encoding flags, controlled by r.numContentCodings. see httpCodingXXX for values
-	acceptCodings  [4]uint8 // accept-encoding flags, controlled by r.numAcceptCodings. see httpCodingXXX for values
+	contentCodings [4]uint8 // known content-encoding flags, controlled by r.numContentCodings. see httpCodingXXX for values
+	acceptCodings  [4]uint8 // known accept-encoding flags, controlled by r.numAcceptCodings. see httpCodingXXX for values
 	// Stream states (non-zeros)
+	input                []byte        // bytes of raw incoming message heads. [<r.stockInput>/4K/16K]
+	array                []byte        // store parsed, dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
 	primes               []pair        // hold prime queries, headerLines(main+subs), cookies, forms, and trailerLines(main+subs). [<r.stockPrimes>/max]
 	extras               []pair        // hold extra queries, headerLines(main+subs), cookies, forms, trailerLines(main+subs), and params. [<r.stockExtras>/max]
-	array                []byte        // store parsed, dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
-	input                []byte        // bytes of raw incoming message heads. [<r.stockInput>/4K/16K]
 	recvTimeout          time.Duration // timeout to recv the whole message content. zero means no timeout
 	maxContentSize       int64         // max content size allowed for current message. if the content is vague, size will be calculated on receiving
 	maxMemoryContentSize int32         // max content size allowed for loading the content into memory. some content types are not allowed to load into memory
@@ -222,7 +222,7 @@ type _httpIn_ struct { // for serverRequest_ and backendResponse_. incoming, nee
 	bodyWindow  []byte    // a window used for receiving body. for HTTP/1.x, sizes must be same with r.input. [HTTP/1.x=<none>/16K, HTTP/2/3=<none>/4K/16K/64K1]
 	bodyTime    time.Time // the time when first body read operation is performed on this stream
 	contentText []byte    // if loadable, the received and loaded content of current message is at r.contentText[:r.receivedSize]. [<none>/r.input/4K/16K/64K1/(make)]
-	contentFile *os.File  // used by r.takeContent(), if content is tempFile. will be closed on stream ends
+	contentFile *os.File  // used by r.proxyTakeContent(), if content is tempFile. will be closed on stream ends
 	_httpIn0              // all values in this struct must be zero by default!
 }
 type _httpIn0 struct { // for fast reset, entirely
@@ -273,14 +273,14 @@ type _httpIn0 struct { // for fast reset, entirely
 }
 
 func (r *_httpIn_) onUse(httpVersion uint8, asResponse bool) { // for non-zeros
-	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of pair indexes.
-	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
-	r.array = r.stockArray[:]
 	if httpVersion >= Version2 || asResponse { // we don't use http/1.1 request pipelining in the backend side.
 		r.input = r.stockInput[:]
-	} else { // http/1.x server side.
+	} else { // must be http/1.x server side.
 		// HTTP/1.1 servers support request pipelining, so input related are not set here.
 	}
+	r.array = r.stockArray[:]
+	r.primes = r.stockPrimes[0:1:cap(r.stockPrimes)] // use append(). r.primes[0] is skipped due to zero value of pair indexes.
+	r.extras = r.stockExtras[0:0:cap(r.stockExtras)] // use append()
 	httpHolder := r.stream.Holder()
 	r.recvTimeout = httpHolder.RecvTimeout()
 	r.maxContentSize = httpHolder.MaxContentSize()
@@ -293,6 +293,19 @@ func (r *_httpIn_) onUse(httpVersion uint8, asResponse bool) { // for non-zeros
 	r.bodyResult = StatusOK
 }
 func (r *_httpIn_) onEnd() { // for zeros
+	if r.httpVersion >= Version2 || r.asResponse { // as we don't pipeline outgoing requests, incoming responses are not pipelined too.
+		if cap(r.input) != cap(r.stockInput) {
+			PutNK(r.input)
+		}
+		r.input = nil
+		r.inputNext, r.inputEdge = 0, 0
+	} else { // must be http/1.x server side.
+		// HTTP/1.1 servers support request pipelining, so input related are not reset here.
+	}
+	if r.arrayKind == arrayKindPool {
+		PutNK(r.array)
+	}
+	r.array = nil // array of other kinds is only a reference, so just reset.
 	if cap(r.primes) != cap(r.stockPrimes) {
 		putPairs(r.primes)
 		r.primes = nil
@@ -301,23 +314,10 @@ func (r *_httpIn_) onEnd() { // for zeros
 		putPairs(r.extras)
 		r.extras = nil
 	}
-	if r.arrayKind == arrayKindPool {
-		PutNK(r.array)
-	}
-	r.array = nil                                  // array of other kinds is only a reference, so just reset.
-	if r.httpVersion >= Version2 || r.asResponse { // as we don't pipeline outgoing requests, incoming responses are not pipelined too.
-		if cap(r.input) != cap(r.stockInput) {
-			PutNK(r.input)
-		}
-		r.input = nil
-		r.inputNext, r.inputEdge = 0, 0
-	} else {
-		// HTTP/1.1 supports request pipelining, so input related are not reset here.
-	}
 
 	r.failReason = ""
 
-	if r.inputNext != 0 { // only happens in HTTP/1.1 request pipelining
+	if r.inputNext != 0 { // only happens in HTTP/1.1 server side request pipelining
 		if r.overChunked { // only happens in HTTP/1.1 chunked mode
 			// Use bytes over received in r.bodyWindow as new r.input.
 			// This means the size list for r.bodyWindow must sync with r.input!
@@ -347,7 +347,7 @@ func (r *_httpIn_) onEnd() { // for zeros
 		if DebugLevel() >= 2 {
 			Println("contentFile is left as is, not removed!")
 		} else if err := os.Remove(r.contentFile.Name()); err != nil {
-			// TODO: log?
+			// TODO: log err?
 		}
 		r.contentFile = nil
 	}
@@ -379,7 +379,9 @@ func (r *_httpIn_) addHeaderLine(headerLine *pair) bool { // as prime
 	r.headResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many header lines"
 	return false
 }
-func (r *_httpIn_) HasHeaders() bool { return r.hasPairs(r.headerLines, pairHeader) }
+func (r *_httpIn_) HasHeaders() bool {
+	return r.hasPairs(r.headerLines, pairHeader)
+}
 func (r *_httpIn_) AllHeaderLines() (headerLines [][2]string) {
 	return r.allPairs(r.headerLines, pairHeader)
 }
@@ -424,8 +426,7 @@ func (r *_httpIn_) delHeader(name []byte, nameHash uint16) {
 }
 func (r *_httpIn_) AddHeader(name string, value string) bool { // as extra, by webapp
 	// TODO: add restrictions on what header fields are allowed to add? should we check the value?
-	// TODO: parse and check?
-	// setFlags?
+	// TODO: parse and check? setFlags?
 	return r.addExtra(name, value, 0, pairHeader)
 }
 
@@ -964,7 +965,7 @@ func (r *_httpIn_) determineContentMode() bool {
 }
 func (r *_httpIn_) IsVague() bool { return r.contentSize == -2 }
 
-func (r *_httpIn_) contentIsEncoded() bool { return r.numContentCodings != 0 }
+func (r *_httpIn_) ContentIsEncoded() bool { return r.zContentEncoding.notEmpty() }
 func (r *_httpIn_) ContentSize() int64     { return r.contentSize }
 func (r *_httpIn_) ContentType() string    { return string(r.UnsafeContentType()) }
 func (r *_httpIn_) UnsafeContentLength() []byte {
@@ -1099,7 +1100,9 @@ func (r *_httpIn_) addTrailerLine(trailerLine *pair) bool { // as prime
 	r.bodyResult, r.failReason = StatusRequestHeaderFieldsTooLarge, "too many trailer lines"
 	return false
 }
-func (r *_httpIn_) HasTrailers() bool { return r.hasPairs(r.trailerLines, pairTrailer) }
+func (r *_httpIn_) HasTrailers() bool {
+	return r.hasPairs(r.trailerLines, pairTrailer)
+}
 func (r *_httpIn_) AllTrailerLines() (trailerLines [][2]string) {
 	return r.allPairs(r.trailerLines, pairTrailer)
 }
@@ -1143,8 +1146,7 @@ func (r *_httpIn_) delTrailer(name []byte, nameHash uint16) {
 }
 func (r *_httpIn_) AddTrailer(name string, value string) bool { // as extra, by webapp
 	// TODO: add restrictions on what trailer fields are allowed to add? should we check the value?
-	// TODO: parse and check?
-	// setFlags?
+	// TODO: parse and check? setFlags?
 	return r.addExtra(name, value, 0, pairTrailer)
 }
 

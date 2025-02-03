@@ -169,7 +169,7 @@ type httpGate_[S HTTPServer] struct { // for http[x3]Gate
 	// Parent
 	Gate_[S]
 	// Mixins
-	_httpHolder_
+	_httpHolder_ // holds conns
 	// States
 	maxConcurrentConns int32        // max concurrent conns allowed for this gate
 	concurrentConns    atomic.Int32 // current concurrent conns. TODO: false sharing
@@ -306,6 +306,8 @@ type ServerRequest interface { // for *server[1-3]Request
 	ContentType() string
 	UnsafeContentType() []byte
 
+	ContentIsEncoded() bool
+
 	ContentSize() int64
 	UnsafeContentLength() []byte
 
@@ -374,7 +376,6 @@ type ServerRequest interface { // for *server[1-3]Request
 	unsafeAbsPath() []byte
 	makeAbsPath()
 	contentIsForm() bool
-	contentIsEncoded() bool
 	proxyDelHopHeaderFields()
 	proxyDelHopTrailerFields()
 	proxyDelHopFieldLines(kind int8)

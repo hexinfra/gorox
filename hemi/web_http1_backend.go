@@ -53,10 +53,10 @@ func (b *HTTP1Backend) CreateNode(compName string) Node {
 	return node
 }
 
-func (b *HTTP1Backend) FetchStream(servReq ServerRequest) (BackendStream, error) {
+func (b *HTTP1Backend) AcquireStream(servReq ServerRequest) (BackendStream, error) {
 	return b.nodes[b.nodeIndexGet()].fetchStream()
 }
-func (b *HTTP1Backend) StoreStream(backStream BackendStream) {
+func (b *HTTP1Backend) ReleaseStream(backStream BackendStream) {
 	backStream1 := backStream.(*backend1Stream)
 	backStream1.conn.node.storeStream(backStream1)
 }

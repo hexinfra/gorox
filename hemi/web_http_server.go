@@ -449,8 +449,8 @@ type _serverRequest0 struct { // for fast reset, entirely
 		forwarded      zone
 		ifMatch        zone // the zone of if-match in r.primes
 		ifNoneMatch    zone // the zone of if-none-match in r.primes
-		xForwardedFor  zone
 		te             zone
+		xForwardedFor  zone
 		_              zone // padding
 	}
 	unixTimes struct { // parsed unix times in seconds

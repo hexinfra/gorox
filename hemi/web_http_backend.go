@@ -169,10 +169,14 @@ type _backendResponse0 struct { // for fast reset, entirely
 		_            byte  // padding
 	}
 	zones struct { // zones (may not be continuous) of some selected important header fields, for fast accessing
-		allow  zone
-		altSvc zone
-		vary   zone
-		_      zone // padding
+		acceptRanges      zone
+		allow             zone
+		altSvc            zone
+		cacheStatus       zone
+		cdnCacheControl   zone
+		proxyAuthenticate zone
+		vary              zone
+		wwwAuthenticate   zone
 	}
 	unixTimes struct { // parsed unix times in seconds
 		expires      int64 // parsed unix time of expires
@@ -407,6 +411,10 @@ func (r *backendResponse_) checkAcceptRanges(subLines []pair, subFrom uint8, sub
 		r.headResult, r.failReason = StatusBadRequest, "accept-ranges = 1#range-unit"
 		return false
 	}
+	if r.zones.acceptRanges.isEmpty() {
+		r.zones.acceptRanges.from = subFrom
+	}
+	r.zones.acceptRanges.edge = subEdge
 	for i := subFrom; i < subEdge; i++ {
 		subData := subLines[i].dataAt(r.input)
 		bytesToLower(subData) // range unit names are case-insensitive
@@ -419,7 +427,6 @@ func (r *backendResponse_) checkAcceptRanges(subLines []pair, subFrom uint8, sub
 	return true
 }
 func (r *backendResponse_) checkAllow(subLines []pair, subFrom uint8, subEdge uint8) bool { // Allow = #method
-	r.hasAllow = true
 	if r.zones.allow.isEmpty() {
 		r.zones.allow.from = subFrom
 	}
@@ -427,6 +434,7 @@ func (r *backendResponse_) checkAllow(subLines []pair, subFrom uint8, subEdge ui
 	for i := subFrom; i < subEdge; i++ {
 		// TODO: check syntax
 	}
+	r.hasAllow = true
 	return true
 }
 func (r *backendResponse_) checkAltSvc(subLines []pair, subFrom uint8, subEdge uint8) bool { // Alt-Svc = clear / 1#alt-value
@@ -455,18 +463,30 @@ func (r *backendResponse_) checkCacheControl(subLines []pair, subFrom uint8, sub
 	return true
 }
 func (r *backendResponse_) checkCacheStatus(subLines []pair, subFrom uint8, subEdge uint8) bool { // ?
+	if r.zones.cacheStatus.isEmpty() {
+		r.zones.cacheStatus.from = subFrom
+	}
+	r.zones.cacheStatus.edge = subEdge
 	for i := subFrom; i < subEdge; i++ {
 		// TODO
 	}
 	return true
 }
 func (r *backendResponse_) checkCDNCacheControl(subLines []pair, subFrom uint8, subEdge uint8) bool { // ?
+	if r.zones.cdnCacheControl.isEmpty() {
+		r.zones.cacheStatus.from = subFrom
+	}
+	r.zones.cdnCacheControl.edge = subEdge
 	for i := subFrom; i < subEdge; i++ {
 		// TODO
 	}
 	return true
 }
 func (r *backendResponse_) checkProxyAuthenticate(subLines []pair, subFrom uint8, subEdge uint8) bool { // Proxy-Authenticate = #challenge
+	if r.zones.proxyAuthenticate.isEmpty() {
+		r.zones.cacheStatus.from = subFrom
+	}
+	r.zones.proxyAuthenticate.edge = subEdge
 	// TODO; use r._checkChallenge
 	return true
 }
@@ -494,6 +514,10 @@ func (r *backendResponse_) checkVary(subLines []pair, subFrom uint8, subEdge uin
 	return true
 }
 func (r *backendResponse_) checkWWWAuthenticate(subLines []pair, subFrom uint8, subEdge uint8) bool { // WWW-Authenticate = #challenge
+	if r.zones.wwwAuthenticate.isEmpty() {
+		r.zones.cacheStatus.from = subFrom
+	}
+	r.zones.wwwAuthenticate.edge = subEdge
 	// TODO; use r._checkChallenge
 	return true
 }

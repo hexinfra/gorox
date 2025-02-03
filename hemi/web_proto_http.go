@@ -164,23 +164,22 @@ const ( // hashes of http fields. value is calculated by adding all ASCII values
 	hashScheme    = 687  // :scheme
 	hashStatus    = 734  // :status
 	// General fields
-	hashAccept             = 624
-	hashAcceptEncoding     = 1508
-	hashCacheControl       = 1314 // same with hashLastModified
-	hashConnection         = 1072
-	hashContentDisposition = 2013
-	hashContentEncoding    = 1647
-	hashContentLanguage    = 1644
-	hashContentLength      = 1450
-	hashContentLocation    = 1665
-	hashContentRange       = 1333
-	hashContentType        = 1258
-	hashDate               = 414
-	hashKeepAlive          = 995
-	hashTrailer            = 755
-	hashTransferEncoding   = 1753
-	hashUpgrade            = 744
-	hashVia                = 320
+	hashAccept           = 624
+	hashAcceptEncoding   = 1508
+	hashCacheControl     = 1314 // same with hashLastModified. multiple
+	hashConnection       = 1072
+	hashContentEncoding  = 1647
+	hashContentLanguage  = 1644
+	hashContentLength    = 1450
+	hashContentLocation  = 1665
+	hashContentRange     = 1333
+	hashContentType      = 1258
+	hashDate             = 414
+	hashKeepAlive        = 995
+	hashTrailer          = 755
+	hashTransferEncoding = 1753
+	hashUpgrade          = 744
+	hashVia              = 320
 	// Request fields
 	hashAcceptCharset      = 1415
 	hashAcceptLanguage     = 1505
@@ -189,10 +188,10 @@ const ( // hashes of http fields. value is calculated by adding all ASCII values
 	hashExpect             = 649
 	hashForwarded          = 958
 	hashHost               = 446
-	hashIfMatch            = 777 // same with hashIfRange
+	hashIfMatch            = 777 // same with hashIfRange. multiple
 	hashIfModifiedSince    = 1660
 	hashIfNoneMatch        = 1254
-	hashIfRange            = 777 // same with hashIfMatch
+	hashIfRange            = 777 // same with hashIfMatch. single
 	hashIfUnmodifiedSince  = 1887
 	hashMaxForwards        = 1243
 	hashProxyAuthorization = 2048
@@ -205,22 +204,23 @@ const ( // hashes of http fields. value is calculated by adding all ASCII values
 	hashXForwardedHost     = 1614
 	hashXForwardedProto    = 1732
 	// Response fields
-	hashAcceptRanges      = 1309
-	hashAge               = 301
-	hashAllow             = 543
-	hashAltSvc            = 698
-	hashCacheStatus       = 1221
-	hashCDNCacheControl   = 1668
-	hashETag              = 417
-	hashExpires           = 768
-	hashLastModified      = 1314 // same with hashCacheControl
-	hashLocation          = 857
-	hashProxyAuthenticate = 1902
-	hashRetryAfter        = 1141
-	hashServer            = 663
-	hashSetCookie         = 1011
-	hashVary              = 450
-	hashWWWAuthenticate   = 1681
+	hashAcceptRanges       = 1309
+	hashAge                = 301
+	hashAllow              = 543
+	hashAltSvc             = 698
+	hashCacheStatus        = 1221
+	hashCDNCacheControl    = 1668
+	hashContentDisposition = 2013
+	hashETag               = 417
+	hashExpires            = 768
+	hashLastModified       = 1314 // same with hashCacheControl. single
+	hashLocation           = 857
+	hashProxyAuthenticate  = 1902
+	hashRetryAfter         = 1141
+	hashServer             = 663
+	hashSetCookie          = 1011
+	hashVary               = 450
+	hashWWWAuthenticate    = 1681
 )
 
 var ( // byteses of http fields.
@@ -232,23 +232,22 @@ var ( // byteses of http fields.
 	bytesScheme    = []byte(":scheme")
 	bytesStatus    = []byte(":status")
 	// General fields
-	bytesAccept             = []byte("accept")
-	bytesAcceptEncoding     = []byte("accept-encoding")
-	bytesCacheControl       = []byte("cache-control")
-	bytesConnection         = []byte("connection")
-	bytesContentDisposition = []byte("content-disposition")
-	bytesContentEncoding    = []byte("content-encoding")
-	bytesContentLanguage    = []byte("content-language")
-	bytesContentLength      = []byte("content-length")
-	bytesContentLocation    = []byte("content-location")
-	bytesContentRange       = []byte("content-range")
-	bytesContentType        = []byte("content-type")
-	bytesDate               = []byte("date")
-	bytesKeepAlive          = []byte("keep-alive")
-	bytesTrailer            = []byte("trailer")
-	bytesTransferEncoding   = []byte("transfer-encoding")
-	bytesUpgrade            = []byte("upgrade")
-	bytesVia                = []byte("via")
+	bytesAccept           = []byte("accept")
+	bytesAcceptEncoding   = []byte("accept-encoding")
+	bytesCacheControl     = []byte("cache-control")
+	bytesConnection       = []byte("connection")
+	bytesContentEncoding  = []byte("content-encoding")
+	bytesContentLanguage  = []byte("content-language")
+	bytesContentLength    = []byte("content-length")
+	bytesContentLocation  = []byte("content-location")
+	bytesContentRange     = []byte("content-range")
+	bytesContentType      = []byte("content-type")
+	bytesDate             = []byte("date")
+	bytesKeepAlive        = []byte("keep-alive")
+	bytesTrailer          = []byte("trailer")
+	bytesTransferEncoding = []byte("transfer-encoding")
+	bytesUpgrade          = []byte("upgrade")
+	bytesVia              = []byte("via")
 	// Request fields
 	bytesAcceptCharset      = []byte("accept-charset")
 	bytesAcceptLanguage     = []byte("accept-language")
@@ -273,22 +272,23 @@ var ( // byteses of http fields.
 	bytesXForwardedHost     = []byte("x-forwarded-host")
 	bytesXForwardedProto    = []byte("x-forwarded-proto")
 	// Response fields
-	bytesAcceptRanges      = []byte("accept-ranges")
-	bytesAge               = []byte("age")
-	bytesAllow             = []byte("allow")
-	bytesAltSvc            = []byte("alt-svc")
-	bytesCacheStatus       = []byte("cache-status")
-	bytesCDNCacheControl   = []byte("cdn-cache-control")
-	bytesETag              = []byte("etag")
-	bytesExpires           = []byte("expires")
-	bytesLastModified      = []byte("last-modified")
-	bytesLocation          = []byte("location")
-	bytesProxyAuthenticate = []byte("proxy-authenticate")
-	bytesRetryAfter        = []byte("retry-after")
-	bytesServer            = []byte("server")
-	bytesSetCookie         = []byte("set-cookie")
-	bytesVary              = []byte("vary")
-	bytesWWWAuthenticate   = []byte("www-authenticate")
+	bytesAcceptRanges       = []byte("accept-ranges")
+	bytesAge                = []byte("age")
+	bytesAllow              = []byte("allow")
+	bytesAltSvc             = []byte("alt-svc")
+	bytesCacheStatus        = []byte("cache-status")
+	bytesCDNCacheControl    = []byte("cdn-cache-control")
+	bytesContentDisposition = []byte("content-disposition")
+	bytesETag               = []byte("etag")
+	bytesExpires            = []byte("expires")
+	bytesLastModified       = []byte("last-modified")
+	bytesLocation           = []byte("location")
+	bytesProxyAuthenticate  = []byte("proxy-authenticate")
+	bytesRetryAfter         = []byte("retry-after")
+	bytesServer             = []byte("server")
+	bytesSetCookie          = []byte("set-cookie")
+	bytesVary               = []byte("vary")
+	bytesWWWAuthenticate    = []byte("www-authenticate")
 )
 
 const ( // hashes of misc http strings & byteses.

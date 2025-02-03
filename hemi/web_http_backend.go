@@ -159,14 +159,14 @@ type _backendResponse0 struct { // for fast reset, entirely
 	hasAllow    bool     // has "allow" header field?
 	age         int32    // age in seconds
 	indexes     struct { // indexes of some selected singleton header fields, for fast accessing
-		age          uint8 // age header line ->r.input
-		etag         uint8 // etag header line ->r.input
-		expires      uint8 // expires header line ->r.input
-		lastModified uint8 // last-modified header line ->r.input
-		location     uint8 // location header line ->r.input
-		retryAfter   uint8 // retry-after header line ->r.input
-		server       uint8 // server header line ->r.input
-		_            byte  // padding
+		age                uint8 // age header line ->r.input
+		contentDisposition uint8 // content-disposition header line ->r.input
+		etag               uint8 // etag header line ->r.input
+		expires            uint8 // expires header line ->r.input
+		lastModified       uint8 // last-modified header line ->r.input
+		location           uint8 // location header line ->r.input
+		retryAfter         uint8 // retry-after header line ->r.input
+		server             uint8 // server header line ->r.input
 	}
 	zones struct { // zones (may not be continuous) of some selected important header fields, for fast accessing
 		acceptRanges      zone
@@ -299,27 +299,28 @@ func (r *backendResponse_) _applyHeaderLine(lineIndex uint8) bool {
 }
 
 var ( // perfect hash table for singleton response header fields
-	backendResponseSingletonHeaderFieldTable = [13]struct {
+	backendResponseSingletonHeaderFieldTable = [14]struct {
 		parse bool // need general parse or not
 		fdesc      // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*backendResponse_, *pair, uint8) bool
-	}{ // age content-length content-location content-range content-type date etag expires last-modified location retry-after server set-cookie
-		0:  {false, fdesc{hashContentLength, false, false, false, false, bytesContentLength}, (*backendResponse_).checkContentLength},
-		1:  {false, fdesc{hashContentRange, false, false, false, false, bytesContentRange}, (*backendResponse_).checkContentRange},
-		2:  {false, fdesc{hashExpires, false, false, false, false, bytesExpires}, (*backendResponse_).checkExpires},
-		3:  {false, fdesc{hashSetCookie, false, false, false, false, bytesSetCookie}, (*backendResponse_).checkSetCookie}, // `a=b; Path=/; HttpsOnly` is not parameters
-		4:  {false, fdesc{hashLocation, false, false, false, false, bytesLocation}, (*backendResponse_).checkLocation},
-		5:  {true, fdesc{hashContentType, false, false, true, false, bytesContentType}, (*backendResponse_).checkContentType},
-		6:  {true, fdesc{hashContentLocation, true, false, false, false, bytesContentLocation}, (*backendResponse_).checkContentLocation},
-		7:  {false, fdesc{hashRetryAfter, false, false, false, false, bytesRetryAfter}, (*backendResponse_).checkRetryAfter},
-		8:  {false, fdesc{hashServer, false, false, false, true, bytesServer}, (*backendResponse_).checkServer},
-		9:  {false, fdesc{hashLastModified, false, false, false, false, bytesLastModified}, (*backendResponse_).checkLastModified},
+	}{ // age content-disposition content-length content-location content-range content-type date etag expires last-modified location retry-after server set-cookie
+		0:  {false, fdesc{hashLastModified, false, false, false, false, bytesLastModified}, (*backendResponse_).checkLastModified},
+		1:  {true, fdesc{hashContentLocation, true, false, false, false, bytesContentLocation}, (*backendResponse_).checkContentLocation},
+		2:  {false, fdesc{hashSetCookie, false, false, false, false, bytesSetCookie}, (*backendResponse_).checkSetCookie}, // `a=b; Path=/; HttpsOnly` is not parameters
+		3:  {false, fdesc{hashContentRange, false, false, false, false, bytesContentRange}, (*backendResponse_).checkContentRange},
+		4:  {false, fdesc{hashETag, false, false, false, false, bytesETag}, (*backendResponse_).checkETag},
+		5:  {false, fdesc{hashRetryAfter, false, false, false, false, bytesRetryAfter}, (*backendResponse_).checkRetryAfter},
+		6:  {false, fdesc{hashLocation, false, false, false, false, bytesLocation}, (*backendResponse_).checkLocation},
+		7:  {false, fdesc{hashServer, false, false, false, true, bytesServer}, (*backendResponse_).checkServer},
+		8:  {false, fdesc{hashContentDisposition, true, false, true, false, bytesContentDisposition}, (*backendResponse_).checkContentDisposition},
+		9:  {true, fdesc{hashContentType, false, false, true, false, bytesContentType}, (*backendResponse_).checkContentType},
 		10: {false, fdesc{hashDate, false, false, false, false, bytesDate}, (*backendResponse_).checkDate},
-		11: {false, fdesc{hashAge, false, false, false, false, bytesAge}, (*backendResponse_).checkAge},
-		12: {false, fdesc{hashETag, false, false, false, false, bytesETag}, (*backendResponse_).checkETag},
+		11: {false, fdesc{hashContentLength, false, false, false, false, bytesContentLength}, (*backendResponse_).checkContentLength},
+		12: {false, fdesc{hashAge, false, false, false, false, bytesAge}, (*backendResponse_).checkAge},
+		13: {false, fdesc{hashExpires, false, false, false, false, bytesExpires}, (*backendResponse_).checkExpires},
 	}
 	backendResponseSingletonHeaderFieldFind = func(nameHash uint16) int {
-		return (660945 / int(nameHash)) % len(backendResponseSingletonHeaderFieldTable)
+		return (3568946 / int(nameHash)) % len(backendResponseSingletonHeaderFieldTable)
 	}
 )
 
@@ -330,6 +331,11 @@ func (r *backendResponse_) checkAge(headerLine *pair, lineIndex uint8) bool { //
 	}
 	// TODO: check and write to r.age
 	r.indexes.age = lineIndex
+	return true
+}
+func (r *backendResponse_) checkContentDisposition(headerLine *pair, lineIndex uint8) bool { // Content-Disposition = disposition-type *( ";" disposition-parm )
+	// TODO: check
+	r.indexes.contentDisposition = lineIndex
 	return true
 }
 func (r *backendResponse_) checkETag(headerLine *pair, lineIndex uint8) bool { // ETag = entity-tag

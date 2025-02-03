@@ -3,10 +3,10 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// Import your services.
+// Import your webapps.
 
-package svcs
+package apps
 
 import (
-	_ "github.com/hexinfra/gorox/hemi/mulecar/svcs/hemisvc"
+	_ "github.com/hexinfra/gorox/hemi/hemicar/apps/hemiapp"
 )

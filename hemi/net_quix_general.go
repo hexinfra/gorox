@@ -21,8 +21,8 @@ type quixHolder interface {
 	MaxConcurrentStreamsPerConn() int32
 }
 
-// _quixHolder_ is a mixin for QUIXRouter, QUIXGate, and quixNode.
-type _quixHolder_ struct {
+// _quixHolder_ is a mixin.
+type _quixHolder_ struct { // for quixNode, QUIXRouter, and QUIXGate
 	// States
 	maxCumulativeStreamsPerConn int32 // max cumulative streams of one conn. 0 means infinite
 	maxConcurrentStreamsPerConn int32 // max concurrent streams of one conn
@@ -55,8 +55,8 @@ func (h *_quixHolder_) MaxConcurrentStreamsPerConn() int32 { return h.maxConcurr
 type quixConn interface {
 }
 
-// quixConn_ is the parent for QUIXConn and QConn.
-type quixConn_ struct {
+// quixConn_ is a parent.
+type quixConn_ struct { // for QUIXConn and QConn
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -110,8 +110,8 @@ func (c *quixConn_) isBroken() bool { return c.broken.Load() }
 type quixStream interface {
 }
 
-// quixStream_ is the parent for QUIXStream and QStream.
-type quixStream_ struct {
+// quixStream_ is a parent.
+type quixStream_ struct { // for QUIXStream and QStream
 	// Stream states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Stream states (controlled)

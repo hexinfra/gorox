@@ -30,8 +30,8 @@ type HTTPNode interface {
 	// Methods
 }
 
-// httpNode_ is the parent for http[1-3]Node.
-type httpNode_[B HTTPBackend] struct {
+// httpNode_ is a parent.
+type httpNode_[B HTTPBackend] struct { // for http[1-3]Node
 	// Parent
 	Node_[B]
 	// Mixins
@@ -74,8 +74,8 @@ func (n *httpNode_[B]) onPrepare() {
 type backendConn interface {
 }
 
-// _backendConn_ is a mixin for backend[1-3]Conn.
-type _backendConn_[N HTTPNode] struct {
+// _backendConn_ is a mixin.
+type _backendConn_[N HTTPNode] struct { // for backend[1-3]Conn
 	// Conn states (stocks)
 	// Conn states (controlled)
 	expireTime time.Time // when the conn is considered expired
@@ -108,8 +108,8 @@ type BackendStream interface { // for *backend[1-3]Stream
 	markBroken()
 }
 
-// _backendStream_ is a mixin for backend[1-3]Stream.
-type _backendStream_ struct {
+// _backendStream_ is a mixin.
+type _backendStream_ struct { // for backend[1-3]Stream
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -143,8 +143,8 @@ type BackendResponse interface { // for *backend[1-3]Response
 	proxyWalkTrailerLines(out httpOut, callback func(out httpOut, trailerLine *pair, trailerName []byte, lineValue []byte) bool) bool
 }
 
-// backendResponse_ is the parent for backend[1-3]Response.
-type backendResponse_ struct { // incoming. needs parsing
+// backendResponse_ is a parent.
+type backendResponse_ struct { // for backend[1-3]Response. incoming, needs parsing
 	// Mixins
 	_httpIn_ // incoming http response
 	// Stream states (stocks)
@@ -581,8 +581,8 @@ type BackendRequest interface { // for *backend[1-3]Request
 	endVague() error
 }
 
-// backendRequest_ is the parent for backend[1-3]Request.
-type backendRequest_ struct { // outgoing. needs building
+// backendRequest_ is a parent.
+type backendRequest_ struct { // for backend[1-3]Request. outgoing, needs building
 	// Mixins
 	_httpOut_ // outgoing http request
 	// Assocs
@@ -833,8 +833,8 @@ type BackendSocket interface { // for *backend[1-3]Socket
 	Close() error
 }
 
-// backendSocket_ is the parent for backend[1-3]Socket.
-type backendSocket_ struct { // incoming and outgoing
+// backendSocket_ is a parent.
+type backendSocket_ struct { // for backend[1-3]Socket. incoming and outgoing
 	// Mixins
 	_httpSocket_
 	// Assocs

@@ -93,8 +93,8 @@ func (s *Service) dispatch(exchan) {
 type Bundlet interface {
 }
 
-// Bundlet_ is the parent for all bundlets.
-type Bundlet_ struct {
+// Bundlet_ is a parent.
+type Bundlet_ struct { // for all bundlets
 }
 
 /*

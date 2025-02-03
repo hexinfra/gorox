@@ -27,8 +27,8 @@ type httpHolder interface {
 	MaxMemoryContentSize() int32 // allowed to load into memory
 }
 
-// _httpHolder_ is a mixin for httpServer_, httpGate_, and httpNode_.
-type _httpHolder_ struct {
+// _httpHolder_ is a mixin.
+type _httpHolder_ struct { // for httpNode_, httpServer_, and httpGate_
 	// Mixins
 	_contentSaver_ // so http messages can save their large contents in local file system.
 	// States
@@ -73,8 +73,8 @@ type httpConn interface {
 	isBroken() bool
 }
 
-// httpConn_ is the parent for http[1-3]Conn_.
-type httpConn_ struct {
+// httpConn_ is a parent.
+type httpConn_ struct { // for http[1-3]Conn_
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -141,8 +141,8 @@ type httpStream interface {
 	writev(srcVec *net.Buffers) (int64, error)
 }
 
-// httpStream_ is the parent for http[1-3]Stream_.
-type httpStream_[C httpConn] struct {
+// httpStream_ is a parent.
+type httpStream_[C httpConn] struct { // for http[1-3]Stream_
 	// Assocs
 	conn C // the http connection
 	// Stream states (stocks)
@@ -185,8 +185,8 @@ type httpIn interface {
 	proxyWalkTrailerLines(out httpOut, callback func(out httpOut, trailerLine *pair, trailerName []byte, lineValue []byte) bool) bool
 }
 
-// _httpIn_ is a mixin for serverRequest_ and backendResponse_.
-type _httpIn_ struct { // incoming. needs parsing
+// _httpIn_ is a mixin.
+type _httpIn_ struct { // for serverRequest_ and backendResponse_. incoming, needs parsing
 	// Assocs
 	stream httpStream // *backend[1-3]Stream, *server[1-3]Stream
 	in     httpIn     // *backend[1-3]Response, *server[1-3]Request
@@ -1611,8 +1611,8 @@ type httpOut interface {
 	proxyPassBytes(data []byte) error
 }
 
-// _httpOut_ is a mixin for serverResponse_ and backendRequest_.
-type _httpOut_ struct { // outgoing. needs building
+// _httpOut_ is a mixin.
+type _httpOut_ struct { // for serverResponse_ and backendRequest_. outgoing, needs building
 	// Assocs
 	stream httpStream // *backend[1-3]Stream, *server[1-3]Stream
 	out    httpOut    // *backend[1-3]Request, *server[1-3]Response
@@ -2069,8 +2069,8 @@ type httpSocket interface {
 	Close() error
 }
 
-// _httpSocket_ is a mixin for serverSocket_ and backendSocket_.
-type _httpSocket_ struct { // incoming and outgoing
+// _httpSocket_ is a mixin.
+type _httpSocket_ struct { // for serverSocket_ and backendSocket_. incoming and outgoing
 	// Assocs
 	stream httpStream // *backend[1-3]Stream, *server[1-3]Stream
 	socket httpSocket // *backend[1-3]Socket, *server[1-3]Socket

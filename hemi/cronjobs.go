@@ -19,8 +19,8 @@ type Cronjob interface {
 	Schedule() // runner
 }
 
-// Cronjob_ is the parent for all cronjobs.
-type Cronjob_ struct {
+// Cronjob_ is a parent.
+type Cronjob_ struct { // for all cronjobs
 	// Parent
 	Component_
 	// Assocs

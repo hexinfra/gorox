@@ -24,8 +24,8 @@ type Backend interface {
 	CreateNode(compName string) Node
 }
 
-// Backend_ is the parent for backends.
-type Backend_[N Node] struct {
+// Backend_ is a parent.
+type Backend_[N Node] struct { // for all backends
 	// Parent
 	Component_
 	// Assocs
@@ -136,8 +136,8 @@ type Node interface {
 	Maintain() // runner
 }
 
-// Node_ is the parent for all backend nodes.
-type Node_[B Backend] struct {
+// Node_ is a parent.
+type Node_[B Backend] struct { // for all backend nodes
 	// Parent
 	Component_
 	// Mixins

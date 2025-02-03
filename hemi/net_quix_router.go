@@ -426,8 +426,8 @@ type QUIXDealet interface {
 	DealWith(conn *QUIXConn, stream *QUIXStream) (dealt bool)
 }
 
-// QUIXDealet_
-type QUIXDealet_ struct {
+// QUIXDealet_ is a parent.
+type QUIXDealet_ struct { // for all quix dealets
 	// Parent
 	Component_
 	// Assocs

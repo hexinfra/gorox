@@ -24,8 +24,8 @@ type holder interface {
 	WriteTimeout() time.Duration
 }
 
-// _holder_ is a mixin for Server_, Gate_, and Node_.
-type _holder_ struct {
+// _holder_ is a mixin.
+type _holder_ struct { // for Node_, Server_, and Gate_
 	// Assocs
 	stage *Stage // current stage
 	// States

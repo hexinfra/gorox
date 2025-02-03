@@ -24,8 +24,8 @@ type Server interface {
 	holder() _holder_ // used by gates to copy the configs
 }
 
-// Server_ is the parent for all servers.
-type Server_[G Gate] struct {
+// Server_ is a parent.
+type Server_[G Gate] struct { // for all servers
 	// Parent
 	Component_
 	// Mixins
@@ -127,8 +127,8 @@ type Gate interface {
 	IsShut() bool
 }
 
-// Gate_ is the parent for all gates.
-type Gate_[S Server] struct {
+// Gate_ is a parent.
+type Gate_[S Server] struct { // for all gates
 	// Mixins
 	_holder_
 	// Assocs

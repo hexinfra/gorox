@@ -23,8 +23,8 @@ type Hcache interface {
 	Del(key []byte) bool
 }
 
-// Hcache_ is the parent for all hcaches.
-type Hcache_ struct {
+// Hcache_ is a parent.
+type Hcache_ struct { // for all hcaches
 	// Parent
 	Component_
 	// Assocs

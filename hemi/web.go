@@ -28,8 +28,8 @@ type Hstate interface {
 	Del(sid []byte) error
 }
 
-// Hstate_ is the parent for all hstates.
-type Hstate_ struct {
+// Hstate_ is a parent.
+type Hstate_ struct { // for all hstates
 	// Parent
 	Component_
 	// Assocs
@@ -699,8 +699,8 @@ type Handlet interface {
 	Handle(req ServerRequest, resp ServerResponse) (handled bool)
 }
 
-// Handlet_ is the parent for all handlets.
-type Handlet_ struct {
+// Handlet_ is a parent.
+type Handlet_ struct { // for all handlets
 	// Parent
 	Component_
 	// Assocs
@@ -779,8 +779,8 @@ type Reviser interface {
 	FinishEcho(req ServerRequest, resp ServerResponse)              // for vague content
 }
 
-// Reviser_ is the parent for all revisers.
-type Reviser_ struct {
+// Reviser_ is a parent.
+type Reviser_ struct { // for all revisers
 	// Parent
 	Component_
 	// Assocs
@@ -811,8 +811,8 @@ type Socklet interface {
 	Serve(req ServerRequest, sock ServerSocket)
 }
 
-// Socklet_ is the parent for all socklets.
-type Socklet_ struct {
+// Socklet_ is a parent.
+type Socklet_ struct { // for all socklets
 	// Parent
 	Component_
 	// Assocs

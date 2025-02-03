@@ -194,8 +194,8 @@ type Component interface {
 	setProp(propName string, propValue Value)
 }
 
-// Component_ is the parent for all components.
-type Component_ struct {
+// Component_ is a parent.
+type Component_ struct { // for all components
 	// Assocs
 	shell  Component // the concrete Component
 	parent Component // the parent component, used by configurator

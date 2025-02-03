@@ -526,8 +526,8 @@ type TCPXDealet interface {
 	DealWith(conn *TCPXConn) (dealt bool)
 }
 
-// TCPXDealet_
-type TCPXDealet_ struct {
+// TCPXDealet_ is a parent.
+type TCPXDealet_ struct { // for all tcpx dealets
 	// Parent
 	Component_
 	// Assocs

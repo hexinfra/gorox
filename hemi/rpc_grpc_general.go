@@ -11,7 +11,7 @@
 package hemi
 
 // _grpcHolder_
-type _grpcHolder_ struct {
+type _grpcHolder_ struct { // for grpcClient, grpcServer, and grpcGate
 }
 
 func (h *_grpcHolder_) onConfigure(comp Component) {
@@ -19,10 +19,10 @@ func (h *_grpcHolder_) onConfigure(comp Component) {
 func (h *_grpcHolder_) onPrepare(comp Component) {
 }
 
-// grpcConn_
-type grpcConn_ struct {
+// grpcConn_ is a parent.
+type grpcConn_ struct { // for grpcConn and gConn
 }
 
-// grpcCall_
-type grpcCall_ struct {
+// grpcCall_ is a parent.
+type grpcCall_ struct { // for grpcCall and gCall
 }

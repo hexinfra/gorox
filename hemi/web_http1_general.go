@@ -28,8 +28,8 @@ type http1Conn interface {
 	writev(srcVec *net.Buffers) (int64, error)
 }
 
-// http1Conn_ is the parent for server1Conn and backend1Conn.
-type http1Conn_ struct {
+// http1Conn_ is a parent.
+type http1Conn_ struct { // for server1Conn and backend1Conn
 	// Parent
 	httpConn_
 	// Conn states (stocks)
@@ -95,8 +95,8 @@ type http1Stream interface {
 	// Methods
 }
 
-// http1Stream_ is the parent for server1Stream and backend1Stream.
-type http1Stream_[C http1Conn] struct {
+// http1Stream_ is a parent.
+type http1Stream_[C http1Conn] struct { // for server1Stream and backend1Stream
 	// Parent
 	httpStream_[C]
 	// Assocs
@@ -130,8 +130,8 @@ func (s *http1Stream_[C]) writev(srcVec *net.Buffers) (int64, error) {
 	return s.conn.writev(srcVec)
 }
 
-// _http1In_ is a mixin for server1Request and backend1Response.
-type _http1In_ struct {
+// _http1In_ is a mixin.
+type _http1In_ struct { // for server1Request and backend1Response
 	// Parent
 	*_httpIn_
 	// Stream states (stocks)
@@ -665,8 +665,8 @@ func (r *_http1In_) growChunked() bool { // HTTP/1.x is not a binary protocol, w
 	return false
 }
 
-// _http1Out_ is a mixin for server1Response and backend1Request.
-type _http1Out_ struct {
+// _http1Out_ is a mixin.
+type _http1Out_ struct { // for server1Response and backend1Request
 	// Parent
 	*_httpOut_
 	// Stream states (stocks)
@@ -1072,8 +1072,8 @@ func (r *_http1Out_) writeBytes(data []byte) error {
 	return r._longTimeCheck(err)
 }
 
-// _http1Socket_ is a mixin for server1Socket and backend1Socket.
-type _http1Socket_ struct {
+// _http1Socket_ is a mixin.
+type _http1Socket_ struct { // for server1Socket and backend1Socket
 	// Parent
 	*_httpSocket_
 	// Stream states (stocks)

@@ -22,8 +22,8 @@ type http2Conn interface {
 	// Methods
 }
 
-// http2Conn_ is the parent for server2Conn and backend2Conn.
-type http2Conn_ struct {
+// http2Conn_ is a parent.
+type http2Conn_ struct { // for server2Conn and backend2Conn
 	// Parent
 	httpConn_
 	// Conn states (stocks)
@@ -502,8 +502,8 @@ type http2Stream interface {
 	setIndex(index uint8) // at activeStreams
 }
 
-// http2Stream_ is the parent for server2Stream and backend2Stream.
-type http2Stream_[C http2Conn] struct {
+// http2Stream_ is a parent.
+type http2Stream_[C http2Conn] struct { // for server2Stream and backend2Stream
 	// Parent
 	httpStream_[C]
 	// Stream states (stocks)
@@ -564,8 +564,8 @@ func (s *http2Stream_[C]) writev(srcVec *net.Buffers) (int64, error) { // for co
 	return 0, nil
 }
 
-// _http2In_ is a mixin for server2Request and backend2Response.
-type _http2In_ struct {
+// _http2In_ is a mixin.
+type _http2In_ struct { // for server2Request and backend2Response
 	// Parent
 	*_httpIn_
 	// Stream states (stocks)
@@ -769,8 +769,8 @@ func (f *http2InFrame) checkAsWindowUpdate() error {
 	return nil
 }
 
-// _http2Out_ is a mixin for server2Response and backend2Request.
-type _http2Out_ struct {
+// _http2Out_ is a mixin.
+type _http2Out_ struct { // for server2Response and backend2Request
 	// Parent
 	*_httpOut_
 	// Stream states (stocks)
@@ -929,8 +929,8 @@ func (f *http2OutFrame) encodeHeader() (frameHeader []byte) { // caller must ens
 	return
 }
 
-// _http2Socket_ is a mixin for server2Socket and backend2Socket.
-type _http2Socket_ struct {
+// _http2Socket_ is a mixin.
+type _http2Socket_ struct { // for server2Socket and backend2Socket
 	// Parent
 	*_httpSocket_
 	// Stream states (stocks)

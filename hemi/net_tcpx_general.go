@@ -18,8 +18,8 @@ import (
 type tcpxHolder interface {
 }
 
-// _tcpxHolder_ is a mixin for TCPXRouter, TCPXGate, and tcpxNode.
-type _tcpxHolder_ struct {
+// _tcpxHolder_ is a mixin.
+type _tcpxHolder_ struct { // for tcpxNode, TCPXRouter, and TCPXGate
 	// States
 	// TCP_CORK, TCP_DEFER_ACCEPT, TCP_FASTOPEN, ...
 }
@@ -33,8 +33,8 @@ func (h *_tcpxHolder_) onPrepare(comp Component) {
 type tcpxConn interface {
 }
 
-// tcpxConn_ is the parent for TCPXConn and TConn.
-type tcpxConn_ struct {
+// tcpxConn_ is a parent.
+type tcpxConn_ struct { // for TCPXConn and TConn
 	// Conn states (stocks)
 	stockBuffer [256]byte  // a (fake) buffer to workaround Go's conservative escape analysis
 	stockInput  [8192]byte // for c.input

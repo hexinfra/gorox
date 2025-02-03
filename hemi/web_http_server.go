@@ -31,8 +31,8 @@ type HTTPServer interface { // for *http[x3]Server
 	httpHolder() _httpHolder_ // used by gates to copy the configs
 }
 
-// httpServer_ is the parent for http[x3]Server.
-type httpServer_[G httpGate] struct {
+// httpServer_ is a parent.
+type httpServer_[G httpGate] struct { // for http[x3]Server
 	// Parent
 	Server_[G]
 	// Mixins
@@ -164,8 +164,8 @@ type httpGate interface {
 	// Methods
 }
 
-// httpGate_ is the parent for http[x3]Gate.
-type httpGate_[S HTTPServer] struct {
+// httpGate_ is a parent.
+type httpGate_[S HTTPServer] struct { // for http[x3]Gate
 	// Parent
 	Gate_[S]
 	// Mixins
@@ -192,8 +192,8 @@ func (g *httpGate_[S]) ReachLimit(concurrentConns int32) bool {
 type serverConn interface {
 }
 
-// _serverConn_ is a mixin for server[1-3]Conn.
-type _serverConn_[G httpGate] struct {
+// _serverConn_ is a mixin.
+type _serverConn_[G httpGate] struct { // for server[1-3]Conn
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
@@ -214,8 +214,8 @@ func (c *_serverConn_[G]) Holder() httpHolder { return c.gate }
 type serverStream interface {
 }
 
-// _serverStream_ is a mixin for server[1-3]Stream.
-type _serverStream_ struct {
+// _serverStream_ is a mixin.
+type _serverStream_ struct { // for server[1-3]Stream
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
@@ -390,8 +390,8 @@ type ServerRequest interface { // for *server[1-3]Request
 	unsafeVariable(varCode int16, varName string) (varValue []byte)
 }
 
-// serverRequest_ is the parent for server[1-3]Request.
-type serverRequest_ struct { // incoming. needs parsing
+// serverRequest_ is a parent.
+type serverRequest_ struct { // for server[1-3]Request. incoming, needs parsing
 	// Mixins
 	_httpIn_ // incoming http request
 	// Stream states (stocks)
@@ -2614,8 +2614,8 @@ type ServerResponse interface { // for *server[1-3]Response
 	unsafeMake(size int) []byte
 }
 
-// serverResponse_ is the parent for server[1-3]Response.
-type serverResponse_ struct { // outgoing. needs building
+// serverResponse_ is a parent.
+type serverResponse_ struct { // for server[1-3]Response. outgoing, needs building
 	// Mixins
 	_httpOut_ // outgoing http response
 	// Assocs
@@ -2986,8 +2986,8 @@ type ServerSocket interface { // for *server[1-3]Socket
 	Close() error
 }
 
-// serverSocket_ is the parent for server[1-3]Socket.
-type serverSocket_ struct { // incoming and outgoing
+// serverSocket_ is a parent.
+type serverSocket_ struct { // for server[1-3]Socket. incoming and outgoing
 	// Mixins
 	_httpSocket_
 	// Assocs

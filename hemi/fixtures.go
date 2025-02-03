@@ -29,8 +29,8 @@ type fixture interface {
 	run() // runner
 }
 
-// fixture_
-type fixture_ struct {
+// fixture_ is a parent.
+type fixture_ struct { // for all fixtures
 	// Parent
 	Component_
 	// Assocs

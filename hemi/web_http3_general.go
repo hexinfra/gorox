@@ -20,8 +20,8 @@ type http3Conn interface {
 	// Methods
 }
 
-// http3Conn_ is the parent for server3Conn and backend3Conn.
-type http3Conn_ struct {
+// http3Conn_ is a parent.
+type http3Conn_ struct { // for server3Conn and backend3Conn
 	// Parent
 	httpConn_
 	// Conn states (stocks)
@@ -67,8 +67,8 @@ type http3Stream interface {
 	// Methods
 }
 
-// http3Stream_ is the parent for server3Stream and backend3Stream.
-type http3Stream_[C http3Conn] struct {
+// http3Stream_ is a parent.
+type http3Stream_[C http3Conn] struct { // for server3Stream and backend3Stream
 	// Parent
 	httpStream_[C]
 	// Stream states (stocks)
@@ -124,8 +124,8 @@ func (s *http3Stream_[C]) writev(srcVec *net.Buffers) (int64, error) {
 	return 0, nil
 }
 
-// _http3In_ is a mixin for server3Request and backend3Response.
-type _http3In_ struct {
+// _http3In_ is a mixin.
+type _http3In_ struct { // for server3Request and backend3Response
 	// Parent
 	*_httpIn_
 	// Stream states (stocks)
@@ -159,8 +159,8 @@ type http3InFrame struct {
 
 func (f *http3InFrame) zero() { *f = http3InFrame{} }
 
-// _http3Out_ is a mixin for server3Response and backend3Request.
-type _http3Out_ struct {
+// _http3Out_ is a mixin.
+type _http3Out_ struct { // for server3Response and backend3Request
 	// Parent
 	*_httpOut_
 	// Stream states (stocks)
@@ -274,8 +274,8 @@ type http3OutFrame struct {
 
 func (f *http3OutFrame) zero() { *f = http3OutFrame{} }
 
-// _http3Socket_ is a mixin for server3Socket and backend3Socket.
-type _http3Socket_ struct {
+// _http3Socket_ is a mixin.
+type _http3Socket_ struct { // for server3Socket and backend3Socket
 	// Parent
 	*_httpSocket_
 	// Stream states (stocks)

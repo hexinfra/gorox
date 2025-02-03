@@ -11,8 +11,8 @@ import (
 	. "github.com/hexinfra/gorox/hemi"
 )
 
-// Pack_
-type Pack_ struct {
+// Pack_ is a parent.
+type Pack_ struct { // for all packs
 	// Assocs
 	Site     *Site          // associated site
 	Request  ServerRequest  // current request

@@ -360,8 +360,8 @@ type UDPXDealet interface {
 	DealWith(conn *UDPXConn) (dealt bool)
 }
 
-// UDPXDealet_
-type UDPXDealet_ struct {
+// UDPXDealet_ is a parent.
+type UDPXDealet_ struct { // for all udpx dealets
 	// Parent
 	Component_
 	// Assocs

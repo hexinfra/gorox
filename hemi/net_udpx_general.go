@@ -18,8 +18,8 @@ import (
 type udpxHolder interface {
 }
 
-// _udpxHolder_ is a mixin for UDPXRouter, UDPXGate, and udpxNode.
-type _udpxHolder_ struct {
+// _udpxHolder_ is a mixin.
+type _udpxHolder_ struct { // for udpxNode, UDPXRouter, and UDPXGate
 	// States
 	// UDP_CORK, UDP_GSO, ...
 }
@@ -33,8 +33,8 @@ func (h *_udpxHolder_) onPrepare(comp Component) {
 type udpxConn interface {
 }
 
-// udpxConn_ is the parent for UDPXConn and UConn.
-type udpxConn_ struct {
+// udpxConn_ is a parent.
+type udpxConn_ struct { // for UDPXConn and UConn
 	// Conn states (stocks)
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Conn states (controlled)

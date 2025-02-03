@@ -11,50 +11,6 @@ import (
 	"strings"
 )
 
-// Hcache component is the interface to storages of HTTP caching.
-type Hcache interface {
-	// Imports
-	Component
-	// Methods
-	Maintain() // runner
-	// TODO: design good apis
-	Set(key []byte, hobject *Hobject)
-	Get(key []byte) (hobject *Hobject)
-	Del(key []byte) bool
-}
-
-// Hcache_ is a parent.
-type Hcache_ struct { // for all hcaches
-	// Parent
-	Component_
-	// Assocs
-	stage *Stage // current stage
-	// States
-}
-
-func (c *Hcache_) OnCreate(compName string, stage *Stage) {
-	c.MakeComp(compName)
-	c.stage = stage
-}
-
-func (c *Hcache_) Stage() *Stage { return c.stage }
-
-func (c *Hcache_) todo() {
-}
-
-// Hobject represents an HTTP object in Hcache.
-type Hobject struct {
-	// TODO
-	uri           []byte
-	headerFields  any
-	content       any
-	trailerFields any
-}
-
-func (o *Hobject) todo() {
-	// TODO
-}
-
 // WebExchanProxyConfig
 type WebExchanProxyConfig struct {
 	// Inbound, to origin servers

@@ -34,8 +34,8 @@ func (h *faviconHandlet) OnPrepare()   {}
 
 func (h *faviconHandlet) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
 	const asOrigin = true
-	if status, normal := req.EvalPreconditions(faviconTime, faviconETagBytes, asOrigin); normal {
-		resp.SetLastModified(faviconTime)
+	if status, normal := req.EvalPreconditions(faviconModifyTime, faviconETagBytes, asOrigin); normal {
+		resp.SetLastModified(faviconModifyTime)
 		resp.AddHeader("etag", faviconETagString)
 		resp.AddContentType("image/png")
 		resp.SendBytes(faviconBytes)
@@ -50,7 +50,7 @@ func (h *faviconHandlet) Handle(req ServerRequest, resp ServerResponse) (handled
 }
 
 var (
-	faviconTime       = int64(1234567890)
+	faviconModifyTime = int64(1234567890)
 	faviconETagString = `"favi-1134"`
 	faviconETagBytes  = []byte(faviconETagString)
 )

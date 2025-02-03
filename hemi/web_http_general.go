@@ -247,9 +247,10 @@ type _httpIn0 struct { // for fast reset, entirely
 	iContentRange     uint8   // index of content-range header line in r.primes
 	iContentType      uint8   // index of content-type header line in r.primes
 	iDate             uint8   // index of date header line in r.primes
-	_                 byte    // padding
+	_                 [7]byte // padding
 	zAccept           zone    // zone of accept header lines in r.primes. may not be continuous
 	zConnection       zone    // zone of connection header lines in r.primes. may not be continuous
+	zContentEncoding  zone    // zone of content-encoding header lines in r.primes. may not be continuous
 	zContentLanguage  zone    // zone of content-language header lines in r.primes. may not be continuous
 	zKeepAlive        zone    // zone of keep-alive header lines in r.primes. may not be continuous
 	zProxyConnection  zone    // zone of proxy-connection header lines in r.primes. may not be continuous
@@ -724,7 +725,7 @@ func (r *_httpIn_) checkContentLength(headerLine *pair, lineIndex uint8) bool { 
 			return true
 		}
 	}
-	r.headResult, r.failReason = StatusBadRequest, "bad content-length"
+	r.headResult, r.failReason = StatusBadRequest, "bad or duplicate content-length"
 	return false
 }
 func (r *_httpIn_) checkContentLocation(headerLine *pair, lineIndex uint8) bool { // Content-Location = absolute-URI / partial-URI
@@ -733,7 +734,7 @@ func (r *_httpIn_) checkContentLocation(headerLine *pair, lineIndex uint8) bool 
 		r.iContentLocation = lineIndex
 		return true
 	}
-	r.headResult, r.failReason = StatusBadRequest, "bad or too many content-location"
+	r.headResult, r.failReason = StatusBadRequest, "bad or duplicate content-location"
 	return false
 }
 func (r *_httpIn_) checkContentRange(headerLine *pair, lineIndex uint8) bool { // Content-Range = range-unit SP ( range-resp / unsatisfied-range )
@@ -742,7 +743,7 @@ func (r *_httpIn_) checkContentRange(headerLine *pair, lineIndex uint8) bool { /
 		r.iContentRange = lineIndex
 		return true
 	}
-	r.headResult, r.failReason = StatusBadRequest, "bad or too many content-range"
+	r.headResult, r.failReason = StatusBadRequest, "bad or duplicate content-range"
 	return false
 }
 func (r *_httpIn_) checkContentType(headerLine *pair, lineIndex uint8) bool { // Content-Type = media-type
@@ -755,7 +756,7 @@ func (r *_httpIn_) checkContentType(headerLine *pair, lineIndex uint8) bool { //
 		r.iContentType = lineIndex
 		return true
 	}
-	r.headResult, r.failReason = StatusBadRequest, "bad or too many content-type"
+	r.headResult, r.failReason = StatusBadRequest, "bad or duplicate content-type"
 	return false
 }
 func (r *_httpIn_) checkDate(headerLine *pair, lineIndex uint8) bool { // Date = HTTP-date
@@ -769,7 +770,7 @@ func (r *_httpIn_) _checkHTTPDate(headerLine *pair, lineIndex uint8, pIndex *uin
 			return true
 		}
 	}
-	r.headResult, r.failReason = StatusBadRequest, "bad http-date"
+	r.headResult, r.failReason = StatusBadRequest, "bad or duplicate http-date"
 	return false
 }
 

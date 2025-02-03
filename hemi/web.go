@@ -17,55 +17,6 @@ import (
 	"time"
 )
 
-// Hstate is the component interface to storages of HTTP states.
-type Hstate interface {
-	// Imports
-	Component
-	// Methods
-	Maintain() // runner
-	Set(sid []byte, sess *Session) error
-	Get(sid []byte) (sess *Session, err error)
-	Del(sid []byte) error
-}
-
-// Hstate_ is a parent.
-type Hstate_ struct { // for all hstates
-	// Parent
-	Component_
-	// Assocs
-	stage *Stage // current stage
-}
-
-func (s *Hstate_) OnCreate(compName string, stage *Stage) {
-	s.MakeComp(compName)
-	s.stage = stage
-}
-
-func (s *Hstate_) Stage() *Stage { return s.stage }
-
-// Session is an HTTP session in hstate.
-type Session struct {
-	// TODO
-	ID      [40]byte // session id
-	Secret  [40]byte // secret key
-	Created int64    // unix time
-	Expires int64    // unix time
-	Role    int8     // 0: default, >0: user defined values
-	Device  int8     // terminal device type
-	state1  int8     // user defined state1
-	state2  int8     // user defined state2
-	state3  int32    // user defined state3
-	states  map[string]string
-}
-
-func (s *Session) init() {
-	s.states = make(map[string]string)
-}
-
-func (s *Session) Get(name string) string        { return s.states[name] }
-func (s *Session) Set(name string, value string) { s.states[name] = value }
-func (s *Session) Del(name string)               { delete(s.states, name) }
-
 // Webapp is the Web application.
 type Webapp struct {
 	// Parent
@@ -831,3 +782,96 @@ func (s *Socklet_) Stage() *Stage   { return s.stage }
 func (s *Socklet_) Webapp() *Webapp { return s.webapp }
 
 func (s *Socklet_) IsProxy() bool { return false } // override this for reverse proxy socklets
+
+// Hstate is the component interface to storages of HTTP states.
+type Hstate interface {
+	// Imports
+	Component
+	// Methods
+	Maintain() // runner
+	Set(sid []byte, sess *Session) error
+	Get(sid []byte) (sess *Session, err error)
+	Del(sid []byte) error
+}
+
+// Hstate_ is a parent.
+type Hstate_ struct { // for all hstates
+	// Parent
+	Component_
+	// Assocs
+	stage *Stage // current stage
+}
+
+func (s *Hstate_) OnCreate(compName string, stage *Stage) {
+	s.MakeComp(compName)
+	s.stage = stage
+}
+
+func (s *Hstate_) Stage() *Stage { return s.stage }
+
+// Session is an HTTP session in hstate.
+type Session struct {
+	// TODO
+	ID      [40]byte // session id
+	Secret  [40]byte // secret key
+	Created int64    // unix time
+	Expires int64    // unix time
+	Role    int8     // 0: default, >0: user defined values
+	Device  int8     // terminal device type
+	state1  int8     // user defined state1
+	state2  int8     // user defined state2
+	state3  int32    // user defined state3
+	states  map[string]string
+}
+
+func (s *Session) init() {
+	s.states = make(map[string]string)
+}
+
+func (s *Session) Get(name string) string        { return s.states[name] }
+func (s *Session) Set(name string, value string) { s.states[name] = value }
+func (s *Session) Del(name string)               { delete(s.states, name) }
+
+// Hcache component is the interface to storages of HTTP caching.
+type Hcache interface {
+	// Imports
+	Component
+	// Methods
+	Maintain() // runner
+	// TODO: design good apis
+	Set(key []byte, hobject *Hobject)
+	Get(key []byte) (hobject *Hobject)
+	Del(key []byte) bool
+}
+
+// Hcache_ is a parent.
+type Hcache_ struct { // for all hcaches
+	// Parent
+	Component_
+	// Assocs
+	stage *Stage // current stage
+	// States
+}
+
+func (c *Hcache_) OnCreate(compName string, stage *Stage) {
+	c.MakeComp(compName)
+	c.stage = stage
+}
+
+func (c *Hcache_) Stage() *Stage { return c.stage }
+
+func (c *Hcache_) todo() {
+}
+
+// Hobject represents an HTTP object in Hcache.
+type Hobject struct {
+	// TODO
+	uri           []byte
+	headerFields  any
+	content       any
+	trailerFields any
+}
+
+func (o *Hobject) todo() {
+	// TODO
+}

@@ -451,7 +451,7 @@ type _serverRequest0 struct { // for fast reset, entirely
 		ifNoneMatch    zone // the zone of if-none-match in r.primes
 		xForwardedFor  zone
 		te             zone
-		_              [2]byte // padding
+		_              zone // padding
 	}
 	unixTimes struct { // parsed unix times in seconds
 		ifModifiedSince   int64 // parsed unix time of if-modified-since
@@ -1249,6 +1249,10 @@ func (r *serverRequest_) checkAcceptLanguage(subLines []pair, subFrom uint8, sub
 	return true
 }
 func (r *serverRequest_) checkCacheControl(subLines []pair, subFrom uint8, subEdge uint8) bool { // Cache-Control = #cache-directive
+	if r.zCacheControl.isEmpty() {
+		r.zCacheControl.from = subFrom
+	}
+	r.zCacheControl.edge = subEdge
 	// cache-directive = token [ "=" ( token / quoted-string ) ]
 	for i := subFrom; i < subEdge; i++ {
 		// TODO: check for server

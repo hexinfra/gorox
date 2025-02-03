@@ -247,9 +247,10 @@ type _httpIn0 struct { // for fast reset, entirely
 	iContentRange     uint8   // index of content-range header line in r.primes
 	iContentType      uint8   // index of content-type header line in r.primes
 	iDate             uint8   // index of date header line in r.primes
-	_                 [5]byte // padding
+	_                 [3]byte // padding
 	zAccept           zone    // zone of accept header lines in r.primes. may not be continuous
 	zAcceptEncoding   zone    // zone of accept-encoding header lines in r.primes. may not be continuous
+	zCacheControl     zone    // zone of cache-control header lines in r.primes. may not be continuous
 	zConnection       zone    // zone of connection header lines in r.primes. may not be continuous
 	zContentEncoding  zone    // zone of content-encoding header lines in r.primes. may not be continuous
 	zContentLanguage  zone    // zone of content-language header lines in r.primes. may not be continuous

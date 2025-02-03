@@ -172,7 +172,7 @@ type _backendResponse0 struct { // for fast reset, entirely
 		allow  zone
 		altSvc zone
 		vary   zone
-		_      [2]byte // padding
+		_      zone // padding
 	}
 	unixTimes struct { // parsed unix times in seconds
 		expires      int64 // parsed unix time of expires
@@ -444,6 +444,10 @@ func (r *backendResponse_) checkAltSvc(subLines []pair, subFrom uint8, subEdge u
 	return true
 }
 func (r *backendResponse_) checkCacheControl(subLines []pair, subFrom uint8, subEdge uint8) bool { // Cache-Control = #cache-directive
+	if r.zCacheControl.isEmpty() {
+		r.zCacheControl.from = subFrom
+	}
+	r.zCacheControl.edge = subEdge
 	// cache-directive = token [ "=" ( token / quoted-string ) ]
 	for i := subFrom; i < subEdge; i++ {
 		// TODO: check for backend

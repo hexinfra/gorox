@@ -37,8 +37,8 @@ the Hemi Engine, we also have these sub directories that supplement Hemi:
 
 The following sub directories are programs that use the Hemi Engine:
 
-  * mulecar/  - A prototype program that is used to develop Hemi itself,
-  * hemiweb/  - A program that implements the official website of Gorox.
+  * goroxio/  - A program that implements the official website of Gorox,
+  * mulecar/  - A prototype program that is used to develop Hemi itself.
 
 And something useful:
 
@@ -151,7 +151,7 @@ TODO
 * http tunnel proxy (tcp, udp, ip) implementation.
 * web application framework implementation.
 * documentation.
-* hemiweb.
+* goroxio.
 * rperf design and implementation.
 * more unit tests.
 * black/white box tests.

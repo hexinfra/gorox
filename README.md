@@ -144,7 +144,7 @@ View Gorox documentation online:
   * English version: https://gorox.org/docs
   * Chinese version: https://www.gorox.org/docs
 
-Or view locally (ensure your local hemiweb is started):
+Or view locally (ensure your local goroxio program is started):
 
   * English version: http://localhost:5080/docs
   * Chinese version: http://127.0.0.1:5080/docs

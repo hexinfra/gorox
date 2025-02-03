@@ -434,14 +434,18 @@ type _serverRequest0 struct { // for fast reset, entirely
 	pathInfoGot     bool     // is r.pathInfo got?
 	_               [3]byte  // padding
 	indexes         struct { // indexes of some selected singleton header fields, for fast accessing
-		authorization      uint8 // authorization header field ->r.input
-		host               uint8 // host header field ->r.input
-		ifModifiedSince    uint8 // if-modified-since header field ->r.input
-		ifRange            uint8 // if-range header field ->r.input
-		ifUnmodifiedSince  uint8 // if-unmodified-since header field ->r.input
-		maxForwards        uint8 // max-forwards header field ->r.input
-		proxyAuthorization uint8 // proxy-authorization header field ->r.input
-		userAgent          uint8 // user-agent header field ->r.input
+		authorization      uint8   // authorization header field ->r.input
+		host               uint8   // host header field ->r.input
+		ifModifiedSince    uint8   // if-modified-since header field ->r.input
+		ifRange            uint8   // if-range header field ->r.input
+		ifUnmodifiedSince  uint8   // if-unmodified-since header field ->r.input
+		maxForwards        uint8   // max-forwards header field ->r.input
+		proxyAuthorization uint8   // proxy-authorization header field ->r.input
+		referer            uint8   // referer header field ->r.input
+		userAgent          uint8   // user-agent header field ->r.input
+		xForwardedHost     uint8   // x-forwarded-host header field ->r.input
+		xForwardedProto    uint8   // x-forwarded-proto header field ->r.input
+		_                  [5]byte // padding
 	}
 	zones struct { // zones (may not be continuous) of some selected important header fields, for fast accessing
 		acceptLanguage zone
@@ -948,29 +952,32 @@ func (r *serverRequest_) _applyHeaderLine(lineIndex uint8) bool {
 }
 
 var ( // perfect hash table for singleton request header fields
-	serverRequestSingletonHeaderFieldTable = [15]struct {
+	serverRequestSingletonHeaderFieldTable = [18]struct {
 		parse bool // need general parse or not
 		fdesc      // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*serverRequest_, *pair, uint8) bool
-	}{ // authorization content-length content-location content-range content-type cookie date host if-modified-since if-range if-unmodified-since max-forwards proxy-authorization range user-agent
-		0:  {false, fdesc{hashHost, false, false, false, false, bytesHost}, (*serverRequest_).checkHost},
-		1:  {false, fdesc{hashDate, false, false, false, false, bytesDate}, (*serverRequest_).checkDate},
-		2:  {false, fdesc{hashAuthorization, false, false, false, false, bytesAuthorization}, (*serverRequest_).checkAuthorization},
-		3:  {false, fdesc{hashIfUnmodifiedSince, false, false, false, false, bytesIfUnmodifiedSince}, (*serverRequest_).checkIfUnmodifiedSince},
-		4:  {false, fdesc{hashRange, false, false, false, false, bytesRange}, (*serverRequest_).checkRange},
-		5:  {false, fdesc{hashCookie, false, false, false, false, bytesCookie}, (*serverRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
-		6:  {false, fdesc{hashIfModifiedSince, false, false, false, false, bytesIfModifiedSince}, (*serverRequest_).checkIfModifiedSince},
-		7:  {false, fdesc{hashUserAgent, false, false, false, true, bytesUserAgent}, (*serverRequest_).checkUserAgent},
-		8:  {false, fdesc{hashIfRange, false, false, false, false, bytesIfRange}, (*serverRequest_).checkIfRange},
-		9:  {true, fdesc{hashContentLocation, true, false, false, false, bytesContentLocation}, (*serverRequest_).checkContentLocation},
-		10: {false, fdesc{hashProxyAuthorization, false, false, false, false, bytesProxyAuthorization}, (*serverRequest_).checkProxyAuthorization},
-		11: {false, fdesc{hashContentLength, false, false, false, false, bytesContentLength}, (*serverRequest_).checkContentLength},
-		12: {true, fdesc{hashContentType, false, false, true, false, bytesContentType}, (*serverRequest_).checkContentType},
-		13: {false, fdesc{hashContentRange, false, false, false, false, bytesContentRange}, (*serverRequest_).checkContentRange},
-		14: {false, fdesc{hashMaxForwards, false, false, false, false, bytesMaxForwards}, (*serverRequest_).checkMaxForwards},
+	}{ // authorization content-length content-location content-range content-type cookie date host if-modified-since if-range if-unmodified-since max-forwards proxy-authorization range referer user-agent x-forwarded-host x-forwarded-proto
+		0:  {true, fdesc{hashContentLocation, true, false, false, false, bytesContentLocation}, (*serverRequest_).checkContentLocation},
+		1:  {false, fdesc{hashRange, false, false, false, false, bytesRange}, (*serverRequest_).checkRange},
+		2:  {false, fdesc{hashCookie, false, false, false, false, bytesCookie}, (*serverRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
+		3:  {false, fdesc{hashContentLength, false, false, false, false, bytesContentLength}, (*serverRequest_).checkContentLength},
+		4:  {false, fdesc{hashDate, false, false, false, false, bytesDate}, (*serverRequest_).checkDate},
+		5:  {false, fdesc{hashIfModifiedSince, false, false, false, false, bytesIfModifiedSince}, (*serverRequest_).checkIfModifiedSince},
+		6:  {false, fdesc{hashContentRange, false, false, false, false, bytesContentRange}, (*serverRequest_).checkContentRange},
+		7:  {false, fdesc{hashXForwardedProto, false, false, false, false, bytesXForwardedProto}, (*serverRequest_).checkXForwardedProto},
+		8:  {false, fdesc{hashProxyAuthorization, false, false, false, false, bytesProxyAuthorization}, (*serverRequest_).checkProxyAuthorization},
+		9:  {false, fdesc{hashMaxForwards, false, false, false, false, bytesMaxForwards}, (*serverRequest_).checkMaxForwards},
+		10: {false, fdesc{hashUserAgent, false, false, false, true, bytesUserAgent}, (*serverRequest_).checkUserAgent},
+		11: {false, fdesc{hashIfUnmodifiedSince, false, false, false, false, bytesIfUnmodifiedSince}, (*serverRequest_).checkIfUnmodifiedSince},
+		12: {true, fdesc{hashReferer, true, false, false, false, bytesReferer}, (*serverRequest_).checkReferer},
+		13: {false, fdesc{hashXForwardedHost, false, false, false, false, bytesXForwardedHost}, (*serverRequest_).checkXForwardedHost},
+		14: {false, fdesc{hashAuthorization, false, false, false, false, bytesAuthorization}, (*serverRequest_).checkAuthorization},
+		15: {false, fdesc{hashHost, false, false, false, false, bytesHost}, (*serverRequest_).checkHost},
+		16: {false, fdesc{hashIfRange, false, false, false, false, bytesIfRange}, (*serverRequest_).checkIfRange},
+		17: {true, fdesc{hashContentType, false, false, true, false, bytesContentType}, (*serverRequest_).checkContentType},
 	}
 	serverRequestSingletonHeaderFieldFind = func(nameHash uint16) int {
-		return (31509975 / int(nameHash)) % len(serverRequestSingletonHeaderFieldTable)
+		return (460669520 / int(nameHash)) % len(serverRequestSingletonHeaderFieldTable)
 	}
 )
 
@@ -1003,7 +1010,7 @@ func (r *serverRequest_) checkCookie(headerLine *pair, lineIndex uint8) bool { /
 	r.cookies.edge = lineIndex + 1 // so we postpone cookie parsing after the request head is entirely received. only mark the edge
 	return true
 }
-func (r *serverRequest_) checkHost(headerLine *pair, lineIndex uint8) bool { // Host = host [ ":" port ]
+func (r *serverRequest_) checkHost(headerLine *pair, lineIndex uint8) bool { // Host = uri-host [ ":" port ]
 	// RFC 9112 (section 3.2):
 	// A server MUST respond with a 400 (Bad Request) status code to any HTTP/1.1 request message that lacks a Host header field and
 	// to any request message that contains more than one Host header field line or a Host header field with an invalid field value.
@@ -1187,12 +1194,36 @@ badRange:
 	r.headResult, r.failReason = StatusBadRequest, "invalid range"
 	return false
 }
+func (r *serverRequest_) checkReferer(headerLine *pair, lineIndex uint8) bool { // Referer = absolute-URI / partial-URI
+	if r.indexes.referer != 0 {
+		r.headResult, r.failReason = StatusBadRequest, "duplicated referer header field"
+		return false
+	}
+	r.indexes.referer = lineIndex
+	return true
+}
 func (r *serverRequest_) checkUserAgent(headerLine *pair, lineIndex uint8) bool { // User-Agent = product *( RWS ( product / comment ) )
 	if r.indexes.userAgent != 0 {
 		r.headResult, r.failReason = StatusBadRequest, "duplicated user-agent header field"
 		return false
 	}
 	r.indexes.userAgent = lineIndex
+	return true
+}
+func (r *serverRequest_) checkXForwardedHost(headerLine *pair, lineIndex uint8) bool { // X-Forwarded-Host = uri-host [ ":" port ]
+	if r.indexes.xForwardedHost != 0 {
+		r.headResult, r.failReason = StatusBadRequest, "duplicated x-forwarded-host header field"
+		return false
+	}
+	r.indexes.xForwardedHost = lineIndex
+	return true
+}
+func (r *serverRequest_) checkXForwardedProto(headerLine *pair, lineIndex uint8) bool { // X-Forwarded-Proto = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
+	if r.indexes.xForwardedProto != 0 {
+		r.headResult, r.failReason = StatusBadRequest, "duplicated x-forwarded-proto header field"
+		return false
+	}
+	r.indexes.xForwardedProto = lineIndex
 	return true
 }
 func (r *serverRequest_) _addRange(rang Range) bool {

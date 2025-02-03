@@ -198,9 +198,12 @@ const ( // hashes of http fields. value is calculated by adding all ASCII values
 	hashProxyAuthorization = 2048
 	hashProxyConnection    = 1695
 	hashRange              = 525
+	hashReferer            = 747
 	hashTE                 = 217
 	hashUserAgent          = 1019
 	hashXForwardedFor      = 1495
+	hashXForwardedHost     = 1614
+	hashXForwardedProto    = 1732
 	// Response fields
 	hashAcceptRanges      = 1309
 	hashAge               = 301
@@ -263,9 +266,12 @@ var ( // byteses of http fields.
 	bytesProxyAuthorization = []byte("proxy-authorization")
 	bytesProxyConnection    = []byte("proxy-connection")
 	bytesRange              = []byte("range")
+	bytesReferer            = []byte("referer")
 	bytesTE                 = []byte("te")
 	bytesUserAgent          = []byte("user-agent")
 	bytesXForwardedFor      = []byte("x-forwarded-for")
+	bytesXForwardedHost     = []byte("x-forwarded-host")
+	bytesXForwardedProto    = []byte("x-forwarded-proto")
 	// Response fields
 	bytesAcceptRanges      = []byte("accept-ranges")
 	bytesAge               = []byte("age")

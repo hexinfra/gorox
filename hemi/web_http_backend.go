@@ -246,8 +246,8 @@ func (r *backendResponse_) examineHead() bool {
 		// r.headResult is set.
 		return false
 	}
-	if r.status < StatusOK && r.contentSize != -1 {
-		r.headResult, r.failReason = StatusBadRequest, "content is not allowed in 1xx responses"
+	if r.contentSize != -1 && (r.status < StatusOK || r.status == StatusNoContent) { // TODO: what about 304?
+		r.headResult, r.failReason = StatusBadRequest, "content is not allowed in 1xx and 204 responses"
 		return false
 	}
 	if r.contentSize > r.maxContentSize {
@@ -327,16 +327,6 @@ func (r *backendResponse_) checkAge(headerLine *pair, lineIndex uint8) bool { //
 	// TODO: check and write to r.age
 	r.indexes.age = lineIndex
 	return true
-}
-func (r *backendResponse_) checkContentLength(headerLine *pair, lineIndex uint8) bool {
-	if r.status < StatusOK || r.status == StatusNoContent {
-		r.headResult, r.failReason = StatusBadRequest, "content-length is not allowed in 1xx and 204 responses"
-		return false
-	}
-	if r.status == StatusNotModified {
-		// TODO
-	}
-	return r._httpIn_.checkContentLength(headerLine, lineIndex)
 }
 func (r *backendResponse_) checkETag(headerLine *pair, lineIndex uint8) bool { // ETag = entity-tag
 	// TODO: check
@@ -456,7 +446,7 @@ func (r *backendResponse_) checkAltSvc(subLines []pair, subFrom uint8, subEdge u
 func (r *backendResponse_) checkCacheControl(subLines []pair, subFrom uint8, subEdge uint8) bool { // Cache-Control = #cache-directive
 	// cache-directive = token [ "=" ( token / quoted-string ) ]
 	for i := subFrom; i < subEdge; i++ {
-		// TODO
+		// TODO: check for backend
 	}
 	return true
 }
@@ -475,16 +465,6 @@ func (r *backendResponse_) checkCDNCacheControl(subLines []pair, subFrom uint8, 
 func (r *backendResponse_) checkProxyAuthenticate(subLines []pair, subFrom uint8, subEdge uint8) bool { // Proxy-Authenticate = #challenge
 	// TODO; use r._checkChallenge
 	return true
-}
-func (r *backendResponse_) checkTransferEncoding(subLines []pair, subFrom uint8, subEdge uint8) bool { // Transfer-Encoding = #transfer-coding
-	if r.status < StatusOK || r.status == StatusNoContent {
-		r.headResult, r.failReason = StatusBadRequest, "transfer-encoding is not allowed in 1xx and 204 responses"
-		return false
-	}
-	if r.status == StatusNotModified {
-		// TODO
-	}
-	return r._httpIn_.checkTransferEncoding(subLines, subFrom, subEdge)
 }
 func (r *backendResponse_) checkUpgrade(subLines []pair, subFrom uint8, subEdge uint8) bool { // Upgrade = #protocol
 	if r.httpVersion >= Version2 {

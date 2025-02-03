@@ -1187,6 +1187,14 @@ badRange:
 	r.headResult, r.failReason = StatusBadRequest, "invalid range"
 	return false
 }
+func (r *serverRequest_) checkUserAgent(headerLine *pair, lineIndex uint8) bool { // User-Agent = product *( RWS ( product / comment ) )
+	if r.indexes.userAgent != 0 {
+		r.headResult, r.failReason = StatusBadRequest, "duplicated user-agent header field"
+		return false
+	}
+	r.indexes.userAgent = lineIndex
+	return true
+}
 func (r *serverRequest_) _addRange(rang Range) bool {
 	if r.numRanges == int8(cap(r.ranges)) { // possible attack
 		r.headResult, r.failReason = StatusBadRequest, "too many ranges"
@@ -1194,14 +1202,6 @@ func (r *serverRequest_) _addRange(rang Range) bool {
 	}
 	r.ranges[r.numRanges] = rang
 	r.numRanges++
-	return true
-}
-func (r *serverRequest_) checkUserAgent(headerLine *pair, lineIndex uint8) bool { // User-Agent = product *( RWS ( product / comment ) )
-	if r.indexes.userAgent != 0 {
-		r.headResult, r.failReason = StatusBadRequest, "duplicated user-agent header field"
-		return false
-	}
-	r.indexes.userAgent = lineIndex
 	return true
 }
 
@@ -1251,7 +1251,7 @@ func (r *serverRequest_) checkAcceptLanguage(subLines []pair, subFrom uint8, sub
 func (r *serverRequest_) checkCacheControl(subLines []pair, subFrom uint8, subEdge uint8) bool { // Cache-Control = #cache-directive
 	// cache-directive = token [ "=" ( token / quoted-string ) ]
 	for i := subFrom; i < subEdge; i++ {
-		// TODO
+		// TODO: check for server
 	}
 	return true
 }
@@ -1303,34 +1303,6 @@ func (r *serverRequest_) checkIfMatch(subLines []pair, subFrom uint8, subEdge ui
 }
 func (r *serverRequest_) checkIfNoneMatch(subLines []pair, subFrom uint8, subEdge uint8) bool { // If-None-Match = "*" / #entity-tag
 	return r._checkMatch(subLines, subFrom, subEdge, &r.zones.ifNoneMatch, &r.ifNoneMatch)
-}
-func (r *serverRequest_) _checkMatch(subLines []pair, subFrom uint8, subEdge uint8, zMatch *zone, match *int8) bool {
-	if zMatch.isEmpty() {
-		zMatch.from = subFrom
-	}
-	zMatch.edge = subEdge
-	for i := subFrom; i < subEdge; i++ {
-		subData := subLines[i].dataAt(r.input)
-		nMatch := *match // -1:*, 0:nonexist, >0:num
-		if len(subData) == 1 && subData[0] == '*' {
-			if nMatch != 0 {
-				r.headResult, r.failReason = StatusBadRequest, "mix using of * and entity-tag"
-				return false
-			}
-			*match = -1 // *
-		} else { // entity-tag = [ weak ] DQUOTE *etagc DQUOTE
-			if nMatch == -1 { // *
-				r.headResult, r.failReason = StatusBadRequest, "mix using of entity-tag and *"
-				return false
-			}
-			if nMatch > 16 {
-				r.headResult, r.failReason = StatusBadRequest, "too many entity-tag"
-				return false
-			}
-			*match++ // *match is 0 by default
-		}
-	}
-	return true
 }
 func (r *serverRequest_) checkTE(subLines []pair, subFrom uint8, subEdge uint8) bool { // TE = #t-codings
 	if r.zones.te.isEmpty() {
@@ -1401,6 +1373,34 @@ func (r *serverRequest_) checkXForwardedFor(subLines []pair, subFrom uint8, subE
 	r.zones.xForwardedFor.edge = subEdge
 	for i := subFrom; i < subEdge; i++ {
 		// TODO: check syntax
+	}
+	return true
+}
+func (r *serverRequest_) _checkMatch(subLines []pair, subFrom uint8, subEdge uint8, zMatch *zone, match *int8) bool {
+	if zMatch.isEmpty() {
+		zMatch.from = subFrom
+	}
+	zMatch.edge = subEdge
+	for i := subFrom; i < subEdge; i++ {
+		subData := subLines[i].dataAt(r.input)
+		nMatch := *match // -1:*, 0:nonexist, >0:num
+		if len(subData) == 1 && subData[0] == '*' {
+			if nMatch != 0 {
+				r.headResult, r.failReason = StatusBadRequest, "mix using of * and entity-tag"
+				return false
+			}
+			*match = -1 // *
+		} else { // entity-tag = [ weak ] DQUOTE *etagc DQUOTE
+			if nMatch == -1 { // *
+				r.headResult, r.failReason = StatusBadRequest, "mix using of entity-tag and *"
+				return false
+			}
+			if nMatch > 16 {
+				r.headResult, r.failReason = StatusBadRequest, "too many entity-tag"
+				return false
+			}
+			*match++ // *match is 0 by default
+		}
 	}
 	return true
 }

@@ -247,8 +247,9 @@ type _httpIn0 struct { // for fast reset, entirely
 	iContentRange     uint8   // index of content-range header line in r.primes
 	iContentType      uint8   // index of content-type header line in r.primes
 	iDate             uint8   // index of date header line in r.primes
-	_                 [7]byte // padding
+	_                 [5]byte // padding
 	zAccept           zone    // zone of accept header lines in r.primes. may not be continuous
+	zAcceptEncoding   zone    // zone of accept-encoding header lines in r.primes. may not be continuous
 	zConnection       zone    // zone of connection header lines in r.primes. may not be continuous
 	zContentEncoding  zone    // zone of content-encoding header lines in r.primes. may not be continuous
 	zContentLanguage  zone    // zone of content-language header lines in r.primes. may not be continuous
@@ -785,6 +786,10 @@ func (r *_httpIn_) checkAccept(subLines []pair, subFrom uint8, subEdge uint8) bo
 	return true
 }
 func (r *_httpIn_) checkAcceptEncoding(subLines []pair, subFrom uint8, subEdge uint8) bool { // Accept-Encoding = #( codings [ weight ] )
+	if r.zAcceptEncoding.isEmpty() {
+		r.zAcceptEncoding.from = subFrom
+	}
+	r.zAcceptEncoding.edge = subEdge
 	// codings = content-coding / "identity" / "*"
 	// content-coding = token
 	for i := subFrom; i < subEdge; i++ {
@@ -840,6 +845,10 @@ func (r *_httpIn_) checkConnection(subLines []pair, subFrom uint8, subEdge uint8
 	return true
 }
 func (r *_httpIn_) checkContentEncoding(subLines []pair, subFrom uint8, subEdge uint8) bool { // Content-Encoding = #content-coding
+	if r.zContentEncoding.isEmpty() {
+		r.zContentEncoding.from = subFrom
+	}
+	r.zContentEncoding.edge = subEdge
 	// content-coding = token
 	for i := subFrom; i < subEdge; i++ {
 		if r.numContentCodings == int8(cap(r.contentCodings)) {

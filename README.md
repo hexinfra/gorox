@@ -57,7 +57,7 @@ source. Before building, please ensure you have Go >= 1.20 installed:
 
     shell> go version
 
-Then download the source code tarball, uncompress it, and build it with Go:
+Then download the source code tarball, uncompress it, and build it:
 
     shell> cd gorox-x.y.z
     shell> go build
@@ -70,8 +70,9 @@ If build failed, set CGO_ENABLED to 0 and try again:
 On succeed, a single "gorox" or "gorox.exe" binary will be generated.
 
 Gorox is a normal program built on the Hemi Engine which resides in "hemi/" sub
-directory. If you would like to use the Hemi Engine directly, see our examples
-at: https://github.com/hexinfra/examples.
+directory. Most of the time, you can develop your Web applications and RPC
+services directly on Gorox, but if you'd like to use the Hemi Engine directly,
+see our examples at: https://github.com/hexinfra/examples.
 
 Start and stop Gorox
 --------------------

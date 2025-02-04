@@ -1,7 +1,7 @@
 Hemi
 ====
 
-Hemi is the engine of Gorox. It's a common Go module that only depends on Go's
+Hemi is the engine of Gorox. It's a plain Go module that only depends on Go's
 standard library. It can be used as a module by your programs.
 
 
@@ -12,9 +12,9 @@ To use the Hemi Engine, add a "require" line to your "go.mod" file:
 
     require github.com/hexinfra/gorox vx.y.z
 
-Here, x.y.z is the version of Hemi. Then import it to your "main.go":
+Where x.y.z is the version of Hemi. Then import it in your "main.go":
 
-    import . "github.com/hexinfra/gorox/hemi"
+    import "github.com/hexinfra/gorox/hemi"
 
 If you would like to use the standard components too, import them with:
 
@@ -72,8 +72,8 @@ A program (like Gorox) using Hemi Engine typically has these dependencies:
 Processes
 ---------
 
-A program instance managed by procmgr has two processes: a leader process, and a
-worker process:
+A Hemi powered program that is managed by procmgr normally has two processes
+when started - a leader process, and a worker process:
 
 ```
                   +----------------+         +----------------+ business traffic
@@ -86,14 +86,19 @@ operator<-------->| leader process |<------->| worker process |<===============>
 The leader process manages the worker process, which do the real and heavy work.
 
 A program instance can be controlled by operators through the cmdui interface of
-the leader process. Operators connect to the leader, send commands, and the
-leader executes the commands. Some commands are delivered to the worker process
-through admConn which is a TCP connection between the leader process and the
-worker process.
+the leader process. Using gorox as a controlling agent, operators can connect to
+the leader, send commands, then the leader executes the commands. Some commands
+are delivered to the worker process through admConn which is a TCP connection
+between the leader process and the worker process.
 
-Alternatively, program instances can choose to connect to a Myrox instance and
-delegate their administration to Myrox. In this way, the cmdui interface in the
-leader process is disabled.
+If operators prefer to use the Web UI, there is a webui interface in the leader
+process too. Run your program with "help" action and you will see there is a
+"-webui" option which controls what ip:port it should use. Start your program
+with that option and you'll get a Web UI to control your program instance.
+
+Alternatively, leaders of program instances can choose to connect to a Myrox
+instance and delegate their administration to Myrox. In this way, the cmdui and
+the webui interface in the leader process are disabled.
 
 Stages
 ------

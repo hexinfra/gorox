@@ -25,21 +25,21 @@ const ( // list of component types
 	compTypeFixture                     // clock, fcache, resolv, ...
 	compTypeBackend                     // http1Backend, quixBackend, udpxBackend, ...
 	compTypeNode                        // node
-	compTypeQUIXRouter                  // quixRouter
-	compTypeQUIXDealet                  // quixProxy, ...
-	compTypeTCPXRouter                  // tcpxRouter
-	compTypeTCPXDealet                  // tcpxProxy, redisProxy, ...
-	compTypeUDPXRouter                  // udpxRouter
-	compTypeUDPXDealet                  // udpxProxy, dnsProxy, ...
-	compTypeCase                        // case
 	compTypeService                     // service
 	compTypeHstate                      // filesysHstate, redisHstate, ...
 	compTypeHcache                      // filesysHcache, memoryHcache, ...
 	compTypeWebapp                      // webapp
+	compTypeRule                        // rule
 	compTypeHandlet                     // static, httpProxy, ...
 	compTypeReviser                     // gzipReviser, wrapReviser, ...
 	compTypeSocklet                     // helloSocklet, ...
-	compTypeRule                        // rule
+	compTypeQUIXRouter                  // quixRouter
+	compTypeTCPXRouter                  // tcpxRouter
+	compTypeUDPXRouter                  // udpxRouter
+	compTypeCase                        // case
+	compTypeQUIXDealet                  // quixProxy, ...
+	compTypeTCPXDealet                  // tcpxProxy, redisProxy, ...
+	compTypeUDPXDealet                  // udpxProxy, dnsProxy, ...
 	compTypeServer                      // httpxServer, hrpcServer, echoServer, ...
 	compTypeCronjob                     // statCronjob, cleanCronjob, ...
 )
@@ -47,13 +47,13 @@ const ( // list of component types
 var signedComps = map[string]int16{ // signed comps. more dynamic comps are signed using _signComp() below
 	"stage":      compTypeStage,
 	"node":       compTypeNode,
+	"service":    compTypeService,
+	"webapp":     compTypeWebapp,
+	"rule":       compTypeRule,
 	"quixRouter": compTypeQUIXRouter,
 	"tcpxRouter": compTypeTCPXRouter,
 	"udpxRouter": compTypeUDPXRouter,
 	"case":       compTypeCase,
-	"service":    compTypeService,
-	"webapp":     compTypeWebapp,
-	"rule":       compTypeRule,
 }
 
 func _signComp(compSign string, compType int16) {
@@ -78,14 +78,14 @@ var ( // component creators
 	backendCreators    = make(map[string]func(compName string, stage *Stage) Backend) // indexed by compSign, same below.
 	hstateCreators     = make(map[string]func(compName string, stage *Stage) Hstate)
 	hcacheCreators     = make(map[string]func(compName string, stage *Stage) Hcache)
-	serverCreators     = make(map[string]func(compName string, stage *Stage) Server)
-	cronjobCreators    = make(map[string]func(compName string, stage *Stage) Cronjob)
-	quixDealetCreators = make(map[string]func(compName string, stage *Stage, router *QUIXRouter) QUIXDealet)
-	tcpxDealetCreators = make(map[string]func(compName string, stage *Stage, router *TCPXRouter) TCPXDealet)
-	udpxDealetCreators = make(map[string]func(compName string, stage *Stage, router *UDPXRouter) UDPXDealet)
 	handletCreators    = make(map[string]func(compName string, stage *Stage, webapp *Webapp) Handlet)
 	reviserCreators    = make(map[string]func(compName string, stage *Stage, webapp *Webapp) Reviser)
 	sockletCreators    = make(map[string]func(compName string, stage *Stage, webapp *Webapp) Socklet)
+	quixDealetCreators = make(map[string]func(compName string, stage *Stage, router *QUIXRouter) QUIXDealet)
+	tcpxDealetCreators = make(map[string]func(compName string, stage *Stage, router *TCPXRouter) TCPXDealet)
+	udpxDealetCreators = make(map[string]func(compName string, stage *Stage, router *UDPXRouter) UDPXDealet)
+	serverCreators     = make(map[string]func(compName string, stage *Stage) Server)
+	cronjobCreators    = make(map[string]func(compName string, stage *Stage) Cronjob)
 )
 
 func RegisterBackend(compSign string, create func(compName string, stage *Stage) Backend) {
@@ -114,15 +114,6 @@ func _registerComponent0[T Component](compSign string, compType int16, creators 
 	_signComp(compSign, compType)
 }
 
-func RegisterQUIXDealet(compSign string, create func(compName string, stage *Stage, router *QUIXRouter) QUIXDealet) {
-	_registerComponent1(compSign, compTypeQUIXDealet, quixDealetCreators, create)
-}
-func RegisterTCPXDealet(compSign string, create func(compName string, stage *Stage, router *TCPXRouter) TCPXDealet) {
-	_registerComponent1(compSign, compTypeTCPXDealet, tcpxDealetCreators, create)
-}
-func RegisterUDPXDealet(compSign string, create func(compName string, stage *Stage, router *UDPXRouter) UDPXDealet) {
-	_registerComponent1(compSign, compTypeUDPXDealet, udpxDealetCreators, create)
-}
 func RegisterHandlet(compSign string, create func(compName string, stage *Stage, webapp *Webapp) Handlet) {
 	_registerComponent1(compSign, compTypeHandlet, handletCreators, create)
 }
@@ -132,7 +123,16 @@ func RegisterReviser(compSign string, create func(compName string, stage *Stage,
 func RegisterSocklet(compSign string, create func(compName string, stage *Stage, webapp *Webapp) Socklet) {
 	_registerComponent1(compSign, compTypeSocklet, sockletCreators, create)
 }
-func _registerComponent1[T Component, C Component](compSign string, compType int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // dealet, handlet, reviser, socklet
+func RegisterQUIXDealet(compSign string, create func(compName string, stage *Stage, router *QUIXRouter) QUIXDealet) {
+	_registerComponent1(compSign, compTypeQUIXDealet, quixDealetCreators, create)
+}
+func RegisterTCPXDealet(compSign string, create func(compName string, stage *Stage, router *TCPXRouter) TCPXDealet) {
+	_registerComponent1(compSign, compTypeTCPXDealet, tcpxDealetCreators, create)
+}
+func RegisterUDPXDealet(compSign string, create func(compName string, stage *Stage, router *UDPXRouter) UDPXDealet) {
+	_registerComponent1(compSign, compTypeUDPXDealet, udpxDealetCreators, create)
+}
+func _registerComponent1[T Component, C Component](compSign string, compType int16, creators map[string]func(string, *Stage, C) T, create func(string, *Stage, C) T) { // handlet, reviser, socklet, dealet
 	creatorsLock.Lock()
 	defer creatorsLock.Unlock()
 
@@ -336,13 +336,13 @@ type Stage struct {
 	resolv      *resolvFixture        // for fast accessing
 	fixtures    compDict[fixture]     // indexed by compSign
 	backends    compDict[Backend]     // indexed by compName
-	quixRouters compDict[*QUIXRouter] // indexed by compName
-	tcpxRouters compDict[*TCPXRouter] // indexed by compName
-	udpxRouters compDict[*UDPXRouter] // indexed by compName
 	services    compDict[*Service]    // indexed by compName
 	hstates     compDict[Hstate]      // indexed by compName
 	hcaches     compDict[Hcache]      // indexed by compName
 	webapps     compDict[*Webapp]     // indexed by compName
+	quixRouters compDict[*QUIXRouter] // indexed by compName
+	tcpxRouters compDict[*TCPXRouter] // indexed by compName
+	udpxRouters compDict[*UDPXRouter] // indexed by compName
 	servers     compDict[Server]      // indexed by compName
 	cronjobs    compDict[Cronjob]     // indexed by compName
 	// States
@@ -375,13 +375,13 @@ func (s *Stage) onCreate() {
 	s.fixtures[signResolv] = s.resolv
 
 	s.backends = make(compDict[Backend])
-	s.quixRouters = make(compDict[*QUIXRouter])
-	s.tcpxRouters = make(compDict[*TCPXRouter])
-	s.udpxRouters = make(compDict[*UDPXRouter])
 	s.services = make(compDict[*Service])
 	s.hstates = make(compDict[Hstate])
 	s.hcaches = make(compDict[Hcache])
 	s.webapps = make(compDict[*Webapp])
+	s.quixRouters = make(compDict[*QUIXRouter])
+	s.tcpxRouters = make(compDict[*TCPXRouter])
+	s.udpxRouters = make(compDict[*UDPXRouter])
 	s.servers = make(compDict[Server])
 	s.cronjobs = make(compDict[Cronjob])
 }
@@ -400,6 +400,13 @@ func (s *Stage) OnShutdown() {
 	s.servers.goWalk(Server.OnShutdown)
 	s.WaitSubs()
 
+	// Routers
+	s.IncSubs(len(s.udpxRouters) + len(s.tcpxRouters) + len(s.quixRouters))
+	s.udpxRouters.goWalk((*UDPXRouter).OnShutdown)
+	s.tcpxRouters.goWalk((*TCPXRouter).OnShutdown)
+	s.quixRouters.goWalk((*QUIXRouter).OnShutdown)
+	s.WaitSubs()
+
 	// Webapps
 	s.IncSubs(len(s.webapps))
 	s.webapps.goWalk((*Webapp).OnShutdown)
@@ -414,13 +421,6 @@ func (s *Stage) OnShutdown() {
 	// Services
 	s.IncSubs(len(s.services))
 	s.services.goWalk((*Service).OnShutdown)
-	s.WaitSubs()
-
-	// Routers
-	s.IncSubs(len(s.udpxRouters) + len(s.tcpxRouters) + len(s.quixRouters))
-	s.udpxRouters.goWalk((*UDPXRouter).OnShutdown)
-	s.tcpxRouters.goWalk((*TCPXRouter).OnShutdown)
-	s.quixRouters.goWalk((*QUIXRouter).OnShutdown)
 	s.WaitSubs()
 
 	// Backends
@@ -495,13 +495,13 @@ func (s *Stage) OnConfigure() {
 	// sub components
 	s.fixtures.walk(fixture.OnConfigure)
 	s.backends.walk(Backend.OnConfigure)
-	s.quixRouters.walk((*QUIXRouter).OnConfigure)
-	s.tcpxRouters.walk((*TCPXRouter).OnConfigure)
-	s.udpxRouters.walk((*UDPXRouter).OnConfigure)
 	s.services.walk((*Service).OnConfigure)
 	s.hstates.walk(Hstate.OnConfigure)
 	s.hcaches.walk(Hcache.OnConfigure)
 	s.webapps.walk((*Webapp).OnConfigure)
+	s.quixRouters.walk((*QUIXRouter).OnConfigure)
+	s.tcpxRouters.walk((*TCPXRouter).OnConfigure)
+	s.udpxRouters.walk((*UDPXRouter).OnConfigure)
 	s.servers.walk(Server.OnConfigure)
 	s.cronjobs.walk(Cronjob.OnConfigure)
 }
@@ -515,13 +515,13 @@ func (s *Stage) OnPrepare() {
 	// sub components
 	s.fixtures.walk(fixture.OnPrepare)
 	s.backends.walk(Backend.OnPrepare)
-	s.quixRouters.walk((*QUIXRouter).OnPrepare)
-	s.tcpxRouters.walk((*TCPXRouter).OnPrepare)
-	s.udpxRouters.walk((*UDPXRouter).OnPrepare)
 	s.services.walk((*Service).OnPrepare)
 	s.hstates.walk(Hstate.OnPrepare)
 	s.hcaches.walk(Hcache.OnPrepare)
 	s.webapps.walk((*Webapp).OnPrepare)
+	s.quixRouters.walk((*QUIXRouter).OnPrepare)
+	s.tcpxRouters.walk((*TCPXRouter).OnPrepare)
+	s.udpxRouters.walk((*UDPXRouter).OnPrepare)
 	s.servers.walk(Server.OnPrepare)
 	s.cronjobs.walk(Cronjob.OnPrepare)
 }
@@ -538,36 +538,6 @@ func (s *Stage) createBackend(compSign string, compName string) Backend {
 	backend.setShell(backend)
 	s.backends[compName] = backend
 	return backend
-}
-func (s *Stage) createQUIXRouter(compName string) *QUIXRouter {
-	if s.QUIXRouter(compName) != nil {
-		UseExitf("conflicting quixRouter with a same component name '%s'\n", compName)
-	}
-	router := new(QUIXRouter)
-	router.onCreate(compName, s)
-	router.setShell(router)
-	s.quixRouters[compName] = router
-	return router
-}
-func (s *Stage) createTCPXRouter(compName string) *TCPXRouter {
-	if s.TCPXRouter(compName) != nil {
-		UseExitf("conflicting tcpxRouter with a same component name '%s'\n", compName)
-	}
-	router := new(TCPXRouter)
-	router.onCreate(compName, s)
-	router.setShell(router)
-	s.tcpxRouters[compName] = router
-	return router
-}
-func (s *Stage) createUDPXRouter(compName string) *UDPXRouter {
-	if s.UDPXRouter(compName) != nil {
-		UseExitf("conflicting udpxRouter with a same component name '%s'\n", compName)
-	}
-	router := new(UDPXRouter)
-	router.onCreate(compName, s)
-	router.setShell(router)
-	s.udpxRouters[compName] = router
-	return router
 }
 func (s *Stage) createService(compName string) *Service {
 	if s.Service(compName) != nil {
@@ -615,6 +585,36 @@ func (s *Stage) createWebapp(compName string) *Webapp {
 	s.webapps[compName] = webapp
 	return webapp
 }
+func (s *Stage) createQUIXRouter(compName string) *QUIXRouter {
+	if s.QUIXRouter(compName) != nil {
+		UseExitf("conflicting quixRouter with a same component name '%s'\n", compName)
+	}
+	router := new(QUIXRouter)
+	router.onCreate(compName, s)
+	router.setShell(router)
+	s.quixRouters[compName] = router
+	return router
+}
+func (s *Stage) createTCPXRouter(compName string) *TCPXRouter {
+	if s.TCPXRouter(compName) != nil {
+		UseExitf("conflicting tcpxRouter with a same component name '%s'\n", compName)
+	}
+	router := new(TCPXRouter)
+	router.onCreate(compName, s)
+	router.setShell(router)
+	s.tcpxRouters[compName] = router
+	return router
+}
+func (s *Stage) createUDPXRouter(compName string) *UDPXRouter {
+	if s.UDPXRouter(compName) != nil {
+		UseExitf("conflicting udpxRouter with a same component name '%s'\n", compName)
+	}
+	router := new(UDPXRouter)
+	router.onCreate(compName, s)
+	router.setShell(router)
+	s.udpxRouters[compName] = router
+	return router
+}
 func (s *Stage) createServer(compSign string, compName string) Server {
 	if s.Server(compName) != nil {
 		UseExitf("conflicting server with a same component name '%s'\n", compName)
@@ -651,13 +651,13 @@ func (s *Stage) Resolv() *resolvFixture          { return s.resolv }
 func (s *Stage) Fixture(compSign string) fixture { return s.fixtures[compSign] }
 
 func (s *Stage) Backend(compName string) Backend        { return s.backends[compName] }
-func (s *Stage) QUIXRouter(compName string) *QUIXRouter { return s.quixRouters[compName] }
-func (s *Stage) TCPXRouter(compName string) *TCPXRouter { return s.tcpxRouters[compName] }
-func (s *Stage) UDPXRouter(compName string) *UDPXRouter { return s.udpxRouters[compName] }
 func (s *Stage) Service(compName string) *Service       { return s.services[compName] }
 func (s *Stage) Hstate(compName string) Hstate          { return s.hstates[compName] }
 func (s *Stage) Hcache(compName string) Hcache          { return s.hcaches[compName] }
 func (s *Stage) Webapp(compName string) *Webapp         { return s.webapps[compName] }
+func (s *Stage) QUIXRouter(compName string) *QUIXRouter { return s.quixRouters[compName] }
+func (s *Stage) TCPXRouter(compName string) *TCPXRouter { return s.tcpxRouters[compName] }
+func (s *Stage) UDPXRouter(compName string) *UDPXRouter { return s.udpxRouters[compName] }
 func (s *Stage) Server(compName string) Server          { return s.servers[compName] }
 func (s *Stage) Cronjob(compName string) Cronjob        { return s.cronjobs[compName] }
 
@@ -717,11 +717,11 @@ func (s *Stage) Start(id int32) {
 	// Start all components in current stage
 	s.startFixtures() // go fixture.run()
 	s.startBackends() // go backend.maintain()
-	s.startRouters()  // go router.serve()
 	s.startServices() // go service.maintain()
 	s.startHstates()  // go hstate.Maintain()
 	s.startHcaches()  // go hcache.Maintain()
 	s.startWebapps()  // go webapp.maintain()
+	s.startRouters()  // go router.serve()
 	s.startServers()  // go server.Serve()
 	s.startCronjobs() // go cronjob.Schedule()
 }
@@ -773,26 +773,6 @@ func (s *Stage) startBackends() {
 		go backend.Maintain()
 	}
 }
-func (s *Stage) startRouters() {
-	for _, quixRouter := range s.quixRouters {
-		if DebugLevel() >= 1 {
-			Printf("quixRouter=%s go serve()\n", quixRouter.CompName())
-		}
-		go quixRouter.Serve()
-	}
-	for _, tcpxRouter := range s.tcpxRouters {
-		if DebugLevel() >= 1 {
-			Printf("tcpxRouter=%s go serve()\n", tcpxRouter.CompName())
-		}
-		go tcpxRouter.Serve()
-	}
-	for _, udpxRouter := range s.udpxRouters {
-		if DebugLevel() >= 1 {
-			Printf("udpxRouter=%s go serve()\n", udpxRouter.CompName())
-		}
-		go udpxRouter.Serve()
-	}
-}
 func (s *Stage) startServices() {
 	for _, service := range s.services {
 		if DebugLevel() >= 1 {
@@ -823,6 +803,26 @@ func (s *Stage) startWebapps() {
 			Printf("webapp=%s go maintain()\n", webapp.CompName())
 		}
 		go webapp.maintain()
+	}
+}
+func (s *Stage) startRouters() {
+	for _, quixRouter := range s.quixRouters {
+		if DebugLevel() >= 1 {
+			Printf("quixRouter=%s go serve()\n", quixRouter.CompName())
+		}
+		go quixRouter.Serve()
+	}
+	for _, tcpxRouter := range s.tcpxRouters {
+		if DebugLevel() >= 1 {
+			Printf("tcpxRouter=%s go serve()\n", tcpxRouter.CompName())
+		}
+		go tcpxRouter.Serve()
+	}
+	for _, udpxRouter := range s.udpxRouters {
+		if DebugLevel() >= 1 {
+			Printf("udpxRouter=%s go serve()\n", udpxRouter.CompName())
+		}
+		go udpxRouter.Serve()
 	}
 }
 func (s *Stage) startServers() {

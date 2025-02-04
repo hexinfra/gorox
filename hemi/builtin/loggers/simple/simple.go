@@ -42,22 +42,11 @@ type simpleLogger struct {
 	used   int
 }
 
-func (l *simpleLogger) Log(v ...any) {
-	if s := fmt.Sprint(v...); s != "" {
-		l.queue <- s
-	}
-}
-func (l *simpleLogger) Logln(v ...any) {
-	if s := fmt.Sprintln(v...); s != "" {
-		l.queue <- s
-	}
-}
 func (l *simpleLogger) Logf(f string, v ...any) {
 	if s := fmt.Sprintf(f, v...); s != "" {
 		l.queue <- s
 	}
 }
-
 func (l *simpleLogger) Close() { l.queue <- "" }
 
 func (l *simpleLogger) saver() { // runner

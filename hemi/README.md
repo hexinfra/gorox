@@ -112,17 +112,17 @@ process might looks like this:
 ```
    ^     +---------------------------------------------+  shutdown
    |     |                  cronjob(*)                 |     |
-   |     +---+--------+--------------+-----------------+     |
-   |     |   |        |    rpc[+]    |     web[+]      |     |
-   |     | s | [quix] |    server    |     server      |     |
-   |     | e | [tcpx] | <gate><conn> |  <gate><conn>   |     |
-   |     | r | [udpx] +--------------+-----------------+     |
-   |     | v | router |              | webapp(*)  rule |     |
-   |     | e |        |              | handlet reviser |     |
-   |     | r |  case  |  service(*)  |     socklet     |     |
-   |     |(*)| dealet |              +------+   +------+     |
-   |     |   |        |              |hstate|   |hcache|     |
-   |     +---+--------+--------------+------+---+------+     |
+   |     +--------+--------------+-----------------+---+     |
+   |     |        |    rpc[+]    |     web[+]      |   |     |
+   |     | [quix] |    server    |     server      | s |     |
+   |     | [tcpx] | <gate><conn> |  <gate><conn>   | e |     |
+   |     | [udpx] +--------------+-----------------+ r |     |
+   |     | router |              | webapp(*)  rule | v |     |
+   |     |        |              | handlet reviser | e |     |
+   |     |  case  |  service(*)  |     socklet     | r |     |
+   |     | dealet |              +------+   +------+(*)|     |
+   |     |        |              |hstate|   |hcache|   |     |
+   |     +--------+--------------+------+---+------+---+     |
    |     |                  backend                    |     |
    |     |                   node                      |     |
    |     |                  <conn>                     |     |

@@ -126,11 +126,8 @@ func (l *_accessLogger_) onPrepare(comp Component) {
 	l.logger = logger
 }
 
-func (l *_accessLogger_) Log(v ...any)            { l.logger.Log(v) }
-func (l *_accessLogger_) Logln(v ...any)          { l.logger.Logln(v) }
 func (l *_accessLogger_) Logf(f string, v ...any) { l.logger.Logf(f, v...) }
-
-func (l *_accessLogger_) CloseLog() { l.logger.Close() }
+func (l *_accessLogger_) CloseLog()               { l.logger.Close() }
 
 // contentSaver
 type contentSaver interface {

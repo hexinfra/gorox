@@ -13,8 +13,6 @@ import (
 
 // Logger
 type Logger interface {
-	Log(v ...any)
-	Logln(v ...any)
 	Logf(f string, v ...any)
 	Close()
 }
@@ -66,7 +64,5 @@ func init() {
 // noopLogger
 type noopLogger struct{}
 
-func (noopLogger) Log(v ...any)            {}
-func (noopLogger) Logln(v ...any)          {}
 func (noopLogger) Logf(f string, v ...any) {}
 func (noopLogger) Close()                  {}

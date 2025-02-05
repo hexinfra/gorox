@@ -5,9 +5,9 @@ import (
 )
 
 func main() {
-	//calc([]byte("authorization content-length content-location content-range content-type cookie date host if-modified-since if-range if-unmodified-since max-forwards proxy-authorization range referer user-agent x-forwarded-host x-forwarded-proto"))
+	calc([]byte("authorization content-length content-location content-range content-type cookie date host if-modified-since if-range if-unmodified-since max-forwards proxy-authorization range referer user-agent"))
 	//calc([]byte("age content-disposition content-length content-location content-range content-type date etag expires last-modified location retry-after server set-cookie"))
-	calc([]byte("accept accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match keep-alive proxy-connection te trailer transfer-encoding upgrade via x-forwarded-by x-forwarded-for"))
+	//calc([]byte("accept accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match keep-alive proxy-connection te trailer transfer-encoding upgrade via x-forwarded-by x-forwarded-for x-forwarded-host x-forwarded-proto"))
 	//calc([]byte("accept accept-encoding accept-ranges allow alt-svc cache-control cache-status cdn-cache-control connection content-encoding content-language keep-alive proxy-authenticate proxy-connection trailer transfer-encoding upgrade vary via www-authenticate"))
 	//println(sum("cache-control"))
 	//println(sum("last-modified"))
@@ -64,9 +64,15 @@ search:
 	}
 
 	fmt.Printf("good=%d size=%d\n", good, size)
-	for _, word := range words {
-		name := showName(string(s[word.from:word.edge]))
-		fmt.Printf("%d:{%s, %d, %d, %s},\n", good/word.hash%size, "hash"+name, word.from, word.edge, "check"+name)
+	for i := 0; i < len(words); i++ {
+		for j := 0; j < len(words); j++ {
+			word := words[j]
+			if i == good/word.hash%size {
+				name := showName(string(s[word.from:word.edge]))
+				fmt.Printf("%d:{%s, %d, %d, %s},\n", good/word.hash%size, "hash"+name, word.from, word.edge, "check"+name)
+				break
+			}
+		}
 	}
 }
 

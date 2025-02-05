@@ -191,13 +191,13 @@ func (s *server1Stream) execute() {
 	// target URI's scheme is "https"; if not, the scheme is "http".
 	if server.forceScheme != -1 { // forceScheme is set explicitly
 		req.schemeCode = uint8(server.forceScheme)
-	} else { // scheme is not forced. should it be aligned?
+	} else if server.alignScheme { // scheme is not forced. should it be aligned?
 		if conn.TLSMode() { // secured
-			if req.schemeCode == SchemeHTTP && server.alignScheme {
+			if req.schemeCode == SchemeHTTP {
 				req.schemeCode = SchemeHTTPS
 			}
 		} else { // not secured
-			if req.schemeCode == SchemeHTTPS && server.alignScheme {
+			if req.schemeCode == SchemeHTTPS {
 				req.schemeCode = SchemeHTTP
 			}
 		}

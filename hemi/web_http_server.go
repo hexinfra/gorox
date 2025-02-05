@@ -444,19 +444,20 @@ type _serverRequest0 struct { // for fast reset, entirely
 		proxyAuthorization uint8   // proxy-authorization header field ->r.input
 		referer            uint8   // referer header field ->r.input
 		userAgent          uint8   // user-agent header field ->r.input
-		xForwardedHost     uint8   // x-forwarded-host header field ->r.input
-		xForwardedProto    uint8   // x-forwarded-proto header field ->r.input
-		_                  [5]byte // padding
+		_                  [7]byte // padding
 	}
 	zones struct { // zones (may not be continuous) of some selected important header fields, for fast accessing
-		acceptLanguage zone // the zone of accept-language in r.primes
-		expect         zone // the zone of expect in r.primes
-		forwarded      zone // the zone of forwarded in r.primes
-		ifMatch        zone // the zone of if-match in r.primes
-		ifNoneMatch    zone // the zone of if-none-match in r.primes
-		te             zone // the zone of te in r.primes
-		xForwardedBy   zone // the zone of x-forwarded-by in r.primes
-		xForwardedFor  zone // the zone of x-forwarded-for in r.primes
+		acceptLanguage  zone    // the zone of accept-language in r.primes
+		expect          zone    // the zone of expect in r.primes
+		forwarded       zone    // the zone of forwarded in r.primes
+		ifMatch         zone    // the zone of if-match in r.primes
+		ifNoneMatch     zone    // the zone of if-none-match in r.primes
+		te              zone    // the zone of te in r.primes
+		xForwardedBy    zone    // the zone of x-forwarded-by in r.primes
+		xForwardedFor   zone    // the zone of x-forwarded-for in r.primes
+		xForwardedHost  zone    // the zone of x-forwarded-host in r.primes
+		xForwardedProto zone    // the zone of x-forwarded-proto in r.primes
+		_               [4]byte // padding
 	}
 	unixTimes struct { // parsed unix times in seconds
 		ifModifiedSince   int64 // parsed unix time of if-modified-since
@@ -953,32 +954,30 @@ func (r *serverRequest_) _applyHeaderLine(lineIndex uint8) bool {
 }
 
 var ( // perfect hash table for singleton request header fields
-	serverRequestSingletonHeaderFieldTable = [18]struct {
+	serverRequestSingletonHeaderFieldTable = [16]struct {
 		parse bool // need general parse or not
 		fdesc      // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*serverRequest_, *pair, uint8) bool
-	}{ // authorization content-length content-location content-range content-type cookie date host if-modified-since if-range if-unmodified-since max-forwards proxy-authorization range referer user-agent x-forwarded-host x-forwarded-proto
-		0:  {true, fdesc{hashContentLocation, true, false, false, false, bytesContentLocation}, (*serverRequest_).checkContentLocation},
-		1:  {false, fdesc{hashRange, false, false, false, false, bytesRange}, (*serverRequest_).checkRange},
-		2:  {false, fdesc{hashCookie, false, false, false, false, bytesCookie}, (*serverRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
-		3:  {false, fdesc{hashContentLength, false, false, false, false, bytesContentLength}, (*serverRequest_).checkContentLength},
-		4:  {false, fdesc{hashDate, false, false, false, false, bytesDate}, (*serverRequest_).checkDate},
-		5:  {false, fdesc{hashIfModifiedSince, false, false, false, false, bytesIfModifiedSince}, (*serverRequest_).checkIfModifiedSince},
-		6:  {false, fdesc{hashContentRange, false, false, false, false, bytesContentRange}, (*serverRequest_).checkContentRange},
-		7:  {false, fdesc{hashXForwardedProto, false, false, false, false, bytesXForwardedProto}, (*serverRequest_).checkXForwardedProto},
+	}{ // authorization content-length content-location content-range content-type cookie date host if-modified-since if-range if-unmodified-since max-forwards proxy-authorization range referer user-agent
+		0:  {true, fdesc{hashReferer, true, false, false, false, bytesReferer}, (*serverRequest_).checkReferer},
+		1:  {false, fdesc{hashMaxForwards, false, false, false, false, bytesMaxForwards}, (*serverRequest_).checkMaxForwards},
+		2:  {true, fdesc{hashContentType, false, false, true, false, bytesContentType}, (*serverRequest_).checkContentType},
+		3:  {false, fdesc{hashDate, false, false, false, false, bytesDate}, (*serverRequest_).checkDate},
+		4:  {false, fdesc{hashRange, false, false, false, false, bytesRange}, (*serverRequest_).checkRange},
+		5:  {false, fdesc{hashContentRange, false, false, false, false, bytesContentRange}, (*serverRequest_).checkContentRange},
+		6:  {false, fdesc{hashContentLength, false, false, false, false, bytesContentLength}, (*serverRequest_).checkContentLength},
+		7:  {false, fdesc{hashUserAgent, false, false, false, true, bytesUserAgent}, (*serverRequest_).checkUserAgent},
 		8:  {false, fdesc{hashProxyAuthorization, false, false, false, false, bytesProxyAuthorization}, (*serverRequest_).checkProxyAuthorization},
-		9:  {false, fdesc{hashMaxForwards, false, false, false, false, bytesMaxForwards}, (*serverRequest_).checkMaxForwards},
-		10: {false, fdesc{hashUserAgent, false, false, false, true, bytesUserAgent}, (*serverRequest_).checkUserAgent},
-		11: {false, fdesc{hashIfUnmodifiedSince, false, false, false, false, bytesIfUnmodifiedSince}, (*serverRequest_).checkIfUnmodifiedSince},
-		12: {true, fdesc{hashReferer, true, false, false, false, bytesReferer}, (*serverRequest_).checkReferer},
-		13: {false, fdesc{hashXForwardedHost, false, false, false, false, bytesXForwardedHost}, (*serverRequest_).checkXForwardedHost},
-		14: {false, fdesc{hashAuthorization, false, false, false, false, bytesAuthorization}, (*serverRequest_).checkAuthorization},
-		15: {false, fdesc{hashHost, false, false, false, false, bytesHost}, (*serverRequest_).checkHost},
-		16: {false, fdesc{hashIfRange, false, false, false, false, bytesIfRange}, (*serverRequest_).checkIfRange},
-		17: {true, fdesc{hashContentType, false, false, true, false, bytesContentType}, (*serverRequest_).checkContentType},
+		9:  {false, fdesc{hashAuthorization, false, false, false, false, bytesAuthorization}, (*serverRequest_).checkAuthorization},
+		10: {false, fdesc{hashIfRange, false, false, false, false, bytesIfRange}, (*serverRequest_).checkIfRange},
+		11: {false, fdesc{hashHost, false, false, false, false, bytesHost}, (*serverRequest_).checkHost},
+		12: {false, fdesc{hashIfUnmodifiedSince, false, false, false, false, bytesIfUnmodifiedSince}, (*serverRequest_).checkIfUnmodifiedSince},
+		13: {false, fdesc{hashIfModifiedSince, false, false, false, false, bytesIfModifiedSince}, (*serverRequest_).checkIfModifiedSince},
+		14: {true, fdesc{hashContentLocation, true, false, false, false, bytesContentLocation}, (*serverRequest_).checkContentLocation},
+		15: {false, fdesc{hashCookie, false, false, false, false, bytesCookie}, (*serverRequest_).checkCookie}, // `a=b; c=d; e=f` is cookie list, not parameters
 	}
 	serverRequestSingletonHeaderFieldFind = func(nameHash uint16) int {
-		return (460669520 / int(nameHash)) % len(serverRequestSingletonHeaderFieldTable)
+		return (8175626 / int(nameHash)) % len(serverRequestSingletonHeaderFieldTable)
 	}
 )
 
@@ -1211,22 +1210,6 @@ func (r *serverRequest_) checkUserAgent(headerLine *pair, lineIndex uint8) bool 
 	r.indexes.userAgent = lineIndex
 	return true
 }
-func (r *serverRequest_) checkXForwardedHost(headerLine *pair, lineIndex uint8) bool { // X-Forwarded-Host = uri-host [ ":" port ]
-	if r.indexes.xForwardedHost != 0 {
-		r.headResult, r.failReason = StatusBadRequest, "duplicated x-forwarded-host header field"
-		return false
-	}
-	r.indexes.xForwardedHost = lineIndex
-	return true
-}
-func (r *serverRequest_) checkXForwardedProto(headerLine *pair, lineIndex uint8) bool { // X-Forwarded-Proto = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
-	if r.indexes.xForwardedProto != 0 {
-		r.headResult, r.failReason = StatusBadRequest, "duplicated x-forwarded-proto header field"
-		return false
-	}
-	r.indexes.xForwardedProto = lineIndex
-	return true
-}
 func (r *serverRequest_) _addRange(rang Range) bool {
 	if r.numRanges == int8(cap(r.ranges)) { // possible attack
 		r.headResult, r.failReason = StatusBadRequest, "too many ranges"
@@ -1238,33 +1221,35 @@ func (r *serverRequest_) _addRange(rang Range) bool {
 }
 
 var ( // perfect hash table for important request header fields
-	serverRequestImportantHeaderFieldTable = [20]struct {
+	serverRequestImportantHeaderFieldTable = [22]struct {
 		fdesc // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*serverRequest_, []pair, uint8, uint8) bool
-	}{ // accept accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match keep-alive proxy-connection te trailer transfer-encoding upgrade via x-forwarded-by x-forwarded-for
-		0:  {fdesc{hashTrailer, false, false, false, false, bytesTrailer}, (*serverRequest_).checkTrailer},
-		1:  {fdesc{hashConnection, false, false, false, false, bytesConnection}, (*serverRequest_).checkConnection},
-		2:  {fdesc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*serverRequest_).checkTransferEncoding}, // deliberately false
-		3:  {fdesc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*serverRequest_).checkUpgrade},
-		4:  {fdesc{hashAcceptEncoding, false, true, true, false, bytesAcceptEncoding}, (*serverRequest_).checkAcceptEncoding},
-		5:  {fdesc{hashKeepAlive, false, false, false, false, bytesKeepAlive}, (*serverRequest_).checkKeepAlive},
+	}{ // accept accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match keep-alive proxy-connection te trailer transfer-encoding upgrade via x-forwarded-by x-forwarded-for x-forwarded-host x-forwarded-proto
+		0:  {fdesc{hashConnection, false, false, false, false, bytesConnection}, (*serverRequest_).checkConnection},
+		1:  {fdesc{hashProxyConnection, false, false, false, false, bytesProxyConnection}, (*serverRequest_).checkProxyConnection},
+		2:  {fdesc{hashXForwardedHost, false, false, false, false, bytesXForwardedHost}, (*serverRequest_).checkXForwardedHost},
+		3:  {fdesc{hashAccept, false, true, true, false, bytesAccept}, (*serverRequest_).checkAccept},
+		4:  {fdesc{hashIfNoneMatch, true, false, false, false, bytesIfNoneMatch}, (*serverRequest_).checkIfNoneMatch},
+		5:  {fdesc{hashXForwardedProto, false, false, false, false, bytesXForwardedProto}, (*serverRequest_).checkXForwardedProto},
 		6:  {fdesc{hashTE, false, false, true, false, bytesTE}, (*serverRequest_).checkTE},
-		7:  {fdesc{hashIfMatch, true, false, false, false, bytesIfMatch}, (*serverRequest_).checkIfMatch},
-		8:  {fdesc{hashVia, false, false, false, true, bytesVia}, (*serverRequest_).checkVia},
-		9:  {fdesc{hashExpect, false, false, true, false, bytesExpect}, (*serverRequest_).checkExpect},
-		10: {fdesc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*serverRequest_).checkContentLanguage},
-		11: {fdesc{hashContentEncoding, false, false, false, false, bytesContentEncoding}, (*serverRequest_).checkContentEncoding},
-		12: {fdesc{hashProxyConnection, false, false, false, false, bytesProxyConnection}, (*serverRequest_).checkProxyConnection},
-		13: {fdesc{hashForwarded, false, false, false, false, bytesForwarded}, (*serverRequest_).checkForwarded}, // note: `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
-		14: {fdesc{hashIfNoneMatch, true, false, false, false, bytesIfNoneMatch}, (*serverRequest_).checkIfNoneMatch},
-		15: {fdesc{hashAcceptLanguage, false, false, true, false, bytesAcceptLanguage}, (*serverRequest_).checkAcceptLanguage},
-		16: {fdesc{hashAccept, false, true, true, false, bytesAccept}, (*serverRequest_).checkAccept},
+		7:  {fdesc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*serverRequest_).checkContentLanguage},
+		8:  {fdesc{hashTrailer, false, false, false, false, bytesTrailer}, (*serverRequest_).checkTrailer},
+		9:  {fdesc{hashForwarded, false, false, false, false, bytesForwarded}, (*serverRequest_).checkForwarded}, // note: `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
+		10: {fdesc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*serverRequest_).checkUpgrade},
+		11: {fdesc{hashKeepAlive, false, false, false, false, bytesKeepAlive}, (*serverRequest_).checkKeepAlive},
+		12: {fdesc{hashAcceptEncoding, false, true, true, false, bytesAcceptEncoding}, (*serverRequest_).checkAcceptEncoding},
+		13: {fdesc{hashContentEncoding, false, false, false, false, bytesContentEncoding}, (*serverRequest_).checkContentEncoding},
+		14: {fdesc{hashVia, false, false, false, true, bytesVia}, (*serverRequest_).checkVia},
+		15: {fdesc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*serverRequest_).checkTransferEncoding}, // deliberately false
+		16: {fdesc{hashIfMatch, true, false, false, false, bytesIfMatch}, (*serverRequest_).checkIfMatch},
 		17: {fdesc{hashXForwardedBy, false, false, false, false, bytesXForwardedBy}, (*serverRequest_).checkXForwardedBy},
 		18: {fdesc{hashXForwardedFor, false, false, false, false, bytesXForwardedFor}, (*serverRequest_).checkXForwardedFor},
-		19: {fdesc{hashCacheControl, false, false, false, false, bytesCacheControl}, (*serverRequest_).checkCacheControl},
+		19: {fdesc{hashAcceptLanguage, false, false, true, false, bytesAcceptLanguage}, (*serverRequest_).checkAcceptLanguage},
+		20: {fdesc{hashExpect, false, false, true, false, bytesExpect}, (*serverRequest_).checkExpect},
+		21: {fdesc{hashCacheControl, false, false, false, false, bytesCacheControl}, (*serverRequest_).checkCacheControl},
 	}
 	serverRequestImportantHeaderFieldFind = func(nameHash uint16) int {
-		return (2111176960 / int(nameHash)) % len(serverRequestImportantHeaderFieldTable)
+		return (271995178 / int(nameHash)) % len(serverRequestImportantHeaderFieldTable)
 	}
 )
 
@@ -1422,6 +1407,34 @@ func (r *serverRequest_) checkXForwardedFor(subLines []pair, subFrom uint8, subE
 		r.zones.xForwardedFor.from = subFrom
 	}
 	r.zones.xForwardedFor.edge = subEdge
+	for i := subFrom; i < subEdge; i++ {
+		// TODO: check syntax
+	}
+	return true
+}
+func (r *serverRequest_) checkXForwardedHost(subLines []pair, subFrom uint8, subEdge uint8) bool { // X-Forwarded-Host = ?
+	if subFrom == subEdge {
+		r.headResult, r.failReason = StatusBadRequest, "empty x-forwarded-host"
+		return false
+	}
+	if r.zones.xForwardedHost.isEmpty() {
+		r.zones.xForwardedHost.from = subFrom
+	}
+	r.zones.xForwardedHost.edge = subEdge
+	for i := subFrom; i < subEdge; i++ {
+		// TODO: check syntax
+	}
+	return true
+}
+func (r *serverRequest_) checkXForwardedProto(subLines []pair, subFrom uint8, subEdge uint8) bool { // X-Forwarded-Proto = ?
+	if subFrom == subEdge {
+		r.headResult, r.failReason = StatusBadRequest, "empty x-forwarded-proto"
+		return false
+	}
+	if r.zones.xForwardedProto.isEmpty() {
+		r.zones.xForwardedProto.from = subFrom
+	}
+	r.zones.xForwardedProto.edge = subEdge
 	for i := subFrom; i < subEdge; i++ {
 		// TODO: check syntax
 	}

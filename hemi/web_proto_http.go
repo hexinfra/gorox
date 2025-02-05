@@ -200,6 +200,7 @@ const ( // hashes of http fields. value is calculated by adding all ASCII values
 	hashReferer            = 747
 	hashTE                 = 217
 	hashUserAgent          = 1019
+	hashXForwardedBy       = 1387
 	hashXForwardedFor      = 1495
 	hashXForwardedHost     = 1614
 	hashXForwardedProto    = 1732
@@ -268,6 +269,7 @@ var ( // byteses of http fields.
 	bytesReferer            = []byte("referer")
 	bytesTE                 = []byte("te")
 	bytesUserAgent          = []byte("user-agent")
+	bytesXForwardedBy       = []byte("x-forwarded-by")
 	bytesXForwardedFor      = []byte("x-forwarded-for")
 	bytesXForwardedHost     = []byte("x-forwarded-host")
 	bytesXForwardedProto    = []byte("x-forwarded-proto")

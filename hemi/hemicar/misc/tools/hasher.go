@@ -6,8 +6,8 @@ import (
 
 func main() {
 	//calc([]byte("authorization content-length content-location content-range content-type cookie date host if-modified-since if-range if-unmodified-since max-forwards proxy-authorization range referer user-agent x-forwarded-host x-forwarded-proto"))
-	calc([]byte("age content-disposition content-length content-location content-range content-type date etag expires last-modified location retry-after server set-cookie"))
-	//calc([]byte("accept accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match keep-alive proxy-connection te trailer transfer-encoding upgrade via x-forwarded-for"))
+	//calc([]byte("age content-disposition content-length content-location content-range content-type date etag expires last-modified location retry-after server set-cookie"))
+	calc([]byte("accept accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match keep-alive proxy-connection te trailer transfer-encoding upgrade via x-forwarded-by x-forwarded-for"))
 	//calc([]byte("accept accept-encoding accept-ranges allow alt-svc cache-control cache-status cdn-cache-control connection content-encoding content-language keep-alive proxy-authenticate proxy-connection trailer transfer-encoding upgrade vary via www-authenticate"))
 	//println(sum("cache-control"))
 	//println(sum("last-modified"))
@@ -49,7 +49,7 @@ func calc(s []byte) {
 	this := make([]int, size)
 	good := 0
 search:
-	for k := 1; k < 1148924604; k++ {
+	for k := 1; k < 3148924604; k++ {
 		copy(this, zero)
 		for _, word := range words {
 			i := k / word.hash % size

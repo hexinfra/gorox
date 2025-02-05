@@ -449,14 +449,14 @@ type _serverRequest0 struct { // for fast reset, entirely
 		_                  [5]byte // padding
 	}
 	zones struct { // zones (may not be continuous) of some selected important header fields, for fast accessing
-		acceptLanguage zone
-		expect         zone
-		forwarded      zone
+		acceptLanguage zone // the zone of accept-language in r.primes
+		expect         zone // the zone of expect in r.primes
+		forwarded      zone // the zone of forwarded in r.primes
 		ifMatch        zone // the zone of if-match in r.primes
 		ifNoneMatch    zone // the zone of if-none-match in r.primes
-		te             zone
-		xForwardedFor  zone
-		_              zone // padding
+		te             zone // the zone of te in r.primes
+		xForwardedBy   zone // the zone of x-forwarded-by in r.primes
+		xForwardedFor  zone // the zone of x-forwarded-for in r.primes
 	}
 	unixTimes struct { // parsed unix times in seconds
 		ifModifiedSince   int64 // parsed unix time of if-modified-since
@@ -1238,32 +1238,33 @@ func (r *serverRequest_) _addRange(rang Range) bool {
 }
 
 var ( // perfect hash table for important request header fields
-	serverRequestImportantHeaderFieldTable = [19]struct {
+	serverRequestImportantHeaderFieldTable = [20]struct {
 		fdesc // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*serverRequest_, []pair, uint8, uint8) bool
-	}{ // accept accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match keep-alive proxy-connection te trailer transfer-encoding upgrade via x-forwarded-for
-		0:  {fdesc{hashForwarded, false, false, false, false, bytesForwarded}, (*serverRequest_).checkForwarded}, // note: `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
-		1:  {fdesc{hashTE, false, false, true, false, bytesTE}, (*serverRequest_).checkTE},
-		2:  {fdesc{hashAcceptEncoding, false, true, true, false, bytesAcceptEncoding}, (*serverRequest_).checkAcceptEncoding},
-		3:  {fdesc{hashExpect, false, false, true, false, bytesExpect}, (*serverRequest_).checkExpect},
-		4:  {fdesc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*serverRequest_).checkUpgrade},
-		5:  {fdesc{hashAcceptLanguage, false, false, true, false, bytesAcceptLanguage}, (*serverRequest_).checkAcceptLanguage},
-		6:  {fdesc{hashVia, false, false, false, true, bytesVia}, (*serverRequest_).checkVia},
+	}{ // accept accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match keep-alive proxy-connection te trailer transfer-encoding upgrade via x-forwarded-by x-forwarded-for
+		0:  {fdesc{hashTrailer, false, false, false, false, bytesTrailer}, (*serverRequest_).checkTrailer},
+		1:  {fdesc{hashConnection, false, false, false, false, bytesConnection}, (*serverRequest_).checkConnection},
+		2:  {fdesc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*serverRequest_).checkTransferEncoding}, // deliberately false
+		3:  {fdesc{hashUpgrade, false, false, false, false, bytesUpgrade}, (*serverRequest_).checkUpgrade},
+		4:  {fdesc{hashAcceptEncoding, false, true, true, false, bytesAcceptEncoding}, (*serverRequest_).checkAcceptEncoding},
+		5:  {fdesc{hashKeepAlive, false, false, false, false, bytesKeepAlive}, (*serverRequest_).checkKeepAlive},
+		6:  {fdesc{hashTE, false, false, true, false, bytesTE}, (*serverRequest_).checkTE},
 		7:  {fdesc{hashIfMatch, true, false, false, false, bytesIfMatch}, (*serverRequest_).checkIfMatch},
-		8:  {fdesc{hashIfNoneMatch, true, false, false, false, bytesIfNoneMatch}, (*serverRequest_).checkIfNoneMatch},
-		9:  {fdesc{hashAccept, false, true, true, false, bytesAccept}, (*serverRequest_).checkAccept},
-		10: {fdesc{hashKeepAlive, false, false, false, false, bytesKeepAlive}, (*serverRequest_).checkKeepAlive},
-		11: {fdesc{hashCacheControl, false, false, false, false, bytesCacheControl}, (*serverRequest_).checkCacheControl},
+		8:  {fdesc{hashVia, false, false, false, true, bytesVia}, (*serverRequest_).checkVia},
+		9:  {fdesc{hashExpect, false, false, true, false, bytesExpect}, (*serverRequest_).checkExpect},
+		10: {fdesc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*serverRequest_).checkContentLanguage},
+		11: {fdesc{hashContentEncoding, false, false, false, false, bytesContentEncoding}, (*serverRequest_).checkContentEncoding},
 		12: {fdesc{hashProxyConnection, false, false, false, false, bytesProxyConnection}, (*serverRequest_).checkProxyConnection},
-		13: {fdesc{hashContentEncoding, false, false, false, false, bytesContentEncoding}, (*serverRequest_).checkContentEncoding},
-		14: {fdesc{hashTransferEncoding, false, false, false, false, bytesTransferEncoding}, (*serverRequest_).checkTransferEncoding}, // deliberately false
-		15: {fdesc{hashContentLanguage, false, false, false, false, bytesContentLanguage}, (*serverRequest_).checkContentLanguage},
-		16: {fdesc{hashTrailer, false, false, false, false, bytesTrailer}, (*serverRequest_).checkTrailer},
-		17: {fdesc{hashConnection, false, false, false, false, bytesConnection}, (*serverRequest_).checkConnection},
+		13: {fdesc{hashForwarded, false, false, false, false, bytesForwarded}, (*serverRequest_).checkForwarded}, // note: `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
+		14: {fdesc{hashIfNoneMatch, true, false, false, false, bytesIfNoneMatch}, (*serverRequest_).checkIfNoneMatch},
+		15: {fdesc{hashAcceptLanguage, false, false, true, false, bytesAcceptLanguage}, (*serverRequest_).checkAcceptLanguage},
+		16: {fdesc{hashAccept, false, true, true, false, bytesAccept}, (*serverRequest_).checkAccept},
+		17: {fdesc{hashXForwardedBy, false, false, false, false, bytesXForwardedBy}, (*serverRequest_).checkXForwardedBy},
 		18: {fdesc{hashXForwardedFor, false, false, false, false, bytesXForwardedFor}, (*serverRequest_).checkXForwardedFor},
+		19: {fdesc{hashCacheControl, false, false, false, false, bytesCacheControl}, (*serverRequest_).checkCacheControl},
 	}
 	serverRequestImportantHeaderFieldFind = func(nameHash uint16) int {
-		return (447605466 / int(nameHash)) % len(serverRequestImportantHeaderFieldTable)
+		return (2111176960 / int(nameHash)) % len(serverRequestImportantHeaderFieldTable)
 	}
 )
 
@@ -1395,6 +1396,20 @@ func (r *serverRequest_) checkUpgrade(subLines []pair, subFrom uint8, subEdge ui
 		for i := subFrom; i < subEdge; i++ {
 			subLines[i].zero() // we delete it.
 		}
+	}
+	return true
+}
+func (r *serverRequest_) checkXForwardedBy(subLines []pair, subFrom uint8, subEdge uint8) bool { // X-Forwarded-By: <proxy1>, <proxy2>
+	if subFrom == subEdge {
+		r.headResult, r.failReason = StatusBadRequest, "empty x-forwarded-by"
+		return false
+	}
+	if r.zones.xForwardedBy.isEmpty() {
+		r.zones.xForwardedBy.from = subFrom
+	}
+	r.zones.xForwardedBy.edge = subEdge
+	for i := subFrom; i < subEdge; i++ {
+		// TODO: check syntax
 	}
 	return true
 }

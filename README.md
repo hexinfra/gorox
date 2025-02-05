@@ -71,8 +71,10 @@ On succeed, a single "gorox" or "gorox.exe" binary will be generated.
 
 Gorox is a normal program built on the Hemi Engine which resides in "hemi/" sub
 directory. Most of the time, you can develop your Web applications and RPC
-services directly on Gorox, but if you'd like to use the Hemi Engine directly,
-see our examples at: https://github.com/hexinfra/examples.
+services directly on Gorox, but if you prefer to use a program name other than
+"gorox", or prefer to organize your program layout different with the convention
+of Gorox, or need to use the Hemi Engine as a plain module, please refer to the
+"How to use" section in "hemi/README.md" file.
 
 Start and stop Gorox
 --------------------

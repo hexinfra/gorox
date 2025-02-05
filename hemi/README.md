@@ -8,7 +8,7 @@ standard library. It can be used as a module by your programs.
 How to use
 ==========
 
-To use the Hemi Engine, add a "require" line to your "go.mod" file:
+To use the Hemi Engine module, add a "require" line to your "go.mod" file:
 
     require github.com/hexinfra/gorox vx.y.z
 
@@ -21,7 +21,7 @@ If you would like to use the standard components too, import them with:
     import _ "github.com/hexinfra/gorox/hemi/builtin"
 
 For examples showing how to use the Hemi Engine in your programs, please see our
-examples repository at: https://github.com/hexinfra/examples.
+examples in the "example/" sub directory.
 
 
 Layout
@@ -35,7 +35,7 @@ the Hemi Engine, we also have these sub directories that supplement Hemi:
   * library/  - Place general purpose libraries,
   * procmgr/  - A process manager for programs using Hemi.
 
-The following sub directories are programs that use the Hemi Engine:
+The following sub directories are some programs that use the Hemi Engine:
 
   * goroxio/  - A program that implements the official website of Gorox,
   * hemicar/  - A prototype program that is used to develop Hemi itself,
@@ -43,6 +43,7 @@ The following sub directories are programs that use the Hemi Engine:
 
 And something useful:
 
+  * example/  - Place example programs showing how to use the Hemi Engine,
   * toolkit/  - Place auxiliary commands that are sometimes useful.
 
 

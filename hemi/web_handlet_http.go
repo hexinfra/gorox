@@ -11,8 +11,135 @@ import (
 	"strings"
 )
 
-// WebExchanProxyConfig
-type WebExchanProxyConfig struct {
+func init() {
+	RegisterHandlet("httpProxy", func(compName string, stage *Stage, webapp *Webapp) Handlet {
+		h := new(httpProxy)
+		h.onCreate(compName, stage, webapp)
+		return h
+	})
+}
+
+// httpProxy handlet passes http requests to http backends and caches responses.
+type httpProxy struct {
+	// Parent
+	Handlet_
+	// Assocs
+	backend HTTPBackend // the *HTTP[1-3]Backend to pass to
+	hcache  Hcache      // the hcache which is used by this proxy
+	// States
+	HTTPProxyConfig // embeded
+}
+
+func (h *httpProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	h.Handlet_.OnCreate(compName, stage, webapp)
+}
+func (h *httpProxy) OnShutdown() {
+	h.webapp.DecSub() // handlet
+}
+
+func (h *httpProxy) OnConfigure() {
+	// .toBackend
+	if v, ok := h.Find("toBackend"); ok {
+		if compName, ok := v.String(); ok && compName != "" {
+			if backend := h.stage.Backend(compName); backend == nil {
+				UseExitf("unknown backend: '%s'\n", compName)
+			} else {
+				h.backend = backend.(HTTPBackend)
+			}
+		} else {
+			UseExitln("invalid toBackend")
+		}
+	} else {
+		UseExitln("toBackend is required for http proxy")
+	}
+
+	// .withHcache
+	if v, ok := h.Find("withHcache"); ok {
+		if compName, ok := v.String(); ok && compName != "" {
+			if hcache := h.stage.Hcache(compName); hcache == nil {
+				UseExitf("unknown hcache: '%s'\n", compName)
+			} else {
+				h.hcache = hcache
+			}
+		} else {
+			UseExitln("invalid withHcache")
+		}
+	}
+
+	// .addRequestHeaders
+	if v, ok := h.Find("addRequestHeaders"); ok {
+		addedHeaders := make(map[string]Value)
+		if vHeaders, ok := v.Dict(); ok {
+			for headerName, vHeaderValue := range vHeaders {
+				if vHeaderValue.IsVariable() {
+					name := vHeaderValue.name
+					if p := strings.IndexByte(name, '_'); p != -1 {
+						p++ // skip '_'
+						vHeaderValue.name = name[:p] + strings.ReplaceAll(name[p:], "_", "-")
+					}
+				} else if _, ok := vHeaderValue.Bytes(); !ok {
+					UseExitf("bad value in .addRequestHeaders")
+				}
+				addedHeaders[headerName] = vHeaderValue
+			}
+			h.AddRequestHeaders = addedHeaders
+		} else {
+			UseExitln("invalid addRequestHeaders")
+		}
+	}
+
+	// .bufferClientContent
+	h.ConfigureBool("bufferClientContent", &h.BufferClientContent, true)
+	// .hostname
+	h.ConfigureBytes("hostname", &h.Hostname, nil, nil)
+	// .colonport
+	h.ConfigureBytes("colonport", &h.Colonport, nil, nil)
+	// .inboundViaName
+	h.ConfigureBytes("inboundViaName", &h.InboundViaName, nil, bytesGorox)
+	// .delRequestHeaders
+	h.ConfigureBytesList("delRequestHeaders", &h.DelRequestHeaders, nil, [][]byte{})
+	// .bufferServerContent
+	h.ConfigureBool("bufferServerContent", &h.BufferServerContent, true)
+	// .outboundViaName
+	h.ConfigureBytes("outboundViaName", &h.OutboundViaName, nil, nil)
+	// .addResponseHeaders
+	if v, ok := h.Find("addResponseHeaders"); ok {
+		addedHeaders := make(map[string]Value)
+		if vHeaders, ok := v.Dict(); ok {
+			for headerName, vHeaderValue := range vHeaders {
+				if vHeaderValue.IsVariable() {
+					name := vHeaderValue.name
+					if p := strings.IndexByte(name, '_'); p != -1 {
+						p++ // skip '_'
+						vHeaderValue.name = name[:p] + strings.ReplaceAll(name[p:], "_", "-")
+					}
+				} else if _, ok := vHeaderValue.Bytes(); !ok {
+					UseExitf("bad value in .addResponseHeaders")
+				}
+				addedHeaders[headerName] = vHeaderValue
+			}
+			h.AddResponseHeaders = addedHeaders
+		} else {
+			UseExitln("invalid addResponseHeaders")
+		}
+	}
+	// .delResponseHeaders
+	h.ConfigureBytesList("delResponseHeaders", &h.DelResponseHeaders, nil, [][]byte{})
+}
+func (h *httpProxy) OnPrepare() {
+	// Currently nothing.
+}
+
+func (h *httpProxy) IsProxy() bool { return true }            // works as a reverse proxy
+func (h *httpProxy) IsCache() bool { return h.hcache != nil } // works as a proxy cache?
+
+func (h *httpProxy) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
+	HTTPReverseProxy(req, resp, h.hcache, h.backend, &h.HTTPProxyConfig)
+	return true
+}
+
+// HTTPProxyConfig
+type HTTPProxyConfig struct {
 	// Inbound, to origin servers
 	BufferClientContent bool
 	Hostname            []byte // overrides client provided hostname
@@ -28,8 +155,8 @@ type WebExchanProxyConfig struct {
 	DelResponseHeaders  [][]byte
 }
 
-// WebExchanReverseProxy
-func WebExchanReverseProxy(servReq ServerRequest, servResp ServerResponse, hcache Hcache, backend HTTPBackend, proxyConfig *WebExchanProxyConfig) {
+// HTTPReverseProxy
+func HTTPReverseProxy(servReq ServerRequest, servResp ServerResponse, hcache Hcache, backend HTTPBackend, proxyConfig *HTTPProxyConfig) {
 	var servContent any // nil, []byte, tempFile
 	servHasContent := servReq.HasContent()
 	if servHasContent && proxyConfig.BufferClientContent { // including size 0
@@ -150,131 +277,4 @@ func WebExchanReverseProxy(servReq ServerRequest, servResp ServerResponse, hcach
 		backStream.markBroken()
 		return
 	}
-}
-
-func init() {
-	RegisterHandlet("httpProxy", func(compName string, stage *Stage, webapp *Webapp) Handlet {
-		h := new(httpProxy)
-		h.onCreate(compName, stage, webapp)
-		return h
-	})
-}
-
-// httpProxy handlet passes http requests to http backends and caches responses.
-type httpProxy struct {
-	// Parent
-	Handlet_
-	// Assocs
-	backend HTTPBackend // the *HTTP[1-3]Backend to pass to
-	hcache  Hcache      // the hcache which is used by this proxy
-	// States
-	WebExchanProxyConfig // embeded
-}
-
-func (h *httpProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
-	h.Handlet_.OnCreate(compName, stage, webapp)
-}
-func (h *httpProxy) OnShutdown() {
-	h.webapp.DecSub() // handlet
-}
-
-func (h *httpProxy) OnConfigure() {
-	// .toBackend
-	if v, ok := h.Find("toBackend"); ok {
-		if compName, ok := v.String(); ok && compName != "" {
-			if backend := h.stage.Backend(compName); backend == nil {
-				UseExitf("unknown backend: '%s'\n", compName)
-			} else {
-				h.backend = backend.(HTTPBackend)
-			}
-		} else {
-			UseExitln("invalid toBackend")
-		}
-	} else {
-		UseExitln("toBackend is required for http proxy")
-	}
-
-	// .withHcache
-	if v, ok := h.Find("withHcache"); ok {
-		if compName, ok := v.String(); ok && compName != "" {
-			if hcache := h.stage.Hcache(compName); hcache == nil {
-				UseExitf("unknown hcache: '%s'\n", compName)
-			} else {
-				h.hcache = hcache
-			}
-		} else {
-			UseExitln("invalid withHcache")
-		}
-	}
-
-	// .addRequestHeaders
-	if v, ok := h.Find("addRequestHeaders"); ok {
-		addedHeaders := make(map[string]Value)
-		if vHeaders, ok := v.Dict(); ok {
-			for headerName, vHeaderValue := range vHeaders {
-				if vHeaderValue.IsVariable() {
-					name := vHeaderValue.name
-					if p := strings.IndexByte(name, '_'); p != -1 {
-						p++ // skip '_'
-						vHeaderValue.name = name[:p] + strings.ReplaceAll(name[p:], "_", "-")
-					}
-				} else if _, ok := vHeaderValue.Bytes(); !ok {
-					UseExitf("bad value in .addRequestHeaders")
-				}
-				addedHeaders[headerName] = vHeaderValue
-			}
-			h.AddRequestHeaders = addedHeaders
-		} else {
-			UseExitln("invalid addRequestHeaders")
-		}
-	}
-
-	// .bufferClientContent
-	h.ConfigureBool("bufferClientContent", &h.BufferClientContent, true)
-	// .hostname
-	h.ConfigureBytes("hostname", &h.Hostname, nil, nil)
-	// .colonport
-	h.ConfigureBytes("colonport", &h.Colonport, nil, nil)
-	// .inboundViaName
-	h.ConfigureBytes("inboundViaName", &h.InboundViaName, nil, bytesGorox)
-	// .delRequestHeaders
-	h.ConfigureBytesList("delRequestHeaders", &h.DelRequestHeaders, nil, [][]byte{})
-	// .bufferServerContent
-	h.ConfigureBool("bufferServerContent", &h.BufferServerContent, true)
-	// .outboundViaName
-	h.ConfigureBytes("outboundViaName", &h.OutboundViaName, nil, nil)
-	// .addResponseHeaders
-	if v, ok := h.Find("addResponseHeaders"); ok {
-		addedHeaders := make(map[string]Value)
-		if vHeaders, ok := v.Dict(); ok {
-			for headerName, vHeaderValue := range vHeaders {
-				if vHeaderValue.IsVariable() {
-					name := vHeaderValue.name
-					if p := strings.IndexByte(name, '_'); p != -1 {
-						p++ // skip '_'
-						vHeaderValue.name = name[:p] + strings.ReplaceAll(name[p:], "_", "-")
-					}
-				} else if _, ok := vHeaderValue.Bytes(); !ok {
-					UseExitf("bad value in .addResponseHeaders")
-				}
-				addedHeaders[headerName] = vHeaderValue
-			}
-			h.AddResponseHeaders = addedHeaders
-		} else {
-			UseExitln("invalid addResponseHeaders")
-		}
-	}
-	// .delResponseHeaders
-	h.ConfigureBytesList("delResponseHeaders", &h.DelResponseHeaders, nil, [][]byte{})
-}
-func (h *httpProxy) OnPrepare() {
-	// Currently nothing.
-}
-
-func (h *httpProxy) IsProxy() bool { return true }            // works as a reverse proxy
-func (h *httpProxy) IsCache() bool { return h.hcache != nil } // works as a proxy cache?
-
-func (h *httpProxy) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
-	WebExchanReverseProxy(req, resp, h.hcache, h.backend, &h.WebExchanProxyConfig)
-	return true
 }

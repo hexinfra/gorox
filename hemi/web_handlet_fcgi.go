@@ -18,15 +18,99 @@ import (
 	"errors"
 )
 
-// FCGIExchanProxyConfig
-type FCGIExchanProxyConfig struct {
-	WebExchanProxyConfig        // embeded
-	ScriptFilename       []byte // for SCRIPT_FILENAME
-	IndexFile            []byte // the file that will be used as index
+func init() {
+	RegisterHandlet("fcgiProxy", func(compName string, stage *Stage, webapp *Webapp) Handlet {
+		h := new(fcgiProxy)
+		h.onCreate(compName, stage, webapp)
+		return h
+	})
 }
 
-// FCGIExchanReverseProxy
-func FCGIExchanReverseProxy(httpReq ServerRequest, httpResp ServerResponse, hcache Hcache, backend *FCGIBackend, proxyConfig *FCGIExchanProxyConfig) {
+// fcgiProxy handlet passes http requests to FCGI backends and caches responses.
+type fcgiProxy struct {
+	// Parent
+	Handlet_
+	// Assocs
+	backend *FCGIBackend // the backend to pass to
+	hcache  Hcache       // the hcache which is used by this proxy
+	// States
+	FCGIProxyConfig // embeded
+}
+
+func (h *fcgiProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
+	h.Handlet_.OnCreate(compName, stage, webapp)
+}
+func (h *fcgiProxy) OnShutdown() {
+	h.webapp.DecSub() // handlet
+}
+
+func (h *fcgiProxy) OnConfigure() {
+	// .toBackend
+	if v, ok := h.Find("toBackend"); ok {
+		if compName, ok := v.String(); ok && compName != "" {
+			if backend := h.stage.Backend(compName); backend == nil {
+				UseExitf("unknown backend: '%s'\n", compName)
+			} else if fcgiBackend, ok := backend.(*FCGIBackend); ok {
+				h.backend = fcgiBackend
+			} else {
+				UseExitf("incorrect backend '%s' for fcgiProxy, must be fcgiBackend\n", compName)
+			}
+		} else {
+			UseExitln("invalid toBackend")
+		}
+	} else {
+		UseExitln("toBackend is required for fcgiProxy")
+	}
+
+	// .withHcache
+	if v, ok := h.Find("withHcache"); ok {
+		if compName, ok := v.String(); ok && compName != "" {
+			if hcache := h.stage.Hcache(compName); hcache == nil {
+				UseExitf("unknown hcache: '%s'\n", compName)
+			} else {
+				h.hcache = hcache
+			}
+		} else {
+			UseExitln("invalid withHcache")
+		}
+	}
+
+	// .bufferClientContent
+	h.ConfigureBool("bufferClientContent", &h.BufferClientContent, true)
+	// .bufferServerContent
+	h.ConfigureBool("bufferServerContent", &h.BufferServerContent, true)
+
+	// .scriptFilename
+	h.ConfigureBytes("scriptFilename", &h.ScriptFilename, nil, nil)
+
+	// .indexFile
+	h.ConfigureBytes("indexFile", &h.IndexFile, func(value []byte) error {
+		if len(value) > 0 {
+			return nil
+		}
+		return errors.New(".indexFile has an invalid value")
+	}, []byte("index.php"))
+}
+func (h *fcgiProxy) OnPrepare() {
+}
+
+func (h *fcgiProxy) IsProxy() bool { return true }            // works as a reverse proxy
+func (h *fcgiProxy) IsCache() bool { return h.hcache != nil } // works as a proxy cache?
+
+func (h *fcgiProxy) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
+	FCGIReverseProxy(req, resp, h.hcache, h.backend, &h.FCGIProxyConfig)
+	return true
+}
+
+// FCGIProxyConfig
+type FCGIProxyConfig struct {
+	HTTPProxyConfig        // embeded
+	ScriptFilename  []byte // for SCRIPT_FILENAME
+	IndexFile       []byte // the file that will be used as index
+}
+
+// FCGIReverseProxy
+func FCGIReverseProxy(httpReq ServerRequest, httpResp ServerResponse, hcache Hcache, backend *FCGIBackend, proxyConfig *FCGIProxyConfig) {
 	var httpContent any // nil, []byte, tempFile
 	httpHasContent := httpReq.HasContent()
 	if httpHasContent && (proxyConfig.BufferClientContent || httpReq.IsVague()) { // including size 0
@@ -104,7 +188,7 @@ func FCGIExchanReverseProxy(httpReq ServerRequest, httpResp ServerResponse, hcac
 		}
 	}
 
-	if !httpResp.proxyCopyHeaderLines(fcgiResp, &proxyConfig.WebExchanProxyConfig) {
+	if !httpResp.proxyCopyHeaderLines(fcgiResp, &proxyConfig.HTTPProxyConfig) {
 		fcgiExchan.markBroken()
 		return
 	}
@@ -116,88 +200,4 @@ func FCGIExchanReverseProxy(httpReq ServerRequest, httpResp ServerResponse, hcac
 	} else if err := httpResp.proxyPostMessage(fcgiContent, false); err != nil { // false means no trailer section
 		return
 	}
-}
-
-func init() {
-	RegisterHandlet("fcgiProxy", func(compName string, stage *Stage, webapp *Webapp) Handlet {
-		h := new(fcgiProxy)
-		h.onCreate(compName, stage, webapp)
-		return h
-	})
-}
-
-// fcgiProxy handlet passes http requests to FCGI backends and caches responses.
-type fcgiProxy struct {
-	// Parent
-	Handlet_
-	// Assocs
-	backend *FCGIBackend // the backend to pass to
-	hcache  Hcache       // the hcache which is used by this proxy
-	// States
-	FCGIExchanProxyConfig // embeded
-}
-
-func (h *fcgiProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
-	h.Handlet_.OnCreate(compName, stage, webapp)
-}
-func (h *fcgiProxy) OnShutdown() {
-	h.webapp.DecSub() // handlet
-}
-
-func (h *fcgiProxy) OnConfigure() {
-	// .toBackend
-	if v, ok := h.Find("toBackend"); ok {
-		if compName, ok := v.String(); ok && compName != "" {
-			if backend := h.stage.Backend(compName); backend == nil {
-				UseExitf("unknown backend: '%s'\n", compName)
-			} else if fcgiBackend, ok := backend.(*FCGIBackend); ok {
-				h.backend = fcgiBackend
-			} else {
-				UseExitf("incorrect backend '%s' for fcgiProxy, must be fcgiBackend\n", compName)
-			}
-		} else {
-			UseExitln("invalid toBackend")
-		}
-	} else {
-		UseExitln("toBackend is required for fcgiProxy")
-	}
-
-	// .withHcache
-	if v, ok := h.Find("withHcache"); ok {
-		if compName, ok := v.String(); ok && compName != "" {
-			if hcache := h.stage.Hcache(compName); hcache == nil {
-				UseExitf("unknown hcache: '%s'\n", compName)
-			} else {
-				h.hcache = hcache
-			}
-		} else {
-			UseExitln("invalid withHcache")
-		}
-	}
-
-	// .bufferClientContent
-	h.ConfigureBool("bufferClientContent", &h.BufferClientContent, true)
-	// .bufferServerContent
-	h.ConfigureBool("bufferServerContent", &h.BufferServerContent, true)
-
-	// .scriptFilename
-	h.ConfigureBytes("scriptFilename", &h.ScriptFilename, nil, nil)
-
-	// .indexFile
-	h.ConfigureBytes("indexFile", &h.IndexFile, func(value []byte) error {
-		if len(value) > 0 {
-			return nil
-		}
-		return errors.New(".indexFile has an invalid value")
-	}, []byte("index.php"))
-}
-func (h *fcgiProxy) OnPrepare() {
-}
-
-func (h *fcgiProxy) IsProxy() bool { return true }            // works as a reverse proxy
-func (h *fcgiProxy) IsCache() bool { return h.hcache != nil } // works as a proxy cache?
-
-func (h *fcgiProxy) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
-	FCGIExchanReverseProxy(req, resp, h.hcache, h.backend, &h.FCGIExchanProxyConfig)
-	return true
 }

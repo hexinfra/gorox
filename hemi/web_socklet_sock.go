@@ -7,17 +7,6 @@
 
 package hemi
 
-// WebSocketProxyConfig
-type WebSocketProxyConfig struct {
-	// TODO
-}
-
-// WebSocketReverseProxy
-func WebSocketReverseProxy(servReq ServerRequest, servSock ServerSocket, backend HTTPBackend, proxyConfig *WebSocketProxyConfig) {
-	// TODO
-	servSock.Close()
-}
-
 func init() {
 	RegisterSocklet("sockProxy", func(compName string, stage *Stage, webapp *Webapp) Socklet {
 		s := new(sockProxy)
@@ -33,7 +22,7 @@ type sockProxy struct {
 	// Assocs
 	backend HTTPBackend // the *HTTP[1-3]Backend to pass to
 	// States
-	WebSocketProxyConfig // embeded
+	SOCKProxyConfig // embeded
 }
 
 func (s *sockProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
@@ -66,5 +55,16 @@ func (s *sockProxy) OnPrepare() {
 func (s *sockProxy) IsProxy() bool { return true } // works as a reverse proxy
 
 func (s *sockProxy) Serve(req ServerRequest, sock ServerSocket) {
-	WebSocketReverseProxy(req, sock, s.backend, &s.WebSocketProxyConfig)
+	SOCKReverseProxy(req, sock, s.backend, &s.SOCKProxyConfig)
+}
+
+// SOCKProxyConfig
+type SOCKProxyConfig struct {
+	// TODO
+}
+
+// SOCKReverseProxy
+func SOCKReverseProxy(servReq ServerRequest, servSock ServerSocket, backend HTTPBackend, proxyConfig *SOCKProxyConfig) {
+	// TODO
+	servSock.Close()
 }

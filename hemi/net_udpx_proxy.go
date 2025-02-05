@@ -7,16 +7,6 @@
 
 package hemi
 
-// UDPXProxyConfig
-type UDPXProxyConfig struct {
-	// TODO
-}
-
-// UDPXReverseProxy
-func UDPXReverseProxy(servConn *UDPXConn, backend *UDPXBackend, proxyConfig *UDPXProxyConfig) {
-	// TODO
-}
-
 func init() {
 	RegisterUDPXDealet("udpxProxy", func(compName string, stage *Stage, router *UDPXRouter) UDPXDealet {
 		d := new(udpxProxy)
@@ -68,4 +58,14 @@ func (d *udpxProxy) OnPrepare() {
 func (d *udpxProxy) DealWith(conn *UDPXConn) (dealt bool) {
 	UDPXReverseProxy(conn, d.backend, &d.UDPXProxyConfig)
 	return true
+}
+
+// UDPXProxyConfig
+type UDPXProxyConfig struct {
+	// TODO
+}
+
+// UDPXReverseProxy
+func UDPXReverseProxy(servConn *UDPXConn, backend *UDPXBackend, proxyConfig *UDPXProxyConfig) {
+	// TODO
 }

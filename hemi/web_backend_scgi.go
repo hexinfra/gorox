@@ -324,7 +324,7 @@ func (r *scgiRequest) onEnd() {
 	r._scgiRequest0 = _scgiRequest0{}
 }
 
-func (r *scgiRequest) proxyCopyHeaderLines(httpReq ServerRequest, proxyConfig *SCGIExchanProxyConfig) bool {
+func (r *scgiRequest) proxyCopyHeaderLines(httpReq ServerRequest, proxyConfig *SCGIProxyConfig) bool {
 	// TODO
 	return false
 }

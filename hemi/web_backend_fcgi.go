@@ -1212,7 +1212,7 @@ func (r *fcgiRequest) onEnd() {
 	r._fcgiRequest0 = _fcgiRequest0{}
 }
 
-func (r *fcgiRequest) proxyCopyHeaderLines(httpReq ServerRequest, proxyConfig *FCGIExchanProxyConfig) bool {
+func (r *fcgiRequest) proxyCopyHeaderLines(httpReq ServerRequest, proxyConfig *FCGIProxyConfig) bool {
 	// Add meta params
 	if !r._addMetaParam(fcgiBytesGatewayInterface, fcgiBytesCGI1_1) { // GATEWAY_INTERFACE
 		return false

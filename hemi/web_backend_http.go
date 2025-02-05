@@ -592,10 +592,10 @@ type BackendRequest interface { // for *backend[1-3]Request
 	proxySetMethodURI(method []byte, uri []byte, hasContent bool) bool
 	proxySetAuthority(hostname []byte, colonport []byte) bool
 	proxyCopyCookies(servReq ServerRequest) bool // NOTE: HTTP 1.x/2/3 have different requirements on the "cookie" header field
-	proxyCopyHeaderLines(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool
+	proxyCopyHeaderLines(servReq ServerRequest, proxyConfig *HTTPProxyConfig) bool
 	proxyPassMessage(servReq ServerRequest) error                 // pass content to backend directly
 	proxyPostMessage(foreContent any, foreHasTrailers bool) error // post held content to backend
-	proxyCopyTrailerLines(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool
+	proxyCopyTrailerLines(servReq ServerRequest, proxyConfig *HTTPProxyConfig) bool
 	isVague() bool
 	endVague() error
 }
@@ -748,7 +748,7 @@ func (r *backendRequest_) _removeIfUnmodifiedSince() (deleted bool) {
 func (r *backendRequest_) proxyPassMessage(servReq ServerRequest) error {
 	return r._proxyPassMessage(servReq)
 }
-func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool {
+func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfig *HTTPProxyConfig) bool {
 	servReq.proxyDelHopHeaderFields()
 
 	// Copy control (:method, :path, :authority, :scheme)
@@ -840,7 +840,7 @@ func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfi
 
 	return true
 }
-func (r *backendRequest_) proxyCopyTrailerLines(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool {
+func (r *backendRequest_) proxyCopyTrailerLines(servReq ServerRequest, proxyConfig *HTTPProxyConfig) bool {
 	return servReq.proxyWalkTrailerLines(r.out, func(out httpOut, trailerLine *pair, trailerName []byte, lineValue []byte) bool {
 		return out.addTrailer(trailerName, lineValue)
 	})

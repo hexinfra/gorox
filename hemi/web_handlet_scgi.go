@@ -14,16 +14,6 @@
 
 package hemi
 
-// SCGIExchanProxyConfig
-type SCGIExchanProxyConfig struct {
-	WebExchanProxyConfig // embeded
-}
-
-func SCGIExchanReverseProxy(httpReq ServerRequest, httpResp ServerResponse, hcache Hcache, backend *SCGIBackend, proxyConfig *SCGIExchanProxyConfig) {
-	// TODO
-	httpResp.Send("SCGI")
-}
-
 func init() {
 	RegisterHandlet("scgiProxy", func(compName string, stage *Stage, webapp *Webapp) Handlet {
 		h := new(scgiProxy)
@@ -40,7 +30,7 @@ type scgiProxy struct {
 	backend *SCGIBackend // the backend to pass to
 	hcache  Hcache       // the hcache which is used by this proxy
 	// States
-	SCGIExchanProxyConfig // embeded
+	SCGIProxyConfig // embeded
 }
 
 func (h *scgiProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
@@ -93,6 +83,16 @@ func (h *scgiProxy) IsProxy() bool { return true }            // works as a reve
 func (h *scgiProxy) IsCache() bool { return h.hcache != nil } // works as a proxy cache?
 
 func (h *scgiProxy) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
-	SCGIExchanReverseProxy(req, resp, h.hcache, h.backend, &h.SCGIExchanProxyConfig)
+	SCGIReverseProxy(req, resp, h.hcache, h.backend, &h.SCGIProxyConfig)
 	return true
+}
+
+// SCGIProxyConfig
+type SCGIProxyConfig struct {
+	HTTPProxyConfig // embeded
+}
+
+func SCGIReverseProxy(httpReq ServerRequest, httpResp ServerResponse, hcache Hcache, backend *SCGIBackend, proxyConfig *SCGIProxyConfig) {
+	// TODO
+	httpResp.Send("SCGI")
 }

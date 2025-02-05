@@ -2674,8 +2674,8 @@ type ServerResponse interface { // for *server[1-3]Response
 	proxyPass1xx(backResp BackendResponse) bool
 	proxyPassMessage(backResp BackendResponse) error              // pass content to client directly
 	proxyPostMessage(backContent any, backHasTrailers bool) error // post held content to client
-	proxyCopyHeaderLines(backResp BackendResponse, proxyConfig *WebExchanProxyConfig) bool
-	proxyCopyTrailerLines(backResp BackendResponse, proxyConfig *WebExchanProxyConfig) bool
+	proxyCopyHeaderLines(backResp BackendResponse, proxyConfig *HTTPProxyConfig) bool
+	proxyCopyTrailerLines(backResp BackendResponse, proxyConfig *HTTPProxyConfig) bool
 	hookReviser(reviser Reviser)
 	unsafeMake(size int) []byte
 }
@@ -3008,7 +3008,7 @@ func (r *serverResponse_) _removeLastModified() (deleted bool) {
 func (r *serverResponse_) proxyPassMessage(backResp BackendResponse) error {
 	return r._proxyPassMessage(backResp)
 }
-func (r *serverResponse_) proxyCopyHeaderLines(backResp BackendResponse, proxyConfig *WebExchanProxyConfig) bool {
+func (r *serverResponse_) proxyCopyHeaderLines(backResp BackendResponse, proxyConfig *HTTPProxyConfig) bool {
 	backResp.proxyDelHopHeaderFields()
 
 	// Copy control (:status)
@@ -3049,7 +3049,7 @@ func (r *serverResponse_) proxyCopyHeaderLines(backResp BackendResponse, proxyCo
 
 	return true
 }
-func (r *serverResponse_) proxyCopyTrailerLines(backResp BackendResponse, proxyConfig *WebExchanProxyConfig) bool {
+func (r *serverResponse_) proxyCopyTrailerLines(backResp BackendResponse, proxyConfig *HTTPProxyConfig) bool {
 	return backResp.proxyWalkTrailerLines(r.out, func(out httpOut, trailerLine *pair, trailerName []byte, lineValue []byte) bool {
 		return out.addTrailer(trailerName, lineValue)
 	})

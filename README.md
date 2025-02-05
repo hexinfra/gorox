@@ -83,7 +83,7 @@ After you have downloaded and uncompressed the official binary distribution, or
 have successfully built the Gorox binary from source, you can run it as a daemon
 (simply remove the "-daemon" option if you don't like to run it as a daemon):
 
-    shell> ./gorox serve -daemon
+    shell> ./gorox -daemon
 
 Then ensure the leader process and the worker process have both been started:
 
@@ -107,8 +107,8 @@ may also add the directory to your $PATH so you can run "gorox" without "./".
 
 To uninstall, simply remove the whole Gorox directory and remove it from $PATH.
 
-More usage examples
--------------------
+Configuration examples
+----------------------
 
 We provide some example configs for Gorox to use, see them under conf/examples.
 For example, if you would like to use Gorox as an HTTP reverse proxy, there is a

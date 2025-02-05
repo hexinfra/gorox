@@ -31,7 +31,7 @@ const usage = `
 ACTION
 ------
 
-  serve      # start as server
+  serve      # start as server. the default action
   help       # show this message
   version    # show version info
   check      # dry run to check the config

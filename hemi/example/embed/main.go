@@ -39,9 +39,9 @@ func startHemi(topDir string) error {
 		return h
 	})
 	SetTopDir(topDir)
-	SetLogDir(topDir+"/log")
-	SetTmpDir(topDir+"/tmp")
-	SetVarDir(topDir+"/var")
+	SetLogDir(topDir + "/log")
+	SetTmpDir(topDir + "/tmp")
+	SetVarDir(topDir + "/var")
 	var configText = `
 stage {
     webapp "example" {

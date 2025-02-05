@@ -57,20 +57,20 @@ ACTION
 OPTIONS
 -------
 
-  -debug  <level>   # debug level (default: %d. min: 0, max: 3). 0 means disable
-  -target <addr>    # leader address to tell or call (default: %s)
-  -cmdui  <addr>    # listen address of leader cmdui (default: %s)
-  -webui  <addr>    # listen address of leader webui (default: %s)
-  -myrox  <addr>    # myrox to use. "-cmdui" and "-webui" will be ignored if set
-  -config <config>  # path to worker config file (default: conf/%s.conf)
+  -debug   <level>  # debug level (default: %d. min: 0, max: 3). 0 means disable
+  -target  <addr>   # leader address to tell or call (default: %s)
+  -cmdui   <addr>   # listen address of leader cmdui (default: %s)
+  -webui   <addr>   # listen address of leader webui (default: %s)
+  -rockman <addr>   # rockman to use. -cmdui and -webui will be ignored if set
+  -config  <config> # path to worker config file (default: conf/%s.conf)
   -single           # run server in single mode. only a process is started
   -daemon           # run server as daemon (default: false)
-  -topDir <path>    # top directory of the program files
-  -logDir <path>    # log directory to use
-  -tmpDir <path>    # tmp directory to use
-  -varDir <path>    # var directory to use
-  -stdout <path>    # daemon's stdout file (default: %s.out in log directory)
-  -stderr <path>    # daemon's stderr file (default: %s.err in log directory)
+  -topDir  <path>   # top directory of the program files
+  -logDir  <path>   # log directory to use
+  -tmpDir  <path>   # tmp directory to use
+  -varDir  <path>   # var directory to use
+  -stdout  <path>   # daemon's stdout file (default: %s.out in log directory)
+  -stderr  <path>   # daemon's stderr file (default: %s.err in log directory)
 
   "-debug" applies to all actions.
   "-target" applies to telling and calling actions only.
@@ -109,7 +109,7 @@ func Main(opts *Opts) {
 	flag.StringVar(&common.TargetAddr, "target", opts.CmdUIAddr, "")
 	flag.StringVar(&common.CmdUIAddr, "cmdui", opts.CmdUIAddr, "")
 	flag.StringVar(&common.WebUIAddr, "webui", opts.WebUIAddr, "")
-	flag.StringVar(&common.MyroxAddr, "myrox", "", "")
+	flag.StringVar(&common.RockmanAddr, "rockman", "", "")
 	flag.StringVar(&common.ConfigFile, "config", "", "")
 	flag.BoolVar(&common.SingleMode, "single", false, "")
 	flag.BoolVar(&common.DaemonMode, "daemon", false, "")

@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// Leader process runs CmdUI server, WebUI server, Myrox client, and manages the worker process.
+// Leader process runs CmdUI server, WebUI server, Rockman client, and manages the worker process.
 
 package leader
 
@@ -34,12 +34,12 @@ func Main() {
 	go workerKeeper(configBase, configFile)
 	<-keeperChan // wait for workerKeeper() to ensure worker is started.
 
-	if common.MyroxAddr == "" {
+	if common.RockmanAddr == "" {
 		// TODO: sync?
 		go webuiServer()
 		go cmduiServer()
 	} else {
-		go myroxClient()
+		go rockmanClient()
 	}
 
 	select {} // sleep forever
@@ -65,7 +65,7 @@ func workerKeeper(configBase string, configFile string) { // runner
 	}
 	keeperChan <- nil // reply to Main() that we have created the worker.
 
-	for { // each event from cmduiServer()/webuiServer()/myroxClient() and worker process
+	for { // each event from cmduiServer()/webuiServer()/rockmanClient() and worker process
 		select {
 		case msgChan := <-keeperChan: // a message arrives
 			req := <-msgChan // get the message. msgChan might be cmdChan, webChan, and roxChan

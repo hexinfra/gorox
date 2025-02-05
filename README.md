@@ -231,9 +231,9 @@ of the roles in "gorox cluster":
   * svcProxy2 : A service proxy for svc2,
   * cronjob1  : A background application in Gorox doing something periodically.
 
-The whole Gorox cluster can alternatively be managed by a Myrox instance, which
-behaves like the control plane in Service Mesh. In this configuration, all Gorox
-instances in the cluster connect to Myrox and are under its control.
+The whole Gorox cluster can alternatively be managed by a Rockman instance,
+which behaves like the control plane in Service Mesh. In this configuration, all
+Gorox instances in the cluster connect to Rockman and are under its control.
 
 
 Community

@@ -38,7 +38,8 @@ the Hemi Engine, we also have these sub directories that supplement Hemi:
 The following sub directories are programs that use the Hemi Engine:
 
   * goroxio/  - A program that implements the official website of Gorox,
-  * hemicar/  - A prototype program that is used to develop Hemi itself.
+  * hemicar/  - A prototype program that is used to develop Hemi itself,
+  * rockman/  - A program that can optionally be used to manage gorox clusters.
 
 And something useful:
 
@@ -96,9 +97,9 @@ process too. Run your program with "help" action and you will see there is a
 "-webui" option which controls what ip:port it should use. Start your program
 with that option and you'll get a Web UI to control your program instance.
 
-Alternatively, leaders of program instances can choose to connect to a Myrox
-instance and delegate their administration to Myrox. In this way, the cmdui and
-the webui interface in the leader process are disabled.
+Alternatively, leaders of program instances can choose to connect to a Rockman
+instance and delegate their administration to Rockman. In this way, the cmdui
+and the webui interface in the leader process are disabled.
 
 Stages
 ------

@@ -39,7 +39,6 @@ v0.1.6                                                        (2023-06-06 UTC+8)
   * Add regexp conditions in cases and rules.
   * Option "-out" and "-err" are changed to "-stdout" and "-stderr".
   * hemi/website is merged into Gorox.
-  * Myrox is removed from Gorox.
 
 v0.1.5                                                        (2023-06-02 UTC+8)
 ================================================================================

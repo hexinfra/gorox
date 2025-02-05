@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// Myrox client.
+// Rockman client.
 
 package leader
 
@@ -14,6 +14,6 @@ import (
 
 var roxChan = make(chan *msgx.Message) // used to send messages to workerKeeper
 
-func myroxClient() { // runner
-	hemi.Println("[leader] myroxClient: TODO")
+func rockmanClient() { // runner
+	hemi.Println("[leader] rockmanClient: TODO")
 }

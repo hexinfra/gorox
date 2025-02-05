@@ -1,7 +1,7 @@
 leader 进程
 
   leader.Main() 和 workerKeeper() 并发，还有 worker.watch() 并发
-  myroxClient(), webuiServer(), cmduiServer() 并发
+  rockmanClient(), webuiServer(), cmduiServer() 并发
 
 worker 进程
 

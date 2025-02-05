@@ -17,20 +17,20 @@ import (
 )
 
 var (
-	DebugLevel int
-	TargetAddr string
-	CmdUIAddr  string
-	WebUIAddr  string
-	MyroxAddr  string
-	ConfigFile string
-	SingleMode bool
-	DaemonMode bool
-	TopDir     string
-	LogDir     string
-	TmpDir     string
-	VarDir     string
-	Stdout     string
-	Stderr     string
+	DebugLevel  int
+	TargetAddr  string
+	CmdUIAddr   string
+	WebUIAddr   string
+	RockmanAddr string
+	ConfigFile  string
+	SingleMode  bool
+	DaemonMode  bool
+	TopDir      string
+	LogDir      string
+	TmpDir      string
+	VarDir      string
+	Stdout      string
+	Stderr      string
 )
 
 func GetConfig() (configBase string, configFile string) {
@@ -55,7 +55,7 @@ func GetConfig() (configBase string, configFile string) {
 }
 
 var (
-	ProgramName string                                             // gorox, myrox, ...
+	ProgramName string                                             // gorox, rockman, ...
 	ProgramArgs = append([]string{system.ExePath}, os.Args[1:]...) // /path/to/exe arg1 arg2 ...
 )
 

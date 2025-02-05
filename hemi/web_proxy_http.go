@@ -24,7 +24,7 @@ type WebExchanProxyConfig struct {
 	// Outbound, to user agents
 	BufferServerContent bool
 	OutboundViaName     []byte
-	AddResponseHeaders  map[string]string
+	AddResponseHeaders  map[string]Value
 	DelResponseHeaders  [][]byte
 }
 
@@ -244,7 +244,26 @@ func (h *httpProxy) OnConfigure() {
 	// .outboundViaName
 	h.ConfigureBytes("outboundViaName", &h.OutboundViaName, nil, nil)
 	// .addResponseHeaders
-	h.ConfigureStringDict("addResponseHeaders", &h.AddResponseHeaders, nil, map[string]string{})
+	if v, ok := h.Find("addResponseHeaders"); ok {
+		addedHeaders := make(map[string]Value)
+		if vHeaders, ok := v.Dict(); ok {
+			for headerName, vHeaderValue := range vHeaders {
+				if vHeaderValue.IsVariable() {
+					name := vHeaderValue.name
+					if p := strings.IndexByte(name, '_'); p != -1 {
+						p++ // skip '_'
+						vHeaderValue.name = name[:p] + strings.ReplaceAll(name[p:], "_", "-")
+					}
+				} else if _, ok := vHeaderValue.Bytes(); !ok {
+					UseExitf("bad value in .addResponseHeaders")
+				}
+				addedHeaders[headerName] = vHeaderValue
+			}
+			h.AddResponseHeaders = addedHeaders
+		} else {
+			UseExitln("invalid addResponseHeaders")
+		}
+	}
 	// .delResponseHeaders
 	h.ConfigureBytesList("delResponseHeaders", &h.DelResponseHeaders, nil, [][]byte{})
 }

@@ -7,7 +7,7 @@
 
 package builtin
 
-import ( // preload all
+import (
 	_ "github.com/hexinfra/gorox/hemi/builtin/backends/mysql"
 	_ "github.com/hexinfra/gorox/hemi/builtin/backends/pgsql"
 	_ "github.com/hexinfra/gorox/hemi/builtin/backends/redis"

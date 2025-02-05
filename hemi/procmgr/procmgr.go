@@ -44,7 +44,7 @@ ACTION
   reweb      # tell leader to reopen its webui interface
   rework     # tell leader to restart worker gracefully
   worker     # call worker to report its info
-  reload     # call worker to reload config
+  reconf     # call worker to reload config
   cpu        # tell worker to perform cpu profiling
   heap       # tell worker to perform heap profiling
   thread     # tell worker to perform thread profiling
@@ -57,7 +57,7 @@ ACTION
 OPTIONS
 -------
 
-  -debug  <level>   # debug level (default: %d. min: 0, max: 3)
+  -debug  <level>   # debug level (default: %d. min: 0, max: 3). 0 means disable
   -target <addr>    # leader address to tell or call (default: %s)
   -cmdui  <addr>    # listen address of leader cmdui (default: %s)
   -webui  <addr>    # listen address of leader webui (default: %s)

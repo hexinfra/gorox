@@ -1242,7 +1242,7 @@ var ( // perfect hash table for important request header fields
 		fdesc // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*serverRequest_, []pair, uint8, uint8) bool
 	}{ // accept accept-encoding accept-language cache-control connection content-encoding content-language expect forwarded if-match if-none-match keep-alive proxy-connection te trailer transfer-encoding upgrade via x-forwarded-for
-		0:  {fdesc{hashForwarded, false, false, false, false, bytesForwarded}, (*serverRequest_).checkForwarded}, // `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
+		0:  {fdesc{hashForwarded, false, false, false, false, bytesForwarded}, (*serverRequest_).checkForwarded}, // note: `for=192.0.2.60;proto=http;by=203.0.113.43` is not parameters
 		1:  {fdesc{hashTE, false, false, true, false, bytesTE}, (*serverRequest_).checkTE},
 		2:  {fdesc{hashAcceptEncoding, false, true, true, false, bytesAcceptEncoding}, (*serverRequest_).checkAcceptEncoding},
 		3:  {fdesc{hashExpect, false, false, true, false, bytesExpect}, (*serverRequest_).checkExpect},
@@ -2160,7 +2160,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 							r.stream.markBroken()
 							return
 						}
-						nameBuffer := r.stream.buffer256() // enough for tempName
+						nameBuffer := r.stream.buffer256() // enough for temp name
 						m := r.stream.MakeTempName(nameBuffer, time.Now().Unix())
 						if !r.arrayCopy(nameBuffer[:m]) { // add "391384576"
 							r.stream.markBroken()
@@ -2780,7 +2780,7 @@ func (r *serverResponse_) SendUnsupportedMediaType(acceptEncoding string, accept
 }
 func (r *serverResponse_) SendRangeNotSatisfiable(contentSize int64, content []byte) error { // 416
 	// add a header like: content-range: bytes */1234
-	valueBuffer := r.stream.buffer256()
+	valueBuffer := r.stream.buffer256() // enough for content range
 	n := copy(valueBuffer, bytesBytesStarSlash)
 	n += i64ToDec(contentSize, valueBuffer[n:])
 	r.AddHeaderBytes(bytesContentRange, valueBuffer[:n])
@@ -2983,12 +2983,27 @@ func (r *serverResponse_) proxyPassMessage(backResp BackendResponse) error {
 func (r *serverResponse_) proxyCopyHeaderLines(backResp BackendResponse, proxyConfig *WebExchanProxyConfig) bool {
 	backResp.proxyDelHopHeaderFields()
 
-	// copy control (:status)
+	// Copy control (:status)
 	r.SetStatus(backResp.Status())
 
-	// copy selective forbidden header fields (excluding set-cookie, which is copied directly) from backResp
+	// Copy selective forbidden header fields (excluding set-cookie, which is copied directly) from backResp
 
-	// copy remaining header fields from backResp
+	// Copy added header fields
+	for headerName, vHeaderValue := range proxyConfig.AddResponseHeaders {
+		var headerValue []byte
+		if vHeaderValue.IsVariable() {
+			headerValue = vHeaderValue.BytesVar(r.Request())
+		} else if v, ok := vHeaderValue.Bytes(); ok {
+			headerValue = v
+		} else {
+			// Invalid values are treated as empty
+		}
+		if !r.out.addHeader(ConstBytes(headerName), headerValue) {
+			return false
+		}
+	}
+
+	// Copy remaining header fields from backResp
 	if !backResp.proxyWalkHeaderLines(r.out, func(out httpOut, headerLine *pair, headerName []byte, lineValue []byte) bool {
 		if headerLine.nameHash == hashSetCookie && bytes.Equal(headerName, bytesSetCookie) { // set-cookie is copied directly
 			return out.addHeader(headerName, lineValue)
@@ -2999,6 +3014,7 @@ func (r *serverResponse_) proxyCopyHeaderLines(backResp BackendResponse, proxyCo
 		return false
 	}
 
+	// This must be placed at the end so we can delete some header fields forcely.
 	for _, headerName := range proxyConfig.DelResponseHeaders {
 		r.out.delHeader(headerName)
 	}

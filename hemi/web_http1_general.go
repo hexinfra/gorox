@@ -978,7 +978,7 @@ func (r *_http1Out_) writePiece(piece *Piece, inChunked bool) error {
 }
 func (r *_http1Out_) _writeTextPiece(piece *Piece, inChunked bool) error {
 	if inChunked { // HTTP/1.1 chunked data
-		sizeBuffer := r.stream.buffer256() // buffer is enough for chunk size
+		sizeBuffer := r.stream.buffer256() // enough for chunk size
 		n := i64ToHex(piece.size, sizeBuffer)
 		sizeBuffer[n] = '\r'
 		sizeBuffer[n+1] = '\n'
@@ -1019,7 +1019,7 @@ func (r *_http1Out_) _writeFilePiece(piece *Piece, inChunked bool) error {
 			return err
 		}
 		if inChunked { // use HTTP/1.1 chunked mode
-			sizeBuffer := r.stream.buffer256()
+			sizeBuffer := r.stream.buffer256() // enough for chunk size
 			k := i64ToHex(int64(n), sizeBuffer)
 			sizeBuffer[k] = '\r'
 			sizeBuffer[k+1] = '\n'

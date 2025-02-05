@@ -1707,7 +1707,7 @@ func (r *_httpOut_) AddHeader(name string, value string) bool {
 	return r.AddHeaderBytes(ConstBytes(name), ConstBytes(value))
 }
 func (r *_httpOut_) AddHeaderBytes(name []byte, value []byte) bool {
-	nameHash, valid, lower := r._nameCheck(name)
+	nameHash, valid, lowerName := r._nameCheck(name)
 	if !valid {
 		return false
 	}
@@ -1716,26 +1716,26 @@ func (r *_httpOut_) AddHeaderBytes(name []byte, value []byte) bool {
 			return false
 		}
 	}
-	return r.out.insertHeader(nameHash, lower, value) // some header fields (e.g. "connection") are restricted
+	return r.out.insertHeader(nameHash, lowerName, value) // some header fields (e.g. "connection") are restricted
 }
 func (r *_httpOut_) DelHeader(name string) bool {
 	return r.DelHeaderBytes(ConstBytes(name))
 }
 func (r *_httpOut_) DelHeaderBytes(name []byte) bool {
-	nameHash, valid, lower := r._nameCheck(name)
+	nameHash, valid, lowerName := r._nameCheck(name)
 	if !valid {
 		return false
 	}
-	return r.out.removeHeader(nameHash, lower)
+	return r.out.removeHeader(nameHash, lowerName)
 }
-func (r *_httpOut_) _nameCheck(name []byte) (nameHash uint16, valid bool, lower []byte) { // TODO: improve performance
-	nameSize := len(name)
+func (r *_httpOut_) _nameCheck(fieldName []byte) (nameHash uint16, valid bool, lowerName []byte) { // TODO: improve performance
+	nameSize := len(fieldName)
 	if nameSize == 0 || nameSize > 255 {
 		return 0, false, nil
 	}
 	allLower := true
 	for i := 0; i < nameSize; i++ {
-		if b := name[i]; b >= 'a' && b <= 'z' || b == '-' {
+		if b := fieldName[i]; b >= 'a' && b <= 'z' || b == '-' {
 			nameHash += uint16(b)
 		} else {
 			nameHash = 0
@@ -1744,11 +1744,11 @@ func (r *_httpOut_) _nameCheck(name []byte) (nameHash uint16, valid bool, lower 
 		}
 	}
 	if allLower {
-		return nameHash, true, name
+		return nameHash, true, fieldName
 	}
-	nameBuffer := r.stream.buffer256()
+	nameBuffer := r.stream.buffer256() // enough for name
 	for i := 0; i < nameSize; i++ {
-		b := name[i]
+		b := fieldName[i]
 		if b >= 'A' && b <= 'Z' {
 			b += 0x20 // to lower
 		} else if !(b >= 'a' && b <= 'z' || b == '-') {

@@ -76,14 +76,14 @@ func workerKeeper(configBase string, configFile string) { // runner
 					exitCode := <-dieChan
 					os.Exit(exitCode)
 				case common.ComdRework: // restart worker
-					// Create new worker
+					// Create a new worker
 					dieChan2 := make(chan int)
 					worker2 := newWorker(connKey)
 					worker2.start(configBase, configFile, dieChan2)
 					if hemi.DebugLevel() >= 1 {
 						hemi.Printf("[leader] new worker process id=%d started\n", worker2.pid())
 					}
-					// Quit old worker
+					// Quit the old worker
 					req.Comd = common.ComdQuit
 					worker.tell(req)
 					worker.closeConn()
@@ -91,7 +91,7 @@ func workerKeeper(configBase string, configFile string) { // runner
 					if hemi.DebugLevel() >= 1 {
 						hemi.Printf("[leader] old worker process id=%d exited\n", worker.pid())
 					}
-					// Use new worker
+					// Use the new worker
 					dieChan, worker = dieChan2, worker2
 				default: // other messages are sent to worker
 					worker.tell(req)

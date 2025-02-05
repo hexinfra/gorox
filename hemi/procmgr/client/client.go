@@ -48,9 +48,9 @@ var calls = map[string]func(){ // indexed by action
 			}
 		}
 	},
-	"reload": func() {
-		if resp, err := _call(common.ComdReload, 0, nil); err == nil && resp.Flag == 0 {
-			fmt.Println("reload ok!")
+	"reconf": func() {
+		if resp, err := _call(common.ComdReconf, 0, nil); err == nil && resp.Flag == 0 {
+			fmt.Println("reconf ok!")
 		}
 	},
 }

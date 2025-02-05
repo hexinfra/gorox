@@ -85,7 +85,7 @@ var onCalls = map[uint8]func(req *msgx.Message, resp *msgx.Message){
 	common.ComdWorker: func(req *msgx.Message, resp *msgx.Message) {
 		resp.Set("goroutines", strconv.Itoa(runtime.NumGoroutine())) // TODO: other infos
 	},
-	common.ComdReload: func(req *msgx.Message, resp *msgx.Message) {
+	common.ComdReconf: func(req *msgx.Message, resp *msgx.Message) {
 		if newStage, err := hemi.StageFromFile(configBase, configFile); err == nil {
 			oldStage := curStage
 			newStage.Start(oldStage.ID() + 1)

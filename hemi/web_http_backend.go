@@ -751,7 +751,7 @@ func (r *backendRequest_) proxyPassMessage(servReq ServerRequest) error {
 func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfig *WebExchanProxyConfig) bool {
 	servReq.proxyDelHopHeaderFields()
 
-	// copy control (:method, :path, :authority, :scheme)
+	// Copy control (:method, :path, :authority, :scheme)
 	uri := servReq.UnsafeURI()
 	if servReq.IsAsteriskOptions() { // OPTIONS *
 		// RFC 9112 (3.2.4):
@@ -796,7 +796,7 @@ func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfi
 		// we have no way to set scheme in HTTP/1.x unless we use absolute-form, which is a risk as some servers may not support it.
 	}
 
-	// copy selective forbidden header fields (including cookie) from servReq
+	// Copy selective forbidden header fields (including cookie) from servReq
 	if servReq.HasCookies() && !r.out.(BackendRequest).proxyCopyCookies(servReq) {
 		return false
 	}
@@ -807,7 +807,7 @@ func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfi
 		r.addTETrailers = true
 	}
 
-	// copy added header fields
+	// Copy added header fields
 	for headerName, vHeaderValue := range proxyConfig.AddRequestHeaders {
 		var headerValue []byte
 		if vHeaderValue.IsVariable() {
@@ -822,7 +822,7 @@ func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfi
 		}
 	}
 
-	// copy remaining header fields from servReq
+	// Copy remaining header fields from servReq
 	if !servReq.proxyWalkHeaderLines(r.out, func(out httpOut, headerLine *pair, headerName []byte, lineValue []byte) bool {
 		if false { // TODO: are there any special header fields that should be copied directly?
 			return out.addHeader(headerName, lineValue)
@@ -833,6 +833,7 @@ func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfi
 		return false
 	}
 
+	// This must be placed at the end so we can delete some header fields forcely.
 	for _, headerName := range proxyConfig.DelRequestHeaders {
 		r.out.delHeader(headerName)
 	}

@@ -8,7 +8,7 @@
 package main
 
 import (
-	"github.com/hexinfra/gorox/hemi/procmgr"
+	"github.com/hexinfra/gorox/hemi/procman"
 
 	_ "github.com/hexinfra/gorox/hemi/hemicar/apps"
 	_ "github.com/hexinfra/gorox/hemi/hemicar/exts"
@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-	procmgr.Main(&procmgr.Opts{
+	procman.Main(&procman.Opts{
 		ProgramName:  "hemicar",
 		ProgramTitle: "HemiCar",
 		DebugLevel:   2,

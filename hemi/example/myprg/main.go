@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/hexinfra/gorox/hemi/procmgr"
+	"github.com/hexinfra/gorox/hemi/procman"
 
 	_ "myprg/apps"
 	_ "myprg/exts"
@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	procmgr.Main(&procmgr.Opts{
+	procman.Main(&procman.Opts{
 		ProgramName:  "myprg",
 		ProgramTitle: "MyProgram",
 		DebugLevel:   0,

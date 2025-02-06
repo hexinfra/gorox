@@ -33,7 +33,7 @@ the Hemi Engine, we also have these sub directories that supplement Hemi:
   * builtin/  - Place standard Hemi components,
   * contrib/  - Place community contributed Hemi components,
   * library/  - Place general purpose libraries,
-  * procmgr/  - A process manager for programs using Hemi.
+  * procman/  - A process manager for programs using Hemi.
 
 The following sub directories are some programs that use the Hemi Engine:
 
@@ -62,7 +62,7 @@ A program (like Gorox) using Hemi Engine typically has these dependencies:
                 |                               |          |
                 v                               v          v
   +------+   +---------------------------+   +------+ +---------+
-  | libs |<--+        apps & svcs        +-->| exts | |<procmgr>|
+  | libs |<--+        apps & svcs        +-->| exts | |<procman>|
   +------+   +--+---------------------+--+   +--+---+ +----+----+
                 |                     |         |          |
                 v                     v         v          v
@@ -74,7 +74,7 @@ A program (like Gorox) using Hemi Engine typically has these dependencies:
 Processes
 ---------
 
-A Hemi powered program that is managed by procmgr normally has two processes
+A Hemi powered program that is managed by procman normally has two processes
 when started - a leader process, and a worker process:
 
 ```

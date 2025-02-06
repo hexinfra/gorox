@@ -17,7 +17,7 @@ import (
 	"github.com/hexinfra/gorox/hemi"
 	"github.com/hexinfra/gorox/hemi/library/msgx"
 	"github.com/hexinfra/gorox/hemi/library/system"
-	"github.com/hexinfra/gorox/hemi/procmgr/common"
+	"github.com/hexinfra/gorox/hemi/procman/common"
 )
 
 func Main() {

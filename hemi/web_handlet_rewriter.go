@@ -5,6 +5,8 @@
 
 // Rewriters rewrite request path.
 
+// This handlet is currently under design.
+
 package hemi
 
 func init() {

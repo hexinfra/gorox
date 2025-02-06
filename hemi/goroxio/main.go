@@ -8,14 +8,14 @@
 package main
 
 import (
-	"github.com/hexinfra/gorox/hemi/procmgr"
+	"github.com/hexinfra/gorox/hemi/procman"
 
 	_ "github.com/hexinfra/gorox/hemi/goroxio/apps"
 	_ "github.com/hexinfra/gorox/hemi/goroxio/exts"
 )
 
 func main() {
-	procmgr.Main(&procmgr.Opts{
+	procman.Main(&procman.Opts{
 		ProgramName:  "goroxio",
 		ProgramTitle: "GoroxIO",
 		DebugLevel:   1,

@@ -15,7 +15,7 @@ import (
 
 	"github.com/hexinfra/gorox/hemi"
 	"github.com/hexinfra/gorox/hemi/library/msgx"
-	"github.com/hexinfra/gorox/hemi/procmgr/common"
+	"github.com/hexinfra/gorox/hemi/procman/common"
 )
 
 var cmdChan = make(chan *msgx.Message) // used to send messages to workerKeeper

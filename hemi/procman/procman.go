@@ -3,9 +3,9 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// Procmgr package implements a leader-worker process model and its control client.
+// Procman package implements a leader-worker process model and its control client.
 
-package procmgr
+package procman
 
 import (
 	"flag"
@@ -16,10 +16,10 @@ import (
 	"github.com/hexinfra/gorox/hemi"
 	"github.com/hexinfra/gorox/hemi/library/system"
 
-	"github.com/hexinfra/gorox/hemi/procmgr/client"
-	"github.com/hexinfra/gorox/hemi/procmgr/common"
-	"github.com/hexinfra/gorox/hemi/procmgr/leader"
-	"github.com/hexinfra/gorox/hemi/procmgr/worker"
+	"github.com/hexinfra/gorox/hemi/procman/client"
+	"github.com/hexinfra/gorox/hemi/procman/common"
+	"github.com/hexinfra/gorox/hemi/procman/leader"
+	"github.com/hexinfra/gorox/hemi/procman/worker"
 )
 
 const usage = `

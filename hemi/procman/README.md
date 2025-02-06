@@ -1,7 +1,7 @@
-Procmgr
+Procman
 =======
 
-Procmgr implements a leader-worker process model and its control client.
+Procman implements a leader-worker process model and its control client.
 
 A control client process connects to a leader process, tells or calls its cmdui
 APIs. The leader process starts and monitors its worker process. It uses a TCP
@@ -15,7 +15,7 @@ be opened. In this case, it is managed by Rockman.
 Layout
 ======
 
-Procmgr uses these directories:
+Procman uses these directories:
 
   * client/  - As client process,
   * common/  - Shared elements between client, leader, and worker,

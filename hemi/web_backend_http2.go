@@ -192,13 +192,17 @@ func (c *backend2Conn) manager() { // runner
 
 }
 
-var backend2PrefaceAndMore = append(http2BytesPrism, []byte{
+var backend2PrefaceAndMore = []byte{
+	// prism
+	'P', 'R', 'I', ' ', '*', ' ', 'H', 'T', 'T', 'P', '/', '2', '.', '0', '\r', '\n', '\r', '\n', 'S', 'M', '\r', '\n', '\r', '\n',
+
 	// client preface settings
-	0, 0, 30, // length=30
+	0, 0, 36, // length=36
 	4,          // kind=http2FrameSettings
 	0,          // flags=
 	0, 0, 0, 0, // streamID=0
 	0, 1, 0, 0, 0x10, 0x00, // headerTableSize=4K
+	0, 2, 0, 0, 0x00, 0x00, // enablePush=0
 	0, 3, 0, 0, 0x00, 0x7f, // maxConcurrentStreams=127
 	0, 4, 0, 0, 0xff, 0xff, // initialWindowSize=64K1
 	0, 5, 0, 0, 0x40, 0x00, // maxFrameSize=16K
@@ -210,7 +214,7 @@ var backend2PrefaceAndMore = append(http2BytesPrism, []byte{
 	0,          // flags=
 	0, 0, 0, 0, // streamID=0
 	0x7f, 0xff, 0x00, 0x00, // windowSize=2G1-64K1
-}...)
+}
 
 func (c *backend2Conn) _handshake() error {
 	return nil
@@ -220,7 +224,7 @@ var backend2InFrameProcessors = [http2NumFrameKinds]func(*backend2Conn, *http2In
 	(*backend2Conn).onDataInFrame,
 	(*backend2Conn).onFieldsInFrame,
 	(*backend2Conn).onPriorityInFrame,
-	(*backend2Conn).onRSTStreamInFrame,
+	(*backend2Conn).onResetStreamInFrame,
 	(*backend2Conn).onSettingsInFrame,
 	nil, // pushPromise frames are rejected priorly
 	(*backend2Conn).onPingInFrame,
@@ -237,20 +241,13 @@ func (c *backend2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
 	// TODO
 	return nil
 }
-func (c *backend2Conn) onRSTStreamInFrame(rstStreamInFrame *http2InFrame) error {
+func (c *backend2Conn) onResetStreamInFrame(resetStreamInFrame *http2InFrame) error {
 	// TODO
 	return nil
 }
 func (c *backend2Conn) onSettingsInFrame(settingsInFrame *http2InFrame) error {
 	// TODO: server sent a new settings
 	return nil
-}
-func (c *backend2Conn) _updatePeerSettings(settingsInFrame *http2InFrame) error {
-	// TODO
-	return nil
-}
-func (c *backend2Conn) _adjustStreamWindows(delta int32) {
-	// TODO
 }
 
 func (c *backend2Conn) Close() error {
@@ -280,7 +277,7 @@ type _backend2Stream0 struct { // for fast reset, entirely
 
 var poolBackend2Stream sync.Pool
 
-func getBackend2Stream(conn *backend2Conn, id uint32) *backend2Stream {
+func getBackend2Stream(conn *backend2Conn, id uint32, outWindow int32) *backend2Stream {
 	var backStream *backend2Stream
 	if x := poolBackend2Stream.Get(); x == nil {
 		backStream = new(backend2Stream)
@@ -293,7 +290,7 @@ func getBackend2Stream(conn *backend2Conn, id uint32) *backend2Stream {
 	} else {
 		backStream = x.(*backend2Stream)
 	}
-	backStream.onUse(id, conn)
+	backStream.onUse(id, conn, outWindow)
 	return backStream
 }
 func putBackend2Stream(backStream *backend2Stream) {
@@ -301,10 +298,12 @@ func putBackend2Stream(backStream *backend2Stream) {
 	poolBackend2Stream.Put(backStream)
 }
 
-func (s *backend2Stream) onUse(id uint32, conn *backend2Conn) { // for non-zeros
+func (s *backend2Stream) onUse(id uint32, conn *backend2Conn, outWindow int32) { // for non-zeros
 	s.http2Stream_.onUse(id, conn)
 	s._backendStream_.onUse()
 
+	s.inWindow = _64K1      // max size of r.bodyWindow
+	s.outWindow = outWindow // may be changed by the peer
 	s.response.onUse()
 	s.request.onUse()
 }

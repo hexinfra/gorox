@@ -172,3 +172,17 @@ func (b *http3Buffer) decRef() {
 		putHTTP3Buffer(b)
 	}
 }
+
+// http3InFrame is the HTTP/3 incoming frame.
+type http3InFrame struct {
+	// TODO
+}
+
+func (f *http3InFrame) zero() { *f = http3InFrame{} }
+
+// http3OutFrame is the HTTP/3 outgoing frame.
+type http3OutFrame struct {
+	// TODO
+}
+
+func (f *http3OutFrame) zero() { *f = http3OutFrame{} }

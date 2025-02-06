@@ -352,7 +352,7 @@ serve:
 	for { // each frame from c.receiver() and server streams
 		select {
 		case incoming := <-c.incomingChan: // got an incoming frame from c.receiver()
-			if inFrame, ok := incoming.(*http2InFrame); ok { // data, fields, priority, rst_stream, settings, ping, windows_update, unknown
+			if inFrame, ok := incoming.(*http2InFrame); ok { // DATA, FIELDS, PRIORITY, RESET_STREAM, SETTINGS, PING, WINDOW_UPDATE, and unknown
 				if inFrame.isUnknown() {
 					// Implementations MUST ignore and discard frames of unknown types.
 					continue
@@ -424,18 +424,18 @@ var server2PrefaceAndMore = []byte{
 	0, 5, 0, 0, 0x40, 0x00, // maxFrameSize=16K
 	0, 6, 0, 0, 0x40, 0x00, // maxHeaderListSize=16K
 
-	// ack client settings
-	0, 0, 0, // length=0
-	4,          // kind=http2FrameSettings
-	1,          // flags=ack
-	0, 0, 0, 0, // streamID=0
-
 	// window update for the entire connection
 	0, 0, 4, // length=4
 	8,          // kind=http2FrameWindowUpdate
 	0,          // flags=
 	0, 0, 0, 0, // streamID=0
 	0x7f, 0xff, 0x00, 0x00, // windowSize=2G1-64K1
+
+	// ack client settings
+	0, 0, 0, // length=0
+	4,          // kind=http2FrameSettings
+	1,          // flags=ack
+	0, 0, 0, 0, // streamID=0
 }
 
 func (c *server2Conn) _handshake() error {
@@ -457,7 +457,7 @@ func (c *server2Conn) _handshake() error {
 	if settingsInFrame.kind != http2FrameSettings || settingsInFrame.ack {
 		return http2ErrorProtocol
 	}
-	if err := c._updatePeerSettings(settingsInFrame); err != nil {
+	if err := c._updatePeerSettings(settingsInFrame, false); err != nil {
 		return err
 	}
 	// Send server connection preface
@@ -477,7 +477,7 @@ var server2InFrameProcessors = [http2NumFrameKinds]func(*server2Conn, *http2InFr
 	(*server2Conn).onDataInFrame,
 	(*server2Conn).onFieldsInFrame,
 	(*server2Conn).onPriorityInFrame,
-	(*server2Conn).onRSTStreamInFrame,
+	(*server2Conn).onResetStreamInFrame,
 	(*server2Conn).onSettingsInFrame,
 	nil, // pushPromise frames are rejected priorly
 	(*server2Conn).onPingInFrame,
@@ -536,8 +536,8 @@ func (c *server2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
 	}
 	return nil
 }
-func (c *server2Conn) onRSTStreamInFrame(rstStreamInFrame *http2InFrame) error {
-	streamID := rstStreamInFrame.streamID
+func (c *server2Conn) onResetStreamInFrame(resetStreamInFrame *http2InFrame) error {
+	streamID := resetStreamInFrame.streamID
 	if streamID > c.lastStreamID {
 		// RST_STREAM frames MUST NOT be sent for a stream in the "idle" state. If a RST_STREAM frame identifying an idle stream is received,
 		// the recipient MUST treat this as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.
@@ -553,51 +553,6 @@ func (c *server2Conn) onSettingsInFrame(settingsInFrame *http2InFrame) error {
 	}
 	// TODO: client sent a new settings
 	return nil
-}
-func (c *server2Conn) _updatePeerSettings(settingsInFrame *http2InFrame) error {
-	settings := settingsInFrame.effective()
-	windowDelta := int32(0)
-	for i, j, n := uint16(0), uint16(0), settingsInFrame.length/6; i < n; i++ {
-		ident := binary.BigEndian.Uint16(settings[j : j+2])
-		value := binary.BigEndian.Uint32(settings[j+2 : j+6])
-		switch ident {
-		case http2SettingHeaderTableSize:
-			c.peerSettings.headerTableSize = value
-			// TODO: Dynamic Table Size Update
-		case http2SettingEnablePush:
-			if value > 1 {
-				return http2ErrorProtocol
-			}
-			c.peerSettings.enablePush = false // we don't support server push
-		case http2SettingMaxConcurrentStreams:
-			c.peerSettings.maxConcurrentStreams = value
-			// TODO: notify shrink
-		case http2SettingInitialWindowSize:
-			if value > _2G1 {
-				return http2ErrorFlowControl
-			}
-			windowDelta = int32(value) - c.peerSettings.initialWindowSize
-		case http2SettingMaxFrameSize:
-			if value < _16K || value > _16M-1 {
-				return http2ErrorProtocol
-			}
-			c.peerSettings.maxFrameSize = value
-		case http2SettingMaxHeaderListSize: // this is only an advisory.
-			c.peerSettings.maxHeaderListSize = value
-		default:
-			// RFC 9113 (section 6.5.2): An endpoint that receives a SETTINGS frame with any unknown or unsupported identifier MUST ignore that setting.
-		}
-		j += 6
-	}
-	if windowDelta != 0 {
-		c.peerSettings.initialWindowSize += windowDelta
-		c._adjustStreamWindows(windowDelta)
-	}
-	Printf("conn=%d peerSettings=%+v\n", c.id, c.peerSettings)
-	return nil
-}
-func (c *server2Conn) _adjustStreamWindows(delta int32) {
-	// TODO
 }
 
 func (c *server2Conn) goawayCloseConn(h2e http2Error) {
@@ -635,13 +590,10 @@ type server2Stream struct {
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	inWindow  int32 // stream-level window size for incoming DATA frames
-	outWindow int32 // stream-level window size for outgoing DATA frames
 	// Stream states (zeros)
 	_server2Stream0 // all values in this struct must be zero by default!
 }
 type _server2Stream0 struct { // for fast reset, entirely
-	reset bool // received a RST_STREAM?
 }
 
 var poolServer2Stream sync.Pool
@@ -671,8 +623,8 @@ func (s *server2Stream) onUse(id uint32, conn *server2Conn, outWindow int32) { /
 	s.http2Stream_.onUse(id, conn)
 	s._serverStream_.onUse()
 
-	s.inWindow = _64K1 // max size of r.bodyWindow
-	s.outWindow = outWindow
+	s.inWindow = _64K1      // max size of r.bodyWindow
+	s.outWindow = outWindow // may be changed by the peer
 	s.request.onUse()
 	s.response.onUse()
 }

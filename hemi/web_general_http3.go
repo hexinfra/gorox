@@ -27,9 +27,9 @@ type http3Conn_ struct { // for server3Conn and backend3Conn
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	quicConn *tcp2.Conn        // the quic connection
-	inBuffer *http3Buffer      // ...
-	table    http3DynamicTable // ...
+	quicConn     *tcp2.Conn        // the quic connection
+	inBuffer     *http3Buffer      // ...
+	dynamicTable http3DynamicTable // ...
 	// Conn states (zeros)
 	activeStreams [http3MaxConcurrentStreams]http3Stream // active (open, remoteClosed, localClosed) streams
 	_http3Conn0                                          // all values in this struct must be zero by default!
@@ -51,7 +51,7 @@ func (c *http3Conn_) onGet(id int64, holder holder, quicConn *tcp2.Conn) {
 }
 func (c *http3Conn_) onPut() {
 	// c.inBuffer is reserved
-	// c.table is reserved
+	// c.dynamicTable is reserved
 	c.activeStreams = [http3MaxConcurrentStreams]http3Stream{}
 	c.quicConn = nil
 
@@ -151,13 +151,6 @@ func (r *_http3In_) readContent() (data []byte, err error) {
 	// TODO
 	return
 }
-
-// http3InFrame is the HTTP/3 incoming frame.
-type http3InFrame struct {
-	// TODO
-}
-
-func (f *http3InFrame) zero() { *f = http3InFrame{} }
 
 // _http3Out_ is a mixin.
 type _http3Out_ struct { // for server3Response and backend3Request
@@ -266,13 +259,6 @@ func (r *_http3Out_) writeBytes(data []byte) error {
 	// TODO
 	return nil
 }
-
-// http3OutFrame is the HTTP/3 outgoing frame.
-type http3OutFrame struct {
-	// TODO
-}
-
-func (f *http3OutFrame) zero() { *f = http3OutFrame{} }
 
 // _http3Socket_ is a mixin.
 type _http3Socket_ struct { // for server3Socket and backend3Socket

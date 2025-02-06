@@ -10,6 +10,7 @@
 package hemi
 
 import (
+	"encoding/binary"
 	"sync"
 	"sync/atomic"
 )
@@ -24,7 +25,7 @@ const ( // HTTP/2 frame kinds
 	http2FrameData         = 0x0
 	http2FrameFields       = 0x1 // a.k.a. headers
 	http2FramePriority     = 0x2 // deprecated. ignored on receiving, and we won't send
-	http2FrameRSTStream    = 0x3
+	http2FrameResetStream  = 0x3
 	http2FrameSettings     = 0x4
 	http2FramePushPromise  = 0x5 // not supported
 	http2FramePing         = 0x6
@@ -86,9 +87,9 @@ var http2InitialSettings = http2Settings{ // default settings for both server an
 }
 var http2FrameNames = [http2NumFrameKinds]string{
 	http2FrameData:         "DATA",
-	http2FrameFields:       "FIELDS",   // a.k.a. headers
-	http2FramePriority:     "PRIORITY", // deprecated. ignored on receiving, and we won't send
-	http2FrameRSTStream:    "RST_STREAM",
+	http2FrameFields:       "FIELDS",       // a.k.a. headers
+	http2FramePriority:     "PRIORITY",     // deprecated. ignored on receiving, and we won't send
+	http2FrameResetStream:  "RESET_STREAM", // a.k.a. rst_stream
 	http2FrameSettings:     "SETTINGS",
 	http2FramePushPromise:  "PUSH_PROMISE", // not supported
 	http2FramePing:         "PING",
@@ -399,7 +400,7 @@ var ( // HTTP/2 byteses
 	http2BytesStatic = []byte(":authority:methodGETPOST:path//index.html:schemehttphttps:status200204206304400404500accept-charsetaccept-encodinggzip, deflateaccept-languageaccept-rangesacceptaccess-control-allow-originageallowauthorizationcache-controlcontent-dispositioncontent-encodingcontent-languagecontent-lengthcontent-locationcontent-rangecontent-typecookiedateetagexpectexpiresfromhostif-matchif-modified-sinceif-none-matchif-rangeif-unmodified-sincelast-modifiedlinklocationmax-forwardsproxy-authenticateproxy-authorizationrangerefererrefreshretry-afterserverset-cookiestrict-transport-securitytransfer-encodinguser-agentvaryviawww-authenticate") // DO NOT CHANGE THIS UNLESS YOU KNOW WHAT YOU ARE DOING
 )
 
-// http2Buffer
+// http2Buffer is the HTTP/2 incoming buffer.
 type http2Buffer struct {
 	buf [9 + http2MaxFrameSize]byte // frame header + frame payload
 	ref atomic.Int32
@@ -428,4 +429,219 @@ func (b *http2Buffer) decRef() {
 		}
 		putHTTP2Buffer(b)
 	}
+}
+
+// http2InFrame is the HTTP/2 incoming frame.
+type http2InFrame struct { // 24 bytes
+	inBuffer  *http2Buffer // the inBuffer that holds payload
+	streamID  uint32       // the real type is uint31
+	length    uint16       // length of payload. the real type is uint24, but we never allow sizes out of range of uint16, so use uint16
+	kind      uint8        // see http2FrameXXX
+	endFields bool         // is END_FIELDS flag set?
+	endStream bool         // is END_STREAM flag set?
+	ack       bool         // is ACK flag set?
+	padded    bool         // is PADDED flag set?
+	priority  bool         // is PRIORITY flag set?
+	efctFrom  uint16       // (effective) payload from
+	efctEdge  uint16       // (effective) payload edge
+}
+
+func (f *http2InFrame) zero() { *f = http2InFrame{} }
+
+func (f *http2InFrame) decodeHeader(inHeader []byte) error {
+	inHeader[5] &= 0x7f // ignore the reserved bit
+	f.streamID = binary.BigEndian.Uint32(inHeader[5:9])
+	if f.streamID != 0 && f.streamID&1 == 0 { // we don't support server push, so only odd stream ids are allowed
+		return http2ErrorProtocol
+	}
+	length := uint32(inHeader[0])<<16 | uint32(inHeader[1])<<8 | uint32(inHeader[2])
+	if length > http2MaxFrameSize {
+		// An endpoint MUST send an error code of FRAME_SIZE_ERROR if a frame exceeds the size defined in SETTINGS_MAX_FRAME_SIZE,
+		// exceeds any limit defined for the frame type, or is too small to contain mandatory frame data.
+		return http2ErrorFrameSize
+	}
+	f.length = uint16(length)
+	f.kind = inHeader[3]
+	flags := inHeader[4]
+	f.endFields = flags&0x04 != 0 && (f.kind == http2FrameFields || f.kind == http2FrameContinuation)
+	f.endStream = flags&0x01 != 0 && (f.kind == http2FrameData || f.kind == http2FrameFields)
+	f.ack = flags&0x01 != 0 && (f.kind == http2FrameSettings || f.kind == http2FramePing)
+	f.padded = flags&0x08 != 0 && (f.kind == http2FrameData || f.kind == http2FrameFields)
+	f.priority = flags&0x20 != 0 && f.kind == http2FrameFields
+	return nil
+}
+
+func (f *http2InFrame) isUnknown() bool   { return f.kind >= http2NumFrameKinds }
+func (f *http2InFrame) effective() []byte { return f.inBuffer.buf[f.efctFrom:f.efctEdge] } // effective payload
+
+var http2InFrameCheckers = [http2NumFrameKinds]func(*http2InFrame) error{
+	(*http2InFrame).checkAsData,
+	(*http2InFrame).checkAsFields,
+	(*http2InFrame).checkAsPriority,
+	(*http2InFrame).checkAsResetStream,
+	(*http2InFrame).checkAsSettings,
+	nil, // pushPromise frames are rejected priorly
+	(*http2InFrame).checkAsPing,
+	(*http2InFrame).checkAsGoaway,
+	(*http2InFrame).checkAsWindowUpdate,
+	nil, // continuation frames are rejected priorly
+}
+
+func (f *http2InFrame) checkAsData() error {
+	var minLength uint16 = 1 // Data (..)
+	if f.padded {
+		minLength += 1 // Pad Length (8)
+	}
+	if f.length < minLength {
+		return http2ErrorFrameSize
+	}
+	if f.streamID == 0 {
+		return http2ErrorProtocol
+	}
+	var padLength, othersLen uint16 = 0, 0
+	if f.padded {
+		padLength = uint16(f.inBuffer.buf[f.efctFrom])
+		othersLen += 1
+		f.efctFrom += 1
+	}
+	if padLength > 0 { // drop padding
+		if othersLen+padLength >= f.length {
+			return http2ErrorProtocol
+		}
+		f.efctEdge -= padLength
+	}
+	return nil
+}
+func (f *http2InFrame) checkAsFields() error {
+	var minLength uint16 = 1 // Field Block Fragment
+	if f.padded {
+		minLength += 1 // Pad Length (8)
+	}
+	if f.priority {
+		minLength += 5 // Exclusive (1) + Stream Dependency (31) + Weight (8)
+	}
+	if f.length < minLength {
+		return http2ErrorFrameSize
+	}
+	if f.streamID == 0 {
+		return http2ErrorProtocol
+	}
+	var padLength, othersLen uint16 = 0, 0
+	if f.padded { // skip pad length byte
+		padLength = uint16(f.inBuffer.buf[f.efctFrom])
+		othersLen += 1
+		f.efctFrom += 1
+	}
+	if f.priority { // skip stream dependency and weight
+		othersLen += 5
+		f.efctFrom += 5
+	}
+	if padLength > 0 { // drop padding
+		if othersLen+padLength >= f.length {
+			return http2ErrorProtocol
+		}
+		f.efctEdge -= padLength
+	}
+	return nil
+}
+func (f *http2InFrame) checkAsPriority() error {
+	if f.length != 5 {
+		return http2ErrorFrameSize
+	}
+	if f.streamID == 0 {
+		return http2ErrorProtocol
+	}
+	return nil
+}
+func (f *http2InFrame) checkAsResetStream() error {
+	if f.length != 4 {
+		return http2ErrorFrameSize
+	}
+	if f.streamID == 0 {
+		return http2ErrorProtocol
+	}
+	return nil
+}
+func (f *http2InFrame) checkAsSettings() error {
+	if f.length%6 != 0 || f.length > 48 { // we allow 8 defined settings.
+		return http2ErrorFrameSize
+	}
+	if f.streamID != 0 {
+		return http2ErrorProtocol
+	}
+	if f.ack && f.length != 0 {
+		return http2ErrorFrameSize
+	}
+	return nil
+}
+func (f *http2InFrame) checkAsPing() error {
+	if f.length != 8 {
+		return http2ErrorFrameSize
+	}
+	if f.streamID != 0 {
+		return http2ErrorProtocol
+	}
+	return nil
+}
+func (f *http2InFrame) checkAsGoaway() error {
+	if f.length < 8 {
+		return http2ErrorFrameSize
+	}
+	if f.streamID != 0 {
+		return http2ErrorProtocol
+	}
+	return nil
+}
+func (f *http2InFrame) checkAsWindowUpdate() error {
+	if f.length != 4 {
+		return http2ErrorFrameSize
+	}
+	return nil
+}
+
+// http2OutFrame is the HTTP/2 outgoing frame.
+type http2OutFrame struct { // 64 bytes
+	stream    http2Stream // the http/2 stream to which the frame belongs
+	length    uint16      // length of payload. the real type is uint24, but we never use sizes out of range of uint16, so use uint16
+	kind      uint8       // see http2FrameXXX. WARNING: http2FramePushPromise and http2FrameContinuation are NOT allowed! we don't use them.
+	endFields bool        // is END_FIELDS flag set?
+	endStream bool        // is END_STREAM flag set?
+	ack       bool        // is ACK flag set?
+	padded    bool        // is PADDED flag set?
+	header    [9]byte     // frame header is encoded here
+	outBuffer [8]byte     // small payload of the frame is placed here temporarily
+	payload   []byte      // refers to the payload
+}
+
+func (f *http2OutFrame) zero() { *f = http2OutFrame{} }
+
+func (f *http2OutFrame) encodeHeader() (outHeader []byte) { // caller must ensure the frame is legal.
+	if f.stream.nativeID() > 0x7fffffff {
+		BugExitln("stream id too large")
+	}
+	if f.length > http2MaxFrameSize {
+		BugExitln("frame length too large")
+	}
+	if f.kind == http2FramePushPromise || f.kind == http2FrameContinuation {
+		BugExitln("push promise and continuation are not allowed as out frame")
+	}
+	outHeader = f.header[:]
+	outHeader[0], outHeader[1], outHeader[2] = byte(f.length>>16), byte(f.length>>8), byte(f.length)
+	outHeader[3] = f.kind
+	flags := uint8(0x00)
+	if f.endFields && f.kind == http2FrameFields { // we never use http2FrameContinuation
+		flags |= 0x04
+	}
+	if f.endStream && (f.kind == http2FrameData || f.kind == http2FrameFields) {
+		flags |= 0x01
+	}
+	if f.ack && (f.kind == http2FrameSettings || f.kind == http2FramePing) {
+		flags |= 0x01
+	}
+	if f.padded && (f.kind == http2FrameData || f.kind == http2FrameFields) {
+		flags |= 0x08
+	}
+	outHeader[4] = flags
+	binary.BigEndian.PutUint32(outHeader[5:9], f.stream.nativeID())
+	return
 }

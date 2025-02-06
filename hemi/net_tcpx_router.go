@@ -213,7 +213,6 @@ func (g *tcpxGate) Serve() { // runner
 		g.serveTCP()
 	}
 }
-
 func (g *tcpxGate) serveUDS() {
 	listener := g.listener.(*net.UnixListener)
 	connID := int64(1)

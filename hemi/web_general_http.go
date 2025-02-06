@@ -1041,7 +1041,7 @@ func (r *_httpIn_) _dropContent() { // if message content is not received, this 
 	}
 }
 func (r *_httpIn_) _recvContent(retain bool) any { // to []byte (for small content <= 64K1) or tempFile (for large content > 64K1, or content is vague)
-	if r.contentSize > 0 && r.contentSize <= _64K1 { // (0, 64K1]. save to []byte. must be received in a timeout
+	if r.contentSize > 0 && r.contentSize <= _64K1 { // (0, 64K1]. save to []byte. the whole content is small so must be received in one read timeout
 		if err := r.stream.setReadDeadline(); err != nil {
 			return err
 		}

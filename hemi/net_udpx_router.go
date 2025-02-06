@@ -162,7 +162,6 @@ func (g *udpxGate) Serve() { // runner
 		g.serveUDP()
 	}
 }
-
 func (g *udpxGate) serveUDS() {
 	// TODO
 }

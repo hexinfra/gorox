@@ -587,7 +587,7 @@ func (r *fcgiResponse) HeadResult() int16 { return r.headResult }
 func (r *fcgiResponse) BodyResult() int16 { return r.bodyResult }
 
 func (r *fcgiResponse) recvHead() { // header section
-	// The entire response head must be received within one read timeout
+	// The entire response head must be received in one read timeout
 	if err := r.exchan.setReadDeadline(); err != nil {
 		r.headResult = -1
 		return

@@ -186,7 +186,6 @@ func (g *quixGate) Serve() { // runner
 		g.serveTLS()
 	}
 }
-
 func (g *quixGate) serveUDS() {
 	// TODO
 }

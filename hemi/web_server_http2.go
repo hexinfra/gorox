@@ -164,7 +164,6 @@ func (g *httpxGate) Serve() { // runner
 		g.serveTCP()
 	}
 }
-
 func (g *httpxGate) serveUDS() {
 	listener := g.listener.(*net.UnixListener)
 	connID := int64(1)
@@ -355,7 +354,7 @@ serve:
 		case incoming := <-c.incomingChan: // got an incoming frame from c.receiver()
 			if inFrame, ok := incoming.(*http2InFrame); ok { // data, fields, priority, rst_stream, settings, ping, windows_update, unknown
 				if inFrame.isUnknown() {
-					// Ignore unknown frames.
+					// Implementations MUST ignore and discard frames of unknown types.
 					continue
 				}
 				if err := server2InFrameProcessors[inFrame.kind](c, inFrame); err == nil {
@@ -378,7 +377,7 @@ serve:
 				}
 			}
 			break serve
-		case outFrame := <-c.outgoingChan: // got an outgoing frame from streams. only fields frame and data frame!
+		case outFrame := <-c.outgoingChan: // got an outgoing frame from streams. MUST be fields frame or data frame!
 			// TODO: collect as many outgoing frames as we can?
 			Printf("%+v\n", outFrame)
 			if outFrame.endStream { // a stream has ended
@@ -420,20 +419,24 @@ func (c *server2Conn) _handshake() error {
 	if err := c._growInFrame(uint16(len(http2BytesPrism))); err != nil {
 		return err
 	}
+	// Check client connection preface = PRISM + SETTINGS
 	if !bytes.Equal(c.inBuffer.buf[0:len(http2BytesPrism)], http2BytesPrism) {
 		return http2ErrorProtocol
 	}
-	prefaceInFrame, err := c.recvInFrame()
+	settingsInFrame, err := c.recvInFrame()
 	if err != nil {
 		return err
 	}
-	if prefaceInFrame.kind != http2FrameSettings || prefaceInFrame.ack {
+	if settingsInFrame.kind != http2FrameSettings || settingsInFrame.ack {
 		return http2ErrorProtocol
 	}
-	if err := c._updatePeerSettings(prefaceInFrame); err != nil {
+	if err := c._updatePeerSettings(settingsInFrame); err != nil {
 		return err
 	}
-	// TODO: write deadline
+	// Send server connection preface
+	if err := c.setWriteDeadline(); err != nil {
+		return err
+	}
 	n, err := c.write(server2PrefaceAndMore)
 	Printf("--------------------- conn=%d CALL WRITE=%d -----------------------\n", c.id, n)
 	Printf("conn=%d ---> %v\n", c.id, server2PrefaceAndMore)
@@ -488,8 +491,8 @@ func (c *server2Conn) onDataInFrame(dataInFrame *http2InFrame) error {
 }
 func (c *server2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
 	var (
-		stream *server2Stream
-		req    *server2Request
+		servStream *server2Stream
+		servReq    *server2Request
 	)
 	streamID := fieldsInFrame.streamID
 	if streamID > c.lastStreamID { // new stream
@@ -498,44 +501,41 @@ func (c *server2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
 		}
 		c.lastStreamID = streamID
 		c.cumulativeStreams.Add(1)
-		stream = getServer2Stream(c, streamID, c.peerSettings.initialWindowSize)
-		req = &stream.request
-		if !c._decodeFields(fieldsInFrame.effective(), req.joinHeaders) {
-			putServer2Stream(stream)
+		servStream = getServer2Stream(c, streamID, c.peerSettings.initialWindowSize)
+		servReq = &servStream.request
+		if !c._decodeFields(fieldsInFrame.effective(), servReq.joinHeaders) {
+			putServer2Stream(servStream)
 			return http2ErrorCompression
 		}
 		if fieldsInFrame.endStream {
-			stream.state = http2StateRemoteClosed
+			servStream.state = http2StateRemoteClosed
 		} else {
-			stream.state = http2StateOpen
+			servStream.state = http2StateOpen
 		}
-		c.joinStream(stream)
+		c.joinStream(servStream)
 		c.concurrentStreams++
-		go stream.execute()
+		go servStream.execute()
 	} else { // old stream
-		s := c.findStream(streamID)
-		if s == nil { // no specified active stream
+		stream := c.findStream(streamID)
+		if stream == nil { // no specified active stream
 			return http2ErrorProtocol
 		}
-		stream = s.(*server2Stream)
-		if stream.state != http2StateOpen {
+		servStream = stream.(*server2Stream)
+		if servStream.state != http2StateOpen {
 			return http2ErrorProtocol
 		}
 		if !fieldsInFrame.endStream { // here must be trailer fields that end the stream
 			return http2ErrorProtocol
 		}
-		req = &stream.request
-		req.receiving = httpSectionTrailers
-		if !c._decodeFields(fieldsInFrame.effective(), req.joinTrailers) {
+		servReq = &servStream.request
+		servReq.receiving = httpSectionTrailers
+		if !c._decodeFields(fieldsInFrame.effective(), servReq.joinTrailers) {
 			return http2ErrorCompression
 		}
 	}
 	return nil
 }
-func (c *server2Conn) onPriorityInFrame(priorityInFrame *http2InFrame) error {
-	// TODO
-	return nil
-}
+func (c *server2Conn) onPriorityInFrame(priorityInFrame *http2InFrame) error { return nil } // do nothing, priority frames are ignored
 func (c *server2Conn) onRSTStreamInFrame(rstStreamInFrame *http2InFrame) error {
 	streamID := rstStreamInFrame.streamID
 	if streamID > c.lastStreamID {

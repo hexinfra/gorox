@@ -388,7 +388,7 @@ func (r *backend1Response) onEnd() {
 }
 
 func (r *backend1Response) recvHead() { // control data + header section
-	// The entire response head must be received within one read timeout
+	// The entire response head must be received in one read timeout
 	if err := r.stream.setReadDeadline(); err != nil {
 		r.headResult = -1
 		return

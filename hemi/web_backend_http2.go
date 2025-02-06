@@ -230,11 +230,11 @@ func (c *backend2Conn) _adjustStreamWindows(delta int32) {
 }
 func (c *backend2Conn) onPingInFrame(pingInFrame *http2InFrame) error {
 	pongOutFrame := &c.outFrame
+	pongOutFrame.stream = nil
 	pongOutFrame.length = 8
-	pongOutFrame.streamID = 0
 	pongOutFrame.kind = http2FramePing
 	pongOutFrame.ack = true
-	pongOutFrame.payload = pingInFrame.effective() // TODO: copy()?
+	pongOutFrame.payload = pingInFrame.effective()
 	err := c.sendOutFrame(pongOutFrame)
 	pongOutFrame.zero()
 	return err

@@ -418,12 +418,7 @@ func (c *http2Conn_) _decodeString(src []byte, req *server2Request) (int, bool) 
 */
 
 func (c *http2Conn_) findStream(streamID uint32) http2Stream {
-	c.activeStreamIDs[http2MaxConcurrentStreams] = streamID // the stream id to search for
-	index := uint8(0)
-	for c.activeStreamIDs[index] != streamID { // searching for stream id
-		index++
-	}
-	if index != http2MaxConcurrentStreams { // found
+	if index := c._findStreamID(streamID); index != http2MaxConcurrentStreams { // found
 		if DebugLevel() >= 2 {
 			Printf("conn=%d findStream=%d at %d\n", c.id, streamID, index)
 		}
@@ -433,12 +428,7 @@ func (c *http2Conn_) findStream(streamID uint32) http2Stream {
 	}
 }
 func (c *http2Conn_) joinStream(stream http2Stream) {
-	c.activeStreamIDs[http2MaxConcurrentStreams] = 0
-	index := uint8(0)
-	for c.activeStreamIDs[index] != 0 { // searching a free slot
-		index++
-	}
-	if index != http2MaxConcurrentStreams {
+	if index := c._findStreamID(0); index != http2MaxConcurrentStreams { // found
 		if DebugLevel() >= 2 {
 			Printf("conn=%d joinStream=%d at %d\n", c.id, stream.nativeID(), index)
 		}
@@ -449,18 +439,21 @@ func (c *http2Conn_) joinStream(stream http2Stream) {
 		BugExitln("joinStream cannot find an empty slot")
 	}
 }
-func (c *http2Conn_) quitStream(streamID uint32) {
-	stream := c.findStream(streamID)
-	if stream != nil {
-		index := stream.getIndex()
-		if DebugLevel() >= 2 {
-			Printf("conn=%d quitStream=%d at %d\n", c.id, streamID, index)
-		}
-		c.activeStreams[index] = nil
-		c.activeStreamIDs[index] = 0
-	} else { // this MUST not happen
-		BugExitln("quitStream cannot find the stream")
+func (c *http2Conn_) _findStreamID(streamID uint32) uint8 {
+	c.activeStreamIDs[http2MaxConcurrentStreams] = streamID // the stream id to search for
+	index := uint8(0)
+	for c.activeStreamIDs[index] != streamID {
+		index++
 	}
+	return index
+}
+func (c *http2Conn_) quitStream(stream http2Stream) {
+	index := stream.getIndex()
+	if DebugLevel() >= 2 {
+		Printf("conn=%d quitStream=%d at %d\n", c.id, stream.nativeID(), index)
+	}
+	c.activeStreams[index] = nil
+	c.activeStreamIDs[index] = 0
 }
 
 func (c *http2Conn_) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
@@ -879,18 +872,16 @@ func (r *_http2Out_) writeBytes(data []byte) error {
 
 // http2OutFrame is the HTTP/2 outgoing frame.
 type http2OutFrame struct { // 64 bytes
-	length    uint32   // length of payload. the real type is uint24
-	streamID  uint32   // the real type is uint31
-	kind      uint8    // see http2FrameXXX. WARNING: http2FramePushPromise and http2FrameContinuation are NOT allowed!
-	endFields bool     // is END_FIELDS flag set?
-	endStream bool     // is END_STREAM flag set?
-	ack       bool     // is ACK flag set?
-	padded    bool     // is PADDED flag set?
-	priority  bool     // is PRIORITY flag set?
-	_         bool     // padding
-	header    [9]byte  // frame header is encoded here
-	outBuffer [16]byte // small payload of the frame is placed here temporarily
-	payload   []byte   // refers to the payload
+	stream    http2Stream // the http/2 stream to which the frame belongs
+	length    uint16      // length of payload. the real type is uint24, but we never use sizes out of range of uint16, so use uint16
+	kind      uint8       // see http2FrameXXX. WARNING: http2FramePushPromise and http2FrameContinuation are NOT allowed! we don't use them.
+	endFields bool        // is END_FIELDS flag set?
+	endStream bool        // is END_STREAM flag set?
+	ack       bool        // is ACK flag set?
+	padded    bool        // is PADDED flag set?
+	header    [9]byte     // frame header is encoded here
+	outBuffer [8]byte     // small payload of the frame is placed here temporarily
+	payload   []byte      // refers to the payload
 }
 
 func (f *http2OutFrame) zero() { *f = http2OutFrame{} }
@@ -899,7 +890,7 @@ func (f *http2OutFrame) encodeHeader() (frameHeader []byte) { // caller must ens
 	if f.length > http2MaxFrameSize {
 		BugExitln("frame length too large")
 	}
-	if f.streamID > 0x7fffffff {
+	if f.stream.nativeID() > 0x7fffffff {
 		BugExitln("stream id too large")
 	}
 	if f.kind == http2FramePushPromise || f.kind == http2FrameContinuation {
@@ -921,11 +912,8 @@ func (f *http2OutFrame) encodeHeader() (frameHeader []byte) { // caller must ens
 	if f.padded && (f.kind == http2FrameData || f.kind == http2FrameFields) {
 		flags |= 0x08
 	}
-	if f.priority && f.kind == http2FrameFields {
-		flags |= 0x20
-	}
 	frameHeader[4] = flags
-	binary.BigEndian.PutUint32(frameHeader[5:9], f.streamID)
+	binary.BigEndian.PutUint32(frameHeader[5:9], f.stream.nativeID())
 	return
 }
 

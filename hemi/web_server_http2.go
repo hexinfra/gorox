@@ -382,7 +382,7 @@ serve:
 			// TODO: collect as many outgoing frames as we can?
 			Printf("%+v\n", outFrame)
 			if outFrame.endStream { // a stream has ended
-				c.quitStream(outFrame.streamID)
+				c.quitStream(outFrame.stream)
 				c.concurrentStreams--
 			}
 			if err := c.sendOutFrame(outFrame); err != nil {
@@ -396,7 +396,7 @@ serve:
 	Printf("conn=%d waiting for active streams to end\n", c.id)
 	for c.concurrentStreams > 0 {
 		if outFrame := <-c.outgoingChan; outFrame.endStream {
-			c.quitStream(outFrame.streamID)
+			c.quitStream(outFrame.stream)
 			c.concurrentStreams--
 		}
 	}
@@ -599,11 +599,11 @@ func (c *server2Conn) _adjustStreamWindows(delta int32) {
 }
 func (c *server2Conn) onPingInFrame(pingInFrame *http2InFrame) error {
 	pongOutFrame := &c.outFrame
+	pongOutFrame.stream = nil
 	pongOutFrame.length = 8
-	pongOutFrame.streamID = 0
 	pongOutFrame.kind = http2FramePing
 	pongOutFrame.ack = true
-	pongOutFrame.payload = pingInFrame.effective() // TODO: copy()?
+	pongOutFrame.payload = pingInFrame.effective()
 	err := c.sendOutFrame(pongOutFrame)
 	pongOutFrame.zero()
 	return err
@@ -621,8 +621,8 @@ func (c *server2Conn) onWindowUpdateInFrame(windowUpdateInFrame *http2InFrame) e
 
 func (c *server2Conn) goawayCloseConn(h2e http2Error) {
 	goawayOutFrame := &c.outFrame
+	goawayOutFrame.stream = nil
 	goawayOutFrame.length = 8
-	goawayOutFrame.streamID = 0
 	goawayOutFrame.kind = http2FrameGoaway
 	binary.BigEndian.PutUint32(goawayOutFrame.outBuffer[0:4], c.lastStreamID)
 	binary.BigEndian.PutUint32(goawayOutFrame.outBuffer[4:8], uint32(h2e))

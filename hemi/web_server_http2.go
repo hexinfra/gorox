@@ -301,7 +301,7 @@ type server2Conn struct {
 	_server2Conn0 // all values in this struct must be zero by default!
 }
 type _server2Conn0 struct { // for fast reset, entirely
-	lastStreamID uint32 // last received client stream id
+	lastStreamID uint32 // last received stream id from client
 	waitReceive  bool   // ...
 	//unackedSettings?
 	//queuedControlFrames?
@@ -411,6 +411,33 @@ serve:
 	}
 	Printf("conn=%d c.manager() quit\n", c.id)
 }
+
+var server2PrefaceAndMore = []byte{
+	// server preface settings
+	0, 0, 30, // length=30
+	4,          // kind=http2FrameSettings
+	0,          // flags=
+	0, 0, 0, 0, // streamID=0
+	0, 1, 0, 0, 0x10, 0x00, // headerTableSize=4K
+	0, 3, 0, 0, 0x00, 0x7f, // maxConcurrentStreams=127
+	0, 4, 0, 0, 0xff, 0xff, // initialWindowSize=64K1
+	0, 5, 0, 0, 0x40, 0x00, // maxFrameSize=16K
+	0, 6, 0, 0, 0x40, 0x00, // maxHeaderListSize=16K
+
+	// ack client settings
+	0, 0, 0, // length=0
+	4,          // kind=http2FrameSettings
+	1,          // flags=ack
+	0, 0, 0, 0, // streamID=0
+
+	// window update for the entire connection
+	0, 0, 4, // length=4
+	8,          // kind=http2FrameWindowUpdate
+	0,          // flags=
+	0, 0, 0, 0, // streamID=0
+	0x7f, 0xff, 0x00, 0x00, // windowSize=2G1-64K1
+}
+
 func (c *server2Conn) _handshake() error {
 	// Set deadline for the first request fields frame
 	if err := c.setReadDeadline(); err != nil {
@@ -444,32 +471,6 @@ func (c *server2Conn) _handshake() error {
 		Printf("conn=%d error=%s\n", c.id, err.Error())
 	}
 	return err
-}
-
-var server2PrefaceAndMore = []byte{
-	// server preface settings
-	0, 0, 30, // length=30
-	4,          // kind=http2FrameSettings
-	0,          // flags=
-	0, 0, 0, 0, // streamID=0
-	0, 1, 0, 0, 0x10, 0x00, // headerTableSize=4K
-	0, 3, 0, 0, 0x00, 0x7f, // maxConcurrentStreams=127
-	0, 4, 0, 0, 0xff, 0xff, // initialWindowSize=64K1
-	0, 5, 0, 0, 0x40, 0x00, // maxFrameSize=16K
-	0, 6, 0, 0, 0x40, 0x00, // maxHeaderListSize=16K
-
-	// ack client settings
-	0, 0, 0, // length=0
-	4,          // kind=http2FrameSettings
-	1,          // flags=ack
-	0, 0, 0, 0, // streamID=0
-
-	// window update for the entire connection
-	0, 0, 4, // length=4
-	8,          // kind=http2FrameWindowUpdate
-	0,          // flags=
-	0, 0, 0, 0, // streamID=0
-	0x7f, 0xff, 0x00, 0x00, // windowSize=2G1-64K1
 }
 
 var server2InFrameProcessors = [http2NumFrameKinds]func(*server2Conn, *http2InFrame) error{
@@ -535,10 +536,11 @@ func (c *server2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
 	}
 	return nil
 }
-func (c *server2Conn) onPriorityInFrame(priorityInFrame *http2InFrame) error { return nil } // do nothing, priority frames are ignored
 func (c *server2Conn) onRSTStreamInFrame(rstStreamInFrame *http2InFrame) error {
 	streamID := rstStreamInFrame.streamID
 	if streamID > c.lastStreamID {
+		// RST_STREAM frames MUST NOT be sent for a stream in the "idle" state. If a RST_STREAM frame identifying an idle stream is received,
+		// the recipient MUST treat this as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.
 		return http2ErrorProtocol
 	}
 	// TODO
@@ -596,27 +598,6 @@ func (c *server2Conn) _updatePeerSettings(settingsInFrame *http2InFrame) error {
 }
 func (c *server2Conn) _adjustStreamWindows(delta int32) {
 	// TODO
-}
-func (c *server2Conn) onPingInFrame(pingInFrame *http2InFrame) error {
-	pongOutFrame := &c.outFrame
-	pongOutFrame.stream = nil
-	pongOutFrame.length = 8
-	pongOutFrame.kind = http2FramePing
-	pongOutFrame.ack = true
-	pongOutFrame.payload = pingInFrame.effective()
-	err := c.sendOutFrame(pongOutFrame)
-	pongOutFrame.zero()
-	return err
-}
-func (c *server2Conn) onWindowUpdateInFrame(windowUpdateInFrame *http2InFrame) error {
-	windowSize := binary.BigEndian.Uint32(windowUpdateInFrame.effective())
-	if windowSize == 0 || windowSize > _2G1 {
-		return http2ErrorProtocol
-	}
-	// TODO
-	c.inWindow = int32(windowSize)
-	Printf("conn=%d stream=%d windowUpdate=%d\n", c.id, windowUpdateInFrame.streamID, windowSize)
-	return nil
 }
 
 func (c *server2Conn) goawayCloseConn(h2e http2Error) {

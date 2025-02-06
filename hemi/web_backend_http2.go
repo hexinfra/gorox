@@ -8,7 +8,6 @@
 package hemi
 
 import (
-	"encoding/binary"
 	"net"
 	"sync"
 	"syscall"
@@ -146,6 +145,7 @@ type backend2Conn struct {
 	_backend2Conn0 // all values in this struct must be zero by default!
 }
 type _backend2Conn0 struct { // for fast reset, entirely
+	lastStreamID uint32 // last sent stream id to backend
 }
 
 var poolBackend2Conn sync.Pool
@@ -188,6 +188,34 @@ func (c *backend2Conn) storeStream(backStream *backend2Stream) {
 	//backStream.onEnd()
 }
 
+func (c *backend2Conn) manager() { // runner
+
+}
+
+var backend2PrefaceAndMore = append(http2BytesPrism, []byte{
+	// client preface settings
+	0, 0, 30, // length=30
+	4,          // kind=http2FrameSettings
+	0,          // flags=
+	0, 0, 0, 0, // streamID=0
+	0, 1, 0, 0, 0x10, 0x00, // headerTableSize=4K
+	0, 3, 0, 0, 0x00, 0x7f, // maxConcurrentStreams=127
+	0, 4, 0, 0, 0xff, 0xff, // initialWindowSize=64K1
+	0, 5, 0, 0, 0x40, 0x00, // maxFrameSize=16K
+	0, 6, 0, 0, 0x40, 0x00, // maxHeaderListSize=16K
+
+	// window update for the entire connection
+	0, 0, 4, // length=4
+	8,          // kind=http2FrameWindowUpdate
+	0,          // flags=
+	0, 0, 0, 0, // streamID=0
+	0x7f, 0xff, 0x00, 0x00, // windowSize=2G1-64K1
+}...)
+
+func (c *backend2Conn) _handshake() error {
+	return nil
+}
+
 var backend2InFrameProcessors = [http2NumFrameKinds]func(*backend2Conn, *http2InFrame) error{
 	(*backend2Conn).onDataInFrame,
 	(*backend2Conn).onFieldsInFrame,
@@ -209,10 +237,6 @@ func (c *backend2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
 	// TODO
 	return nil
 }
-func (c *backend2Conn) onPriorityInFrame(priorityInFrame *http2InFrame) error {
-	// TODO
-	return nil
-}
 func (c *backend2Conn) onRSTStreamInFrame(rstStreamInFrame *http2InFrame) error {
 	// TODO
 	return nil
@@ -227,27 +251,6 @@ func (c *backend2Conn) _updatePeerSettings(settingsInFrame *http2InFrame) error 
 }
 func (c *backend2Conn) _adjustStreamWindows(delta int32) {
 	// TODO
-}
-func (c *backend2Conn) onPingInFrame(pingInFrame *http2InFrame) error {
-	pongOutFrame := &c.outFrame
-	pongOutFrame.stream = nil
-	pongOutFrame.length = 8
-	pongOutFrame.kind = http2FramePing
-	pongOutFrame.ack = true
-	pongOutFrame.payload = pingInFrame.effective()
-	err := c.sendOutFrame(pongOutFrame)
-	pongOutFrame.zero()
-	return err
-}
-func (c *backend2Conn) onWindowUpdateInFrame(windowUpdateInFrame *http2InFrame) error {
-	windowSize := binary.BigEndian.Uint32(windowUpdateInFrame.effective())
-	if windowSize == 0 || windowSize > _2G1 {
-		return http2ErrorProtocol
-	}
-	// TODO
-	c.inWindow = int32(windowSize)
-	Printf("conn=%d stream=%d windowUpdate=%d\n", c.id, windowUpdateInFrame.streamID, windowSize)
-	return nil
 }
 
 func (c *backend2Conn) Close() error {

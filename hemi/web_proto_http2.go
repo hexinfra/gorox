@@ -23,7 +23,7 @@ const ( // HTTP/2 sizes and limits for both of our HTTP/2 server and HTTP/2 back
 const ( // HTTP/2 frame kinds
 	http2FrameData         = 0x0
 	http2FrameFields       = 0x1 // a.k.a. headers
-	http2FramePriority     = 0x2 // deprecated
+	http2FramePriority     = 0x2 // deprecated. ignored on receiving, and we won't send
 	http2FrameRSTStream    = 0x3
 	http2FrameSettings     = 0x4
 	http2FramePushPromise  = 0x5 // not supported
@@ -34,21 +34,21 @@ const ( // HTTP/2 frame kinds
 	http2NumFrameKinds     = 10
 )
 const ( // HTTP/2 error codes
-	http2CodeNoError            = 0x0
-	http2CodeProtocol           = 0x1
-	http2CodeInternal           = 0x2
-	http2CodeFlowControl        = 0x3
-	http2CodeSettingsTimeout    = 0x4
-	http2CodeStreamClosed       = 0x5
-	http2CodeFrameSize          = 0x6
-	http2CodeRefusedStream      = 0x7
-	http2CodeCancel             = 0x8
-	http2CodeCompression        = 0x9
-	http2CodeConnect            = 0xa
-	http2CodeEnhanceYourCalm    = 0xb
-	http2CodeInadequateSecurity = 0xc
-	http2CodeHTTP11Required     = 0xd
-	http2NumErrorCodes          = 14
+	http2CodeNoError            = 0x0 // The associated condition is not a result of an error. For example, a GOAWAY might include this code to indicate graceful shutdown of a connection.
+	http2CodeProtocol           = 0x1 // The endpoint detected an unspecific protocol error. This error is for use when a more specific error code is not available.
+	http2CodeInternal           = 0x2 // The endpoint encountered an unexpected internal error.
+	http2CodeFlowControl        = 0x3 // The endpoint detected that its peer violated the flow-control protocol.
+	http2CodeSettingsTimeout    = 0x4 // The endpoint sent a SETTINGS frame but did not receive a response in a timely manner. See Section 6.5.3 ("Settings Synchronization").
+	http2CodeStreamClosed       = 0x5 // The endpoint received a frame after a stream was half-closed.
+	http2CodeFrameSize          = 0x6 // The endpoint received a frame with an invalid size.
+	http2CodeRefusedStream      = 0x7 // The endpoint refused the stream prior to performing any application processing (see Section 8.7 for details).
+	http2CodeCancel             = 0x8 // The endpoint uses this error code to indicate that the stream is no longer needed.
+	http2CodeCompression        = 0x9 // The endpoint is unable to maintain the field section compression context for the connection.
+	http2CodeConnect            = 0xa // The connection established in response to a CONNECT request (Section 8.5) was reset or abnormally closed.
+	http2CodeEnhanceYourCalm    = 0xb // The endpoint detected that its peer is exhibiting a behavior that might be generating excessive load.
+	http2CodeInadequateSecurity = 0xc // The underlying transport has properties that do not meet minimum security requirements (see Section 9.2).
+	http2CodeHTTP11Required     = 0xd // The endpoint requires that HTTP/1.1 be used instead of HTTP/2.
+	http2NumErrorCodes          = 14  // Unknown or unsupported error codes MUST NOT trigger any special behavior. These MAY be treated by an implementation as being equivalent to INTERNAL_ERROR.
 )
 const ( // HTTP/2 stream states
 	http2StateIdle         = 0 // must be 0, default value
@@ -87,7 +87,7 @@ var http2InitialSettings = http2Settings{ // default settings for both server an
 var http2FrameNames = [http2NumFrameKinds]string{
 	http2FrameData:         "DATA",
 	http2FrameFields:       "FIELDS",   // a.k.a. headers
-	http2FramePriority:     "PRIORITY", // deprecated
+	http2FramePriority:     "PRIORITY", // deprecated. ignored on receiving, and we won't send
 	http2FrameRSTStream:    "RST_STREAM",
 	http2FrameSettings:     "SETTINGS",
 	http2FramePushPromise:  "PUSH_PROMISE", // not supported

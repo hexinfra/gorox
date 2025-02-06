@@ -46,6 +46,7 @@ type http2Conn_ struct { // for server2Conn and backend2Conn
 	activeStreams [http2MaxConcurrentStreams]http2Stream // active (open, remoteClosed, localClosed) streams
 	vector        net.Buffers                            // used by writev in c.manager()
 	fixedVector   [2][]byte                              // used by writev in c.manager()
+	lastPingTime  time.Time                              // last ping time
 	_http2Conn0                                          // all values in this struct must be zero by default!
 }
 type _http2Conn0 struct { // for fast reset, entirely
@@ -53,6 +54,7 @@ type _http2Conn0 struct { // for fast reset, entirely
 	cumulativeInFrames int64                                 // num of incoming frames
 	concurrentStreams  uint8                                 // num of active streams
 	acknowledged       bool                                  // server settings acknowledged by client?
+	pingSent           bool                                  // is there a ping frame sent and waiting for response?
 	inBufferEdge       uint16                                // incoming data ends at c.inBuffer.buf[c.inBufferEdge]
 	sectBack           uint16                                // incoming frame section (header or payload) begins from c.inBuffer.buf[c.sectBack]
 	sectFore           uint16                                // incoming frame section (header or payload) ends at c.inBuffer.buf[c.sectFore]
@@ -91,6 +93,7 @@ func (c *http2Conn_) onPut() {
 	c.activeStreams = [http2MaxConcurrentStreams]http2Stream{}
 	c.vector = nil
 	c.fixedVector = [2][]byte{}
+	c.lastPingTime = time.Time{}
 	c._http2Conn0 = _http2Conn0{}
 	c.netConn = nil
 	c.rawConn = nil
@@ -157,7 +160,7 @@ func (c *http2Conn_) recvInFrame() (*http2InFrame, error) {
 	}
 	if inFrame.kind == http2FrameFields {
 		if !inFrame.endFields { // continuations follow, join them into fields frame
-			if err := c._joinContinuations(inFrame); err != nil {
+			if err := c._appendContinuations(inFrame); err != nil {
 				return nil, err
 			}
 		}
@@ -192,7 +195,7 @@ func (c *http2Conn_) _growInFrame(size uint16) error {
 	}
 	return c._fillInBuffer(c.sectFore - c.inBufferEdge)
 }
-func (c *http2Conn_) _joinContinuations(fieldsInFrame *http2InFrame) error { // into a single fields frame
+func (c *http2Conn_) _appendContinuations(fieldsInFrame *http2InFrame) error { // into a single fields frame
 	fieldsInFrame.inBuffer = nil // will be restored at the end of continuations
 	var continuationInFrame http2InFrame
 	c.contBack, c.contFore = c.sectFore, c.sectFore
@@ -278,6 +281,41 @@ func (c *http2Conn_) _fillInBuffer(size uint16) error {
 	}
 	c.inBufferEdge += uint16(n)
 	return err
+}
+
+func (c *http2Conn_) onPriorityInFrame(priorityInFrame *http2InFrame) error { return nil } // do nothing, priority frames are ignored
+func (c *http2Conn_) onPingInFrame(pingInFrame *http2InFrame) error {
+	if pingInFrame.ack { // pong
+		if c.pingSent {
+			return nil
+		} else { // TODO: confirm this
+			return http2ErrorProtocol
+		}
+	}
+	if now := time.Now(); c.lastPingTime.IsZero() || now.Sub(c.lastPingTime) >= time.Second {
+		c.lastPingTime = now
+	} else {
+		return http2ErrorEnhanceYourCalm
+	}
+	pongOutFrame := &c.outFrame
+	pongOutFrame.stream = nil
+	pongOutFrame.length = 8
+	pongOutFrame.kind = http2FramePing
+	pongOutFrame.ack = true
+	pongOutFrame.payload = pingInFrame.effective()
+	err := c.sendOutFrame(pongOutFrame)
+	pongOutFrame.zero()
+	return err
+}
+func (c *http2Conn_) onWindowUpdateInFrame(windowUpdateInFrame *http2InFrame) error {
+	windowSize := binary.BigEndian.Uint32(windowUpdateInFrame.effective())
+	if windowSize == 0 || windowSize > _2G1 {
+		return http2ErrorProtocol
+	}
+	// TODO
+	c.inWindow = int32(windowSize)
+	Printf("conn=%d stream=%d windowUpdate=%d\n", c.id, windowUpdateInFrame.streamID, windowSize)
+	return nil
 }
 
 func (c *http2Conn_) sendOutFrame(outFrame *http2OutFrame) error {
@@ -902,7 +940,7 @@ func (f *http2OutFrame) encodeHeader() (outHeader []byte) { // caller must ensur
 	outHeader[0], outHeader[1], outHeader[2] = byte(f.length>>16), byte(f.length>>8), byte(f.length)
 	outHeader[3] = f.kind
 	flags := uint8(0x00)
-	if f.endFields && f.kind == http2FrameFields {
+	if f.endFields && f.kind == http2FrameFields { // we never use http2FrameContinuation
 		flags |= 0x04
 	}
 	if f.endStream && (f.kind == http2FrameData || f.kind == http2FrameFields) {

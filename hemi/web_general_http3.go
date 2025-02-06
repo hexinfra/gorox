@@ -36,8 +36,8 @@ type http3Conn_ struct { // for server3Conn and backend3Conn
 }
 type _http3Conn0 struct { // for fast reset, entirely
 	inBufferEdge uint32 // incoming data ends at c.inBuffer.buf[c.inBufferEdge]
-	partBack     uint32 // incoming frame part (header or payload) begins from c.inBuffer.buf[c.partBack]
-	partFore     uint32 // incoming frame part (header or payload) ends at c.inBuffer.buf[c.partFore]
+	sectBack     uint32 // incoming frame section (header or payload) begins from c.inBuffer.buf[c.sectBack]
+	sectFore     uint32 // incoming frame section (header or payload) ends at c.inBuffer.buf[c.sectFore]
 }
 
 func (c *http3Conn_) onGet(id int64, holder holder, quicConn *tcp2.Conn) {

@@ -53,11 +53,11 @@ type _http2Conn0 struct { // for fast reset, entirely
 	cumulativeInFrames int64                                 // num of incoming frames
 	concurrentStreams  uint8                                 // num of active streams
 	acknowledged       bool                                  // server settings acknowledged by client?
-	inBufferEdge       uint32                                // incoming data ends at c.inBuffer.buf[c.inBufferEdge]
-	partBack           uint32                                // incoming frame part (header or payload) begins from c.inBuffer.buf[c.partBack]
-	partFore           uint32                                // incoming frame part (header or payload) ends at c.inBuffer.buf[c.partFore]
-	contBack           uint32                                // incoming continuation part (header or payload) begins from c.inBuffer.buf[c.contBack]
-	contFore           uint32                                // incoming continuation part (header or payload) ends at c.inBuffer.buf[c.contFore]
+	inBufferEdge       uint16                                // incoming data ends at c.inBuffer.buf[c.inBufferEdge]
+	sectBack           uint16                                // incoming frame section (header or payload) begins from c.inBuffer.buf[c.sectBack]
+	sectFore           uint16                                // incoming frame section (header or payload) ends at c.inBuffer.buf[c.sectFore]
+	contBack           uint16                                // incoming continuation part (header or payload) begins from c.inBuffer.buf[c.contBack]
+	contFore           uint16                                // incoming continuation part (header or payload) ends at c.inBuffer.buf[c.contFore]
 }
 
 func (c *http2Conn_) onGet(id int64, holder holder, netConn net.Conn, rawConn syscall.RawConn) {
@@ -118,7 +118,7 @@ func (c *http2Conn_) receiver() { // runner
 
 func (c *http2Conn_) recvInFrame() (*http2InFrame, error) {
 	// Receive frame header
-	c.partBack = c.partFore
+	c.sectBack = c.sectFore
 	if err := c._growInFrame(9); err != nil {
 		return nil, err
 	}
@@ -129,18 +129,18 @@ func (c *http2Conn_) recvInFrame() (*http2InFrame, error) {
 		c.inFrame = &c.inFrame1
 	}
 	inFrame := c.inFrame
-	if err := inFrame.decodeHeader(c.inBuffer.buf[c.partBack:c.partFore]); err != nil {
+	if err := inFrame.decodeHeader(c.inBuffer.buf[c.sectBack:c.sectFore]); err != nil {
 		return nil, err
 	}
 	// Receive frame payload
-	c.partBack = c.partFore
+	c.sectBack = c.sectFore
 	if err := c._growInFrame(inFrame.length); err != nil {
 		return nil, err
 	}
 	// Mark frame payload
 	inFrame.inBuffer = c.inBuffer
-	inFrame.realFrom = c.partBack
-	inFrame.realEdge = c.partFore
+	inFrame.efctFrom = c.sectBack
+	inFrame.efctEdge = c.sectFore
 	// Reject unexpected frames - pushPromise is NOT supported and continuation CANNOT be alone
 	if inFrame.kind == http2FramePushPromise || inFrame.kind == http2FrameContinuation {
 		return nil, http2ErrorProtocol
@@ -171,31 +171,31 @@ func (c *http2Conn_) recvInFrame() (*http2InFrame, error) {
 	}
 	return inFrame, nil
 }
-func (c *http2Conn_) _growInFrame(size uint32) error {
-	c.partFore += size // size is limited, so won't overflow
-	if c.partFore <= c.inBufferEdge {
+func (c *http2Conn_) _growInFrame(size uint16) error {
+	c.sectFore += size // size is limited, so won't overflow
+	if c.sectFore <= c.inBufferEdge {
 		return nil
 	}
-	// c.partFore > c.inBufferEdge, needs grow.
-	if c.partFore > c.inBuffer.size() { // needs slide
+	// c.sectFore > c.inBufferEdge, needs grow.
+	if c.sectFore > c.inBuffer.size() { // needs slide
 		if c.inBuffer.getRef() == 1 { // no streams are referring to c.inBuffer, so just slide
-			c.inBufferEdge = uint32(copy(c.inBuffer.buf[:], c.inBuffer.buf[c.partBack:c.inBufferEdge]))
+			c.inBufferEdge = uint16(copy(c.inBuffer.buf[:], c.inBuffer.buf[c.sectBack:c.inBufferEdge]))
 		} else { // there are still streams referring to c.inBuffer. use a new inBuffer
 			oldBuffer := c.inBuffer
 			c.inBuffer = getHTTP2Buffer()
 			c.inBuffer.incRef()
-			c.inBufferEdge = uint32(copy(c.inBuffer.buf[:], oldBuffer.buf[c.partBack:c.inBufferEdge]))
+			c.inBufferEdge = uint16(copy(c.inBuffer.buf[:], oldBuffer.buf[c.sectBack:c.inBufferEdge]))
 			oldBuffer.decRef()
 		}
-		c.partFore -= c.partBack
-		c.partBack = 0
+		c.sectFore -= c.sectBack
+		c.sectBack = 0
 	}
-	return c._fillInBuffer(c.partFore - c.inBufferEdge)
+	return c._fillInBuffer(c.sectFore - c.inBufferEdge)
 }
 func (c *http2Conn_) _joinContinuations(fieldsInFrame *http2InFrame) error { // into a single fields frame
 	fieldsInFrame.inBuffer = nil // will be restored at the end of continuations
 	var continuationInFrame http2InFrame
-	c.contBack, c.contFore = c.partFore, c.partFore
+	c.contBack, c.contFore = c.sectFore, c.sectFore
 	for { // each continuation frame
 		// Receive continuation header
 		if err := c._growContinuation(9, fieldsInFrame); err != nil {
@@ -220,21 +220,21 @@ func (c *http2Conn_) _joinContinuations(fieldsInFrame *http2InFrame) error { // 
 		// TODO: limit the number of continuation frames to avoid DoS attack
 		c.cumulativeInFrames++ // got the continuation frame.
 		// Append continuation frame to fields frame
-		copy(c.inBuffer.buf[fieldsInFrame.realEdge:], c.inBuffer.buf[c.contBack:c.contFore]) // may overwrite padding if exists
-		fieldsInFrame.realEdge += continuationInFrame.length
+		copy(c.inBuffer.buf[fieldsInFrame.efctEdge:], c.inBuffer.buf[c.contBack:c.contFore]) // may overwrite padding if exists
+		fieldsInFrame.efctEdge += continuationInFrame.length
 		fieldsInFrame.length += continuationInFrame.length // we don't care if padding is overwritten. just accumulate
-		c.partFore += continuationInFrame.length           // also accumulate fields payload, with padding included
+		c.sectFore += continuationInFrame.length           // also accumulate fields payload, with padding included
 		// End of fields frame?
 		if continuationInFrame.endFields {
 			fieldsInFrame.endFields = true
 			fieldsInFrame.inBuffer = c.inBuffer // restore the inBuffer
-			c.partFore = c.contFore             // for next frame.
+			c.sectFore = c.contFore             // for next frame.
 			return nil
 		}
 		c.contBack = c.contFore
 	}
 }
-func (c *http2Conn_) _growContinuation(size uint32, fieldsInFrame *http2InFrame) error {
+func (c *http2Conn_) _growContinuation(size uint16, fieldsInFrame *http2InFrame) error {
 	c.contFore += size                // won't overflow
 	if c.contFore <= c.inBufferEdge { // inBuffer is sufficient
 		return nil
@@ -245,7 +245,7 @@ func (c *http2Conn_) _growContinuation(size uint32, fieldsInFrame *http2InFrame)
 	// c.inBuffer: [| .. ] | ABC | ooooooooooo | 9 | D |
 	// c.inBuffer: [| .. ] | ABCD | oooooooooooooooooo |
 	if c.contFore > c.inBuffer.size() { // needs slide
-		if c.partBack == 0 { // cannot slide again
+		if c.sectBack == 0 { // cannot slide again
 			// This should only happens when looking for frame header, the 9 bytes
 			return http2ErrorFrameSize
 		}
@@ -255,20 +255,20 @@ func (c *http2Conn_) _growContinuation(size uint32, fieldsInFrame *http2InFrame)
 			c.inBuffer = getHTTP2Buffer()
 			c.inBuffer.incRef()
 		}
-		c.partFore = uint32(copy(c.inBuffer.buf[:], inBuffer.buf[c.partBack:c.partFore]))
-		c.inBufferEdge = c.partFore + uint32(copy(c.inBuffer.buf[c.partFore:], inBuffer.buf[c.contBack:c.inBufferEdge]))
+		c.sectFore = uint16(copy(c.inBuffer.buf[:], inBuffer.buf[c.sectBack:c.sectFore]))
+		c.inBufferEdge = c.sectFore + uint16(copy(c.inBuffer.buf[c.sectFore:], inBuffer.buf[c.contBack:c.inBufferEdge]))
 		if inBuffer != c.inBuffer {
 			inBuffer.decRef()
 		}
-		fieldsInFrame.realFrom -= c.partBack
-		fieldsInFrame.realEdge -= c.partBack
-		c.partBack = 0
-		c.contBack = c.partFore
+		fieldsInFrame.efctFrom -= c.sectBack
+		fieldsInFrame.efctEdge -= c.sectBack
+		c.sectBack = 0
+		c.contBack = c.sectFore
 		c.contFore = c.contBack + size
 	}
 	return c._fillInBuffer(c.contFore - c.inBufferEdge)
 }
-func (c *http2Conn_) _fillInBuffer(size uint32) error {
+func (c *http2Conn_) _fillInBuffer(size uint16) error {
 	n, err := c.readAtLeast(c.inBuffer.buf[c.inBufferEdge:], int(size))
 	if DebugLevel() >= 2 {
 		Printf("--------------------- conn=%d CALL READ=%d -----------------------\n", c.id, n)
@@ -276,19 +276,19 @@ func (c *http2Conn_) _fillInBuffer(size uint32) error {
 	if err != nil && DebugLevel() >= 2 {
 		Printf("conn=%d error=%s\n", c.id, err.Error())
 	}
-	c.inBufferEdge += uint32(n)
+	c.inBufferEdge += uint16(n)
 	return err
 }
 
 func (c *http2Conn_) sendOutFrame(outFrame *http2OutFrame) error {
-	frameHeader := outFrame.encodeHeader()
+	outHeader := outFrame.encodeHeader()
 	if len(outFrame.payload) > 0 {
 		c.vector = c.fixedVector[0:2]
 		c.vector[1] = outFrame.payload
 	} else {
 		c.vector = c.fixedVector[0:1]
 	}
-	c.vector[0] = frameHeader
+	c.vector[0] = outHeader
 	n, err := c.writev(&c.vector)
 	if DebugLevel() >= 2 {
 		Printf("--------------------- conn=%d CALL WRITE=%d -----------------------\n", c.id, n)
@@ -526,7 +526,7 @@ func (s *http2Stream_[C]) nativeID() uint32     { return s.id }
 func (s *http2Stream_[C]) getIndex() uint8      { return s.index }
 func (s *http2Stream_[C]) setIndex(index uint8) { s.index = index }
 
-func (s *http2Stream_[C]) ID() int64 { return int64(s.id) }
+func (s *http2Stream_[C]) ID() int64 { return int64(s.id) } // implements httpStream interface
 
 func (s *http2Stream_[C]) markBroken()    { s.conn.markBroken() }      // TODO: limit the breakage in the stream?
 func (s *http2Stream_[C]) isBroken() bool { return s.conn.isBroken() } // TODO: limit the breakage in the stream?
@@ -597,35 +597,35 @@ func (r *_http2In_) readContent() (data []byte, err error) {
 }
 
 // http2InFrame is the HTTP/2 incoming frame.
-type http2InFrame struct { // 32 bytes
+type http2InFrame struct { // 24 bytes
 	inBuffer  *http2Buffer // the inBuffer that holds payload
-	length    uint32       // length of payload. the real type is uint24
 	streamID  uint32       // the real type is uint31
+	length    uint16       // length of payload. the real type is uint24, but we never allow sizes out of range of uint16, so use uint16
 	kind      uint8        // see http2FrameXXX
 	endFields bool         // is END_FIELDS flag set?
 	endStream bool         // is END_STREAM flag set?
 	ack       bool         // is ACK flag set?
 	padded    bool         // is PADDED flag set?
 	priority  bool         // is PRIORITY flag set?
-	_         [2]byte      // padding
-	realFrom  uint32       // (effective) payload from
-	realEdge  uint32       // (effective) payload edge
+	efctFrom  uint16       // (effective) payload from
+	efctEdge  uint16       // (effective) payload edge
 }
 
 func (f *http2InFrame) zero() { *f = http2InFrame{} }
 
-func (f *http2InFrame) decodeHeader(frameHeader []byte) error {
-	f.length = uint32(frameHeader[0])<<16 | uint32(frameHeader[1])<<8 | uint32(frameHeader[2])
-	if f.length > http2MaxFrameSize {
-		return http2ErrorFrameSize
-	}
-	frameHeader[5] &= 0x7f // strip out the reserved bit
-	f.streamID = binary.BigEndian.Uint32(frameHeader[5:9])
+func (f *http2InFrame) decodeHeader(inHeader []byte) error {
+	inHeader[5] &= 0x7f // strip out the reserved bit
+	f.streamID = binary.BigEndian.Uint32(inHeader[5:9])
 	if f.streamID != 0 && f.streamID&1 == 0 { // we don't support server push, so only odd stream ids are allowed
 		return http2ErrorProtocol
 	}
-	f.kind = frameHeader[3]
-	flags := frameHeader[4]
+	length := uint32(inHeader[0])<<16 | uint32(inHeader[1])<<8 | uint32(inHeader[2])
+	if length > http2MaxFrameSize {
+		return http2ErrorFrameSize
+	}
+	f.length = uint16(length)
+	f.kind = inHeader[3]
+	flags := inHeader[4]
 	f.endFields = flags&0x04 != 0 && (f.kind == http2FrameFields || f.kind == http2FrameContinuation)
 	f.endStream = flags&0x01 != 0 && (f.kind == http2FrameData || f.kind == http2FrameFields)
 	f.ack = flags&0x01 != 0 && (f.kind == http2FrameSettings || f.kind == http2FramePing)
@@ -635,7 +635,7 @@ func (f *http2InFrame) decodeHeader(frameHeader []byte) error {
 }
 
 func (f *http2InFrame) isUnknown() bool   { return f.kind >= http2NumFrameKinds }
-func (f *http2InFrame) effective() []byte { return f.inBuffer.buf[f.realFrom:f.realEdge] } // effective payload
+func (f *http2InFrame) effective() []byte { return f.inBuffer.buf[f.efctFrom:f.efctEdge] } // effective payload
 
 var http2InFrameCheckers = [http2NumFrameKinds]func(*http2InFrame) error{
 	(*http2InFrame).checkAsData,
@@ -651,7 +651,7 @@ var http2InFrameCheckers = [http2NumFrameKinds]func(*http2InFrame) error{
 }
 
 func (f *http2InFrame) checkAsData() error {
-	var minLength uint32 = 1 // Data (..)
+	var minLength uint16 = 1 // Data (..)
 	if f.padded {
 		minLength += 1 // Pad Length (8)
 	}
@@ -661,22 +661,22 @@ func (f *http2InFrame) checkAsData() error {
 	if f.streamID == 0 {
 		return http2ErrorProtocol
 	}
-	var padLength, othersLen uint32 = 0, 0
+	var padLength, othersLen uint16 = 0, 0
 	if f.padded {
-		padLength = uint32(f.inBuffer.buf[f.realFrom])
+		padLength = uint16(f.inBuffer.buf[f.efctFrom])
 		othersLen += 1
-		f.realFrom += 1
+		f.efctFrom += 1
 	}
 	if padLength > 0 { // drop padding
 		if othersLen+padLength >= f.length {
 			return http2ErrorProtocol
 		}
-		f.realEdge -= padLength
+		f.efctEdge -= padLength
 	}
 	return nil
 }
 func (f *http2InFrame) checkAsFields() error {
-	var minLength uint32 = 1 // Field Block Fragment
+	var minLength uint16 = 1 // Field Block Fragment
 	if f.padded {
 		minLength += 1 // Pad Length (8)
 	}
@@ -689,21 +689,21 @@ func (f *http2InFrame) checkAsFields() error {
 	if f.streamID == 0 {
 		return http2ErrorProtocol
 	}
-	var padLength, othersLen uint32 = 0, 0
+	var padLength, othersLen uint16 = 0, 0
 	if f.padded { // skip pad length byte
-		padLength = uint32(f.inBuffer.buf[f.realFrom])
+		padLength = uint16(f.inBuffer.buf[f.efctFrom])
 		othersLen += 1
-		f.realFrom += 1
+		f.efctFrom += 1
 	}
 	if f.priority { // skip stream dependency and weight
 		othersLen += 5
-		f.realFrom += 5
+		f.efctFrom += 5
 	}
 	if padLength > 0 { // drop padding
 		if othersLen+padLength >= f.length {
 			return http2ErrorProtocol
 		}
-		f.realEdge -= padLength
+		f.efctEdge -= padLength
 	}
 	return nil
 }
@@ -886,19 +886,19 @@ type http2OutFrame struct { // 64 bytes
 
 func (f *http2OutFrame) zero() { *f = http2OutFrame{} }
 
-func (f *http2OutFrame) encodeHeader() (frameHeader []byte) { // caller must ensure the frame is legal.
-	if f.length > http2MaxFrameSize {
-		BugExitln("frame length too large")
-	}
+func (f *http2OutFrame) encodeHeader() (outHeader []byte) { // caller must ensure the frame is legal.
 	if f.stream.nativeID() > 0x7fffffff {
 		BugExitln("stream id too large")
+	}
+	if f.length > http2MaxFrameSize {
+		BugExitln("frame length too large")
 	}
 	if f.kind == http2FramePushPromise || f.kind == http2FrameContinuation {
 		BugExitln("push promise and continuation are not allowed as out frame")
 	}
-	frameHeader = f.header[:]
-	frameHeader[0], frameHeader[1], frameHeader[2] = byte(f.length>>16), byte(f.length>>8), byte(f.length)
-	frameHeader[3] = f.kind
+	outHeader = f.header[:]
+	outHeader[0], outHeader[1], outHeader[2] = byte(f.length>>16), byte(f.length>>8), byte(f.length)
+	outHeader[3] = f.kind
 	flags := uint8(0x00)
 	if f.endFields && f.kind == http2FrameFields {
 		flags |= 0x04
@@ -912,8 +912,8 @@ func (f *http2OutFrame) encodeHeader() (frameHeader []byte) { // caller must ens
 	if f.padded && (f.kind == http2FrameData || f.kind == http2FrameFields) {
 		flags |= 0x08
 	}
-	frameHeader[4] = flags
-	binary.BigEndian.PutUint32(frameHeader[5:9], f.stream.nativeID())
+	outHeader[4] = flags
+	binary.BigEndian.PutUint32(outHeader[5:9], f.stream.nativeID())
 	return
 }
 

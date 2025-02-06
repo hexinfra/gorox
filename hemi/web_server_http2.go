@@ -417,7 +417,7 @@ func (c *server2Conn) _handshake() error {
 	if err := c.setReadDeadline(); err != nil {
 		return err
 	}
-	if err := c._growInFrame(uint32(len(http2BytesPrism))); err != nil {
+	if err := c._growInFrame(uint16(len(http2BytesPrism))); err != nil {
 		return err
 	}
 	if !bytes.Equal(c.inBuffer.buf[0:len(http2BytesPrism)], http2BytesPrism) {
@@ -555,7 +555,7 @@ func (c *server2Conn) onSettingsInFrame(settingsInFrame *http2InFrame) error {
 func (c *server2Conn) _updatePeerSettings(settingsInFrame *http2InFrame) error {
 	settings := settingsInFrame.effective()
 	windowDelta := int32(0)
-	for i, j, n := uint32(0), uint32(0), settingsInFrame.length/6; i < n; i++ {
+	for i, j, n := uint16(0), uint16(0), settingsInFrame.length/6; i < n; i++ {
 		ident := binary.BigEndian.Uint16(settings[j : j+2])
 		value := binary.BigEndian.Uint32(settings[j+2 : j+6])
 		switch ident {

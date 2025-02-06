@@ -15,7 +15,7 @@ import (
 )
 
 const ( // HTTP/2 sizes and limits for both of our HTTP/2 server and HTTP/2 backend
-	http2MaxFrameSize         = _16K
+	http2MaxFrameSize         = _16K // currently hardcoded. must <= _64K1 - 9
 	http2MaxTableSize         = _4K
 	http2MaxConcurrentStreams = 127 // currently hardcoded
 )
@@ -417,7 +417,7 @@ func getHTTP2Buffer() *http2Buffer {
 }
 func putHTTP2Buffer(inBuffer *http2Buffer) { poolHTTP2Buffer.Put(inBuffer) }
 
-func (b *http2Buffer) size() uint32  { return uint32(cap(b.buf)) }
+func (b *http2Buffer) size() uint16  { return uint16(cap(b.buf)) }
 func (b *http2Buffer) getRef() int32 { return b.ref.Load() }
 func (b *http2Buffer) incRef()       { b.ref.Add(1) }
 func (b *http2Buffer) decRef() {

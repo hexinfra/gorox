@@ -5,7 +5,7 @@
 
 // QUIC stream.
 
-package tcp2
+package gotcp2
 
 import (
 	"time"

@@ -5,7 +5,7 @@
 
 // QUIC listener.
 
-package tcp2
+package gotcp2
 
 // Listener
 type Listener struct {

@@ -5,7 +5,7 @@
 
 // QUIC config.
 
-package tcp2
+package gotcp2
 
 // Config
 type Config struct {

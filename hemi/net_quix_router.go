@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hexinfra/gorox/hemi/library/tcp2"
+	"github.com/hexinfra/gorox/hemi/library/gotcp2"
 )
 
 // QUIXRouter
@@ -151,9 +151,9 @@ type quixGate struct {
 	// Mixins
 	_quixHolder_
 	// States
-	maxConcurrentConns int32          // max concurrent conns allowed for this gate
-	concurrentConns    atomic.Int32   // TODO: false sharing
-	listener           *tcp2.Listener // the real gate. set after open
+	maxConcurrentConns int32            // max concurrent conns allowed for this gate
+	concurrentConns    atomic.Int32     // TODO: false sharing
+	listener           *gotcp2.Listener // the real gate. set after open
 }
 
 func (g *quixGate) onNew(router *QUIXRouter, id int32) {
@@ -197,7 +197,7 @@ func (g *quixGate) serveTLS() {
 	g.server.DecSubGate()
 }
 
-func (g *quixGate) justClose(quicConn *tcp2.Conn) {
+func (g *quixGate) justClose(quicConn *gotcp2.Conn) {
 	quicConn.Close()
 	g.DecSubConn()
 }
@@ -215,7 +215,7 @@ type QUIXConn struct {
 
 var poolQUIXConn sync.Pool
 
-func getQUIXConn(id int64, gate *quixGate, quicConn *tcp2.Conn) *QUIXConn {
+func getQUIXConn(id int64, gate *quixGate, quicConn *gotcp2.Conn) *QUIXConn {
 	var conn *QUIXConn
 	if x := poolQUIXConn.Get(); x == nil {
 		conn = new(QUIXConn)
@@ -230,7 +230,7 @@ func putQUIXConn(conn *QUIXConn) {
 	poolQUIXConn.Put(conn)
 }
 
-func (c *QUIXConn) onGet(id int64, gate *quixGate, quicConn *tcp2.Conn) {
+func (c *QUIXConn) onGet(id int64, gate *quixGate, quicConn *gotcp2.Conn) {
 	c.quixConn_.onGet(id, gate.Stage(), quicConn, gate.UDSMode(), gate.TLSMode(), gate.MaxCumulativeStreamsPerConn(), gate.MaxConcurrentStreamsPerConn())
 
 	c.gate = gate
@@ -271,7 +271,7 @@ type QUIXStream struct {
 
 var poolQUIXStream sync.Pool
 
-func getQUIXStream(conn *QUIXConn, quicStream *tcp2.Stream) *QUIXStream {
+func getQUIXStream(conn *QUIXConn, quicStream *gotcp2.Stream) *QUIXStream {
 	var stream *QUIXStream
 	if x := poolQUIXStream.Get(); x == nil {
 		stream = new(QUIXStream)
@@ -286,7 +286,7 @@ func putQUIXStream(stream *QUIXStream) {
 	poolQUIXStream.Put(stream)
 }
 
-func (s *QUIXStream) onUse(conn *QUIXConn, quicStream *tcp2.Stream) {
+func (s *QUIXStream) onUse(conn *QUIXConn, quicStream *gotcp2.Stream) {
 	s.quixStream_.onUse(quicStream)
 	s.conn = conn
 }

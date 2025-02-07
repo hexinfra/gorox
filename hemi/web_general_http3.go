@@ -10,7 +10,7 @@ package hemi
 import (
 	"net"
 
-	"github.com/hexinfra/gorox/hemi/library/tcp2"
+	"github.com/hexinfra/gorox/hemi/library/gotcp2"
 )
 
 // http3Conn
@@ -27,7 +27,7 @@ type http3Conn_ struct { // for server3Conn and backend3Conn
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	quicConn     *tcp2.Conn        // the quic connection
+	quicConn     *gotcp2.Conn      // the quic connection
 	inBuffer     *http3Buffer      // ...
 	dynamicTable http3DynamicTable // ...
 	// Conn states (zeros)
@@ -40,7 +40,7 @@ type _http3Conn0 struct { // for fast reset, entirely
 	sectFore     uint32 // incoming frame section (header or payload) ends at c.inBuffer.buf[c.sectFore]
 }
 
-func (c *http3Conn_) onGet(id int64, holder holder, quicConn *tcp2.Conn) {
+func (c *http3Conn_) onGet(id int64, holder holder, quicConn *gotcp2.Conn) {
 	c.httpConn_.onGet(id, holder)
 
 	c.quicConn = quicConn
@@ -74,14 +74,14 @@ type http3Stream_[C http3Conn] struct { // for server3Stream and backend3Stream
 	// Stream states (stocks)
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	quicStream *tcp2.Stream // the quic stream
+	quicStream *gotcp2.Stream // the quic stream
 	// Stream states (zeros)
 	_http3Stream0 // all values in this struct must be zero by default!
 }
 type _http3Stream0 struct { // for fast reset, entirely
 }
 
-func (s *http3Stream_[C]) onUse(conn C, quicStream *tcp2.Stream) {
+func (s *http3Stream_[C]) onUse(conn C, quicStream *gotcp2.Stream) {
 	s.httpStream_.onUse(conn)
 
 	s.quicStream = quicStream

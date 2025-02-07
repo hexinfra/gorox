@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hexinfra/gorox/hemi/library/tcp2"
+	"github.com/hexinfra/gorox/hemi/library/gotcp2"
 )
 
 func init() {
@@ -114,7 +114,7 @@ type QConn struct {
 
 var poolQConn sync.Pool
 
-func getQConn(id int64, node *quixNode, quicConn *tcp2.Conn) *QConn {
+func getQConn(id int64, node *quixNode, quicConn *gotcp2.Conn) *QConn {
 	var conn *QConn
 	if x := poolQConn.Get(); x == nil {
 		conn = new(QConn)
@@ -129,7 +129,7 @@ func putQConn(conn *QConn) {
 	poolQConn.Put(conn)
 }
 
-func (c *QConn) onGet(id int64, node *quixNode, quicConn *tcp2.Conn) {
+func (c *QConn) onGet(id int64, node *quixNode, quicConn *gotcp2.Conn) {
 	c.quixConn_.onGet(id, node.Stage(), quicConn, node.UDSMode(), node.TLSMode(), node.MaxCumulativeStreamsPerConn(), node.MaxConcurrentStreamsPerConn())
 
 	c.node = node
@@ -165,7 +165,7 @@ type QStream struct {
 
 var poolQStream sync.Pool
 
-func getQStream(conn *QConn, quicStream *tcp2.Stream) *QStream {
+func getQStream(conn *QConn, quicStream *gotcp2.Stream) *QStream {
 	var stream *QStream
 	if x := poolQStream.Get(); x == nil {
 		stream = new(QStream)
@@ -180,7 +180,7 @@ func putQStream(stream *QStream) {
 	poolQStream.Put(stream)
 }
 
-func (s *QStream) onUse(conn *QConn, quicStream *tcp2.Stream) {
+func (s *QStream) onUse(conn *QConn, quicStream *gotcp2.Stream) {
 	s.quixStream_.onUse(quicStream)
 	s.conn = conn
 }

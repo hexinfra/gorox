@@ -12,7 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hexinfra/gorox/hemi/library/tcp2"
+	"github.com/hexinfra/gorox/hemi/library/gotcp2"
 )
 
 // quixHolder is the interface for _quixHolder_.
@@ -62,7 +62,7 @@ type quixConn_ struct { // for QUIXConn and QConn
 	// Conn states (non-zeros)
 	id                   int64  // the conn id
 	stage                *Stage // current stage, for convenience
-	quicConn             *tcp2.Conn
+	quicConn             *gotcp2.Conn
 	udsMode              bool  // for convenience
 	tlsMode              bool  // for convenience
 	maxCumulativeStreams int32 // how many streams are allowed on this connection?
@@ -76,7 +76,7 @@ type quixConn_ struct { // for QUIXConn and QConn
 	concurrentStreams atomic.Int32 // how many concurrent streams?
 }
 
-func (c *quixConn_) onGet(id int64, stage *Stage, quicConn *tcp2.Conn, udsMode bool, tlsMode bool, maxCumulativeStreams int32, maxConcurrentStreams int32) {
+func (c *quixConn_) onGet(id int64, stage *Stage, quicConn *gotcp2.Conn, udsMode bool, tlsMode bool, maxCumulativeStreams int32, maxConcurrentStreams int32) {
 	c.id = id
 	c.stage = stage
 	c.quicConn = quicConn
@@ -116,11 +116,11 @@ type quixStream_ struct { // for QUIXStream and QStream
 	stockBuffer [256]byte // a (fake) buffer to workaround Go's conservative escape analysis
 	// Stream states (controlled)
 	// Stream states (non-zeros)
-	quicStream *tcp2.Stream
+	quicStream *gotcp2.Stream
 	// Stream states (zeros)
 }
 
-func (s *quixStream_) onUse(quicStream *tcp2.Stream) {
+func (s *quixStream_) onUse(quicStream *gotcp2.Stream) {
 	s.quicStream = quicStream
 }
 func (s *quixStream_) onEnd() {

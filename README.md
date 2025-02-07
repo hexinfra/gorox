@@ -190,7 +190,7 @@ A typical deployment architecture using Gorox might looks like this:
                v    v   v
              +------------+
 +------------| edgeProxy1 |--------------+ gorox cluster
-|            +--+---+--+--+              |
+|            +--+---+--+--+              | (can be managed by Rockman)
 |   http        |   |  |        tcp      |
 |      +--------+   |  +--------+        |
 |      |            |           |        |
@@ -227,10 +227,10 @@ of the roles in "gorox cluster":
   * app1      : A Web application implemented directly on Gorox,
   * server1   : A TCP server implemented directly on Gorox,
   * svc1      : A public RPC service implemented directly on Gorox,
-  * svcProxy1 : A service proxy for svc1,
+  * svcProxy1 : A sidecar proxy for svc1,
   * proxy2    : A gateway proxy passing requests to PHP-FPM or Tomcat server,
   * svc2      : A private RPC service implemented directly on Gorox,
-  * svcProxy2 : A service proxy for svc2,
+  * svcProxy2 : A sidecar proxy for svc2,
   * cronjob1  : A background application in Gorox doing something periodically.
 
 The whole Gorox cluster can alternatively be managed by a Rockman instance,

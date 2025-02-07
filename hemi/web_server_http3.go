@@ -11,7 +11,7 @@ import (
 	"crypto/tls"
 	"sync"
 
-	"github.com/hexinfra/gorox/hemi/library/tcp2"
+	"github.com/hexinfra/gorox/hemi/library/gotcp2"
 )
 
 func init() {
@@ -64,7 +64,7 @@ type http3Gate struct {
 	// Parent
 	httpGate_[*http3Server]
 	// States
-	listener *tcp2.Listener // the real gate. set after open
+	listener *gotcp2.Listener // the real gate. set after open
 }
 
 func (g *http3Gate) onNew(server *http3Server, id int32) {
@@ -73,7 +73,7 @@ func (g *http3Gate) onNew(server *http3Server, id int32) {
 
 func (g *http3Gate) Open() error {
 	// TODO: udsMode or tlsMode?
-	listener := tcp2.NewListener(g.Address())
+	listener := gotcp2.NewListener(g.Address())
 	if err := listener.Open(); err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ func (g *http3Gate) serveTLS() {
 	g.server.DecSubGate()
 }
 
-func (g *http3Gate) justClose(quicConn *tcp2.Conn) {
+func (g *http3Gate) justClose(quicConn *gotcp2.Conn) {
 	quicConn.Close()
 	g.DecConcurrentConns()
 	g.DecSubConn()
@@ -145,7 +145,7 @@ type _server3Conn0 struct { // for fast reset, entirely
 
 var poolServer3Conn sync.Pool
 
-func getServer3Conn(id int64, gate *http3Gate, quicConn *tcp2.Conn) *server3Conn {
+func getServer3Conn(id int64, gate *http3Gate, quicConn *gotcp2.Conn) *server3Conn {
 	var servConn *server3Conn
 	if x := poolServer3Conn.Get(); x == nil {
 		servConn = new(server3Conn)
@@ -160,7 +160,7 @@ func putServer3Conn(servConn *server3Conn) {
 	poolServer3Conn.Put(servConn)
 }
 
-func (c *server3Conn) onGet(id int64, gate *http3Gate, quicConn *tcp2.Conn) {
+func (c *server3Conn) onGet(id int64, gate *http3Gate, quicConn *gotcp2.Conn) {
 	c.http3Conn_.onGet(id, gate, quicConn)
 	c._serverConn_.onGet(gate)
 }
@@ -211,7 +211,7 @@ type _server3Stream0 struct { // for fast reset, entirely
 
 var poolServer3Stream sync.Pool
 
-func getServer3Stream(conn *server3Conn, quicStream *tcp2.Stream) *server3Stream {
+func getServer3Stream(conn *server3Conn, quicStream *gotcp2.Stream) *server3Stream {
 	var servStream *server3Stream
 	if x := poolServer3Stream.Get(); x == nil {
 		servStream = new(server3Stream)
@@ -232,7 +232,7 @@ func putServer3Stream(servStream *server3Stream) {
 	poolServer3Stream.Put(servStream)
 }
 
-func (s *server3Stream) onUse(conn *server3Conn, quicStream *tcp2.Stream) { // for non-zeros
+func (s *server3Stream) onUse(conn *server3Conn, quicStream *gotcp2.Stream) { // for non-zeros
 	s.http3Stream_.onUse(conn, quicStream)
 	s._serverStream_.onUse()
 

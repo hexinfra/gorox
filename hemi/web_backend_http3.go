@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/hexinfra/gorox/hemi/library/tcp2"
+	"github.com/hexinfra/gorox/hemi/library/gotcp2"
 )
 
 func init() {
@@ -142,7 +142,7 @@ type _backend3Conn0 struct { // for fast reset, entirely
 
 var poolBackend3Conn sync.Pool
 
-func getBackend3Conn(id int64, node *http3Node, quicConn *tcp2.Conn) *backend3Conn {
+func getBackend3Conn(id int64, node *http3Node, quicConn *gotcp2.Conn) *backend3Conn {
 	var backConn *backend3Conn
 	if x := poolBackend3Conn.Get(); x == nil {
 		backConn = new(backend3Conn)
@@ -157,7 +157,7 @@ func putBackend3Conn(backConn *backend3Conn) {
 	poolBackend3Conn.Put(backConn)
 }
 
-func (c *backend3Conn) onGet(id int64, node *http3Node, quicConn *tcp2.Conn) {
+func (c *backend3Conn) onGet(id int64, node *http3Node, quicConn *gotcp2.Conn) {
 	c.http3Conn_.onGet(id, node, quicConn)
 	c._backendConn_.onGet(node)
 }
@@ -207,7 +207,7 @@ type _backend3Stream0 struct { // for fast reset, entirely
 
 var poolBackend3Stream sync.Pool
 
-func getBackend3Stream(conn *backend3Conn, quicStream *tcp2.Stream) *backend3Stream {
+func getBackend3Stream(conn *backend3Conn, quicStream *gotcp2.Stream) *backend3Stream {
 	var backStream *backend3Stream
 	if x := poolBackend3Stream.Get(); x == nil {
 		backStream = new(backend3Stream)
@@ -228,7 +228,7 @@ func putBackend3Stream(backStream *backend3Stream) {
 	poolBackend3Stream.Put(backStream)
 }
 
-func (s *backend3Stream) onUse(conn *backend3Conn, quicStream *tcp2.Stream) { // for non-zeros
+func (s *backend3Stream) onUse(conn *backend3Conn, quicStream *gotcp2.Stream) { // for non-zeros
 	s.http3Stream_.onUse(conn, quicStream)
 	s._backendStream_.onUse()
 

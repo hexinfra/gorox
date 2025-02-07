@@ -17,7 +17,7 @@ import (
 func init() {
 	RegisterBackend("http2Backend", func(compName string, stage *Stage) Backend {
 		b := new(HTTP2Backend)
-		b.onCreate(compName, stage)
+		b.OnCreate(compName, stage)
 		return b
 	})
 }
@@ -25,21 +25,8 @@ func init() {
 // HTTP2Backend
 type HTTP2Backend struct {
 	// Parent
-	Backend_[*http2Node]
+	httpBackend_[*http2Node]
 	// States
-}
-
-func (b *HTTP2Backend) onCreate(compName string, stage *Stage) {
-	b.Backend_.OnCreate(compName, stage)
-}
-
-func (b *HTTP2Backend) OnConfigure() {
-	b.Backend_.OnConfigure()
-	b.ConfigureNodes()
-}
-func (b *HTTP2Backend) OnPrepare() {
-	b.Backend_.OnPrepare()
-	b.PrepareNodes()
 }
 
 func (b *HTTP2Backend) CreateNode(compName string) Node {
@@ -177,12 +164,12 @@ func (c *backend2Conn) onPut() {
 	c.http2Conn_.onPut()
 }
 
-func (c *backend2Conn) fetchStream() (*backend2Stream, error) {
+func (c *backend2Conn) getStream() (*backend2Stream, error) {
 	// Note: A backend2Conn can be used concurrently, limited by maxConcurrentStreams.
 	// TODO: incRef, backStream.onUse()
 	return nil, nil
 }
-func (c *backend2Conn) storeStream(backStream *backend2Stream) {
+func (c *backend2Conn) putStream(backStream *backend2Stream) {
 	// Note: A backend2Conn can be used concurrently, limited by maxConcurrentStreams.
 	// TODO
 	//backStream.onEnd()

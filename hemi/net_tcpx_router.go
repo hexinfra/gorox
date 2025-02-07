@@ -403,17 +403,12 @@ var tcpxConnVariables = [...]func(*TCPXConn) []byte{ // keep sync with varCodes
 // tcpxCase
 type tcpxCase struct {
 	// Parent
-	Component_
+	case_
 	// Assocs
 	router  *TCPXRouter
 	dealets []TCPXDealet
 	// States
-	general  bool
-	varCode  int16
-	varName  string
-	patterns [][]byte
-	regexps  []*regexp.Regexp
-	matcher  func(kase *tcpxCase, conn *TCPXConn, value []byte) bool
+	matcher func(kase *tcpxCase, conn *TCPXConn, value []byte) bool
 }
 
 func (c *tcpxCase) onCreate(compName string, router *TCPXRouter) {
@@ -528,9 +523,7 @@ type TCPXDealet interface {
 // TCPXDealet_ is a parent.
 type TCPXDealet_ struct { // for all tcpx dealets
 	// Parent
-	Component_
-	// Assocs
-	stage *Stage // current stage
+	dealet_
 	// States
 }
 
@@ -538,5 +531,3 @@ func (d *TCPXDealet_) OnCreate(compName string, stage *Stage) {
 	d.MakeComp(compName)
 	d.stage = stage
 }
-
-func (d *TCPXDealet_) Stage() *Stage { return d.stage }

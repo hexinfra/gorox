@@ -307,17 +307,12 @@ func (s *QUIXStream) Read(dst []byte) (n int, err error) {
 // quixCase
 type quixCase struct {
 	// Parent
-	Component_
+	case_
 	// Assocs
 	router  *QUIXRouter
 	dealets []QUIXDealet
 	// States
-	general  bool
-	varCode  int16
-	varName  string
-	patterns [][]byte
-	regexps  []*regexp.Regexp
-	matcher  func(kase *quixCase, conn *QUIXConn, value []byte) bool
+	matcher func(kase *quixCase, conn *QUIXConn, value []byte) bool
 }
 
 func (c *quixCase) onCreate(compName string, router *QUIXRouter) {
@@ -428,9 +423,7 @@ type QUIXDealet interface {
 // QUIXDealet_ is a parent.
 type QUIXDealet_ struct { // for all quix dealets
 	// Parent
-	Component_
-	// Assocs
-	stage *Stage // current stage
+	dealet_
 	// States
 }
 
@@ -438,5 +431,3 @@ func (d *QUIXDealet_) OnCreate(compName string, stage *Stage) {
 	d.MakeComp(compName)
 	d.stage = stage
 }
-
-func (d *QUIXDealet_) Stage() *Stage { return d.stage }

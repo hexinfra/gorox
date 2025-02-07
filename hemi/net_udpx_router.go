@@ -237,17 +237,12 @@ var udpxConnVariables = [...]func(*UDPXConn) []byte{ // keep sync with varCodes
 // udpxCase
 type udpxCase struct {
 	// Parent
-	Component_
+	case_
 	// Assocs
 	router  *UDPXRouter
 	dealets []UDPXDealet
 	// States
-	general  bool
-	varCode  int16
-	varName  string
-	patterns [][]byte
-	regexps  []*regexp.Regexp
-	matcher  func(kase *udpxCase, conn *UDPXConn, value []byte) bool
+	matcher func(kase *udpxCase, conn *UDPXConn, value []byte) bool
 }
 
 func (c *udpxCase) onCreate(compName string, router *UDPXRouter) {
@@ -362,9 +357,7 @@ type UDPXDealet interface {
 // UDPXDealet_ is a parent.
 type UDPXDealet_ struct { // for all udpx dealets
 	// Parent
-	Component_
-	// Assocs
-	stage *Stage // current stage
+	dealet_
 	// States
 }
 
@@ -372,5 +365,3 @@ func (d *UDPXDealet_) OnCreate(compName string, stage *Stage) {
 	d.MakeComp(compName)
 	d.stage = stage
 }
-
-func (d *UDPXDealet_) Stage() *Stage { return d.stage }

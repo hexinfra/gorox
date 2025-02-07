@@ -21,7 +21,7 @@ import (
 func init() {
 	RegisterBackend("http1Backend", func(compName string, stage *Stage) Backend {
 		b := new(HTTP1Backend)
-		b.onCreate(compName, stage)
+		b.OnCreate(compName, stage)
 		return b
 	})
 }
@@ -29,21 +29,8 @@ func init() {
 // HTTP1Backend
 type HTTP1Backend struct {
 	// Parent
-	Backend_[*http1Node]
+	httpBackend_[*http1Node]
 	// States
-}
-
-func (b *HTTP1Backend) onCreate(compName string, stage *Stage) {
-	b.Backend_.OnCreate(compName, stage)
-}
-
-func (b *HTTP1Backend) OnConfigure() {
-	b.Backend_.OnConfigure()
-	b.ConfigureNodes()
-}
-func (b *HTTP1Backend) OnPrepare() {
-	b.Backend_.OnPrepare()
-	b.PrepareNodes()
 }
 
 func (b *HTTP1Backend) CreateNode(compName string) Node {
@@ -109,7 +96,7 @@ func (n *http1Node) fetchStream() (*backend1Stream, error) {
 	nodeDown := n.isDown()
 	if backConn != nil {
 		if !nodeDown && backConn.isAlive() && backConn.cumulativeStreams.Add(1) <= n.maxCumulativeStreamsPerConn {
-			return backConn.fetchStream()
+			return backConn.getStream()
 		}
 		backConn.Close()
 		n.DecSubConn()
@@ -129,7 +116,7 @@ func (n *http1Node) fetchStream() (*backend1Stream, error) {
 		return nil, errNodeDown
 	}
 	n.IncSubConn()
-	return backConn.fetchStream()
+	return backConn.getStream()
 }
 func (n *http1Node) _dialUDS() (*backend1Conn, error) {
 	// TODO: dynamic address names?
@@ -193,7 +180,7 @@ func (n *http1Node) _dialTCP() (*backend1Conn, error) {
 }
 func (n *http1Node) storeStream(backStream *backend1Stream) {
 	backConn := backStream.conn
-	backConn.storeStream(backStream)
+	backConn.putStream(backStream)
 
 	if !n.isDown() && !backConn.isBroken() && backConn.isAlive() && backConn.persistent {
 		if DebugLevel() >= 2 {
@@ -311,12 +298,12 @@ func (c *backend1Conn) onPut() {
 	c.http1Conn_.onPut()
 }
 
-func (c *backend1Conn) fetchStream() (*backend1Stream, error) {
+func (c *backend1Conn) getStream() (*backend1Stream, error) {
 	backStream := &c.stream
 	backStream.onUse(c.nextStreamID(), c)
 	return backStream, nil
 }
-func (c *backend1Conn) storeStream(backStream *backend1Stream) {
+func (c *backend1Conn) putStream(backStream *backend1Stream) {
 	backStream.onEnd()
 }
 

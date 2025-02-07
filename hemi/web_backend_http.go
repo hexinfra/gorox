@@ -22,6 +22,22 @@ type HTTPBackend interface { // for *HTTP[1-3]Backend
 	ReleaseStream(backStream BackendStream)
 }
 
+// httpBackend_
+type httpBackend_[N HTTPNode] struct { // for HTTP[1-3]Backend
+	// Parent
+	Backend_[N]
+	// States
+}
+
+func (b *httpBackend_[N]) OnConfigure() {
+	b.Backend_.OnConfigure()
+	b.ConfigureNodes()
+}
+func (b *httpBackend_[N]) OnPrepare() {
+	b.Backend_.OnPrepare()
+	b.PrepareNodes()
+}
+
 // HTTPNode
 type HTTPNode interface {
 	// Imports

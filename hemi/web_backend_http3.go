@@ -17,7 +17,7 @@ import (
 func init() {
 	RegisterBackend("http3Backend", func(compName string, stage *Stage) Backend {
 		b := new(HTTP3Backend)
-		b.onCreate(compName, stage)
+		b.OnCreate(compName, stage)
 		return b
 	})
 }
@@ -25,21 +25,8 @@ func init() {
 // HTTP3Backend
 type HTTP3Backend struct {
 	// Parent
-	Backend_[*http3Node]
+	httpBackend_[*http3Node]
 	// States
-}
-
-func (b *HTTP3Backend) onCreate(compName string, stage *Stage) {
-	b.Backend_.OnCreate(compName, stage)
-}
-
-func (b *HTTP3Backend) OnConfigure() {
-	b.Backend_.OnConfigure()
-	b.ConfigureNodes()
-}
-func (b *HTTP3Backend) OnPrepare() {
-	b.Backend_.OnPrepare()
-	b.PrepareNodes()
 }
 
 func (b *HTTP3Backend) CreateNode(compName string) Node {
@@ -169,12 +156,12 @@ func (c *backend3Conn) onPut() {
 	c.http3Conn_.onPut()
 }
 
-func (c *backend3Conn) fetchStream() (*backend3Stream, error) {
+func (c *backend3Conn) getStream() (*backend3Stream, error) {
 	// Note: A backend3Conn can be used concurrently, limited by maxConcurrentStreams.
 	// TODO: backStream.onUse()
 	return nil, nil
 }
-func (c *backend3Conn) storeStream(backStream *backend3Stream) {
+func (c *backend3Conn) putStream(backStream *backend3Stream) {
 	// Note: A backend3Conn can be used concurrently, limited by maxConcurrentStreams.
 	// TODO
 	//backStream.onEnd()

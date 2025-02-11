@@ -17,15 +17,15 @@ import (
 
 const ( // HTTP/2 sizes and limits for both of our HTTP/2 server and HTTP/2 backend
 	http2MaxFrameSize         = _16K // currently hardcoded. must <= _64K1 - 9
-	http2MaxTableSize         = _4K
-	http2MaxConcurrentStreams = 127 // currently hardcoded
+	http2MaxTableSize         = _4K  // currently hardcoded
+	http2MaxConcurrentStreams = 127  // currently hardcoded
 )
 
 const ( // HTTP/2 frame kinds
 	http2FrameData         = 0x0
 	http2FrameFields       = 0x1 // a.k.a. headers
 	http2FramePriority     = 0x2 // deprecated. ignored on receiving, and we won't send
-	http2FrameResetStream  = 0x3
+	http2FrameResetStream  = 0x3 // a.k.a. rst_stream
 	http2FrameSettings     = 0x4
 	http2FramePushPromise  = 0x5 // not supported
 	http2FramePing         = 0x6
@@ -34,23 +34,7 @@ const ( // HTTP/2 frame kinds
 	http2FrameContinuation = 0x9
 	http2NumFrameKinds     = 10
 )
-const ( // HTTP/2 error codes
-	http2CodeNoError            = 0x0 // The associated condition is not a result of an error. For example, a GOAWAY might include this code to indicate graceful shutdown of a connection.
-	http2CodeProtocol           = 0x1 // The endpoint detected an unspecific protocol error. This error is for use when a more specific error code is not available.
-	http2CodeInternal           = 0x2 // The endpoint encountered an unexpected internal error.
-	http2CodeFlowControl        = 0x3 // The endpoint detected that its peer violated the flow-control protocol.
-	http2CodeSettingsTimeout    = 0x4 // The endpoint sent a SETTINGS frame but did not receive a response in a timely manner. See Section 6.5.3 ("Settings Synchronization").
-	http2CodeStreamClosed       = 0x5 // The endpoint received a frame after a stream was half-closed.
-	http2CodeFrameSize          = 0x6 // The endpoint received a frame with an invalid size.
-	http2CodeRefusedStream      = 0x7 // The endpoint refused the stream prior to performing any application processing (see Section 8.7 for details).
-	http2CodeCancel             = 0x8 // The endpoint uses this error code to indicate that the stream is no longer needed.
-	http2CodeCompression        = 0x9 // The endpoint is unable to maintain the field section compression context for the connection.
-	http2CodeConnect            = 0xa // The connection established in response to a CONNECT request (Section 8.5) was reset or abnormally closed.
-	http2CodeEnhanceYourCalm    = 0xb // The endpoint detected that its peer is exhibiting a behavior that might be generating excessive load.
-	http2CodeInadequateSecurity = 0xc // The underlying transport has properties that do not meet minimum security requirements (see Section 9.2).
-	http2CodeHTTP11Required     = 0xd // The endpoint requires that HTTP/1.1 be used instead of HTTP/2.
-	http2NumErrorCodes          = 14  // Unknown or unsupported error codes MUST NOT trigger any special behavior. These MAY be treated by an implementation as being equivalent to INTERNAL_ERROR.
-)
+
 const ( // HTTP/2 stream states
 	http2StateIdle         = 0 // must be 0, default value
 	http2StateOpen         = 1
@@ -58,6 +42,7 @@ const ( // HTTP/2 stream states
 	http2StateLocalClosed  = 3
 	http2StateClosed       = 4
 )
+
 const ( // HTTP/2 settings
 	http2SettingHeaderTableSize      = 0x1
 	http2SettingEnablePush           = 0x2
@@ -85,34 +70,28 @@ var http2InitialSettings = http2Settings{ // default settings for both server an
 	maxFrameSize:         _16K,
 	maxHeaderListSize:    _16K,
 }
-var http2FrameNames = [http2NumFrameKinds]string{
-	http2FrameData:         "DATA",
-	http2FrameFields:       "FIELDS",       // a.k.a. headers
-	http2FramePriority:     "PRIORITY",     // deprecated. ignored on receiving, and we won't send
-	http2FrameResetStream:  "RESET_STREAM", // a.k.a. rst_stream
-	http2FrameSettings:     "SETTINGS",
-	http2FramePushPromise:  "PUSH_PROMISE", // not supported
-	http2FramePing:         "PING",
-	http2FrameGoaway:       "GOAWAY",
-	http2FrameWindowUpdate: "WINDOW_UPDATE",
-	http2FrameContinuation: "CONTINUATION",
-}
-var http2CodeTexts = [...]string{
-	http2CodeNoError:            "NO_ERROR",
-	http2CodeProtocol:           "PROTOCOL_ERROR",
-	http2CodeInternal:           "INTERNAL_ERROR",
-	http2CodeFlowControl:        "FLOW_CONTROL_ERROR",
-	http2CodeSettingsTimeout:    "SETTINGS_TIMEOUT",
-	http2CodeStreamClosed:       "STREAM_CLOSED",
-	http2CodeFrameSize:          "FRAME_SIZE_ERROR",
-	http2CodeRefusedStream:      "REFUSED_STREAM",
-	http2CodeCancel:             "CANCEL",
-	http2CodeCompression:        "COMPRESSION_ERROR",
-	http2CodeConnect:            "CONNECT_ERROR",
-	http2CodeEnhanceYourCalm:    "ENHANCE_YOUR_CALM",
-	http2CodeInadequateSecurity: "INADEQUATE_SECURITY",
-	http2CodeHTTP11Required:     "HTTP_1_1_REQUIRED",
-}
+
+const ( // HTTP/2 error codes
+	http2CodeNoError            = 0x0 // The associated condition is not a result of an error. For example, a GOAWAY might include this code to indicate graceful shutdown of a connection.
+	http2CodeProtocol           = 0x1 // The endpoint detected an unspecific protocol error. This error is for use when a more specific error code is not available.
+	http2CodeInternal           = 0x2 // The endpoint encountered an unexpected internal error.
+	http2CodeFlowControl        = 0x3 // The endpoint detected that its peer violated the flow-control protocol.
+	http2CodeSettingsTimeout    = 0x4 // The endpoint sent a SETTINGS frame but did not receive a response in a timely manner. See Section 6.5.3 ("Settings Synchronization").
+	http2CodeStreamClosed       = 0x5 // The endpoint received a frame after a stream was half-closed.
+	http2CodeFrameSize          = 0x6 // The endpoint received a frame with an invalid size.
+	http2CodeRefusedStream      = 0x7 // The endpoint refused the stream prior to performing any application processing (see Section 8.7 for details).
+	http2CodeCancel             = 0x8 // The endpoint uses this error code to indicate that the stream is no longer needed.
+	http2CodeCompression        = 0x9 // The endpoint is unable to maintain the field section compression context for the connection.
+	http2CodeConnect            = 0xa // The connection established in response to a CONNECT request (Section 8.5) was reset or abnormally closed.
+	http2CodeEnhanceYourCalm    = 0xb // The endpoint detected that its peer is exhibiting a behavior that might be generating excessive load.
+	http2CodeInadequateSecurity = 0xc // The underlying transport has properties that do not meet minimum security requirements (see Section 9.2).
+	http2CodeHTTP11Required     = 0xd // The endpoint requires that HTTP/1.1 be used instead of HTTP/2.
+	http2NumErrorCodes          = 14  // Unknown or unsupported error codes MUST NOT trigger any special behavior. These MAY be treated by an implementation as being equivalent to INTERNAL_ERROR.
+)
+
+// http2Error denotes both connection error and stream error.
+type http2Error uint32
+
 var ( // HTTP/2 errors
 	http2ErrorNoError            http2Error = http2CodeNoError
 	http2ErrorProtocol           http2Error = http2CodeProtocol
@@ -130,14 +109,28 @@ var ( // HTTP/2 errors
 	http2ErrorHTTP11Required     http2Error = http2CodeHTTP11Required
 )
 
-// http2Error denotes both connection error and stream error.
-type http2Error uint32
-
 func (e http2Error) Error() string {
 	if e < http2NumErrorCodes {
 		return http2CodeTexts[e]
 	}
 	return "UNKNOWN_ERROR"
+}
+
+var http2CodeTexts = [...]string{
+	http2CodeNoError:            "NO_ERROR",
+	http2CodeProtocol:           "PROTOCOL_ERROR",
+	http2CodeInternal:           "INTERNAL_ERROR",
+	http2CodeFlowControl:        "FLOW_CONTROL_ERROR",
+	http2CodeSettingsTimeout:    "SETTINGS_TIMEOUT",
+	http2CodeStreamClosed:       "STREAM_CLOSED",
+	http2CodeFrameSize:          "FRAME_SIZE_ERROR",
+	http2CodeRefusedStream:      "REFUSED_STREAM",
+	http2CodeCancel:             "CANCEL",
+	http2CodeCompression:        "COMPRESSION_ERROR",
+	http2CodeConnect:            "CONNECT_ERROR",
+	http2CodeEnhanceYourCalm:    "ENHANCE_YOUR_CALM",
+	http2CodeInadequateSecurity: "INADEQUATE_SECURITY",
+	http2CodeHTTP11Required:     "HTTP_1_1_REQUIRED",
 }
 
 // http2StaticTable is used by HPACK decoder.

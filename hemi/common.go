@@ -20,10 +20,6 @@ import (
 	"unsafe"
 )
 
-func Print(v ...any) {
-	_printTime(os.Stdout)
-	fmt.Fprint(os.Stdout, v...)
-}
 func Println(v ...any) {
 	_printTime(os.Stdout)
 	fmt.Fprintln(os.Stdout, v...)
@@ -32,10 +28,7 @@ func Printf(f string, v ...any) {
 	_printTime(os.Stdout)
 	fmt.Fprintf(os.Stdout, f, v...)
 }
-func Error(v ...any) {
-	_printTime(os.Stderr)
-	fmt.Fprint(os.Stderr, v...)
-}
+
 func Errorln(v ...any) {
 	_printTime(os.Stderr)
 	fmt.Fprintln(os.Stderr, v...)
@@ -44,6 +37,7 @@ func Errorf(f string, v ...any) {
 	_printTime(os.Stderr)
 	fmt.Fprintf(os.Stderr, f, v...)
 }
+
 func _printTime(file *os.File) {
 	fmt.Fprintf(file, "[%s] ", time.Now().Format("2006-01-02 15:04:05 MST"))
 }
@@ -55,11 +49,14 @@ const ( // exit codes
 )
 
 func BugExitln(v ...any)          { _exitln(CodeBug, "[BUG] ", v...) }
-func UseExitln(v ...any)          { _exitln(CodeUse, "[USE] ", v...) }
-func EnvExitln(v ...any)          { _exitln(CodeEnv, "[ENV] ", v...) }
 func BugExitf(f string, v ...any) { _exitf(CodeBug, "[BUG] ", f, v...) }
+
+func UseExitln(v ...any)          { _exitln(CodeUse, "[USE] ", v...) }
 func UseExitf(f string, v ...any) { _exitf(CodeUse, "[USE] ", f, v...) }
+
+func EnvExitln(v ...any)          { _exitln(CodeEnv, "[ENV] ", v...) }
 func EnvExitf(f string, v ...any) { _exitf(CodeEnv, "[ENV] ", f, v...) }
+
 func _exitln(exitCode int, prefix string, v ...any) {
 	fmt.Fprint(os.Stderr, prefix)
 	fmt.Fprintln(os.Stderr, v...)

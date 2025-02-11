@@ -301,8 +301,7 @@ type server2Conn struct {
 	_server2Conn0 // all values in this struct must be zero by default!
 }
 type _server2Conn0 struct { // for fast reset, entirely
-	lastStreamID uint32 // last received stream id from client
-	waitReceive  bool   // ...
+	waitReceive bool // ...
 	//unackedSettings?
 	//queuedControlFrames?
 }
@@ -418,11 +417,11 @@ var server2PrefaceAndMore = []byte{
 	4,          // kind=http2FrameSettings
 	0,          // flags=
 	0, 0, 0, 0, // streamID=0
-	0, 1, 0, 0, 0x10, 0x00, // headerTableSize=4K
-	0, 3, 0, 0, 0x00, 0x7f, // maxConcurrentStreams=127
-	0, 4, 0, 0, 0xff, 0xff, // initialWindowSize=64K1
-	0, 5, 0, 0, 0x40, 0x00, // maxFrameSize=16K
-	0, 6, 0, 0, 0x40, 0x00, // maxHeaderListSize=16K
+	0, 1, 0x00, 0x00, 0x10, 0x00, // headerTableSize=4K
+	0, 3, 0x00, 0x00, 0x00, 0x7f, // maxConcurrentStreams=127
+	0, 4, 0x00, 0x00, 0xff, 0xff, // initialWindowSize=64K1
+	0, 5, 0x00, 0x00, 0x40, 0x00, // maxFrameSize=16K
+	0, 6, 0x00, 0x00, 0x40, 0x00, // maxHeaderListSize=16K
 
 	// window update for the entire connection
 	0, 0, 4, // length=4

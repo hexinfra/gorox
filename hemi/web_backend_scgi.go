@@ -51,6 +51,10 @@ func (b *SCGIBackend) CreateNode(compName string) Node {
 	return node
 }
 
+func (b *SCGIBackend) Dial(httpReq ServerRequest) (*scgiExchan, error) {
+	return b.nodes[b.nodeIndexGet()].dial()
+}
+
 // scgiNode
 type scgiNode struct {
 	// Parent

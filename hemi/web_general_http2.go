@@ -51,6 +51,7 @@ type http2Conn_ struct { // for server2Conn and backend2Conn
 }
 type _http2Conn0 struct { // for fast reset, entirely
 	activeStreamIDs    [http2MaxConcurrentStreams + 1]uint32 // ids of c.activeStreams. the extra 1 id is used for fast linear searching
+	lastStreamID       uint32                                // id of last stream sent to backend or received by server
 	cumulativeInFrames int64                                 // num of incoming frames
 	concurrentStreams  uint8                                 // num of active streams
 	acknowledged       bool                                  // server settings acknowledged by client?

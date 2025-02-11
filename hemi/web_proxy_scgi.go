@@ -92,6 +92,7 @@ type SCGIProxyConfig struct {
 	HTTPProxyConfig // embeded
 }
 
+// SCGIReverseProxy
 func SCGIReverseProxy(httpReq ServerRequest, httpResp ServerResponse, hcache Hcache, backend *SCGIBackend, proxyConfig *SCGIProxyConfig) {
 	// TODO
 	httpResp.Send("SCGI")

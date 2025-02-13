@@ -95,7 +95,10 @@ func (s *Server_[G]) OnPrepare() {
 }
 
 func (s *Server_[G]) NumGates() int32 { return s.numGates }
-func (s *Server_[G]) AddGate(gate G)  { s.gates = append(s.gates, gate) } // Serve() calls this to append gates
+func (s *Server_[G]) AddGate(gate G) { // Serve() calls this to append gates
+	s.gates = append(s.gates, gate)
+	s.subs.Add(1)
+}
 
 func (s *Server_[G]) Colonport() string {
 	if s.udsMode {
@@ -112,9 +115,8 @@ func (s *Server_[G]) ColonportBytes() []byte {
 	}
 }
 
-func (s *Server_[G]) IncSubGate()   { s.subs.Add(1) }
-func (s *Server_[G]) DecSubGate()   { s.subs.Done() }
-func (s *Server_[G]) WaitSubGates() { s.WaitSubs() }
+func (s *Server_[G]) DecGate()   { s.subs.Done() }
+func (s *Server_[G]) WaitGates() { s.subs.Wait() }
 
 func (s *Server_[G]) holder() _holder_ { return s._holder_ } // for copying configs
 
@@ -152,6 +154,6 @@ func (g *Gate_[S]) ID() int32    { return g.id }
 func (g *Gate_[S]) MarkShut()    { g.shut.Store(true) }
 func (g *Gate_[S]) IsShut() bool { return g.shut.Load() }
 
-func (g *Gate_[S]) IncSubConn()   { g.subs.Add(1) }
-func (g *Gate_[S]) DecSubConn()   { g.subs.Done() }
-func (g *Gate_[S]) WaitSubConns() { g.subs.Wait() }
+func (g *Gate_[S]) IncConn()   { g.subs.Add(1) }
+func (g *Gate_[S]) DecConn()   { g.subs.Done() }
+func (g *Gate_[S]) WaitConns() { g.subs.Wait() }

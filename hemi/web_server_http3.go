@@ -49,10 +49,9 @@ func (s *http3Server) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		s.AddGate(gate)
-		s.IncSubGate()
 		go gate.Serve()
 	}
-	s.WaitSubGates()
+	s.WaitGates()
 	if DebugLevel() >= 2 {
 		Printf("http3Server=%s done\n", s.CompName())
 	}
@@ -106,26 +105,26 @@ func (g *http3Gate) serveTLS() {
 				continue
 			}
 		}
-		g.IncSubConn()
+		g.IncConn()
 		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
 			g.justClose(quicConn)
 			continue
 		}
 		server3Conn := getServer3Conn(connID, g, quicConn)
-		go server3Conn.manager() // server3Conn is put to pool in manager()
+		go server3Conn.serve() // server3Conn is put to pool in serve()
 		connID++
 	}
-	g.WaitSubConns() // TODO: max timeout?
+	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("http3Gate=%d done\n", g.id)
 	}
-	g.server.DecSubGate()
+	g.server.DecGate()
 }
 
 func (g *http3Gate) justClose(quicConn *gotcp2.Conn) {
 	quicConn.Close()
 	g.DecConcurrentConns()
-	g.DecSubConn()
+	g.DecConn()
 }
 
 // server3Conn is the server-side HTTP/3 connection.
@@ -172,19 +171,15 @@ func (c *server3Conn) onPut() {
 	c.http3Conn_.onPut()
 }
 
-func (c *server3Conn) manager() { // runner
+func (c *server3Conn) serve() { // runner
 	// TODO
 	// use go c.receiver()?
-}
-
-func (c *server3Conn) receiver() { // runner
-	// TODO
 }
 
 func (c *server3Conn) closeConn() {
 	c.quicConn.Close()
 	c.gate.DecConcurrentConns()
-	c.gate.DecSubConn()
+	c.gate.DecConn()
 }
 
 // server3Stream is the server-side HTTP/3 stream.

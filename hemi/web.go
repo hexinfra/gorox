@@ -212,7 +212,7 @@ func (a *Webapp) maintain() { // runner
 	a.socklets.goWalk(Socklet.OnShutdown)
 	a.revisers.goWalk(Reviser.OnShutdown)
 	a.handlets.goWalk(Handlet.OnShutdown)
-	a.WaitSubs() // handlets, revisers, socklets, rules
+	a.subs.Wait() // handlets, revisers, socklets, rules
 
 	a.CloseLog()
 	if DebugLevel() >= 2 {

@@ -599,7 +599,7 @@ type _http2Stream0 struct { // for fast reset, entirely
 	state uint8 // http2StateOpen, http2StateLocalClosed, http2StateRemoteClosed
 }
 
-func (s *http2Stream_[C]) onUse(id uint32, conn C) {
+func (s *http2Stream_[C]) onUse(conn C, id uint32) {
 	s.httpStream_.onUse(conn)
 
 	s.id = id

@@ -82,9 +82,9 @@ func (n *http1Node) Maintain() { // runner
 	})
 	n.markDown()
 	if size := n.closeIdle(); size > 0 {
-		n.DecSubConns(size)
+		n.DecConns(size)
 	}
-	n.WaitSubConns() // TODO: max timeout?
+	n.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("http1Node=%s done\n", n.compName)
 	}
@@ -99,7 +99,7 @@ func (n *http1Node) fetchStream() (*backend1Stream, error) {
 			return backConn.getStream()
 		}
 		backConn.Close()
-		n.DecSubConn()
+		n.DecConn()
 	}
 	if nodeDown {
 		return nil, errNodeDown
@@ -115,7 +115,7 @@ func (n *http1Node) fetchStream() (*backend1Stream, error) {
 	if err != nil {
 		return nil, errNodeDown
 	}
-	n.IncSubConn()
+	n.IncConn()
 	return backConn.getStream()
 }
 func (n *http1Node) _dialUDS() (*backend1Conn, error) {
@@ -193,7 +193,7 @@ func (n *http1Node) storeStream(backStream *backend1Stream) {
 			Printf("Backend1Conn[node=%s id=%d] closed\n", n.CompName(), backConn.id)
 		}
 		backConn.Close()
-		n.DecSubConn()
+		n.DecConn()
 	}
 }
 
@@ -300,7 +300,7 @@ func (c *backend1Conn) onPut() {
 
 func (c *backend1Conn) getStream() (*backend1Stream, error) {
 	backStream := &c.stream
-	backStream.onUse(c.nextStreamID(), c)
+	backStream.onUse(c, c.nextStreamID())
 	return backStream, nil
 }
 func (c *backend1Conn) putStream(backStream *backend1Stream) {
@@ -329,8 +329,8 @@ type backend1Stream struct {
 	// Stream states (zeros)
 }
 
-func (s *backend1Stream) onUse(id int64, conn *backend1Conn) { // for non-zeros
-	s.http1Stream_.onUse(id, conn)
+func (s *backend1Stream) onUse(conn *backend1Conn, id int64) { // for non-zeros
+	s.http1Stream_.onUse(conn, id)
 	s._backendStream_.onUse()
 
 	s.response.onUse()

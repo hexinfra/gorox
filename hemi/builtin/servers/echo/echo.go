@@ -54,10 +54,9 @@ func (s *echoServer) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		s.AddGate(gate)
-		s.IncSubGate()
 		go gate.Serve()
 	}
-	s.WaitSubGates()
+	s.WaitGates()
 	if DebugLevel() >= 2 {
 		Printf("echoServer=%s done\n", s.CompName())
 	}
@@ -110,21 +109,21 @@ func (g *echoGate) Serve() { // runner
 				continue
 			}
 		}
-		g.IncSubConn()
+		g.IncConn()
 		echoConn := getEchoConn(connID, g, tcpConn)
 		go g.Server().serveConn(echoConn) // echoConn is put to pool in serve()
 		connID++
 	}
-	g.WaitSubConns() // TODO: max timeout?
+	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("echoGate=%d done\n", g.ID())
 	}
-	g.Server().DecSubGate()
+	g.Server().DecGate()
 }
 
 func (g *echoGate) justClose(tcpConn *net.TCPConn) {
 	tcpConn.Close()
-	g.DecSubConn()
+	g.DecConn()
 }
 
 // echoConn
@@ -168,5 +167,5 @@ func (c *echoConn) onPut() {
 
 func (c *echoConn) closeConn() {
 	c.tcpConn.Close()
-	c.gate.DecSubConn()
+	c.gate.DecConn()
 }

@@ -93,11 +93,11 @@ func (n *quixNode) dialStream() (*QStream, error) {
 	return nil, nil
 }
 func (n *quixNode) _dialUDS() (*QConn, error) {
-	// TODO. note: use n.IncSubConn()?
+	// TODO. note: use n.IncConn()?
 	return nil, nil
 }
 func (n *quixNode) _dialTLS() (*QConn, error) {
-	// TODO. note: use n.IncSubConn()?
+	// TODO. note: use n.IncConn()?
 	return nil, nil
 }
 

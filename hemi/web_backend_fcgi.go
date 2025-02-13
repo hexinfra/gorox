@@ -128,9 +128,9 @@ func (n *fcgiNode) Maintain() { // runner
 	})
 	n.markDown()
 	if size := n.closeIdle(); size > 0 {
-		n.DecSubConns(size)
+		n.DecConns(size)
 	}
-	n.WaitSubConns() // TODO: max timeout?
+	n.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("fcgiNode=%s done\n", n.compName)
 	}
@@ -146,7 +146,7 @@ func (n *fcgiNode) fetchExchan() (*fcgiExchan, error) {
 				return fcgiConn.fetchExchan()
 			}
 			fcgiConn.Close()
-			n.DecSubConn()
+			n.DecConn()
 		}
 		if nodeDown {
 			return nil, errNodeDown
@@ -174,7 +174,7 @@ func (n *fcgiNode) dial() (*fcgiConn, error) {
 	if err != nil {
 		return nil, errNodeDown
 	}
-	n.IncSubConn()
+	n.IncConn()
 	return conn, err
 }
 func (n *fcgiNode) _dialUDS() (*fcgiConn, error) {
@@ -229,7 +229,7 @@ func (n *fcgiNode) storeExchan(exchan *fcgiExchan) {
 			Printf("fcgiConn[node=%s id=%d] closed\n", n.CompName(), fcgiConn.id)
 		}
 		fcgiConn.Close()
-		n.DecSubConn()
+		n.DecConn()
 	}
 }
 

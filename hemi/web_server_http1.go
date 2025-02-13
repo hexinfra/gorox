@@ -11,12 +11,282 @@ package hemi
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
+	"errors"
 	"net"
+	"os"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/hexinfra/gorox/hemi/library/system"
 )
+
+func init() {
+	RegisterServer("httpxServer", func(compName string, stage *Stage) Server {
+		s := new(httpxServer)
+		s.onCreate(compName, stage)
+		return s
+	})
+}
+
+// httpxServer is the HTTP/1.x and HTTP/2 server. An httpxServer has many httpxGates.
+type httpxServer struct {
+	// Parent
+	httpServer_[*httpxGate]
+	// States
+	httpMode int8 // 0: adaptive, 1: http/1.x, 2: http/2
+}
+
+func (s *httpxServer) onCreate(compName string, stage *Stage) {
+	s.httpServer_.onCreate(compName, stage)
+
+	s.httpMode = 1 // http/1.x by default. change to adaptive mode after http/2 server has been fully implemented
+}
+
+func (s *httpxServer) OnConfigure() {
+	s.httpServer_.onConfigure()
+
+	if DebugLevel() >= 2 { // remove this condition after http/2 server has been fully implemented
+		// .httpMode
+		var mode string
+		s.ConfigureString("httpMode", &mode, func(value string) error {
+			value = strings.ToLower(value)
+			switch value {
+			case "http1", "http/1", "http/1.x", "http2", "http/2", "adaptive":
+				return nil
+			default:
+				return errors.New(".httpMode has an invalid value")
+			}
+		}, "adaptive")
+		switch mode {
+		case "http1", "http/1", "http/1.x":
+			s.httpMode = 1
+		case "http2", "http/2":
+			s.httpMode = 2
+		default:
+			s.httpMode = 0
+		}
+	}
+}
+func (s *httpxServer) OnPrepare() {
+	s.httpServer_.onPrepare()
+
+	if s.TLSMode() {
+		var nextProtos []string
+		switch s.httpMode {
+		case 2:
+			nextProtos = []string{"h2"}
+		case 1:
+			nextProtos = []string{"http/1.1"}
+		default: // adaptive mode
+			nextProtos = []string{"h2", "http/1.1"}
+		}
+		s.tlsConfig.NextProtos = nextProtos
+	}
+}
+
+func (s *httpxServer) Serve() { // runner
+	for id := int32(0); id < s.numGates; id++ {
+		gate := new(httpxGate)
+		gate.onNew(s, id)
+		if err := gate.Open(); err != nil {
+			EnvExitln(err.Error())
+		}
+		s.AddGate(gate)
+		go gate.Serve()
+	}
+	s.WaitGates()
+	if DebugLevel() >= 2 {
+		Printf("httpxServer=%s done\n", s.CompName())
+	}
+	s.stage.DecServer()
+}
+
+// httpxGate is a gate of httpxServer.
+type httpxGate struct {
+	// Parent
+	httpGate_[*httpxServer]
+	// States
+	listener net.Listener // the real gate. set after open
+}
+
+func (g *httpxGate) onNew(server *httpxServer, id int32) {
+	g.httpGate_.onNew(server, id)
+}
+
+func (g *httpxGate) Open() error {
+	var (
+		listener net.Listener
+		err      error
+	)
+	if g.UDSMode() {
+		address := g.Address()
+		// UDS doesn't support SO_REUSEADDR or SO_REUSEPORT, so we have to remove it first.
+		// This affects graceful upgrading, maybe we can implement fd transfer in the future.
+		os.Remove(address)
+		if listener, err = net.Listen("unix", address); err == nil {
+			g.listener = listener.(*net.UnixListener)
+			if DebugLevel() >= 1 {
+				Printf("httpxGate id=%d address=%s opened!\n", g.id, g.Address())
+			}
+		}
+	} else {
+		listenConfig := new(net.ListenConfig)
+		listenConfig.Control = func(network string, address string, rawConn syscall.RawConn) error {
+			if err := system.SetReusePort(rawConn); err != nil {
+				return err
+			}
+			return system.SetDeferAccept(rawConn)
+		}
+		if listener, err = listenConfig.Listen(context.Background(), "tcp", g.Address()); err == nil {
+			g.listener = listener.(*net.TCPListener)
+			if DebugLevel() >= 1 {
+				Printf("httpxGate id=%d address=%s opened!\n", g.id, g.Address())
+			}
+		}
+	}
+	return err
+}
+func (g *httpxGate) Shut() error {
+	g.MarkShut()
+	return g.listener.Close() // breaks serveXXX()
+}
+
+func (g *httpxGate) Serve() { // runner
+	if g.UDSMode() {
+		g.serveUDS()
+	} else if g.TLSMode() {
+		g.serveTLS()
+	} else {
+		g.serveTCP()
+	}
+}
+func (g *httpxGate) serveUDS() {
+	listener := g.listener.(*net.UnixListener)
+	connID := int64(1)
+	for {
+		udsConn, err := listener.AcceptUnix()
+		if err != nil {
+			if g.IsShut() {
+				break
+			} else {
+				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.compName, g.id, err)
+				continue
+			}
+		}
+		g.IncConn()
+		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
+			g.justClose(udsConn)
+			continue
+		}
+		rawConn, err := udsConn.SyscallConn()
+		if err != nil {
+			g.justClose(udsConn)
+			//g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.compName, g.id, err)
+			continue
+		}
+		if g.server.httpMode == 2 {
+			servConn := getServer2Conn(connID, g, udsConn, rawConn)
+			go servConn.manager() // servConn is put to pool in manager()
+		} else {
+			servConn := getServer1Conn(connID, g, udsConn, rawConn)
+			go servConn.serve() // servConn is put to pool in serve()
+		}
+		connID++
+	}
+	g.WaitConns() // TODO: max timeout?
+	if DebugLevel() >= 2 {
+		Printf("httpxGate=%d TCP done\n", g.id)
+	}
+	g.server.DecGate()
+}
+func (g *httpxGate) serveTLS() {
+	listener := g.listener.(*net.TCPListener)
+	connID := int64(1)
+	for {
+		tcpConn, err := listener.AcceptTCP()
+		if err != nil {
+			if g.IsShut() {
+				break
+			} else {
+				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.compName, g.id, err)
+				continue
+			}
+		}
+		g.IncConn()
+		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
+			g.justClose(tcpConn)
+			continue
+		}
+		tlsConn := tls.Server(tcpConn, g.server.TLSConfig())
+		// TODO: configure timeout
+		if tlsConn.SetDeadline(time.Now().Add(10*time.Second)) != nil || tlsConn.Handshake() != nil {
+			g.justClose(tlsConn)
+			continue
+		}
+		if connState := tlsConn.ConnectionState(); connState.NegotiatedProtocol == "h2" {
+			servConn := getServer2Conn(connID, g, tlsConn, nil)
+			go servConn.manager() // servConn is put to pool in manager()
+		} else {
+			servConn := getServer1Conn(connID, g, tlsConn, nil)
+			go servConn.serve() // servConn is put to pool in serve()
+		}
+		connID++
+	}
+	g.WaitConns() // TODO: max timeout?
+	if DebugLevel() >= 2 {
+		Printf("httpxGate=%d TLS done\n", g.id)
+	}
+	g.server.DecGate()
+}
+func (g *httpxGate) serveTCP() {
+	listener := g.listener.(*net.TCPListener)
+	connID := int64(1)
+	for {
+		tcpConn, err := listener.AcceptTCP()
+		if err != nil {
+			if g.IsShut() {
+				break
+			} else {
+				//g.stage.Logf("httpxServer[%s] httpxGate[%d]: accept error: %v\n", g.server.compName, g.id, err)
+				continue
+			}
+		}
+		g.IncConn()
+		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
+			g.justClose(tcpConn)
+			continue
+		}
+		rawConn, err := tcpConn.SyscallConn()
+		if err != nil {
+			g.justClose(tcpConn)
+			//g.stage.Logf("httpxServer[%s] httpxGate[%d]: SyscallConn() error: %v\n", g.server.compName, g.id, err)
+			continue
+		}
+		if g.server.httpMode == 2 {
+			servConn := getServer2Conn(connID, g, tcpConn, rawConn)
+			go servConn.manager() // servConn is put to pool in manager()
+		} else {
+			servConn := getServer1Conn(connID, g, tcpConn, rawConn)
+			go servConn.serve() // servConn is put to pool in serve()
+		}
+		connID++
+	}
+	g.WaitConns() // TODO: max timeout?
+	if DebugLevel() >= 2 {
+		Printf("httpxGate=%d TCP done\n", g.id)
+	}
+	g.server.DecGate()
+}
+
+func (g *httpxGate) justClose(netConn net.Conn) {
+	netConn.Close()
+	g.DecConcurrentConns()
+	g.DecConn()
+}
 
 // server1Conn is the server-side HTTP/1.x connection.
 type server1Conn struct {
@@ -81,10 +351,10 @@ func (c *server1Conn) onPut() {
 	c.http1Conn_.onPut()
 }
 
-func (c *server1Conn) manager() { // runner
+func (c *server1Conn) serve() { // runner
 	stream := &c.stream
 	for c.persistent { // each queued stream
-		stream.onUse(c.nextStreamID(), c)
+		stream.onUse(c, c.nextStreamID())
 		stream.execute()
 		stream.onEnd()
 	}
@@ -122,7 +392,7 @@ func (c *server1Conn) manager() { // runner
 	netConn.Close()
 
 	c.gate.DecConcurrentConns()
-	c.gate.DecSubConn()
+	c.gate.DecConn()
 	putServer1Conn(c)
 }
 
@@ -142,8 +412,8 @@ type server1Stream struct {
 	// Stream states (zeros)
 }
 
-func (s *server1Stream) onUse(id int64, conn *server1Conn) { // for non-zeros
-	s.http1Stream_.onUse(id, conn)
+func (s *server1Stream) onUse(conn *server1Conn, id int64) { // for non-zeros
+	s.http1Stream_.onUse(conn, id)
 	s._serverStream_.onUse()
 
 	s.request.onUse()

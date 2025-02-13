@@ -21,7 +21,6 @@ type UDPXRouter struct {
 	router_[*udpxGate]
 	// Mixins
 	_udpxHolder_ // to carry configs used by gates
-	_accessLogger_
 	// Assocs
 	dealets compDict[UDPXDealet] // defined dealets. indexed by component name
 	cases   []*udpxCase          // defined cases. the order must be kept, so we use list. TODO: use ordered map?
@@ -29,14 +28,13 @@ type UDPXRouter struct {
 }
 
 func (r *UDPXRouter) onCreate(compName string, stage *Stage) {
-	r.Server_.OnCreate(compName, stage)
+	r.router_.OnCreate(compName, stage)
 	r.dealets = make(compDict[UDPXDealet])
 }
 
 func (r *UDPXRouter) OnConfigure() {
-	r.Server_.OnConfigure()
+	r.router_.OnConfigure()
 	r._udpxHolder_.onConfigure(r)
-	r._accessLogger_.onConfigure(r)
 
 	// sub components
 	r.dealets.walk(UDPXDealet.OnConfigure)
@@ -45,9 +43,8 @@ func (r *UDPXRouter) OnConfigure() {
 	}
 }
 func (r *UDPXRouter) OnPrepare() {
-	r.Server_.OnPrepare()
+	r.router_.OnPrepare()
 	r._udpxHolder_.onPrepare(r)
-	r._accessLogger_.onPrepare(r)
 
 	// sub components
 	r.dealets.walk(UDPXDealet.OnPrepare)
@@ -98,17 +95,16 @@ func (r *UDPXRouter) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		r.AddGate(gate)
-		r.IncSubGate()
 		go gate.Serve()
 	}
-	r.WaitSubGates()
+	r.WaitGates()
 
 	r.subs.Add(len(r.dealets) + len(r.cases))
 	for _, kase := range r.cases {
 		go kase.OnShutdown()
 	}
 	r.dealets.goWalk(UDPXDealet.OnShutdown)
-	r.WaitSubs() // dealets, cases
+	r.subs.Wait() // dealets, cases
 
 	r.CloseLog()
 	if DebugLevel() >= 2 {
@@ -170,7 +166,7 @@ func (g *udpxGate) serveUDP() {
 	for !g.shut.Load() {
 		time.Sleep(time.Second)
 	}
-	g.server.DecSubGate()
+	g.server.DecGate()
 }
 
 func (g *udpxGate) justClose(pktConn net.PacketConn) {

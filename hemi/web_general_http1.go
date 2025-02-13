@@ -107,7 +107,7 @@ type http1Stream_[C http1Conn] struct { // for server1Stream and backend1Stream
 	// Stream states (zeros)
 }
 
-func (s *http1Stream_[C]) onUse(id int64, conn C) {
+func (s *http1Stream_[C]) onUse(conn C, id int64) {
 	s.httpStream_.onUse(conn)
 	s.id = id
 }

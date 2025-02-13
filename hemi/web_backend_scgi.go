@@ -104,7 +104,7 @@ func (n *scgiNode) dial() (*scgiExchan, error) {
 	if err != nil {
 		return nil, errNodeDown
 	}
-	n.IncSubConn()
+	n.IncConn()
 	return exchan, err
 }
 func (n *scgiNode) _dialUDS() (*scgiExchan, error) {

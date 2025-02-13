@@ -276,7 +276,7 @@ func getBackend2Stream(conn *backend2Conn, id uint32, outWindow int32) *backend2
 	} else {
 		backStream = x.(*backend2Stream)
 	}
-	backStream.onUse(id, conn, outWindow)
+	backStream.onUse(conn, id, outWindow)
 	return backStream
 }
 func putBackend2Stream(backStream *backend2Stream) {
@@ -284,8 +284,8 @@ func putBackend2Stream(backStream *backend2Stream) {
 	poolBackend2Stream.Put(backStream)
 }
 
-func (s *backend2Stream) onUse(id uint32, conn *backend2Conn, outWindow int32) { // for non-zeros
-	s.http2Stream_.onUse(id, conn)
+func (s *backend2Stream) onUse(conn *backend2Conn, id uint32, outWindow int32) { // for non-zeros
+	s.http2Stream_.onUse(conn, id)
 	s._backendStream_.onUse()
 
 	s.inWindow = _64K1      // max size of r.bodyWindow

@@ -28,7 +28,6 @@ type TCPXRouter struct {
 	router_[*tcpxGate]
 	// Mixins
 	_tcpxHolder_ // to carry configs used by gates
-	_accessLogger_
 	// Assocs
 	dealets compDict[TCPXDealet] // defined dealets. indexed by component name
 	cases   []*tcpxCase          // defined cases. the order must be kept, so we use list. TODO: use ordered map?
@@ -37,14 +36,13 @@ type TCPXRouter struct {
 }
 
 func (r *TCPXRouter) onCreate(compName string, stage *Stage) {
-	r.Server_.OnCreate(compName, stage)
+	r.router_.OnCreate(compName, stage)
 	r.dealets = make(compDict[TCPXDealet])
 }
 
 func (r *TCPXRouter) OnConfigure() {
-	r.Server_.OnConfigure()
+	r.router_.OnConfigure()
 	r._tcpxHolder_.onConfigure(r)
-	r._accessLogger_.onConfigure(r)
 
 	// .maxConcurrentConnsPerGate
 	r.ConfigureInt32("maxConcurrentConnsPerGate", &r.maxConcurrentConnsPerGate, func(value int32) error {
@@ -61,9 +59,8 @@ func (r *TCPXRouter) OnConfigure() {
 	}
 }
 func (r *TCPXRouter) OnPrepare() {
-	r.Server_.OnPrepare()
+	r.router_.OnPrepare()
 	r._tcpxHolder_.onPrepare(r)
-	r._accessLogger_.onPrepare(r)
 
 	// sub components
 	r.dealets.walk(TCPXDealet.OnPrepare)
@@ -116,17 +113,16 @@ func (r *TCPXRouter) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		r.AddGate(gate)
-		r.IncSubGate()
 		go gate.Serve()
 	}
-	r.WaitSubGates()
+	r.WaitGates()
 
 	r.subs.Add(len(r.dealets) + len(r.cases))
 	for _, kase := range r.cases {
 		go kase.OnShutdown()
 	}
 	r.dealets.goWalk(TCPXDealet.OnShutdown)
-	r.WaitSubs() // dealets, cases
+	r.subs.Wait() // dealets, cases
 
 	r.CloseLog()
 	if DebugLevel() >= 2 {
@@ -225,7 +221,7 @@ func (g *tcpxGate) serveUDS() {
 				continue
 			}
 		}
-		g.IncSubConn()
+		g.IncConn()
 		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
 			//g.server.Logf("tcpxGate=%d: too many UDS connections!\n", g.id)
 			g.justClose(udsConn)
@@ -240,11 +236,11 @@ func (g *tcpxGate) serveUDS() {
 		go g.server.serveConn(conn) // conn is put to pool in serveConn()
 		connID++
 	}
-	g.WaitSubConns() // TODO: max timeout?
+	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TCP done\n", g.id)
 	}
-	g.server.DecSubGate()
+	g.server.DecGate()
 }
 func (g *tcpxGate) serveTLS() {
 	listener := g.listener.(*net.TCPListener)
@@ -258,7 +254,7 @@ func (g *tcpxGate) serveTLS() {
 				continue
 			}
 		}
-		g.IncSubConn()
+		g.IncConn()
 		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
 			//g.server.Logf("tcpxGate=%d: too many TLS connections!\n", g.id)
 			g.justClose(tcpConn)
@@ -274,11 +270,11 @@ func (g *tcpxGate) serveTLS() {
 		go g.server.serveConn(conn) // conn is put to pool in serveConn()
 		connID++
 	}
-	g.WaitSubConns() // TODO: max timeout?
+	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TLS done\n", g.id)
 	}
-	g.server.DecSubGate()
+	g.server.DecGate()
 }
 func (g *tcpxGate) serveTCP() {
 	listener := g.listener.(*net.TCPListener)
@@ -292,7 +288,7 @@ func (g *tcpxGate) serveTCP() {
 				continue
 			}
 		}
-		g.IncSubConn()
+		g.IncConn()
 		if concurrentConns := g.IncConcurrentConns(); g.ReachLimit(concurrentConns) {
 			//g.server.Logf("tcpxGate=%d: too many TCP connections!\n", g.id)
 			g.justClose(tcpConn)
@@ -310,17 +306,17 @@ func (g *tcpxGate) serveTCP() {
 		go g.server.serveConn(conn) // conn is put to pool in serveConn()
 		connID++
 	}
-	g.WaitSubConns() // TODO: max timeout?
+	g.WaitConns() // TODO: max timeout?
 	if DebugLevel() >= 2 {
 		Printf("tcpxGate=%d TCP done\n", g.id)
 	}
-	g.server.DecSubGate()
+	g.server.DecGate()
 }
 
 func (g *tcpxGate) justClose(netConn net.Conn) {
 	netConn.Close()
 	g.DecConcurrentConns()
-	g.DecSubConn()
+	g.DecConn()
 }
 
 // TCPXConn is a TCPX connection coming from TCPXRouter.

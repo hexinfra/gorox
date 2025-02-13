@@ -23,7 +23,6 @@ type QUIXRouter struct {
 	router_[*quixGate]
 	// Mixins
 	_quixHolder_ // to carry configs used by gates
-	_accessLogger_
 	// Assocs
 	dealets compDict[QUIXDealet] // defined dealets. indexed by component name
 	cases   []*quixCase          // defined cases. the order must be kept, so we use list. TODO: use ordered map?
@@ -32,14 +31,13 @@ type QUIXRouter struct {
 }
 
 func (r *QUIXRouter) onCreate(compName string, stage *Stage) {
-	r.Server_.OnCreate(compName, stage)
+	r.router_.OnCreate(compName, stage)
 	r.dealets = make(compDict[QUIXDealet])
 }
 
 func (r *QUIXRouter) OnConfigure() {
-	r.Server_.OnConfigure()
+	r.router_.OnConfigure()
 	r._quixHolder_.onConfigure(r)
-	r._accessLogger_.onConfigure(r)
 
 	// .maxConcurrentConnsPerGate
 	r.ConfigureInt32("maxConcurrentConnsPerGate", &r.maxConcurrentConnsPerGate, func(value int32) error {
@@ -56,9 +54,8 @@ func (r *QUIXRouter) OnConfigure() {
 	}
 }
 func (r *QUIXRouter) OnPrepare() {
-	r.Server_.OnPrepare()
+	r.router_.OnPrepare()
 	r._quixHolder_.onPrepare(r)
-	r._accessLogger_.onPrepare(r)
 
 	// sub components
 	r.dealets.walk(QUIXDealet.OnPrepare)
@@ -111,17 +108,16 @@ func (r *QUIXRouter) Serve() { // runner
 			EnvExitln(err.Error())
 		}
 		r.AddGate(gate)
-		r.IncSubGate()
 		go gate.Serve()
 	}
-	r.WaitSubGates()
+	r.WaitGates()
 
 	r.subs.Add(len(r.dealets) + len(r.cases))
 	for _, kase := range r.cases {
 		go kase.OnShutdown()
 	}
 	r.dealets.goWalk(QUIXDealet.OnShutdown)
-	r.WaitSubs() // dealets, cases
+	r.subs.Wait() // dealets, cases
 
 	r.CloseLog()
 	if DebugLevel() >= 2 {
@@ -194,12 +190,12 @@ func (g *quixGate) serveTLS() {
 	for !g.IsShut() {
 		time.Sleep(time.Second)
 	}
-	g.server.DecSubGate()
+	g.server.DecGate()
 }
 
 func (g *quixGate) justClose(quicConn *gotcp2.Conn) {
 	quicConn.Close()
-	g.DecSubConn()
+	g.DecConn()
 }
 
 // QUIXConn is a QUIX connection coming from QUIXRouter.

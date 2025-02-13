@@ -36,9 +36,7 @@ type scgiProxy struct {
 func (h *scgiProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
 	h.Handlet_.OnCreate(compName, stage, webapp)
 }
-func (h *scgiProxy) OnShutdown() {
-	h.webapp.DecHandlet()
-}
+func (h *scgiProxy) OnShutdown() { h.webapp.DecHandlet() }
 
 func (h *scgiProxy) OnConfigure() {
 	// .toBackend

@@ -25,9 +25,7 @@ type cgiHandlet struct {
 func (h *cgiHandlet) onCreate(compName string, stage *Stage, webapp *Webapp) {
 	h.Handlet_.OnCreate(compName, stage, webapp)
 }
-func (h *cgiHandlet) OnShutdown() {
-	h.webapp.DecHandlet()
-}
+func (h *cgiHandlet) OnShutdown() { h.webapp.DecHandlet() }
 
 func (h *cgiHandlet) OnConfigure() {}
 func (h *cgiHandlet) OnPrepare()   {}

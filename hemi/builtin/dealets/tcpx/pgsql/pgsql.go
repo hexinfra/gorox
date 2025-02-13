@@ -34,9 +34,7 @@ func (d *pgsqlProxy) onCreate(compName string, stage *Stage, router *TCPXRouter)
 	d.TCPXDealet_.OnCreate(compName, stage)
 	d.router = router
 }
-func (d *pgsqlProxy) OnShutdown() {
-	d.router.DecDealet()
-}
+func (d *pgsqlProxy) OnShutdown() { d.router.DecDealet() }
 
 func (d *pgsqlProxy) OnConfigure() {
 	// TODO

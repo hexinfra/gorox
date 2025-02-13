@@ -31,9 +31,7 @@ type httpsChecker struct {
 func (h *httpsChecker) onCreate(compName string, stage *Stage, webapp *Webapp) {
 	h.Handlet_.OnCreate(compName, stage, webapp)
 }
-func (h *httpsChecker) OnShutdown() {
-	h.Webapp().DecHandlet()
-}
+func (h *httpsChecker) OnShutdown() { h.Webapp().DecHandlet() }
 
 func (h *httpsChecker) OnConfigure() {
 	// .permanent

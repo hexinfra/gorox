@@ -32,9 +32,7 @@ func (d *limitDealet) onCreate(compName string, stage *Stage, router *TCPXRouter
 	d.TCPXDealet_.OnCreate(compName, stage)
 	d.router = router
 }
-func (d *limitDealet) OnShutdown() {
-	d.router.DecDealet()
-}
+func (d *limitDealet) OnShutdown() { d.router.DecDealet() }
 
 func (d *limitDealet) OnConfigure() {
 	// TODO

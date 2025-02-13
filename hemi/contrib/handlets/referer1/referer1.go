@@ -44,9 +44,7 @@ type referer1Checker struct {
 func (h *referer1Checker) onCreate(compName string, stage *Stage, webapp *Webapp) {
 	h.Handlet_.OnCreate(compName, stage, webapp)
 }
-func (h *referer1Checker) OnShutdown() {
-	h.Webapp().DecHandlet()
-}
+func (h *referer1Checker) OnShutdown() { h.Webapp().DecHandlet() }
 
 func (h *referer1Checker) OnConfigure() {
 	// .allow

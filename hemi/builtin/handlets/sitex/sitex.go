@@ -39,9 +39,7 @@ func (h *Sitex) OnCreate(compName string, stage *Stage, webapp *Webapp) {
 	h.hostnameSites = make(map[string]*Site)
 	h.sites = make(map[string]*Site)
 }
-func (h *Sitex) OnShutdown() {
-	h.Webapp().DecHandlet()
-}
+func (h *Sitex) OnShutdown() { h.Webapp().DecHandlet() }
 
 func (h *Sitex) OnConfigure() {
 	// .sites

@@ -103,7 +103,7 @@ func (r *UDPXRouter) Serve() { // runner
 	}
 	r.WaitSubGates()
 
-	r.IncSubs(len(r.dealets) + len(r.cases))
+	r.subs.Add(len(r.dealets) + len(r.cases))
 	for _, kase := range r.cases {
 		go kase.OnShutdown()
 	}
@@ -249,9 +249,7 @@ func (c *udpxCase) onCreate(compName string, router *UDPXRouter) {
 	c.MakeComp(compName)
 	c.router = router
 }
-func (c *udpxCase) OnShutdown() {
-	c.router.DecCase()
-}
+func (c *udpxCase) OnShutdown() { c.router.DecCase() }
 
 func (c *udpxCase) OnConfigure() {
 	if c.info == nil {

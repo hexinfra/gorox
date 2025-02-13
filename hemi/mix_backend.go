@@ -87,7 +87,7 @@ func (b *Backend_[N]) Stage() *Stage { return b.stage }
 
 func (b *Backend_[N]) Maintain() { // runner
 	for _, node := range b.nodes {
-		b.IncSub() // node
+		b.subs.Add(1) // node
 		go node.Maintain()
 	}
 
@@ -210,7 +210,7 @@ func (n *Node_[B]) markDown()    { n.down.Store(true) }
 func (n *Node_[B]) markUp()      { n.down.Store(false) }
 func (n *Node_[B]) isDown() bool { return n.down.Load() }
 
-func (n *Node_[B]) IncSubConn()          { n.IncSub() }
+func (n *Node_[B]) IncSubConn()          { n.subs.Add(1) }
 func (n *Node_[B]) DecSubConn()          { n.subs.Done() }
 func (n *Node_[B]) DecSubConns(size int) { n.subs.Add(-size) }
 func (n *Node_[B]) WaitSubConns()        { n.WaitSubs() }

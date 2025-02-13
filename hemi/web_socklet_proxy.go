@@ -28,9 +28,7 @@ type sockProxy struct {
 func (s *sockProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
 	s.Socklet_.OnCreate(compName, stage, webapp)
 }
-func (s *sockProxy) OnShutdown() {
-	s.webapp.DecSocklet()
-}
+func (s *sockProxy) OnShutdown() { s.webapp.DecSocklet() }
 
 func (s *sockProxy) OnConfigure() {
 	// .toBackend

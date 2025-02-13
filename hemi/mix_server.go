@@ -112,7 +112,7 @@ func (s *Server_[G]) ColonportBytes() []byte {
 	}
 }
 
-func (s *Server_[G]) IncSubGate()   { s.IncSub() }
+func (s *Server_[G]) IncSubGate()   { s.subs.Add(1) }
 func (s *Server_[G]) DecSubGate()   { s.subs.Done() }
 func (s *Server_[G]) WaitSubGates() { s.WaitSubs() }
 

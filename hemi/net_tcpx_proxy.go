@@ -30,9 +30,7 @@ func (d *tcpxProxy) onCreate(compName string, stage *Stage, router *TCPXRouter) 
 	d.TCPXDealet_.OnCreate(compName, stage)
 	d.router = router
 }
-func (d *tcpxProxy) OnShutdown() {
-	d.router.DecDealet()
-}
+func (d *tcpxProxy) OnShutdown() { d.router.DecDealet() }
 
 func (d *tcpxProxy) OnConfigure() {
 	// .toBackend

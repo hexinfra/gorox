@@ -116,7 +116,7 @@ func (r *QUIXRouter) Serve() { // runner
 	}
 	r.WaitSubGates()
 
-	r.IncSubs(len(r.dealets) + len(r.cases))
+	r.subs.Add(len(r.dealets) + len(r.cases))
 	for _, kase := range r.cases {
 		go kase.OnShutdown()
 	}
@@ -319,9 +319,7 @@ func (c *quixCase) onCreate(compName string, router *QUIXRouter) {
 	c.MakeComp(compName)
 	c.router = router
 }
-func (c *quixCase) OnShutdown() {
-	c.router.DecCase()
-}
+func (c *quixCase) OnShutdown() { c.router.DecCase() }
 
 func (c *quixCase) OnConfigure() {
 	if c.info == nil {

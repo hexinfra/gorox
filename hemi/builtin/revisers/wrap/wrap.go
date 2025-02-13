@@ -33,9 +33,7 @@ type wrapReviser struct {
 func (r *wrapReviser) onCreate(compName string, stage *Stage, webapp *Webapp) {
 	r.Reviser_.OnCreate(compName, stage, webapp)
 }
-func (r *wrapReviser) OnShutdown() {
-	r.Webapp().DecReviser()
-}
+func (r *wrapReviser) OnShutdown() { r.Webapp().DecReviser() }
 
 func (r *wrapReviser) OnConfigure() {
 	// .rank

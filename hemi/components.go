@@ -281,9 +281,7 @@ func _configureProp[T any](c *Component_, propName string, prop *T, conv func(*V
 	}
 }
 
-func (c *Component_) IncSub()       { c.subs.Add(1) }
-func (c *Component_) IncSubs(n int) { c.subs.Add(n) }
-func (c *Component_) WaitSubs()     { c.subs.Wait() }
+func (c *Component_) WaitSubs() { c.subs.Wait() }
 
 func (c *Component_) LoopRun(interval time.Duration, callback func(now time.Time)) {
 	ticker := time.NewTicker(interval)
@@ -388,54 +386,54 @@ func (s *Stage) OnShutdown() {
 	}
 
 	// Cronjobs
-	s.IncSubs(len(s.cronjobs))
+	s.subs.Add(len(s.cronjobs))
 	s.cronjobs.goWalk(Cronjob.OnShutdown)
 	s.WaitSubs()
 
 	// Servers
-	s.IncSubs(len(s.servers))
+	s.subs.Add(len(s.servers))
 	s.servers.goWalk(Server.OnShutdown)
 	s.WaitSubs()
 
 	// Routers
-	s.IncSubs(len(s.udpxRouters) + len(s.tcpxRouters) + len(s.quixRouters))
+	s.subs.Add(len(s.udpxRouters) + len(s.tcpxRouters) + len(s.quixRouters))
 	s.udpxRouters.goWalk((*UDPXRouter).OnShutdown)
 	s.tcpxRouters.goWalk((*TCPXRouter).OnShutdown)
 	s.quixRouters.goWalk((*QUIXRouter).OnShutdown)
 	s.WaitSubs()
 
 	// Webapps
-	s.IncSubs(len(s.webapps))
+	s.subs.Add(len(s.webapps))
 	s.webapps.goWalk((*Webapp).OnShutdown)
 	s.WaitSubs()
 
 	// Hcaches & Hstates
-	s.IncSubs(len(s.hcaches) + len(s.hstates))
+	s.subs.Add(len(s.hcaches) + len(s.hstates))
 	s.hcaches.goWalk(Hcache.OnShutdown)
 	s.hstates.goWalk(Hstate.OnShutdown)
 	s.WaitSubs()
 
 	// Services
-	s.IncSubs(len(s.services))
+	s.subs.Add(len(s.services))
 	s.services.goWalk((*Service).OnShutdown)
 	s.WaitSubs()
 
 	// Backends
-	s.IncSubs(len(s.backends))
+	s.subs.Add(len(s.backends))
 	s.backends.goWalk(Backend.OnShutdown)
 	s.WaitSubs()
 
 	// Fixtures, manually one by one. Mind the order!
 
-	s.IncSub() // fcache
+	s.subs.Add(1) // fcache
 	s.fcache.OnShutdown()
 	s.WaitSubs()
 
-	s.IncSub() // resolv
+	s.subs.Add(1) // resolv
 	s.resolv.OnShutdown()
 	s.WaitSubs()
 
-	s.IncSub() // clock
+	s.subs.Add(1) // clock
 	s.clock.OnShutdown()
 	s.WaitSubs()
 

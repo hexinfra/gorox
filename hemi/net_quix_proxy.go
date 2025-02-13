@@ -30,9 +30,7 @@ func (d *quixProxy) onCreate(compName string, stage *Stage, router *QUIXRouter) 
 	d.QUIXDealet_.OnCreate(compName, stage)
 	d.router = router
 }
-func (d *quixProxy) OnShutdown() {
-	d.router.DecDealet()
-}
+func (d *quixProxy) OnShutdown() { d.router.DecDealet() }
 
 func (d *quixProxy) OnConfigure() {
 	// .toBackend

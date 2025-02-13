@@ -25,9 +25,7 @@ func (h *myHandlet) onCreate(compName string, stage *Stage, webapp *Webapp) {
 	m.Map("/foo", h.handleFoo)
 	h.UseMapper(h, m)
 }
-func (h *myHandlet) OnShutdown() {
-	h.Webapp().DecHandlet()
-}
+func (h *myHandlet) OnShutdown() { h.Webapp().DecHandlet() }
 
 func (h *myHandlet) OnConfigure() {}
 func (h *myHandlet) OnPrepare()   {}

@@ -33,9 +33,7 @@ type ssiReviser struct {
 func (r *ssiReviser) onCreate(compName string, stage *Stage, webapp *Webapp) {
 	r.Reviser_.OnCreate(compName, stage, webapp)
 }
-func (r *ssiReviser) OnShutdown() {
-	r.Webapp().DecReviser()
-}
+func (r *ssiReviser) OnShutdown() { r.Webapp().DecReviser() }
 
 func (r *ssiReviser) OnConfigure() {
 	// .rank

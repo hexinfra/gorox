@@ -25,9 +25,7 @@ type faviconHandlet struct {
 func (h *faviconHandlet) onCreate(compName string, stage *Stage, webapp *Webapp) {
 	h.Handlet_.OnCreate(compName, stage, webapp)
 }
-func (h *faviconHandlet) OnShutdown() {
-	h.webapp.DecHandlet()
-}
+func (h *faviconHandlet) OnShutdown() { h.webapp.DecHandlet() }
 
 func (h *faviconHandlet) OnConfigure() {}
 func (h *faviconHandlet) OnPrepare()   {}

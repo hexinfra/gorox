@@ -30,9 +30,7 @@ func (d *udpxProxy) onCreate(compName string, stage *Stage, router *UDPXRouter) 
 	d.UDPXDealet_.OnCreate(compName, stage)
 	d.router = router
 }
-func (d *udpxProxy) OnShutdown() {
-	d.router.DecDealet()
-}
+func (d *udpxProxy) OnShutdown() { d.router.DecDealet() }
 
 func (d *udpxProxy) OnConfigure() {
 	// .toBackend

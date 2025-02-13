@@ -205,7 +205,7 @@ func (a *Webapp) maintain() { // runner
 		// TODO
 	})
 
-	a.IncSubs(len(a.handlets) + len(a.revisers) + len(a.socklets) + len(a.rules))
+	a.subs.Add(len(a.handlets) + len(a.revisers) + len(a.socklets) + len(a.rules))
 	for _, rule := range a.rules {
 		go rule.OnShutdown()
 	}

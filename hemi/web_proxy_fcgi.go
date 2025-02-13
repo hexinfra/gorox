@@ -40,9 +40,7 @@ type fcgiProxy struct {
 func (h *fcgiProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
 	h.Handlet_.OnCreate(compName, stage, webapp)
 }
-func (h *fcgiProxy) OnShutdown() {
-	h.webapp.DecHandlet()
-}
+func (h *fcgiProxy) OnShutdown() { h.webapp.DecHandlet() }
 
 func (h *fcgiProxy) OnConfigure() {
 	// .toBackend

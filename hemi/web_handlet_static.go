@@ -39,9 +39,7 @@ type staticHandlet struct {
 func (h *staticHandlet) onCreate(compName string, stage *Stage, webapp *Webapp) {
 	h.Handlet_.OnCreate(compName, stage, webapp)
 }
-func (h *staticHandlet) OnShutdown() {
-	h.webapp.DecHandlet()
-}
+func (h *staticHandlet) OnShutdown() { h.webapp.DecHandlet() }
 
 func (h *staticHandlet) OnConfigure() {
 	// .webRoot

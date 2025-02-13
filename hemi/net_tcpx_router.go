@@ -121,7 +121,7 @@ func (r *TCPXRouter) Serve() { // runner
 	}
 	r.WaitSubGates()
 
-	r.IncSubs(len(r.dealets) + len(r.cases))
+	r.subs.Add(len(r.dealets) + len(r.cases))
 	for _, kase := range r.cases {
 		go kase.OnShutdown()
 	}
@@ -415,9 +415,7 @@ func (c *tcpxCase) onCreate(compName string, router *TCPXRouter) {
 	c.MakeComp(compName)
 	c.router = router
 }
-func (c *tcpxCase) OnShutdown() {
-	c.router.DecCase()
-}
+func (c *tcpxCase) OnShutdown() { c.router.DecCase() }
 
 func (c *tcpxCase) OnConfigure() {
 	if c.info == nil {

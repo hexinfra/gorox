@@ -102,7 +102,7 @@ func (s *httpxServer) Serve() { // runner
 	if DebugLevel() >= 2 {
 		Printf("httpxServer=%s done\n", s.CompName())
 	}
-	s.stage.DecSub() // server
+	s.stage.DecServer()
 }
 
 // httpxGate is a gate of httpxServer.

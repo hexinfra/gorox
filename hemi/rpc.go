@@ -76,7 +76,7 @@ func (s *Service) maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("service=%s done\n", s.CompName())
 	}
-	s.stage.DecSub() // service
+	s.stage.DecService()
 }
 
 func (s *Service) BindServer(server RPCServer) { s.servers = append(s.servers, server) }

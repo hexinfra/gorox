@@ -35,7 +35,7 @@ func (d *pgsqlProxy) onCreate(compName string, stage *Stage, router *TCPXRouter)
 	d.router = router
 }
 func (d *pgsqlProxy) OnShutdown() {
-	d.router.DecSub() // dealet
+	d.router.DecDealet()
 }
 
 func (d *pgsqlProxy) OnConfigure() {

@@ -86,7 +86,7 @@ func (n *tcpxNode) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("tcpxNode=%s done\n", n.compName)
 	}
-	n.backend.DecSub() // node
+	n.backend.DecNode()
 }
 
 func (n *tcpxNode) dial() (*TConn, error) {

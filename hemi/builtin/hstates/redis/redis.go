@@ -50,7 +50,7 @@ func (s *redisHstate) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("redisHstate=%s done\n", s.CompName())
 	}
-	s.Stage().DecSub() // hstate
+	s.Stage().DecHstate()
 }
 
 func (s *redisHstate) Set(sid []byte, sess *Session) error {

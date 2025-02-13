@@ -47,5 +47,5 @@ func (j *cleanCronjob) Schedule() { // runner
 	if DebugLevel() >= 2 {
 		Printf("cleanCronjob=%s done\n", j.CompName())
 	}
-	j.Stage().DecSub() // cronjob
+	j.Stage().DecCronjob()
 }

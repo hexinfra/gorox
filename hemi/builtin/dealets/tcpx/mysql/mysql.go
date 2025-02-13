@@ -35,7 +35,7 @@ func (d *mysqlProxy) onCreate(compName string, stage *Stage, router *TCPXRouter)
 	d.router = router
 }
 func (d *mysqlProxy) OnShutdown() {
-	d.router.DecSub() // dealet
+	d.router.DecDealet()
 }
 
 func (d *mysqlProxy) OnConfigure() {

@@ -28,7 +28,7 @@ func (h *rewriterChecker) onCreate(compName string, stage *Stage, webapp *Webapp
 	h.Handlet_.OnCreate(compName, stage, webapp)
 }
 func (h *rewriterChecker) OnShutdown() {
-	h.webapp.DecSub() // handlet
+	h.webapp.DecHandlet()
 }
 
 func (h *rewriterChecker) OnConfigure() {

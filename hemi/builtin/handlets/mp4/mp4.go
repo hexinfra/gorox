@@ -30,7 +30,7 @@ func (h *mp4Handlet) onCreate(compName string, stage *Stage, webapp *Webapp) {
 	h.Handlet_.OnCreate(compName, stage, webapp)
 }
 func (h *mp4Handlet) OnShutdown() {
-	h.Webapp().DecSub() // handlet
+	h.Webapp().DecHandlet()
 }
 
 func (h *mp4Handlet) OnConfigure() {

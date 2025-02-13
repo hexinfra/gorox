@@ -33,7 +33,7 @@ func (d *dnsProxy) onCreate(compName string, stage *Stage, router *UDPXRouter) {
 	d.router = router
 }
 func (d *dnsProxy) OnShutdown() {
-	d.router.DecSub() // dealet
+	d.router.DecDealet()
 }
 
 func (d *dnsProxy) OnConfigure() {

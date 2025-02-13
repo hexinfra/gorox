@@ -218,7 +218,7 @@ func (a *Webapp) maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("webapp=%s done\n", a.CompName())
 	}
-	a.stage.DecSub() // webapp
+	a.stage.DecWebapp()
 }
 
 func (a *Webapp) createHandlet(compSign string, compName string) Handlet {
@@ -282,6 +282,11 @@ func (a *Webapp) createRule(compName string) *Rule {
 	a.rules = append(a.rules, rule)
 	return rule
 }
+
+func (a *Webapp) DecHandlet() { a.subs.Done() }
+func (a *Webapp) DecReviser() { a.subs.Done() }
+func (a *Webapp) DecSocklet() { a.subs.Done() }
+func (a *Webapp) DecRule()    { a.subs.Done() }
 
 func (a *Webapp) bindServer(server HTTPServer) { a.servers = append(a.servers, server) }
 
@@ -369,9 +374,7 @@ func (r *Rule) onCreate(compName string, webapp *Webapp) {
 	r.MakeComp(compName)
 	r.webapp = webapp
 }
-func (r *Rule) OnShutdown() {
-	r.webapp.DecSub() // rule
-}
+func (r *Rule) OnShutdown() { r.webapp.DecRule() }
 
 func (r *Rule) OnConfigure() {
 	if r.info == nil {

@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// HTTPBackend
+// HTTPBackend is the http backend.
 type HTTPBackend interface { // for *HTTP[1-3]Backend
 	// Imports
 	Backend
@@ -38,7 +38,7 @@ func (b *httpBackend_[N]) OnPrepare() {
 	b.PrepareNodes()
 }
 
-// HTTPNode
+// HTTPNode is the http node.
 type HTTPNode interface {
 	// Imports
 	Node
@@ -86,7 +86,7 @@ func (n *httpNode_[B]) onPrepare() {
 	n._httpHolder_.onPrepare(n, 0755)
 }
 
-// backendConn
+// backendConn is the backend-side http connection.
 type backendConn interface {
 }
 
@@ -114,7 +114,7 @@ func (c *_backendConn_[N]) isAlive() bool {
 	return c.expireTime.IsZero() || time.Now().Before(c.expireTime)
 }
 
-// BackendStream
+// BackendStream is the backend-side http stream.
 type BackendStream interface { // for *backend[1-3]Stream
 	Response() BackendResponse
 	Request() BackendRequest
@@ -316,7 +316,7 @@ func (r *backendResponse_) _applyHeaderLine(lineIndex uint8) bool {
 	return true
 }
 
-var ( // perfect hash table for singleton response header fields
+var ( // minimal perfect hash table for singleton response header fields
 	backendResponseSingletonHeaderFieldTable = [14]struct {
 		parse bool // need general parse or not
 		fdesc      // allowQuote, allowEmpty, allowParam, hasComment
@@ -399,7 +399,7 @@ func (r *backendResponse_) checkSetCookie(headerLine *pair, lineIndex uint8) boo
 	return true
 }
 
-var ( // perfect hash table for important response header fields
+var ( // minimal perfect hash table for important response header fields
 	backendResponseImportantHeaderFieldTable = [20]struct {
 		fdesc // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*backendResponse_, []pair, uint8, uint8) bool
@@ -690,7 +690,7 @@ func (r *backendRequest_) endVague() error { // revising is not supported in bac
 	return r.out.finalizeVague()
 }
 
-var ( // perfect hash table for request critical header fields
+var ( // minimal perfect hash table for request critical header fields
 	backendRequestCriticalHeaderFieldTable = [12]struct {
 		hash uint16
 		name []byte

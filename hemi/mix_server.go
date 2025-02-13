@@ -113,7 +113,7 @@ func (s *Server_[G]) ColonportBytes() []byte {
 }
 
 func (s *Server_[G]) IncSubGate()   { s.IncSub() }
-func (s *Server_[G]) DecSubGate()   { s.DecSub() }
+func (s *Server_[G]) DecSubGate()   { s.subs.Done() }
 func (s *Server_[G]) WaitSubGates() { s.WaitSubs() }
 
 func (s *Server_[G]) holder() _holder_ { return s._holder_ } // for copying configs

@@ -103,13 +103,14 @@ func (b *Backend_[N]) Maintain() { // runner
 		Printf("backend=%s done\n", b.CompName())
 	}
 
-	b.stage.DecSub() // backend
+	b.stage.DecBackend()
 }
 
 func (b *Backend_[N]) AddNode(node N) { // CreateNode() uses this to append nodes
 	node.setShell(node)
 	b.nodes = append(b.nodes, node)
 }
+func (b *Backend_[N]) DecNode() { b.subs.Done() }
 
 func (b *Backend_[N]) _nextIndexByRoundRobin() int64 {
 	index := b.nodeIndex.Add(1)
@@ -210,6 +211,6 @@ func (n *Node_[B]) markUp()      { n.down.Store(false) }
 func (n *Node_[B]) isDown() bool { return n.down.Load() }
 
 func (n *Node_[B]) IncSubConn()          { n.IncSub() }
-func (n *Node_[B]) DecSubConn()          { n.DecSub() }
-func (n *Node_[B]) DecSubConns(size int) { n.DecSubs(size) }
+func (n *Node_[B]) DecSubConn()          { n.subs.Done() }
+func (n *Node_[B]) DecSubConns(size int) { n.subs.Add(-size) }
 func (n *Node_[B]) WaitSubConns()        { n.WaitSubs() }

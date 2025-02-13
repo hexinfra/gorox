@@ -58,7 +58,7 @@ func (c *filesysHcache) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("filesysHcache=%s done\n", c.CompName())
 	}
-	c.Stage().DecSub() // hcache
+	c.Stage().DecHcache()
 }
 
 func (c *filesysHcache) Set(key []byte, hobject *Hobject) {

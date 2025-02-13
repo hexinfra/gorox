@@ -102,7 +102,7 @@ func (f *clockFixture) run() { // runner
 	if DebugLevel() >= 2 {
 		Println("clock done")
 	}
-	f.stage.DecSub() // clock
+	f.stage.decFixture()
 }
 
 func (f *clockFixture) writeDate1(dst []byte) int {
@@ -344,7 +344,7 @@ const ( // clock related
 	clockMonthString  = "JanFebMarAprMayJunJulAugSepOctNovDec"
 )
 
-var ( // perfect hash table for months
+var ( // minimal perfect hash table for months
 	clockMonthTable = [12]struct {
 		hash  uint16
 		from  int8
@@ -461,7 +461,7 @@ func (f *fcacheFixture) run() { // runner
 	if DebugLevel() >= 2 {
 		Println("fcache done")
 	}
-	f.stage.DecSub() // fcache
+	f.stage.decFixture()
 }
 
 func (f *fcacheFixture) getEntry(path []byte) (*fcacheEntry, error) {
@@ -600,7 +600,7 @@ func (f *resolvFixture) run() { // runner
 	if DebugLevel() >= 2 {
 		Println("resolv done")
 	}
-	f.stage.DecSub() // resolv
+	f.stage.decFixture()
 }
 
 func (f *resolvFixture) Register(name string, addresses []string) bool {

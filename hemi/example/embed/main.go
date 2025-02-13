@@ -86,7 +86,7 @@ func (h *myHandlet) onCreate(compName string, stage *Stage, webapp *Webapp) {
 	h.UseMapper(h, m)
 }
 func (h *myHandlet) OnShutdown() {
-	h.Webapp().DecSub()
+	h.Webapp().DecHandlet()
 }
 
 func (h *myHandlet) OnConfigure() {}

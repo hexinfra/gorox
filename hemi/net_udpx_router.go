@@ -18,7 +18,7 @@ import (
 // UDPXRouter
 type UDPXRouter struct {
 	// Parent
-	Server_[*udpxGate]
+	router_[*udpxGate]
 	// Mixins
 	_udpxHolder_ // to carry configs used by gates
 	_accessLogger_
@@ -114,7 +114,7 @@ func (r *UDPXRouter) Serve() { // runner
 	if DebugLevel() >= 2 {
 		Printf("udpxRouter=%s done\n", r.CompName())
 	}
-	r.stage.DecSub() // router
+	r.stage.DecRouter()
 }
 
 func (r *UDPXRouter) udpxHolder() _udpxHolder_ { return r._udpxHolder_ }
@@ -250,7 +250,7 @@ func (c *udpxCase) onCreate(compName string, router *UDPXRouter) {
 	c.router = router
 }
 func (c *udpxCase) OnShutdown() {
-	c.router.DecSub() // case
+	c.router.DecCase()
 }
 
 func (c *udpxCase) OnConfigure() {

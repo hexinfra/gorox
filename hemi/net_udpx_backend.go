@@ -85,7 +85,7 @@ func (n *udpxNode) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("udpxNode=%s done\n", n.compName)
 	}
-	n.backend.DecSub() // node
+	n.backend.DecNode()
 }
 
 func (n *udpxNode) dial() (*UConn, error) {

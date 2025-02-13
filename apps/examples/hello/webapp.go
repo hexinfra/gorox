@@ -32,7 +32,7 @@ func (h *helloHandlet) onCreate(compName string, stage *Stage, webapp *Webapp) {
 	h.Handlet_.OnCreate(compName, stage, webapp)
 }
 func (h *helloHandlet) OnShutdown() {
-	h.Webapp().DecSub() // handlet
+	h.Webapp().DecHandlet()
 }
 
 func (h *helloHandlet) OnConfigure() {

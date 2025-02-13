@@ -56,7 +56,7 @@ func (s *http3Server) Serve() { // runner
 	if DebugLevel() >= 2 {
 		Printf("http3Server=%s done\n", s.CompName())
 	}
-	s.stage.DecSub() // server
+	s.stage.DecServer()
 }
 
 // http3Gate is a gate of http3Server.

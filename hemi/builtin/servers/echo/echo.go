@@ -61,7 +61,7 @@ func (s *echoServer) Serve() { // runner
 	if DebugLevel() >= 2 {
 		Printf("echoServer=%s done\n", s.CompName())
 	}
-	s.Stage().DecSub() // server
+	s.Stage().DecServer()
 }
 
 func (s *echoServer) serveConn(conn *echoConn) { // runner

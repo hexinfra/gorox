@@ -26,7 +26,7 @@ func (h *cgiHandlet) onCreate(compName string, stage *Stage, webapp *Webapp) {
 	h.Handlet_.OnCreate(compName, stage, webapp)
 }
 func (h *cgiHandlet) OnShutdown() {
-	h.webapp.DecSub() // handlet
+	h.webapp.DecHandlet()
 }
 
 func (h *cgiHandlet) OnConfigure() {}

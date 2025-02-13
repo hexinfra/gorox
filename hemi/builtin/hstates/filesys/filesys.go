@@ -58,7 +58,7 @@ func (s *filesysHstate) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("filesysHstate=%s done\n", s.CompName())
 	}
-	s.Stage().DecSub() // hstate
+	s.Stage().DecHstate()
 }
 
 func (s *filesysHstate) Set(sid []byte, sess *Session) error {

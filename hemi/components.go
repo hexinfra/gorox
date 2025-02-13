@@ -184,7 +184,6 @@ type Component interface {
 	OnPrepare()
 
 	OnShutdown()
-	DecSub() // called by sub components or objects of this component
 
 	setName(compName string)
 	setShell(shell Component)
@@ -284,8 +283,6 @@ func _configureProp[T any](c *Component_, propName string, prop *T, conv func(*V
 
 func (c *Component_) IncSub()       { c.subs.Add(1) }
 func (c *Component_) IncSubs(n int) { c.subs.Add(n) }
-func (c *Component_) DecSub()       { c.subs.Done() }
-func (c *Component_) DecSubs(n int) { c.subs.Add(-n) }
 func (c *Component_) WaitSubs()     { c.subs.Wait() }
 
 func (c *Component_) LoopRun(interval time.Duration, callback func(now time.Time)) {
@@ -641,6 +638,16 @@ func (s *Stage) createCronjob(compSign string, compName string) Cronjob {
 	s.cronjobs[compName] = cronjob
 	return cronjob
 }
+
+func (s *Stage) decFixture() { s.subs.Done() }
+func (s *Stage) DecBackend() { s.subs.Done() }
+func (s *Stage) DecService() { s.subs.Done() }
+func (s *Stage) DecHstate()  { s.subs.Done() }
+func (s *Stage) DecHcache()  { s.subs.Done() }
+func (s *Stage) DecWebapp()  { s.subs.Done() }
+func (s *Stage) DecRouter()  { s.subs.Done() }
+func (s *Stage) DecServer()  { s.subs.Done() }
+func (s *Stage) DecCronjob() { s.subs.Done() }
 
 func (s *Stage) ID() int32     { return s.id }
 func (s *Stage) NumCPU() int32 { return s.numCPU }

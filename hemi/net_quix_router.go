@@ -20,7 +20,7 @@ import (
 // QUIXRouter
 type QUIXRouter struct {
 	// Parent
-	Server_[*quixGate]
+	router_[*quixGate]
 	// Mixins
 	_quixHolder_ // to carry configs used by gates
 	_accessLogger_
@@ -127,7 +127,7 @@ func (r *QUIXRouter) Serve() { // runner
 	if DebugLevel() >= 2 {
 		Printf("quixRouter=%s done\n", r.CompName())
 	}
-	r.stage.DecSub() // router
+	r.stage.DecRouter()
 }
 
 func (r *QUIXRouter) quixHolder() _quixHolder_ { return r._quixHolder_ }
@@ -320,7 +320,7 @@ func (c *quixCase) onCreate(compName string, router *QUIXRouter) {
 	c.router = router
 }
 func (c *quixCase) OnShutdown() {
-	c.router.DecSub() // case
+	c.router.DecCase()
 }
 
 func (c *quixCase) OnConfigure() {

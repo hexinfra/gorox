@@ -60,7 +60,7 @@ func (s *socksServer) Serve() { // runner
 	if DebugLevel() >= 2 {
 		Printf("socksServer=%s done\n", s.CompName())
 	}
-	s.Stage().DecSub() // server
+	s.Stage().DecServer()
 }
 
 func (s *socksServer) serveConn(conn *socksConn) { // runner

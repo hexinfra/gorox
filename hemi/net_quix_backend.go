@@ -84,7 +84,7 @@ func (n *quixNode) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("quixNode=%s done\n", n.compName)
 	}
-	n.backend.DecSub() // node
+	n.backend.DecNode()
 }
 
 func (n *quixNode) dialStream() (*QStream, error) {

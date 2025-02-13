@@ -47,7 +47,7 @@ func (h *access1Checker) onCreate(compName string, stage *Stage, webapp *Webapp)
 	h.Handlet_.OnCreate(compName, stage, webapp)
 }
 func (h *access1Checker) OnShutdown() {
-	h.Webapp().DecSub() // handlet
+	h.Webapp().DecHandlet()
 }
 
 func (h *access1Checker) OnConfigure() {

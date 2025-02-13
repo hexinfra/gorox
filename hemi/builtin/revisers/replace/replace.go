@@ -34,7 +34,7 @@ func (r *replaceReviser) onCreate(compName string, stage *Stage, webapp *Webapp)
 	r.Reviser_.OnCreate(compName, stage, webapp)
 }
 func (r *replaceReviser) OnShutdown() {
-	r.Webapp().DecSub() // reviser
+	r.Webapp().DecReviser()
 }
 
 func (r *replaceReviser) OnConfigure() {

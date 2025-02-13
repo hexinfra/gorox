@@ -85,7 +85,7 @@ func (n *scgiNode) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("scgiNode=%s done\n", n.compName)
 	}
-	n.backend.DecSub() // node
+	n.backend.DecNode()
 }
 
 func (n *scgiNode) dial() (*scgiExchan, error) {

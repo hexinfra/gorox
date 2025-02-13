@@ -32,7 +32,7 @@ func (h *httpsChecker) onCreate(compName string, stage *Stage, webapp *Webapp) {
 	h.Handlet_.OnCreate(compName, stage, webapp)
 }
 func (h *httpsChecker) OnShutdown() {
-	h.Webapp().DecSub() // handlet
+	h.Webapp().DecHandlet()
 }
 
 func (h *httpsChecker) OnConfigure() {

@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-// HTTPServer
+// HTTPServer is the http server.
 type HTTPServer interface { // for *http[x3]Server
 	// Imports
 	Server
@@ -156,7 +156,7 @@ func (s *httpServer_[G]) findWebapp(hostname []byte) *Webapp {
 
 func (s *httpServer_[G]) httpHolder() _httpHolder_ { return s._httpHolder_ } // for copying configs
 
-// httpGate
+// httpGate is the http gate.
 type httpGate interface {
 	// Imports
 	Gate
@@ -188,7 +188,7 @@ func (g *httpGate_[S]) ReachLimit(concurrentConns int32) bool {
 	return concurrentConns > g.maxConcurrentConns
 }
 
-// serverConn
+// serverConn is the server-side http connection.
 type serverConn interface {
 }
 
@@ -210,7 +210,7 @@ func (c *_serverConn_[G]) onPut() {
 
 func (c *_serverConn_[G]) Holder() httpHolder { return c.gate }
 
-// serverStream
+// serverStream is the server-side http stream.
 type serverStream interface {
 }
 
@@ -540,7 +540,7 @@ func (r *serverRequest_) recognizeMethod(method []byte, methodHash uint16) {
 	}
 }
 
-var ( // perfect hash table for best known http methods
+var ( // minimal perfect hash table for best known http methods
 	serverMethodBytes = []byte("GET HEAD POST PUT DELETE CONNECT OPTIONS TRACE")
 	serverMethodTable = [8]struct {
 		hash uint16
@@ -953,7 +953,7 @@ func (r *serverRequest_) _applyHeaderLine(lineIndex uint8) bool {
 	return true
 }
 
-var ( // perfect hash table for singleton request header fields
+var ( // minimal perfect hash table for singleton request header fields
 	serverRequestSingletonHeaderFieldTable = [16]struct {
 		parse bool // need general parse or not
 		fdesc      // allowQuote, allowEmpty, allowParam, hasComment
@@ -1220,7 +1220,7 @@ func (r *serverRequest_) _addRange(rang Range) bool {
 	return true
 }
 
-var ( // perfect hash table for important request header fields
+var ( // minimal perfect hash table for important request header fields
 	serverRequestImportantHeaderFieldTable = [22]struct {
 		fdesc // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*serverRequest_, []pair, uint8, uint8) bool
@@ -2948,7 +2948,7 @@ func (r *serverResponse_) endVague() error {
 	return r.out.finalizeVague()
 }
 
-var ( // perfect hash table for response critical header fields
+var ( // minimal perfect hash table for response critical header fields
 	serverResponseCriticalHeaderFieldTable = [10]struct {
 		hash uint16
 		name []byte

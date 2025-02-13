@@ -25,7 +25,7 @@ import (
 // TCPXRouter
 type TCPXRouter struct {
 	// Parent
-	Server_[*tcpxGate]
+	router_[*tcpxGate]
 	// Mixins
 	_tcpxHolder_ // to carry configs used by gates
 	_accessLogger_
@@ -132,7 +132,7 @@ func (r *TCPXRouter) Serve() { // runner
 	if DebugLevel() >= 2 {
 		Printf("tcpxRouter=%s done\n", r.CompName())
 	}
-	r.stage.DecSub() // router
+	r.stage.DecRouter()
 }
 
 func (r *TCPXRouter) tcpxHolder() _tcpxHolder_ { return r._tcpxHolder_ }
@@ -416,7 +416,7 @@ func (c *tcpxCase) onCreate(compName string, router *TCPXRouter) {
 	c.router = router
 }
 func (c *tcpxCase) OnShutdown() {
-	c.router.DecSub() // case
+	c.router.DecCase()
 }
 
 func (c *tcpxCase) OnConfigure() {

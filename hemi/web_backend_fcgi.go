@@ -134,7 +134,7 @@ func (n *fcgiNode) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("fcgiNode=%s done\n", n.compName)
 	}
-	n.backend.DecSub() // node
+	n.backend.DecNode()
 }
 
 func (n *fcgiNode) fetchExchan() (*fcgiExchan, error) {
@@ -861,7 +861,7 @@ func (r *fcgiResponse) _addExtra(extra *pair) bool {
 	return true
 }
 
-var ( // perfect hash table for singleton response header fields
+var ( // minimal perfect hash table for singleton response header fields
 	fcgiResponseSingletonHeaderFieldTable = [4]struct {
 		parse bool // need general parse or not
 		fdesc      // allowQuote, allowEmpty, allowParam, hasComment
@@ -902,7 +902,7 @@ func (r *fcgiResponse) checkLocation(headerLine *pair, lineIndex int) bool {
 	return true
 }
 
-var ( // perfect hash table for important response header fields
+var ( // minimal perfect hash table for important response header fields
 	fcgiResponseImportantHeaderFieldTable = [3]struct {
 		fdesc // allowQuote, allowEmpty, allowParam, hasComment
 		check func(*fcgiResponse, []pair, int, int) bool

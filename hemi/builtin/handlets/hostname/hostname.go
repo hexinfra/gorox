@@ -32,7 +32,7 @@ func (h *hostnameChecker) onCreate(compName string, stage *Stage, webapp *Webapp
 	h.Handlet_.OnCreate(compName, stage, webapp)
 }
 func (h *hostnameChecker) OnShutdown() {
-	h.Webapp().DecSub() // handlet
+	h.Webapp().DecHandlet()
 }
 
 func (h *hostnameChecker) OnConfigure() {

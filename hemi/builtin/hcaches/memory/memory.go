@@ -47,7 +47,7 @@ func (c *memoryHcache) Maintain() { // runner
 	if DebugLevel() >= 2 {
 		Printf("memoryHcache=%s done\n", c.CompName())
 	}
-	c.Stage().DecSub() // hcache
+	c.Stage().DecHcache()
 }
 
 func (c *memoryHcache) Set(key []byte, hobject *Hobject) {

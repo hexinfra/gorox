@@ -37,7 +37,7 @@ func (h *scgiProxy) onCreate(compName string, stage *Stage, webapp *Webapp) {
 	h.Handlet_.OnCreate(compName, stage, webapp)
 }
 func (h *scgiProxy) OnShutdown() {
-	h.webapp.DecSub() // handlet
+	h.webapp.DecHandlet()
 }
 
 func (h *scgiProxy) OnConfigure() {

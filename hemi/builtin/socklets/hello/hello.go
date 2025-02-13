@@ -30,7 +30,7 @@ func (s *helloSocklet) onCreate(compName string, stage *Stage, webapp *Webapp) {
 	s.Socklet_.OnCreate(compName, stage, webapp)
 }
 func (s *helloSocklet) OnShutdown() {
-	s.Webapp().DecSub() // socklet
+	s.Webapp().DecSocklet()
 }
 
 func (s *helloSocklet) OnConfigure() {

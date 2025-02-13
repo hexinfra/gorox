@@ -219,15 +219,7 @@ var backend2InFrameProcessors = [http2NumFrameKinds]func(*backend2Conn, *http2In
 	nil, // discrete continuation frames are rejected priorly
 }
 
-func (c *backend2Conn) onDataInFrame(dataInFrame *http2InFrame) error {
-	// TODO
-	return nil
-}
 func (c *backend2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
-	// TODO
-	return nil
-}
-func (c *backend2Conn) onResetStreamInFrame(resetStreamInFrame *http2InFrame) error {
 	// TODO
 	return nil
 }

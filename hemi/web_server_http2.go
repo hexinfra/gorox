@@ -212,10 +212,6 @@ var server2InFrameProcessors = [http2NumFrameKinds]func(*server2Conn, *http2InFr
 	nil, // discrete continuation frames are rejected priorly
 }
 
-func (c *server2Conn) onDataInFrame(dataInFrame *http2InFrame) error {
-	// TODO
-	return nil
-}
 func (c *server2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
 	var (
 		servStream *server2Stream
@@ -260,16 +256,6 @@ func (c *server2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
 			return http2ErrorCompression
 		}
 	}
-	return nil
-}
-func (c *server2Conn) onResetStreamInFrame(resetStreamInFrame *http2InFrame) error {
-	streamID := resetStreamInFrame.streamID
-	if streamID > c.lastStreamID {
-		// RST_STREAM frames MUST NOT be sent for a stream in the "idle" state. If a RST_STREAM frame identifying an idle stream is received,
-		// the recipient MUST treat this as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.
-		return http2ErrorProtocol
-	}
-	// TODO
 	return nil
 }
 func (c *server2Conn) onSettingsInFrame(settingsInFrame *http2InFrame) error {

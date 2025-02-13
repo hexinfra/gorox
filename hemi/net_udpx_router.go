@@ -28,12 +28,12 @@ type UDPXRouter struct {
 }
 
 func (r *UDPXRouter) onCreate(compName string, stage *Stage) {
-	r.router_.OnCreate(compName, stage)
+	r.router_.onCreate(compName, stage)
 	r.dealets = make(compDict[UDPXDealet])
 }
 
 func (r *UDPXRouter) OnConfigure() {
-	r.router_.OnConfigure()
+	r.router_.onConfigure()
 	r._udpxHolder_.onConfigure(r)
 
 	// sub components
@@ -43,7 +43,7 @@ func (r *UDPXRouter) OnConfigure() {
 	}
 }
 func (r *UDPXRouter) OnPrepare() {
-	r.router_.OnPrepare()
+	r.router_.onPrepare()
 	r._udpxHolder_.onPrepare(r)
 
 	// sub components

@@ -36,12 +36,12 @@ type TCPXRouter struct {
 }
 
 func (r *TCPXRouter) onCreate(compName string, stage *Stage) {
-	r.router_.OnCreate(compName, stage)
+	r.router_.onCreate(compName, stage)
 	r.dealets = make(compDict[TCPXDealet])
 }
 
 func (r *TCPXRouter) OnConfigure() {
-	r.router_.OnConfigure()
+	r.router_.onConfigure()
 	r._tcpxHolder_.onConfigure(r)
 
 	// .maxConcurrentConnsPerGate
@@ -59,7 +59,7 @@ func (r *TCPXRouter) OnConfigure() {
 	}
 }
 func (r *TCPXRouter) OnPrepare() {
-	r.router_.OnPrepare()
+	r.router_.onPrepare()
 	r._tcpxHolder_.onPrepare(r)
 
 	// sub components

@@ -31,12 +31,12 @@ type QUIXRouter struct {
 }
 
 func (r *QUIXRouter) onCreate(compName string, stage *Stage) {
-	r.router_.OnCreate(compName, stage)
+	r.router_.onCreate(compName, stage)
 	r.dealets = make(compDict[QUIXDealet])
 }
 
 func (r *QUIXRouter) OnConfigure() {
-	r.router_.OnConfigure()
+	r.router_.onConfigure()
 	r._quixHolder_.onConfigure(r)
 
 	// .maxConcurrentConnsPerGate
@@ -54,7 +54,7 @@ func (r *QUIXRouter) OnConfigure() {
 	}
 }
 func (r *QUIXRouter) OnPrepare() {
-	r.router_.OnPrepare()
+	r.router_.onPrepare()
 	r._quixHolder_.onPrepare(r)
 
 	// sub components

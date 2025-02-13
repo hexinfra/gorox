@@ -284,6 +284,10 @@ func (c *http2Conn_) _fillInBuffer(size uint16) error {
 	return err
 }
 
+func (c *http2Conn_) onDataInFrame(dataInFrame *http2InFrame) error {
+	// TODO
+	return nil
+}
 func (c *http2Conn_) onPriorityInFrame(priorityInFrame *http2InFrame) error { return nil } // do nothing, priority frames are ignored
 func (c *http2Conn_) onPingInFrame(pingInFrame *http2InFrame) error {
 	if pingInFrame.ack { // pong
@@ -307,6 +311,16 @@ func (c *http2Conn_) onPingInFrame(pingInFrame *http2InFrame) error {
 	err := c.sendOutFrame(pongOutFrame)
 	pongOutFrame.zero()
 	return err
+}
+func (c *http2Conn_) onResetStreamInFrame(resetStreamInFrame *http2InFrame) error {
+	streamID := resetStreamInFrame.streamID
+	if streamID > c.lastStreamID {
+		// RST_STREAM frames MUST NOT be sent for a stream in the "idle" state. If a RST_STREAM frame identifying an idle stream is received,
+		// the recipient MUST treat this as a connection error (Section 5.4.1) of type PROTOCOL_ERROR.
+		return http2ErrorProtocol
+	}
+	// TODO
+	return nil
 }
 func (c *http2Conn_) onWindowUpdateInFrame(windowUpdateInFrame *http2InFrame) error {
 	windowSize := binary.BigEndian.Uint32(windowUpdateInFrame.effective())
@@ -503,17 +517,15 @@ func (c *http2Conn_) _decodeString(src []byte, req *server2Request) (int, bool) 
 }
 */
 
-func (c *http2Conn_) findStream(streamID uint32) http2Stream {
-	if index := c._findStreamID(streamID); index != http2MaxConcurrentStreams { // found
-		if DebugLevel() >= 2 {
-			Printf("conn=%d findStream=%d at %d\n", c.id, streamID, index)
-		}
-		return c.activeStreams[index]
-	} else { // not found
-		return nil
+func (c *http2Conn_) _findStreamID(streamID uint32) uint8 {
+	c.activeStreamIDs[http2MaxConcurrentStreams] = streamID // the stream id to search for
+	index := uint8(0)
+	for c.activeStreamIDs[index] != streamID {
+		index++
 	}
+	return index
 }
-func (c *http2Conn_) joinStream(stream http2Stream) {
+func (c *http2Conn_) joinStream(stream http2Stream) { // O(1), TODO: use stack
 	if index := c._findStreamID(0); index != http2MaxConcurrentStreams { // found
 		if DebugLevel() >= 2 {
 			Printf("conn=%d joinStream=%d at %d\n", c.id, stream.nativeID(), index)
@@ -525,15 +537,17 @@ func (c *http2Conn_) joinStream(stream http2Stream) {
 		BugExitln("joinStream cannot find an empty slot")
 	}
 }
-func (c *http2Conn_) _findStreamID(streamID uint32) uint8 {
-	c.activeStreamIDs[http2MaxConcurrentStreams] = streamID // the stream id to search for
-	index := uint8(0)
-	for c.activeStreamIDs[index] != streamID {
-		index++
+func (c *http2Conn_) findStream(streamID uint32) http2Stream { // O(n)
+	if index := c._findStreamID(streamID); index != http2MaxConcurrentStreams { // found
+		if DebugLevel() >= 2 {
+			Printf("conn=%d findStream=%d at %d\n", c.id, streamID, index)
+		}
+		return c.activeStreams[index]
+	} else { // not found
+		return nil
 	}
-	return index
 }
-func (c *http2Conn_) quitStream(stream http2Stream) {
+func (c *http2Conn_) quitStream(stream http2Stream) { // O(1)
 	index := stream.getIndex()
 	if DebugLevel() >= 2 {
 		Printf("conn=%d quitStream=%d at %d\n", c.id, stream.nativeID(), index)

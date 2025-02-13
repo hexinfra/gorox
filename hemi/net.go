@@ -19,10 +19,16 @@ type router_[G Gate] struct { // for QUIXRouter, TCPXRouter, and UDPXRouter
 	_accessLogger_
 }
 
-func (r *router_[G]) OnConfigure() {
+func (r *router_[G]) onCreate(compName string, stage *Stage) {
+	r.Server_.OnCreate(compName, stage)
+}
+
+func (r *router_[G]) onConfigure() {
+	r.Server_.OnConfigure()
 	r._accessLogger_.onConfigure(r)
 }
-func (r *router_[G]) OnPrepare() {
+func (r *router_[G]) onPrepare() {
+	r.Server_.OnPrepare()
 	r._accessLogger_.onPrepare(r)
 }
 

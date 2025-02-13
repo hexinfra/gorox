@@ -199,9 +199,9 @@ type server3Stream struct {
 	_server3Stream0 // all values in this struct must be zero by default!
 }
 type _server3Stream0 struct { // for fast reset, entirely
-	index uint8
-	state uint8
-	reset bool
+	position uint8
+	state    uint8
+	reset    bool
 }
 
 var poolServer3Stream sync.Pool

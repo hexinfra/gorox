@@ -25,7 +25,8 @@ type server2Conn struct {
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	// Conn states (zeros)
-	_server2Conn0 // all values in this struct must be zero by default!
+	activeStreams [http2MaxConcurrentStreams]*server2Stream // active (open, remoteClosed, localClosed) streams
+	_server2Conn0                                           // all values in this struct must be zero by default!
 }
 type _server2Conn0 struct { // for fast reset, entirely
 	waitReceive bool // ...
@@ -56,6 +57,7 @@ func (c *server2Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn
 }
 func (c *server2Conn) onPut() {
 	c._server2Conn0 = _server2Conn0{}
+	c.activeStreams = [http2MaxConcurrentStreams]*server2Stream{}
 
 	c._serverConn_.onPut()
 	c.gate = nil // put here due to Go's limitation
@@ -239,11 +241,10 @@ func (c *server2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
 		c.concurrentStreams++
 		go servStream.execute()
 	} else { // old stream
-		stream := c.findStream(streamID)
-		if stream == nil { // no specified active stream
+		servStream := c.findStream(streamID)
+		if servStream == nil { // no specified active stream
 			return http2ErrorProtocol
 		}
-		servStream = stream.(*server2Stream)
 		if servStream.state != http2StateOpen {
 			return http2ErrorProtocol
 		}
@@ -278,6 +279,35 @@ func (c *server2Conn) goawayCloseConn(h2e http2Error) {
 	c.sendOutFrame(goawayOutFrame) // ignore error
 	goawayOutFrame.zero()
 	c.closeConn()
+}
+
+func (c *server2Conn) joinStream(stream *server2Stream) {
+	position := c._getFreePosition()
+	stream.setPosition(position)
+	c.activeStreams[position] = stream
+	c.activeStreamIDs[position] = stream.nativeID()
+	if DebugLevel() >= 2 {
+		Printf("conn=%d joinStream=%d at %d\n", c.id, stream.nativeID(), position)
+	}
+}
+func (c *server2Conn) findStream(streamID uint32) *server2Stream {
+	if position := c._findStreamID(streamID); position != http2MaxConcurrentStreams { // found
+		if DebugLevel() >= 2 {
+			Printf("conn=%d findStream=%d at %d\n", c.id, streamID, position)
+		}
+		return c.activeStreams[position]
+	} else { // not found
+		return nil
+	}
+}
+func (c *server2Conn) quitStream(stream http2Stream) {
+	position := stream.getPosition()
+	if DebugLevel() >= 2 {
+		Printf("conn=%d quitStream=%d at %d\n", c.id, stream.nativeID(), position)
+	}
+	c.activeStreams[position] = nil
+	c.activeStreamIDs[position] = 0
+	c._putFreePosition(position)
 }
 
 func (c *server2Conn) closeConn() {

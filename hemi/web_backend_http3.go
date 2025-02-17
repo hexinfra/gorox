@@ -152,7 +152,6 @@ func (c *backend3Conn) onPut() {
 	c._backend3Conn0 = _backend3Conn0{}
 
 	c._backendConn_.onPut()
-	c.node = nil // put here due to Go's limitation
 	c.http3Conn_.onPut()
 }
 
@@ -233,7 +232,6 @@ func (s *backend3Stream) onEnd() { // for zeros
 
 	s._backendStream_.onEnd()
 	s.http3Stream_.onEnd()
-	s.conn = nil // we can't do this in http3Stream_.onEnd() due to Go's limit, so put here
 }
 
 func (s *backend3Stream) Response() BackendResponse { return &s.response }

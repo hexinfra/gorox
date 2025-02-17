@@ -484,11 +484,11 @@ var http2InFrameCheckers = [http2NumFrameKinds]func(*http2InFrame) error{
 	(*http2InFrame).checkAsPriority,
 	(*http2InFrame).checkAsResetStream,
 	(*http2InFrame).checkAsSettings,
-	nil, // pushPromise frames are rejected priorly
+	(*http2InFrame).checkAsPushPromise,
 	(*http2InFrame).checkAsPing,
 	(*http2InFrame).checkAsGoaway,
 	(*http2InFrame).checkAsWindowUpdate,
-	nil, // continuation frames are rejected priorly
+	(*http2InFrame).checkAsContinuation,
 }
 
 func (f *http2InFrame) checkAsData() error {
@@ -578,6 +578,9 @@ func (f *http2InFrame) checkAsSettings() error {
 	}
 	return nil
 }
+func (f *http2InFrame) checkAsPushPromise() error {
+	return http2ErrorProtocol // we don't support server push
+}
 func (f *http2InFrame) checkAsPing() error {
 	if f.length != 8 {
 		return http2ErrorFrameSize
@@ -602,24 +605,27 @@ func (f *http2InFrame) checkAsWindowUpdate() error {
 	}
 	return nil
 }
-
-// http2OutFrame is the HTTP/2 outgoing frame.
-type http2OutFrame struct { // 64 bytes
-	stream    http2Stream // the http/2 stream to which the frame belongs
-	length    uint16      // length of payload. the real type is uint24, but we never use sizes out of range of uint16, so use uint16
-	kind      uint8       // see http2FrameXXX. WARNING: http2FramePushPromise and http2FrameContinuation are NOT allowed! we don't use them.
-	endFields bool        // is END_FIELDS flag set?
-	endStream bool        // is END_STREAM flag set?
-	ack       bool        // is ACK flag set?
-	padded    bool        // is PADDED flag set?
-	header    [9]byte     // frame header is encoded here
-	outBuffer [8]byte     // small payload of the frame is placed here temporarily
-	payload   []byte      // refers to the payload
+func (f *http2InFrame) checkAsContinuation() error {
+	return http2ErrorProtocol // continuation frames cannot be alone. we coalesce continuation frames on receiving fields frame
 }
 
-func (f *http2OutFrame) zero() { *f = http2OutFrame{} }
+// http2OutFrame is the HTTP/2 outgoing frame.
+type http2OutFrame[S http2Stream] struct { // 56 bytes
+	stream    S       // the http/2 stream to which the frame belongs
+	length    uint16  // length of payload. the real type is uint24, but we never use sizes out of range of uint16, so use uint16
+	kind      uint8   // see http2FrameXXX. WARNING: http2FramePushPromise and http2FrameContinuation are NOT allowed! we don't use them.
+	endFields bool    // is END_FIELDS flag set?
+	endStream bool    // is END_STREAM flag set?
+	ack       bool    // is ACK flag set?
+	padded    bool    // is PADDED flag set?
+	header    [9]byte // frame header is encoded here
+	outBuffer [8]byte // small payload of the frame is placed here temporarily
+	payload   []byte  // refers to the payload
+}
 
-func (f *http2OutFrame) encodeHeader() (outHeader []byte) { // caller must ensure the frame is legal.
+func (f *http2OutFrame[S]) zero() { *f = http2OutFrame[S]{} }
+
+func (f *http2OutFrame[S]) encodeHeader() (outHeader []byte) { // caller must ensure the frame is legal.
 	if f.stream.nativeID() > 0x7fffffff {
 		BugExitln("stream id too large")
 	}

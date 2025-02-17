@@ -190,7 +190,7 @@ func (g *httpxGate) serveUDS() {
 		}
 		if g.server.httpMode == 2 {
 			servConn := getServer2Conn(connID, g, udsConn, rawConn)
-			go servConn.manager() // servConn is put to pool in manager()
+			go servConn.manage() // servConn is put to pool in manage()
 		} else {
 			servConn := getServer1Conn(connID, g, udsConn, rawConn)
 			go servConn.serve() // servConn is put to pool in serve()
@@ -229,7 +229,7 @@ func (g *httpxGate) serveTLS() {
 		}
 		if connState := tlsConn.ConnectionState(); connState.NegotiatedProtocol == "h2" {
 			servConn := getServer2Conn(connID, g, tlsConn, nil)
-			go servConn.manager() // servConn is put to pool in manager()
+			go servConn.manage() // servConn is put to pool in manage()
 		} else {
 			servConn := getServer1Conn(connID, g, tlsConn, nil)
 			go servConn.serve() // servConn is put to pool in serve()
@@ -268,7 +268,7 @@ func (g *httpxGate) serveTCP() {
 		}
 		if g.server.httpMode == 2 {
 			servConn := getServer2Conn(connID, g, tcpConn, rawConn)
-			go servConn.manager() // servConn is put to pool in manager()
+			go servConn.manage() // servConn is put to pool in manage()
 		} else {
 			servConn := getServer1Conn(connID, g, tcpConn, rawConn)
 			go servConn.serve() // servConn is put to pool in serve()
@@ -347,7 +347,6 @@ func (c *server1Conn) onPut() {
 	servReq.inputNext, servReq.inputEdge = 0, 0
 
 	c._serverConn_.onPut()
-	c.gate = nil // put here due to Go's limitation
 	c.http1Conn_.onPut()
 }
 
@@ -429,7 +428,6 @@ func (s *server1Stream) onEnd() { // for zeros
 
 	s._serverStream_.onEnd()
 	s.http1Stream_.onEnd()
-	s.conn = nil // we can't do this in http1Stream_.onEnd() due to Go's limit, so put here
 }
 
 func (s *server1Stream) execute() {

@@ -167,13 +167,11 @@ func (c *server3Conn) onPut() {
 	c._server3Conn0 = _server3Conn0{}
 
 	c._serverConn_.onPut()
-	c.gate = nil // put here due to Go's limitation
 	c.http3Conn_.onPut()
 }
 
 func (c *server3Conn) serve() { // runner
 	// TODO
-	// use go c.receiver()?
 }
 
 func (c *server3Conn) closeConn() {
@@ -245,7 +243,6 @@ func (s *server3Stream) onEnd() { // for zeros
 
 	s._serverStream_.onEnd()
 	s.http3Stream_.onEnd()
-	s.conn = nil // we can't do this in http3Stream_.onEnd() due to Go's limit, so put here
 }
 
 func (s *server3Stream) execute() { // runner

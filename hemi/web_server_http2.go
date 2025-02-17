@@ -18,15 +18,14 @@ import (
 // server2Conn is the server-side HTTP/2 connection.
 type server2Conn struct {
 	// Parent
-	http2Conn_
+	http2Conn_[*server2Stream]
 	// Mixins
 	_serverConn_[*httpxGate]
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	// Conn states (zeros)
-	activeStreams [http2MaxConcurrentStreams]*server2Stream // active (open, remoteClosed, localClosed) streams
-	_server2Conn0                                           // all values in this struct must be zero by default!
+	_server2Conn0 // all values in this struct must be zero by default!
 }
 type _server2Conn0 struct { // for fast reset, entirely
 	waitReceive bool // ...
@@ -57,14 +56,12 @@ func (c *server2Conn) onGet(id int64, gate *httpxGate, netConn net.Conn, rawConn
 }
 func (c *server2Conn) onPut() {
 	c._server2Conn0 = _server2Conn0{}
-	c.activeStreams = [http2MaxConcurrentStreams]*server2Stream{}
 
 	c._serverConn_.onPut()
-	c.gate = nil // put here due to Go's limitation
 	c.http2Conn_.onPut()
 }
 
-func (c *server2Conn) manager() { // runner
+func (c *server2Conn) manage() { // runner
 	Printf("========================== conn=%d start =========================\n", c.id)
 	defer func() {
 		Printf("========================== conn=%d exit =========================\n", c.id)
@@ -75,11 +72,11 @@ func (c *server2Conn) manager() { // runner
 		return
 	}
 	// Successfully handshake means we have acknowledged client settings and sent our settings. Still need to receive a settings ACK from client.
-	go c.receiver()
+	go c.receive()
 serve:
-	for { // each inFrame from c.receiver() and outFrame from server streams
+	for { // each inFrame from c.receive() and outFrame from server streams
 		select {
-		case incoming := <-c.incomingChan: // got an incoming frame from c.receiver()
+		case incoming := <-c.incomingChan: // got an incoming frame from c.receive()
 			if inFrame, ok := incoming.(*http2InFrame); ok { // DATA, FIELDS, PRIORITY, RESET_STREAM, SETTINGS, PING, WINDOW_UPDATE, and unknown
 				if inFrame.isUnknown() {
 					// Implementations MUST ignore and discard frames of unknown types.
@@ -93,9 +90,9 @@ serve:
 				} else { // processor i/o error
 					c.goawayCloseConn(http2ErrorInternal)
 				}
-				// c.manager() was broken, but c.receiver() was not. need wait
+				// c.manage() was broken, but c.receive() was not. need wait
 				c.waitReceive = true
-			} else { // c.receiver() was broken and quit.
+			} else { // c.receive() was broken and quit.
 				if h2e, ok := incoming.(http2Error); ok {
 					c.goawayCloseConn(h2e)
 				} else if netErr, ok := incoming.(net.Error); ok && netErr.Timeout() {
@@ -128,16 +125,16 @@ serve:
 		}
 	}
 	if c.waitReceive {
-		Printf("conn=%d waiting for c.receiver() to quit\n", c.id)
+		Printf("conn=%d waiting for c.receive() to quit\n", c.id)
 		for {
 			incoming := <-c.incomingChan
 			if _, ok := incoming.(*http2InFrame); !ok {
-				// An error from c.receiver() means it's quit
+				// An error from c.receive() means it's quit
 				break
 			}
 		}
 	}
-	Printf("conn=%d c.manager() quit\n", c.id)
+	Printf("conn=%d c.manage() quit\n", c.id)
 }
 
 var server2PrefaceAndMore = []byte{
@@ -207,11 +204,11 @@ var server2InFrameProcessors = [http2NumFrameKinds]func(*server2Conn, *http2InFr
 	(*server2Conn).onPriorityInFrame,
 	(*server2Conn).onResetStreamInFrame,
 	(*server2Conn).onSettingsInFrame,
-	nil, // pushPromise frames are rejected priorly
+	(*server2Conn).onPushPromiseInFrame,
 	(*server2Conn).onPingInFrame,
-	nil, // goaway frames are hijacked by c.receiver()
+	(*server2Conn).onGoawayInFrame,
 	(*server2Conn).onWindowUpdateInFrame,
-	nil, // discrete continuation frames are rejected priorly
+	(*server2Conn).onContinuationInFrame,
 }
 
 func (c *server2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
@@ -281,38 +278,9 @@ func (c *server2Conn) goawayCloseConn(h2e http2Error) {
 	c.closeConn()
 }
 
-func (c *server2Conn) joinStream(stream *server2Stream) {
-	position := c._getFreePosition()
-	stream.setPosition(position)
-	c.activeStreams[position] = stream
-	c.activeStreamIDs[position] = stream.nativeID()
-	if DebugLevel() >= 2 {
-		Printf("conn=%d joinStream=%d at %d\n", c.id, stream.nativeID(), position)
-	}
-}
-func (c *server2Conn) findStream(streamID uint32) *server2Stream {
-	if position := c._findStreamID(streamID); position != http2MaxConcurrentStreams { // found
-		if DebugLevel() >= 2 {
-			Printf("conn=%d findStream=%d at %d\n", c.id, streamID, position)
-		}
-		return c.activeStreams[position]
-	} else { // not found
-		return nil
-	}
-}
-func (c *server2Conn) quitStream(stream http2Stream) {
-	position := stream.getPosition()
-	if DebugLevel() >= 2 {
-		Printf("conn=%d quitStream=%d at %d\n", c.id, stream.nativeID(), position)
-	}
-	c.activeStreams[position] = nil
-	c.activeStreamIDs[position] = 0
-	c._putFreePosition(position)
-}
-
 func (c *server2Conn) closeConn() {
 	if DebugLevel() >= 2 {
-		Printf("conn=%d connClosed by manager()\n", c.id)
+		Printf("conn=%d connClosed by manage()\n", c.id)
 	}
 	c.netConn.Close()
 	c.gate.DecConcurrentConns()
@@ -381,7 +349,6 @@ func (s *server2Stream) onEnd() { // for zeros
 
 	s._serverStream_.onEnd()
 	s.http2Stream_.onEnd()
-	s.conn = nil // we can't do this in http2Stream_.onEnd() due to Go's limit, so put here
 }
 
 func (s *server2Stream) execute() { // runner

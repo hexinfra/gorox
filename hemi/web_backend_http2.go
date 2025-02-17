@@ -120,7 +120,7 @@ func (n *http2Node) closeIdle() int {
 // backend2Conn is the backend-side HTTP/2 connection.
 type backend2Conn struct {
 	// Parent
-	http2Conn_
+	http2Conn_[*backend2Stream]
 	// Mixins
 	_backendConn_[*http2Node]
 	// Assocs
@@ -129,8 +129,7 @@ type backend2Conn struct {
 	// Conn states (controlled)
 	// Conn states (non-zeros)
 	// Conn states (zeros)
-	activeStreams  [http2MaxConcurrentStreams]*backend2Stream // active (open, remoteClosed, localClosed) streams
-	_backend2Conn0                                            // all values in this struct must be zero by default!
+	_backend2Conn0 // all values in this struct must be zero by default!
 }
 type _backend2Conn0 struct { // for fast reset, entirely
 }
@@ -158,10 +157,8 @@ func (c *backend2Conn) onGet(id int64, node *http2Node, netConn net.Conn, rawCon
 }
 func (c *backend2Conn) onPut() {
 	c._backend2Conn0 = _backend2Conn0{}
-	c.activeStreams = [http2MaxConcurrentStreams]*backend2Stream{}
 
 	c._backendConn_.onPut()
-	c.node = nil // put here due to Go's limitation
 	c.http2Conn_.onPut()
 }
 
@@ -176,7 +173,7 @@ func (c *backend2Conn) putStream(backStream *backend2Stream) {
 	//backStream.onEnd()
 }
 
-func (c *backend2Conn) manager() { // runner
+func (c *backend2Conn) manage() { // runner
 
 }
 
@@ -205,6 +202,12 @@ var backend2PrefaceAndMore = []byte{
 }
 
 func (c *backend2Conn) _handshake() error {
+	// setWriteDeadline()
+	// write client preface
+	// setReadDeadline()
+	// read server preface
+	// setWriteDeadline()
+	// ack server preface?
 	return nil
 }
 
@@ -214,11 +217,11 @@ var backend2InFrameProcessors = [http2NumFrameKinds]func(*backend2Conn, *http2In
 	(*backend2Conn).onPriorityInFrame,
 	(*backend2Conn).onResetStreamInFrame,
 	(*backend2Conn).onSettingsInFrame,
-	nil, // pushPromise frames are rejected priorly
+	(*backend2Conn).onPushPromiseInFrame,
 	(*backend2Conn).onPingInFrame,
-	nil, // goaway frames are hijacked by c.receiver()
+	(*backend2Conn).onGoawayInFrame,
 	(*backend2Conn).onWindowUpdateInFrame,
-	nil, // discrete continuation frames are rejected priorly
+	(*backend2Conn).onContinuationInFrame,
 }
 
 func (c *backend2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
@@ -228,35 +231,6 @@ func (c *backend2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
 func (c *backend2Conn) onSettingsInFrame(settingsInFrame *http2InFrame) error {
 	// TODO: server sent a new settings
 	return nil
-}
-
-func (c *backend2Conn) joinStream(stream *backend2Stream) {
-	position := c._getFreePosition()
-	stream.setPosition(position)
-	c.activeStreams[position] = stream
-	c.activeStreamIDs[position] = stream.nativeID()
-	if DebugLevel() >= 2 {
-		Printf("conn=%d joinStream=%d at %d\n", c.id, stream.nativeID(), position)
-	}
-}
-func (c *backend2Conn) findStream(streamID uint32) *backend2Stream {
-	if position := c._findStreamID(streamID); position != http2MaxConcurrentStreams { // found
-		if DebugLevel() >= 2 {
-			Printf("conn=%d findStream=%d at %d\n", c.id, streamID, position)
-		}
-		return c.activeStreams[position]
-	} else { // not found
-		return nil
-	}
-}
-func (c *backend2Conn) quitStream(stream http2Stream) {
-	position := stream.getPosition()
-	if DebugLevel() >= 2 {
-		Printf("conn=%d quitStream=%d at %d\n", c.id, stream.nativeID(), position)
-	}
-	c.activeStreams[position] = nil
-	c.activeStreamIDs[position] = 0
-	c._putFreePosition(position)
 }
 
 func (c *backend2Conn) Close() error {
@@ -327,7 +301,6 @@ func (s *backend2Stream) onEnd() { // for zeros
 
 	s._backendStream_.onEnd()
 	s.http2Stream_.onEnd()
-	s.conn = nil // we can't do this in http2Stream_.onEnd() due to Go's limit, so put here
 }
 
 func (s *backend2Stream) Response() BackendResponse { return &s.response }

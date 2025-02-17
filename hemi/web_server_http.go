@@ -205,7 +205,8 @@ func (c *_serverConn_[G]) onGet(gate G) {
 	c.gate = gate
 }
 func (c *_serverConn_[G]) onPut() {
-	// c.gate will be set as nil by upper code.
+	var g G // nil
+	c.gate = g
 }
 
 func (c *_serverConn_[G]) Holder() httpHolder { return c.gate }

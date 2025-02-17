@@ -31,8 +31,7 @@ type http3Conn_ struct { // for server3Conn and backend3Conn
 	inBuffer     *http3Buffer      // ...
 	dynamicTable http3DynamicTable // ...
 	// Conn states (zeros)
-	activeStreams [http3MaxConcurrentStreams]http3Stream // active (open, remoteClosed, localClosed) streams
-	_http3Conn0                                          // all values in this struct must be zero by default!
+	_http3Conn0 // all values in this struct must be zero by default!
 }
 type _http3Conn0 struct { // for fast reset, entirely
 	inBufferEdge uint32 // incoming data ends at c.inBuffer.buf[c.inBufferEdge]
@@ -52,7 +51,6 @@ func (c *http3Conn_) onGet(id int64, holder holder, quicConn *gotcp2.Conn) {
 func (c *http3Conn_) onPut() {
 	// c.inBuffer is reserved
 	// c.dynamicTable is reserved
-	c.activeStreams = [http3MaxConcurrentStreams]http3Stream{}
 	c.quicConn = nil
 
 	c.httpConn_.onPut()

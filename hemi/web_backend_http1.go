@@ -294,7 +294,6 @@ func (c *backend1Conn) onGet(id int64, node *http1Node, netConn net.Conn, rawCon
 }
 func (c *backend1Conn) onPut() {
 	c._backendConn_.onPut()
-	c.node = nil // put here due to Go's limitation
 	c.http1Conn_.onPut()
 }
 
@@ -346,7 +345,6 @@ func (s *backend1Stream) onEnd() { // for zeros
 
 	s._backendStream_.onEnd()
 	s.http1Stream_.onEnd()
-	s.conn = nil // we can't do this in http1Stream_.onEnd() due to Go's limit, so put here
 }
 
 func (s *backend1Stream) Response() BackendResponse { return &s.response }

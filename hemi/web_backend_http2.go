@@ -162,12 +162,12 @@ func (c *backend2Conn) onPut() {
 	c.http2Conn_.onPut()
 }
 
-func (c *backend2Conn) getStream() (*backend2Stream, error) {
+func (c *backend2Conn) newStream() (*backend2Stream, error) {
 	// Note: A backend2Conn can be used concurrently, limited by maxConcurrentStreams.
 	// TODO: incRef, backStream.onUse()
 	return nil, nil
 }
-func (c *backend2Conn) putStream(backStream *backend2Stream) {
+func (c *backend2Conn) delStream(backStream *backend2Stream) {
 	// Note: A backend2Conn can be used concurrently, limited by maxConcurrentStreams.
 	// TODO
 	//backStream.onEnd()

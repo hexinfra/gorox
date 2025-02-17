@@ -205,8 +205,8 @@ func (c *_serverConn_[G]) onGet(gate G) {
 	c.gate = gate
 }
 func (c *_serverConn_[G]) onPut() {
-	var g G // nil
-	c.gate = g
+	var zero G // nil
+	c.gate = zero
 }
 
 func (c *_serverConn_[G]) Holder() httpHolder { return c.gate }

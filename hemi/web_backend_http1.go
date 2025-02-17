@@ -96,7 +96,7 @@ func (n *http1Node) fetchStream() (*backend1Stream, error) {
 	nodeDown := n.isDown()
 	if backConn != nil {
 		if !nodeDown && backConn.isAlive() && backConn.cumulativeStreams.Add(1) <= n.maxCumulativeStreamsPerConn {
-			return backConn.getStream()
+			return backConn.newStream()
 		}
 		backConn.Close()
 		n.DecConn()
@@ -116,7 +116,7 @@ func (n *http1Node) fetchStream() (*backend1Stream, error) {
 		return nil, errNodeDown
 	}
 	n.IncConn()
-	return backConn.getStream()
+	return backConn.newStream()
 }
 func (n *http1Node) _dialUDS() (*backend1Conn, error) {
 	// TODO: dynamic address names?
@@ -180,7 +180,7 @@ func (n *http1Node) _dialTCP() (*backend1Conn, error) {
 }
 func (n *http1Node) storeStream(backStream *backend1Stream) {
 	backConn := backStream.conn
-	backConn.putStream(backStream)
+	backConn.delStream(backStream)
 
 	if !n.isDown() && !backConn.isBroken() && backConn.isAlive() && backConn.persistent {
 		if DebugLevel() >= 2 {
@@ -297,12 +297,14 @@ func (c *backend1Conn) onPut() {
 	c.http1Conn_.onPut()
 }
 
-func (c *backend1Conn) getStream() (*backend1Stream, error) {
+func (c *backend1Conn) newStream() (*backend1Stream, error) {
+	// In HTTP/1.1 connections, streams are sequential, so we don't actually create them, simply reuse the only one
 	backStream := &c.stream
 	backStream.onUse(c, c.nextStreamID())
 	return backStream, nil
 }
-func (c *backend1Conn) putStream(backStream *backend1Stream) {
+func (c *backend1Conn) delStream(backStream *backend1Stream) {
+	// In HTTP/1.1 connections, streams are sequential, so we don't actually delete them, simply reuse the only one
 	backStream.onEnd()
 }
 

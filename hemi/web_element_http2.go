@@ -393,7 +393,7 @@ var ( // HTTP/2 byteses
 	http2BytesStatic = []byte(":authority:methodGETPOST:path//index.html:schemehttphttps:status200204206304400404500accept-charsetaccept-encodinggzip, deflateaccept-languageaccept-rangesacceptaccess-control-allow-originageallowauthorizationcache-controlcontent-dispositioncontent-encodingcontent-languagecontent-lengthcontent-locationcontent-rangecontent-typecookiedateetagexpectexpiresfromhostif-matchif-modified-sinceif-none-matchif-rangeif-unmodified-sincelast-modifiedlinklocationmax-forwardsproxy-authenticateproxy-authorizationrangerefererrefreshretry-afterserverset-cookiestrict-transport-securitytransfer-encodinguser-agentvaryviawww-authenticate") // DO NOT CHANGE THIS UNLESS YOU KNOW WHAT YOU ARE DOING
 )
 
-var http2FreePositions = [http2MaxConcurrentStreams]uint8{
+var http2FreeSeats = [http2MaxConcurrentStreams]uint8{
 	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
 	17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
 	33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
@@ -611,7 +611,7 @@ func (f *http2InFrame) checkAsContinuation() error {
 
 // http2OutFrame is the HTTP/2 outgoing frame.
 type http2OutFrame[S http2Stream] struct { // 56 bytes
-	stream    S       // the http/2 stream to which the frame belongs
+	stream    S       // the http/2 stream to which the frame belongs. nil if the frame belongs to conneciton
 	length    uint16  // length of payload. the real type is uint24, but we never use sizes out of range of uint16, so use uint16
 	kind      uint8   // see http2FrameXXX. WARNING: http2FramePushPromise and http2FrameContinuation are NOT allowed! we don't use them.
 	endFields bool    // is END_FIELDS flag set?

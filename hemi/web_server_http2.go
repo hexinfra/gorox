@@ -106,7 +106,7 @@ serve:
 			// TODO: collect as many outgoing frames as we can?
 			Printf("%+v\n", outFrame)
 			if outFrame.endStream { // a stream has ended
-				c.quitStream(outFrame.stream)
+				c.retireStream(outFrame.stream)
 				c.concurrentStreams--
 			}
 			if err := c.sendOutFrame(outFrame); err != nil {
@@ -119,8 +119,9 @@ serve:
 	}
 	Printf("conn=%d waiting for active streams to end\n", c.id)
 	for c.concurrentStreams > 0 {
-		if outFrame := <-c.outgoingChan; outFrame.endStream {
-			c.quitStream(outFrame.stream)
+		outFrame := <-c.outgoingChan
+		if outFrame.endStream {
+			c.retireStream(outFrame.stream)
 			c.concurrentStreams--
 		}
 	}
@@ -234,11 +235,11 @@ func (c *server2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
 		} else {
 			servStream.state = http2StateOpen
 		}
-		c.joinStream(servStream)
+		c.appendStream(servStream)
 		c.concurrentStreams++
 		go servStream.execute()
 	} else { // old stream
-		servStream := c.findStream(streamID)
+		servStream := c.searchStream(streamID)
 		if servStream == nil { // no specified active stream
 			return http2ErrorProtocol
 		}

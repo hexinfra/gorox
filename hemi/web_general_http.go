@@ -158,8 +158,8 @@ func (s *httpStream_[C]) onUse(conn C) {
 	s.region.Init()
 }
 func (s *httpStream_[C]) onEnd() {
-	var c C // nil
-	s.conn = c
+	var zero C // nil
+	s.conn = zero
 	s.region.Free()
 }
 

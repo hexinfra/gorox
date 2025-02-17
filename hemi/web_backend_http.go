@@ -105,8 +105,8 @@ func (c *_backendConn_[N]) onGet(node N) {
 }
 func (c *_backendConn_[N]) onPut() {
 	c.expireTime = time.Time{}
-	var n N // nil
-	c.node = n
+	var zero N // nil
+	c.node = zero
 }
 
 func (c *_backendConn_[N]) Holder() httpHolder { return c.node }

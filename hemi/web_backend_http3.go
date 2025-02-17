@@ -155,12 +155,12 @@ func (c *backend3Conn) onPut() {
 	c.http3Conn_.onPut()
 }
 
-func (c *backend3Conn) getStream() (*backend3Stream, error) {
+func (c *backend3Conn) newStream() (*backend3Stream, error) {
 	// Note: A backend3Conn can be used concurrently, limited by maxConcurrentStreams.
 	// TODO: backStream.onUse()
 	return nil, nil
 }
-func (c *backend3Conn) putStream(backStream *backend3Stream) {
+func (c *backend3Conn) delStream(backStream *backend3Stream) {
 	// Note: A backend3Conn can be used concurrently, limited by maxConcurrentStreams.
 	// TODO
 	//backStream.onEnd()

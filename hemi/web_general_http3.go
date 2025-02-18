@@ -27,9 +27,10 @@ type http3Conn_ struct { // for server3Conn and backend3Conn
 	// Conn states (stocks)
 	// Conn states (controlled)
 	// Conn states (non-zeros)
-	quicConn     *gotcp2.Conn      // the quic connection
-	inBuffer     *http3Buffer      // ...
-	dynamicTable http3DynamicTable // ...
+	quicConn    *gotcp2.Conn      // the quic connection
+	inBuffer    *http3Buffer      // ...
+	decodeTable http3DynamicTable // ...
+	encodeTable http3DynamicTable // ...
 	// Conn states (zeros)
 	_http3Conn0 // all values in this struct must be zero by default!
 }
@@ -50,7 +51,8 @@ func (c *http3Conn_) onGet(id int64, holder holder, quicConn *gotcp2.Conn) {
 }
 func (c *http3Conn_) onPut() {
 	// c.inBuffer is reserved
-	// c.dynamicTable is reserved
+	// c.decodeTable is reserved
+	// c.encodeTable is reserved
 	c.quicConn = nil
 
 	c.httpConn_.onPut()

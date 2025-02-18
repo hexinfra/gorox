@@ -162,12 +162,12 @@ func (c *backend2Conn) onPut() {
 	c.http2Conn_.onPut()
 }
 
-func (c *backend2Conn) newStream() (*backend2Stream, error) {
+func (c *backend2Conn) newStream() (*backend2Stream, error) { // used by http2Node
 	// Note: A backend2Conn can be used concurrently, limited by maxConcurrentStreams.
 	// TODO: incRef, backStream.onUse()
 	return nil, nil
 }
-func (c *backend2Conn) delStream(backStream *backend2Stream) {
+func (c *backend2Conn) delStream(backStream *backend2Stream) { // used by http2Node
 	// Note: A backend2Conn can be used concurrently, limited by maxConcurrentStreams.
 	// TODO
 	//backStream.onEnd()
@@ -201,7 +201,7 @@ var backend2PrefaceAndMore = []byte{
 	0x7f, 0xff, 0x00, 0x00, // windowSize=2G1-64K1
 }
 
-func (c *backend2Conn) _handshake() error {
+func (c *backend2Conn) _handshake() error { // as client
 	// setWriteDeadline()
 	// write client preface
 	// setReadDeadline()
@@ -260,7 +260,7 @@ type _backend2Stream0 struct { // for fast reset, entirely
 
 var poolBackend2Stream sync.Pool
 
-func getBackend2Stream(conn *backend2Conn, id uint32, outWindow int32) *backend2Stream {
+func getBackend2Stream(conn *backend2Conn, id uint32, remoteWindow int32) *backend2Stream {
 	var backStream *backend2Stream
 	if x := poolBackend2Stream.Get(); x == nil {
 		backStream = new(backend2Stream)
@@ -273,7 +273,7 @@ func getBackend2Stream(conn *backend2Conn, id uint32, outWindow int32) *backend2
 	} else {
 		backStream = x.(*backend2Stream)
 	}
-	backStream.onUse(conn, id, outWindow)
+	backStream.onUse(conn, id, remoteWindow)
 	return backStream
 }
 func putBackend2Stream(backStream *backend2Stream) {
@@ -281,12 +281,12 @@ func putBackend2Stream(backStream *backend2Stream) {
 	poolBackend2Stream.Put(backStream)
 }
 
-func (s *backend2Stream) onUse(conn *backend2Conn, id uint32, outWindow int32) { // for non-zeros
+func (s *backend2Stream) onUse(conn *backend2Conn, id uint32, remoteWindow int32) { // for non-zeros
 	s.http2Stream_.onUse(conn, id)
 	s._backendStream_.onUse()
 
-	s.inWindow = _64K1      // max size of r.bodyWindow
-	s.outWindow = outWindow // may be changed by the peer
+	s.localWindow = _64K1         // max size of r.bodyWindow
+	s.remoteWindow = remoteWindow // may be changed by the peer
 	s.response.onUse()
 	s.request.onUse()
 }

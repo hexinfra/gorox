@@ -133,6 +133,8 @@ var http2CodeTexts = [...]string{
 	http2CodeHTTP11Required:     "HTTP_1_1_REQUIRED",
 }
 
+var http2BytesStatic = []byte(":authority:methodGETPOST:path//index.html:schemehttphttps:status200204206304400404500accept-charsetaccept-encodinggzip, deflateaccept-languageaccept-rangesacceptaccess-control-allow-originageallowauthorizationcache-controlcontent-dispositioncontent-encodingcontent-languagecontent-lengthcontent-locationcontent-rangecontent-typecookiedateetagexpectexpiresfromhostif-matchif-modified-sinceif-none-matchif-rangeif-unmodified-sincelast-modifiedlinklocationmax-forwardsproxy-authenticateproxy-authorizationrangerefererrefreshretry-afterserverset-cookiestrict-transport-securitytransfer-encodinguser-agentvaryviawww-authenticate") // DO NOT CHANGE THIS UNLESS YOU KNOW WHAT YOU ARE DOING
+
 // http2StaticTable is used by HPACK decoder.
 var http2StaticTable = [62]pair{ // TODO
 	/*
@@ -205,57 +207,67 @@ func http2IsStaticIndex(index uint32) bool  { return index <= 61 }
 func http2GetStaticPair(index uint32) *pair { return &http2StaticTable[index] }
 func http2DynamicIndex(index uint32) uint32 { return index - 62 }
 
-// http2TableEntry is a dynamic table entry.
-type http2TableEntry struct { // 8 bytes
-	nameFrom  uint16
-	nameEdge  uint16 // nameEdge - nameFrom <= 255?
-	valueEdge uint16
-	totalSize uint16 // nameSize + valueSize + 32
+// http2DynamicEntry is a dynamic table entry.
+type http2DynamicEntry struct { // 8 bytes
+	nameFrom  uint16 // name: [nameFrom:nameEdge]
+	nameEdge  uint16 // must: nameEdge - nameFrom <= 255?
+	valueEdge uint16 // value: [nameEdge:valueEdge]
+	totalSize uint16 // must be: nameSize + valueSize + 32
 }
 
 // http2DynamicTable
 type http2DynamicTable struct {
-	maxSize  uint32 // <= http2MaxTableSize
-	freeSize uint32 // <= maxSize
-	eEntries uint32 // len(entries)
-	nEntries uint32 // num of current entries. max num = floor(http2MaxTableSize/(1+32)) = 124
-	oldest   uint32 // evict from oldest
-	newest   uint32 // append to newest
-	entries  [124]http2TableEntry
-	content  [http2MaxTableSize - 32]byte
+	maxSize    uint32 // <= http2MaxTableSize
+	freeSize   uint32 // <= maxSize
+	maxEntries uint32 // cap(entries)
+	numEntries uint32 // num of current entries. max num = floor(http2MaxTableSize/(1+32)) = 124, where "1" is the size of a shortest field
+	oldest     uint32 // evict from oldest
+	newest     uint32 // append to newest
+	entries    [124]http2DynamicEntry
+	content    [http2MaxTableSize - 32]byte // the buffer
 }
 
 func (t *http2DynamicTable) init() {
 	t.maxSize = http2MaxTableSize
 	t.freeSize = t.maxSize
-	t.eEntries = uint32(cap(t.entries))
-	t.nEntries = 0
+	t.maxEntries = uint32(cap(t.entries))
+	t.numEntries = 0
 	t.oldest = 0
 	t.newest = 0
 }
 
 func (t *http2DynamicTable) get(index uint32) (name []byte, value []byte, ok bool) {
-	if index >= t.nEntries {
+	if index >= t.numEntries {
 		return nil, nil, false
 	}
 	if t.newest > t.oldest || index <= t.newest {
 		index = t.newest - index
 	} else {
 		index -= t.newest
-		index = t.eEntries - index
+		index = t.maxEntries - index
 	}
 	entry := t.entries[index]
 	return t.content[entry.nameFrom:entry.nameEdge], t.content[entry.nameEdge:entry.valueEdge], true
 }
 func (t *http2DynamicTable) add(name []byte, value []byte) bool { // name is not empty. sizes of name and value are limited
-	if t.nEntries == t.eEntries { // too many entries
+	if t.numEntries == t.maxEntries { // too many entries
 		return false
 	}
 	nameSize, valueSize := uint32(len(name)), uint32(len(value))
 	wantSize := nameSize + valueSize + 32 // won't overflow
+	// Before a new entry is added to the dynamic table, entries are evicted
+	// from the end of the dynamic table until the size of the dynamic table
+	// is less than or equal to (maximum size - new entry size) or until the
+	// table is empty.
+	//
+	// If the size of the new entry is less than or equal to the maximum
+	// size, that entry is added to the table.  It is not an error to
+	// attempt to add an entry that is larger than the maximum size; an
+	// attempt to add an entry larger than the maximum size causes the table
+	// to be emptied of all existing entries and results in an empty table.
 	if wantSize > t.maxSize {
 		t.freeSize = t.maxSize
-		t.nEntries = 0
+		t.numEntries = 0
 		t.oldest = t.newest
 		return true
 	}
@@ -263,11 +275,11 @@ func (t *http2DynamicTable) add(name []byte, value []byte) bool { // name is not
 		t._evictOne()
 	}
 	t.freeSize -= wantSize
-	var entry http2TableEntry
-	if t.nEntries > 0 {
+	var entry http2DynamicEntry
+	if t.numEntries > 0 {
 		entry.nameFrom = t.entries[t.newest].valueEdge
-		if t.newest++; t.newest == t.eEntries {
-			t.newest = 0
+		if t.newest++; t.newest == t.maxEntries {
+			t.newest = 0 // wrap around
 		}
 	} else { // empty table. starts from 0
 		entry.nameFrom = 0
@@ -279,7 +291,7 @@ func (t *http2DynamicTable) add(name []byte, value []byte) bool { // name is not
 	if valueSize > 0 {
 		copy(t.content[entry.nameEdge:entry.valueEdge], value)
 	}
-	t.nEntries++
+	t.numEntries++
 	t.entries[t.newest] = entry
 	return true
 }
@@ -298,14 +310,14 @@ func (t *http2DynamicTable) resize(maxSize uint32) { // maxSize must <= http2Max
 	t.maxSize = maxSize
 }
 func (t *http2DynamicTable) _evictOne() {
-	if t.nEntries == 0 {
+	if t.numEntries == 0 {
 		BugExitln("no entries to evict!")
 	}
 	t.freeSize += uint32(t.entries[t.oldest].totalSize)
-	if t.oldest++; t.oldest == t.eEntries {
+	if t.oldest++; t.oldest == t.maxEntries {
 		t.oldest = 0
 	}
-	if t.nEntries--; t.nEntries == 0 {
+	if t.numEntries--; t.numEntries == 0 {
 		t.newest = t.oldest
 	}
 }
@@ -315,7 +327,7 @@ func http2DecodeInteger(src []byte, N byte, max uint32) (uint32, int, bool) {
 	if l == 0 {
 		return 0, 0, false
 	}
-	K := uint32(1<<N - 1)
+	K := uint32(1<<N) - 1
 	I := uint32(src[0])
 	if N < 8 {
 		I &= K
@@ -324,21 +336,45 @@ func http2DecodeInteger(src []byte, N byte, max uint32) (uint32, int, bool) {
 		return I, 1, I <= max
 	}
 	j := 1
-	M := 0
-	for j < l {
+	for M := 0; j < l; M += 7 { // M: 7,14,21,28
 		B := src[j]
 		j++
-		I += uint32(B&0x7F) << M // 0,7,14,21,28
+		I += uint32(B&0x7F) << M // M: 0,7,14,21,28
 		if I > max {
+			return I, j, false
+		}
+		if B < 0x80 {
 			break
 		}
-		if B&0x80 != 0x80 {
-			return I, j, true
-		}
-		M += 7 // 7,14,21,28
 	}
-	return I, j, false
+	return I, j, true
 }
+func http2EncodeInteger(I uint32, N byte, dst []byte) (int, bool) {
+	l := len(dst)
+	if l == 0 {
+		return 0, false
+	}
+	K := uint32(1<<N) - 1
+	if I < K {
+		dst[0] = byte(I)
+		return 1, true
+	}
+	dst[0] = byte(K)
+	j := 1
+	for I -= K; I >= 0x80; I >>= 7 {
+		if j == l {
+			return j, false
+		}
+		dst[j] = byte(I) | 0x80
+		j++
+	}
+	if j >= l {
+		return j, false
+	}
+	dst[j] = byte(I)
+	return j + 1, true
+}
+
 func http2DecodeString(src []byte) ([]byte, int, bool) {
 	I, j, ok := http2DecodeInteger(src, 7, _16K)
 	if !ok {
@@ -357,51 +393,9 @@ func http2DecodeString(src []byte) ([]byte, int, bool) {
 		return src, j, true
 	}
 }
-
-func http2EncodeInteger(I uint32, N byte, dst []byte) (int, bool) {
-	l := len(dst)
-	if l == 0 {
-		return 0, false
-	}
-	K := uint32(1<<N - 1)
-	if I < K {
-		dst[0] = byte(I)
-		return 1, true
-	}
-	dst[0] = byte(K)
-	j := 1
-	for I -= K; I >= 0x80; I >>= 7 {
-		if j == l {
-			return j, false
-		}
-		dst[j] = byte(I | 0x80)
-		j++
-	}
-	if j < l {
-		dst[j] = byte(I)
-		return j + 1, true
-	}
-	return j, false
-}
 func http2EncodeString(S string, literal bool, dst []byte) (int, bool) {
 	// TODO
 	return 0, false
-}
-
-var ( // HTTP/2 byteses
-	http2BytesPrism  = []byte("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
-	http2BytesStatic = []byte(":authority:methodGETPOST:path//index.html:schemehttphttps:status200204206304400404500accept-charsetaccept-encodinggzip, deflateaccept-languageaccept-rangesacceptaccess-control-allow-originageallowauthorizationcache-controlcontent-dispositioncontent-encodingcontent-languagecontent-lengthcontent-locationcontent-rangecontent-typecookiedateetagexpectexpiresfromhostif-matchif-modified-sinceif-none-matchif-rangeif-unmodified-sincelast-modifiedlinklocationmax-forwardsproxy-authenticateproxy-authorizationrangerefererrefreshretry-afterserverset-cookiestrict-transport-securitytransfer-encodinguser-agentvaryviawww-authenticate") // DO NOT CHANGE THIS UNLESS YOU KNOW WHAT YOU ARE DOING
-)
-
-var http2FreeSeats = [http2MaxConcurrentStreams]uint8{
-	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-	17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-	33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
-	49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64,
-	65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80,
-	81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96,
-	97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112,
-	113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126,
 }
 
 // http2Buffer is the HTTP/2 incoming buffer.
@@ -610,23 +604,24 @@ func (f *http2InFrame) checkAsContinuation() error {
 }
 
 // http2OutFrame is the HTTP/2 outgoing frame.
-type http2OutFrame[S http2Stream] struct { // 56 bytes
-	stream    S       // the http/2 stream to which the frame belongs. nil if the frame belongs to conneciton
-	length    uint16  // length of payload. the real type is uint24, but we never use sizes out of range of uint16, so use uint16
-	kind      uint8   // see http2FrameXXX. WARNING: http2FramePushPromise and http2FrameContinuation are NOT allowed! we don't use them.
-	endFields bool    // is END_FIELDS flag set?
-	endStream bool    // is END_STREAM flag set?
-	ack       bool    // is ACK flag set?
-	padded    bool    // is PADDED flag set?
-	header    [9]byte // frame header is encoded here
-	outBuffer [8]byte // small payload of the frame is placed here temporarily
-	payload   []byte  // refers to the payload
+type http2OutFrame[S http2Stream] struct { // 64 bytes
+	streamID  uint32   // id of stream, duplicate for convenience
+	length    uint16   // length of payload. the real type is uint24, but we never use sizes out of range of uint16, so use uint16
+	kind      uint8    // see http2FrameXXX. WARNING: http2FramePushPromise and http2FrameContinuation are NOT allowed! we don't use them.
+	endFields bool     // is END_FIELDS flag set?
+	endStream bool     // is END_STREAM flag set?
+	ack       bool     // is ACK flag set?
+	padded    bool     // is PADDED flag set?
+	header    [9]byte  // frame header is encoded here
+	outBuffer [12]byte // small payload of the frame is placed here temporarily
+	payload   []byte   // refers to the payload
+	stream    S        // the http/2 stream to which the frame belongs. nil if the frame belongs to conneciton
 }
 
 func (f *http2OutFrame[S]) zero() { *f = http2OutFrame[S]{} }
 
 func (f *http2OutFrame[S]) encodeHeader() (outHeader []byte) { // caller must ensure the frame is legal.
-	if f.stream.nativeID() > 0x7fffffff {
+	if f.streamID > 0x7fffffff {
 		BugExitln("stream id too large")
 	}
 	if f.length > http2MaxFrameSize {
@@ -652,6 +647,17 @@ func (f *http2OutFrame[S]) encodeHeader() (outHeader []byte) { // caller must en
 		flags |= 0x08
 	}
 	outHeader[4] = flags
-	binary.BigEndian.PutUint32(outHeader[5:9], f.stream.nativeID())
+	binary.BigEndian.PutUint32(outHeader[5:9], f.streamID)
 	return
+}
+
+var http2FreeSeats = [http2MaxConcurrentStreams]uint8{
+	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+	17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+	33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+	49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64,
+	65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80,
+	81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96,
+	97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112,
+	113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126,
 }

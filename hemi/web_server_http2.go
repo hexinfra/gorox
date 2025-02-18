@@ -138,6 +138,7 @@ serve:
 	Printf("conn=%d c.manage() quit\n", c.id)
 }
 
+var http2BytesPrism = []byte("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
 var server2PrefaceAndMore = []byte{
 	// server preface settings
 	0, 0, 30, // length=30
@@ -164,7 +165,7 @@ var server2PrefaceAndMore = []byte{
 	0, 0, 0, 0, // streamID=0
 }
 
-func (c *server2Conn) _handshake() error {
+func (c *server2Conn) _handshake() error { // as server
 	// Set deadline for the first request fields frame
 	if err := c.setReadDeadline(); err != nil {
 		return err
@@ -226,7 +227,7 @@ func (c *server2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
 		c.cumulativeStreams.Add(1)
 		servStream = getServer2Stream(c, streamID, c.peerSettings.initialWindowSize)
 		servReq = &servStream.request
-		if !c._decodeFields(fieldsInFrame.effective(), servReq.joinHeaders) {
+		if !c.decodeFields(fieldsInFrame.effective(), servReq.joinHeaders) {
 			putServer2Stream(servStream)
 			return http2ErrorCompression
 		}
@@ -251,7 +252,7 @@ func (c *server2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
 		}
 		servReq = &servStream.request
 		servReq.receiving = httpSectionTrailers
-		if !c._decodeFields(fieldsInFrame.effective(), servReq.joinTrailers) {
+		if !c.decodeFields(fieldsInFrame.effective(), servReq.joinTrailers) {
 			return http2ErrorCompression
 		}
 	}
@@ -268,7 +269,7 @@ func (c *server2Conn) onSettingsInFrame(settingsInFrame *http2InFrame) error {
 
 func (c *server2Conn) goawayCloseConn(h2e http2Error) {
 	goawayOutFrame := &c.outFrame
-	goawayOutFrame.stream = nil
+	goawayOutFrame.streamID = 0
 	goawayOutFrame.length = 8
 	goawayOutFrame.kind = http2FrameGoaway
 	binary.BigEndian.PutUint32(goawayOutFrame.outBuffer[0:4], c.lastStreamID)
@@ -309,7 +310,7 @@ type _server2Stream0 struct { // for fast reset, entirely
 
 var poolServer2Stream sync.Pool
 
-func getServer2Stream(conn *server2Conn, id uint32, outWindow int32) *server2Stream {
+func getServer2Stream(conn *server2Conn, id uint32, remoteWindow int32) *server2Stream {
 	var servStream *server2Stream
 	if x := poolServer2Stream.Get(); x == nil {
 		servStream = new(server2Stream)
@@ -322,7 +323,7 @@ func getServer2Stream(conn *server2Conn, id uint32, outWindow int32) *server2Str
 	} else {
 		servStream = x.(*server2Stream)
 	}
-	servStream.onUse(conn, id, outWindow)
+	servStream.onUse(conn, id, remoteWindow)
 	return servStream
 }
 func putServer2Stream(servStream *server2Stream) {
@@ -330,12 +331,12 @@ func putServer2Stream(servStream *server2Stream) {
 	poolServer2Stream.Put(servStream)
 }
 
-func (s *server2Stream) onUse(conn *server2Conn, id uint32, outWindow int32) { // for non-zeros
+func (s *server2Stream) onUse(conn *server2Conn, id uint32, remoteWindow int32) { // for non-zeros
 	s.http2Stream_.onUse(conn, id)
 	s._serverStream_.onUse()
 
-	s.inWindow = _64K1      // max size of r.bodyWindow
-	s.outWindow = outWindow // may be changed by the peer
+	s.localWindow = _64K1         // max size of r.bodyWindow
+	s.remoteWindow = remoteWindow // may be changed by the peer
 	s.request.onUse()
 	s.response.onUse()
 }

@@ -297,13 +297,13 @@ func (c *backend1Conn) onPut() {
 	c.http1Conn_.onPut()
 }
 
-func (c *backend1Conn) newStream() (*backend1Stream, error) {
+func (c *backend1Conn) newStream() (*backend1Stream, error) { // used by http1Node
 	// In HTTP/1.1 connections, streams are sequential, so we don't actually create them, simply reuse the only one
 	backStream := &c.stream
 	backStream.onUse(c, c.nextStreamID())
 	return backStream, nil
 }
-func (c *backend1Conn) delStream(backStream *backend1Stream) {
+func (c *backend1Conn) delStream(backStream *backend1Stream) { // used by http1Node
 	// In HTTP/1.1 connections, streams are sequential, so we don't actually delete them, simply reuse the only one
 	backStream.onEnd()
 }

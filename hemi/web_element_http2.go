@@ -133,98 +133,105 @@ var http2CodeTexts = [...]string{
 	http2CodeHTTP11Required:     "HTTP_1_1_REQUIRED",
 }
 
-var http2BytesStatic = []byte(":authority:methodGETPOST:path//index.html:schemehttphttps:status200204206304400404500accept-charsetaccept-encodinggzip, deflateaccept-languageaccept-rangesacceptaccess-control-allow-originageallowauthorizationcache-controlcontent-dispositioncontent-encodingcontent-languagecontent-lengthcontent-locationcontent-rangecontent-typecookiedateetagexpectexpiresfromhostif-matchif-modified-sinceif-none-matchif-rangeif-unmodified-sincelast-modifiedlinklocationmax-forwardsproxy-authenticateproxy-authorizationrangerefererrefreshretry-afterserverset-cookiestrict-transport-securitytransfer-encodinguser-agentvaryviawww-authenticate") // DO NOT CHANGE THIS UNLESS YOU KNOW WHAT YOU ARE DOING
+// DO NOT CHANGE THIS UNLESS YOU KNOW WHAT YOU ARE DOING
+var http2BytesStatic = []byte(":authority:methodGET:methodPOST:path/:path/index.html:schemehttp:schemehttps:status200:status204:status206:status304:status400:status404:status500accept-charsetaccept-encodinggzip, deflateaccept-languageaccept-rangesacceptaccess-control-allow-originageallowauthorizationcache-controlcontent-dispositioncontent-encodingcontent-languagecontent-lengthcontent-locationcontent-rangecontent-typecookiedateetagexpectexpiresfromhostif-matchif-modified-sinceif-none-matchif-rangeif-unmodified-sincelast-modifiedlinklocationmax-forwardsproxy-authenticateproxy-authorizationrangerefererrefreshretry-afterserverset-cookiestrict-transport-securitytransfer-encodinguser-agentvaryviawww-authenticate")
 
 // http2StaticTable is used by HPACK decoder.
-var http2StaticTable = [62]pair{ // TODO
-	/*
-		0:  {0, placeStatic2, 0, 0, span{0, 0}},
-		1:  {1059, placeStatic2, 10, 0, span{0, 0}},
-		2:  {699, placeStatic2, 7, 10, span{17, 20}},
-		3:  {699, placeStatic2, 7, 10, span{20, 24}},
-		4:  {487, placeStatic2, 5, 24, span{29, 30}},
-		5:  {487, placeStatic2, 5, 24, span{30, 41}},
-		6:  {687, placeStatic2, 7, 41, span{48, 52}},
-		7:  {687, placeStatic2, 7, 41, span{52, 57}},
-		8:  {734, placeStatic2, 7, 57, span{64, 67}},
-		9:  {734, placeStatic2, 7, 57, span{67, 70}},
-		10: {734, placeStatic2, 7, 57, span{70, 73}},
-		11: {734, placeStatic2, 7, 57, span{73, 76}},
-		12: {734, placeStatic2, 7, 57, span{76, 79}},
-		13: {734, placeStatic2, 7, 57, span{79, 82}},
-		14: {734, placeStatic2, 7, 57, span{82, 85}},
-		15: {1415, placeStatic2, 14, 85, span{0, 0}},
-		16: {1508, placeStatic2, 15, 99, span{114, 127}},
-		17: {1505, placeStatic2, 15, 127, span{0, 0}},
-		18: {1309, placeStatic2, 13, 142, span{0, 0}},
-		19: {624, placeStatic2, 6, 155, span{0, 0}},
-		20: {2721, placeStatic2, 27, 161, span{0, 0}},
-		21: {301, placeStatic2, 3, 188, span{0, 0}},
-		22: {543, placeStatic2, 5, 191, span{0, 0}},
-		23: {1425, placeStatic2, 13, 196, span{0, 0}},
-		24: {1314, placeStatic2, 13, 209, span{0, 0}},
-		25: {2013, placeStatic2, 19, 222, span{0, 0}},
-		26: {1647, placeStatic2, 16, 241, span{0, 0}},
-		27: {1644, placeStatic2, 16, 257, span{0, 0}},
-		28: {1450, placeStatic2, 14, 273, span{0, 0}},
-		29: {1665, placeStatic2, 16, 287, span{0, 0}},
-		30: {1333, placeStatic2, 13, 303, span{0, 0}},
-		31: {1258, placeStatic2, 12, 316, span{0, 0}},
-		32: {634, placeStatic2, 6, 328, span{0, 0}},
-		33: {414, placeStatic2, 4, 334, span{0, 0}},
-		34: {417, placeStatic2, 4, 338, span{0, 0}},
-		35: {649, placeStatic2, 6, 342, span{0, 0}},
-		36: {768, placeStatic2, 7, 348, span{0, 0}},
-		37: {436, placeStatic2, 4, 355, span{0, 0}},
-		38: {446, placeStatic2, 4, 359, span{0, 0}},
-		39: {777, placeStatic2, 8, 363, span{0, 0}},
-		40: {1660, placeStatic2, 17, 371, span{0, 0}},
-		41: {1254, placeStatic2, 13, 388, span{0, 0}},
-		42: {777, placeStatic2, 8, 401, span{0, 0}},
-		43: {1887, placeStatic2, 19, 409, span{0, 0}},
-		44: {1314, placeStatic2, 13, 428, span{0, 0}},
-		45: {430, placeStatic2, 4, 441, span{0, 0}},
-		46: {857, placeStatic2, 8, 445, span{0, 0}},
-		47: {1243, placeStatic2, 12, 453, span{0, 0}},
-		48: {1902, placeStatic2, 18, 465, span{0, 0}},
-		49: {2048, placeStatic2, 19, 483, span{0, 0}},
-		50: {525, placeStatic2, 5, 502, span{0, 0}},
-		51: {747, placeStatic2, 7, 507, span{0, 0}},
-		52: {751, placeStatic2, 7, 514, span{0, 0}},
-		53: {1141, placeStatic2, 11, 521, span{0, 0}},
-		54: {663, placeStatic2, 6, 532, span{0, 0}},
-		55: {1011, placeStatic2, 10, 538, span{0, 0}},
-		56: {2648, placeStatic2, 25, 548, span{0, 0}},
-		57: {1753, placeStatic2, 17, 573, span{0, 0}},
-		58: {1019, placeStatic2, 10, 590, span{0, 0}},
-		59: {450, placeStatic2, 4, 600, span{0, 0}},
-		60: {320, placeStatic2, 3, 604, span{0, 0}},
-		61: {1681, placeStatic2, 16, 607, span{0, 0}},
-	*/
+var http2StaticTable = [62]http2TableEntry{
+	0:  {0, true, 0, 0, 0},
+	1:  {1059, true, 10, 0, 10},
+	2:  {699, true, 7, 10, 20},
+	3:  {699, true, 7, 20, 31},
+	4:  {487, true, 5, 31, 37},
+	5:  {487, true, 5, 37, 53},
+	6:  {687, true, 7, 53, 64},
+	7:  {687, true, 7, 64, 76},
+	8:  {734, true, 7, 76, 86},
+	9:  {734, true, 7, 86, 96},
+	10: {734, true, 7, 96, 106},
+	11: {734, true, 7, 106, 116},
+	12: {734, true, 7, 116, 126},
+	13: {734, true, 7, 126, 136},
+	14: {734, true, 7, 136, 146},
+	15: {1415, true, 14, 146, 160},
+	16: {1508, true, 15, 160, 188},
+	17: {1505, true, 15, 188, 203},
+	18: {1309, true, 13, 203, 216},
+	19: {624, true, 6, 216, 222},
+	20: {2721, true, 27, 222, 249},
+	21: {301, true, 3, 249, 252},
+	22: {543, true, 5, 252, 257},
+	23: {1425, true, 13, 257, 270},
+	24: {1314, true, 13, 270, 283},
+	25: {2013, true, 19, 283, 302},
+	26: {1647, true, 16, 302, 318},
+	27: {1644, true, 16, 318, 334},
+	28: {1450, true, 14, 334, 348},
+	29: {1665, true, 16, 348, 364},
+	30: {1333, true, 13, 364, 377},
+	31: {1258, true, 12, 377, 389},
+	32: {634, true, 6, 389, 395},
+	33: {414, true, 4, 395, 399},
+	34: {417, true, 4, 399, 403},
+	35: {649, true, 6, 403, 409},
+	36: {768, true, 7, 409, 416},
+	37: {436, true, 4, 416, 420},
+	38: {446, true, 4, 420, 424},
+	39: {777, true, 8, 424, 432},
+	40: {1660, true, 17, 432, 449},
+	41: {1254, true, 13, 449, 462},
+	42: {777, true, 8, 462, 470},
+	43: {1887, true, 19, 470, 489},
+	44: {1314, true, 13, 489, 502},
+	45: {430, true, 4, 502, 506},
+	46: {857, true, 8, 506, 514},
+	47: {1243, true, 12, 514, 526},
+	48: {1902, true, 18, 526, 544},
+	49: {2048, true, 19, 544, 563},
+	50: {525, true, 5, 563, 568},
+	51: {747, true, 7, 568, 575},
+	52: {751, true, 7, 575, 582},
+	53: {1141, true, 11, 582, 593},
+	54: {663, true, 6, 593, 599},
+	55: {1011, true, 10, 599, 609},
+	56: {2648, true, 25, 609, 634},
+	57: {1753, true, 17, 634, 651},
+	58: {1019, true, 10, 651, 661},
+	59: {450, true, 4, 661, 665},
+	60: {320, true, 3, 665, 668},
+	61: {1681, true, 16, 668, 684},
 }
 
-func http2IsStaticIndex(index uint32) bool  { return index <= 61 }
-func http2GetStaticPair(index uint32) *pair { return &http2StaticTable[index] }
-func http2DynamicIndex(index uint32) uint32 { return index - 62 }
+func http2IsStaticIndex(index uint32) bool              { return index < 62 }
+func http2GetStaticEntry(index uint32) *http2TableEntry { return &http2StaticTable[index] }
+func http2DynamicIndex(index uint32) uint32             { return index - 62 }
 
-// http2DynamicEntry is a dynamic table entry.
-type http2DynamicEntry struct { // 8 bytes
-	nameFrom  uint16 // name: [nameFrom:nameEdge]
-	nameEdge  uint16 // must: nameEdge - nameFrom <= 255?
-	valueEdge uint16 // value: [nameEdge:valueEdge]
-	totalSize uint16 // must be: nameSize + valueSize + 32
+// http2TableEntry is an HPACK table entry.
+type http2TableEntry struct { // 8 bytes
+	nameHash  uint16 // name hash
+	isStatic  bool   // ...
+	nameSize  uint8  // must <= 255
+	nameFrom  uint16 // name edge at nameFrom+nameSize
+	valueEdge uint16 // value: [nameFrom+nameSize:valueEdge]
+}
+
+func (e *http2TableEntry) name() []byte {
+	return http2BytesStatic[e.nameFrom : e.nameFrom+uint16(e.nameSize)]
+}
+func (e *http2TableEntry) value() []byte {
+	return http2BytesStatic[e.nameFrom+uint16(e.nameSize) : e.valueEdge]
 }
 
 // http2DynamicTable
-type http2DynamicTable struct {
-	maxSize    uint32 // <= http2MaxTableSize
-	freeSize   uint32 // <= maxSize
-	maxEntries uint32 // cap(entries)
-	numEntries uint32 // num of current entries. max num = floor(http2MaxTableSize/(1+32)) = 124, where "1" is the size of a shortest field
-	oldest     uint32 // evict from oldest
-	newest     uint32 // append to newest
-	entries    [124]http2DynamicEntry
-	content    [http2MaxTableSize - 32]byte // the buffer
+type http2DynamicTable struct { // <= 5KiB
+	maxSize    uint32                       // <= http2MaxTableSize
+	freeSize   uint32                       // <= maxSize
+	maxEntries uint32                       // cap(entries)
+	numEntries uint32                       // num of current entries. max num = floor(http2MaxTableSize/(1+32)) = 124, where "1" is the size of a shortest field
+	oldest     uint32                       // evict from t.entries[t.oldest]
+	newest     uint32                       // append to t.entries[t.newest]
+	entries    [124]http2TableEntry         // implemented as a circular buffer: https://en.wikipedia.org/wiki/Circular_buffer
+	content    [http2MaxTableSize - 32]byte // the buffer. this size is the upper limit that remote manipulator can occupy
 }
 
 func (t *http2DynamicTable) init() {
@@ -240,14 +247,15 @@ func (t *http2DynamicTable) get(index uint32) (name []byte, value []byte, ok boo
 	if index >= t.numEntries {
 		return nil, nil, false
 	}
-	if t.newest > t.oldest || index <= t.newest {
-		index = t.newest - index
-	} else {
+	if t.newest <= t.oldest && index > t.newest {
 		index -= t.newest
 		index = t.maxEntries - index
+	} else {
+		index = t.newest - index
 	}
 	entry := t.entries[index]
-	return t.content[entry.nameFrom:entry.nameEdge], t.content[entry.nameEdge:entry.valueEdge], true
+	nameEdge := entry.nameFrom + uint16(entry.nameSize)
+	return t.content[entry.nameFrom:nameEdge], t.content[nameEdge:entry.valueEdge], true
 }
 func (t *http2DynamicTable) add(name []byte, value []byte) bool { // name is not empty. sizes of name and value are limited
 	if t.numEntries == t.maxEntries { // too many entries
@@ -275,7 +283,7 @@ func (t *http2DynamicTable) add(name []byte, value []byte) bool { // name is not
 		t._evictOne()
 	}
 	t.freeSize -= wantSize
-	var entry http2DynamicEntry
+	var entry http2TableEntry
 	if t.numEntries > 0 {
 		entry.nameFrom = t.entries[t.newest].valueEdge
 		if t.newest++; t.newest == t.maxEntries {
@@ -284,36 +292,38 @@ func (t *http2DynamicTable) add(name []byte, value []byte) bool { // name is not
 	} else { // empty table. starts from 0
 		entry.nameFrom = 0
 	}
-	entry.nameEdge = entry.nameFrom + uint16(nameSize)
-	entry.valueEdge = entry.nameEdge + uint16(valueSize)
-	entry.totalSize = uint16(wantSize)
-	copy(t.content[entry.nameFrom:entry.nameEdge], name)
+	//entry.nameEdge = entry.nameFrom + uint16(nameSize)
+	entry.nameSize = uint8(nameSize)
+	nameEdge := entry.nameFrom + uint16(entry.nameSize)
+	entry.valueEdge = nameEdge + uint16(valueSize)
+	copy(t.content[entry.nameFrom:nameEdge], name)
 	if valueSize > 0 {
-		copy(t.content[entry.nameEdge:entry.valueEdge], value)
+		copy(t.content[nameEdge:entry.valueEdge], value)
 	}
 	t.numEntries++
 	t.entries[t.newest] = entry
 	return true
 }
-func (t *http2DynamicTable) resize(maxSize uint32) { // maxSize must <= http2MaxTableSize
-	if maxSize > http2MaxTableSize {
-		BugExitln("maxSize out of range")
+func (t *http2DynamicTable) resize(newMaxSize uint32) { // newMaxSize must <= http2MaxTableSize
+	if newMaxSize > http2MaxTableSize {
+		BugExitln("newMaxSize out of range")
 	}
-	if maxSize >= t.maxSize {
-		t.freeSize += maxSize - t.maxSize
+	if newMaxSize >= t.maxSize {
+		t.freeSize += newMaxSize - t.maxSize
 	} else {
-		for usedSize := t.maxSize - t.freeSize; usedSize > maxSize; usedSize = t.maxSize - t.freeSize {
+		for usedSize := t.maxSize - t.freeSize; usedSize > newMaxSize; usedSize = t.maxSize - t.freeSize {
 			t._evictOne()
 		}
-		t.freeSize -= t.maxSize - maxSize
+		t.freeSize -= t.maxSize - newMaxSize
 	}
-	t.maxSize = maxSize
+	t.maxSize = newMaxSize
 }
 func (t *http2DynamicTable) _evictOne() {
 	if t.numEntries == 0 {
 		BugExitln("no entries to evict!")
 	}
-	t.freeSize += uint32(t.entries[t.oldest].totalSize)
+	evictee := &t.entries[t.oldest]
+	t.freeSize += uint32(evictee.valueEdge - evictee.nameFrom + 32)
 	if t.oldest++; t.oldest == t.maxEntries {
 		t.oldest = 0
 	}
@@ -380,20 +390,19 @@ func http2DecodeString(src []byte) ([]byte, int, bool) {
 	if !ok {
 		return nil, 0, false
 	}
-	H := src[0]&0x80 == 0x80
+	H := src[0] >= 0x80
 	src = src[j:]
 	if I > uint32(len(src)) {
 		return nil, j, false
 	}
 	src = src[0:I]
 	j += int(I)
-	if H {
-		return []byte("huffman"), j, true
-	} else {
+	if !H {
 		return src, j, true
 	}
+	return []byte("huffman"), j, true
 }
-func http2EncodeString(S string, literal bool, dst []byte) (int, bool) {
+func http2EncodeString(S string, huffman bool, dst []byte) (int, bool) {
 	// TODO
 	return 0, false
 }

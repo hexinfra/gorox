@@ -456,8 +456,8 @@ type fdesc struct {
 type pair struct { // 24 bytes
 	nameHash uint16 // name hash, to support fast search. 0 means empty pair
 	kind     int8   // see pair kinds
-	nameSize uint8  // name ends at nameFrom+nameSize
-	nameFrom int32  // name begins from
+	nameSize uint8  // must <= 255
+	nameFrom int32  // name edge at nameFrom+nameSize
 	value    span   // the value
 	place    int8   // see pair places
 	flags    byte   // fields only. see field flags

@@ -227,7 +227,7 @@ func (c *server2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
 		c.cumulativeStreams.Add(1)
 		servStream = getServer2Stream(c, streamID, c.peerSettings.initialWindowSize)
 		servReq = &servStream.request
-		if !c.decodeFields(fieldsInFrame.effective(), servReq.joinHeaders) {
+		if !c.hpackDecode(fieldsInFrame.effective(), servReq.joinHeaders) {
 			putServer2Stream(servStream)
 			return http2ErrorCompression
 		}
@@ -252,7 +252,7 @@ func (c *server2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
 		}
 		servReq = &servStream.request
 		servReq.receiving = httpSectionTrailers
-		if !c.decodeFields(fieldsInFrame.effective(), servReq.joinTrailers) {
+		if !c.hpackDecode(fieldsInFrame.effective(), servReq.joinTrailers) {
 			return http2ErrorCompression
 		}
 	}

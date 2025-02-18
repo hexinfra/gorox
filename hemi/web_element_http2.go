@@ -139,67 +139,67 @@ var http2BytesStatic = []byte(":authority:methodGET:methodPOST:path/:path/index.
 // http2StaticTable is used by HPACK decoder.
 var http2StaticTable = [62]http2TableEntry{
 	0:  {0, true, 0, 0, 0},
-	1:  {1059, true, 10, 0, 10},
-	2:  {699, true, 7, 10, 20},
-	3:  {699, true, 7, 20, 31},
-	4:  {487, true, 5, 31, 37},
-	5:  {487, true, 5, 37, 53},
-	6:  {687, true, 7, 53, 64},
-	7:  {687, true, 7, 64, 76},
-	8:  {734, true, 7, 76, 86},
-	9:  {734, true, 7, 86, 96},
-	10: {734, true, 7, 96, 106},
-	11: {734, true, 7, 106, 116},
-	12: {734, true, 7, 116, 126},
-	13: {734, true, 7, 126, 136},
-	14: {734, true, 7, 136, 146},
-	15: {1415, true, 14, 146, 160},
-	16: {1508, true, 15, 160, 188},
-	17: {1505, true, 15, 188, 203},
-	18: {1309, true, 13, 203, 216},
-	19: {624, true, 6, 216, 222},
-	20: {2721, true, 27, 222, 249},
-	21: {301, true, 3, 249, 252},
-	22: {543, true, 5, 252, 257},
-	23: {1425, true, 13, 257, 270},
-	24: {1314, true, 13, 270, 283},
-	25: {2013, true, 19, 283, 302},
-	26: {1647, true, 16, 302, 318},
-	27: {1644, true, 16, 318, 334},
-	28: {1450, true, 14, 334, 348},
-	29: {1665, true, 16, 348, 364},
-	30: {1333, true, 13, 364, 377},
-	31: {1258, true, 12, 377, 389},
-	32: {634, true, 6, 389, 395},
-	33: {414, true, 4, 395, 399},
-	34: {417, true, 4, 399, 403},
-	35: {649, true, 6, 403, 409},
-	36: {768, true, 7, 409, 416},
-	37: {436, true, 4, 416, 420},
-	38: {446, true, 4, 420, 424},
-	39: {777, true, 8, 424, 432},
-	40: {1660, true, 17, 432, 449},
-	41: {1254, true, 13, 449, 462},
-	42: {777, true, 8, 462, 470},
-	43: {1887, true, 19, 470, 489},
-	44: {1314, true, 13, 489, 502},
-	45: {430, true, 4, 502, 506},
-	46: {857, true, 8, 506, 514},
-	47: {1243, true, 12, 514, 526},
-	48: {1902, true, 18, 526, 544},
-	49: {2048, true, 19, 544, 563},
-	50: {525, true, 5, 563, 568},
-	51: {747, true, 7, 568, 575},
-	52: {751, true, 7, 575, 582},
-	53: {1141, true, 11, 582, 593},
-	54: {663, true, 6, 593, 599},
-	55: {1011, true, 10, 599, 609},
-	56: {2648, true, 25, 609, 634},
-	57: {1753, true, 17, 634, 651},
-	58: {1019, true, 10, 651, 661},
-	59: {450, true, 4, 661, 665},
-	60: {320, true, 3, 665, 668},
-	61: {1681, true, 16, 668, 684},
+	1:  {1059, true, 10, 0, 10},    // :authority=
+	2:  {699, true, 7, 10, 20},     // :method=GET
+	3:  {699, true, 7, 20, 31},     // :method=POST
+	4:  {487, true, 5, 31, 37},     // :path=/
+	5:  {487, true, 5, 37, 53},     // :path=/index.html
+	6:  {687, true, 7, 53, 64},     // :scheme=http
+	7:  {687, true, 7, 64, 76},     // :scheme=https
+	8:  {734, true, 7, 76, 86},     // :status=200
+	9:  {734, true, 7, 86, 96},     // :status=204
+	10: {734, true, 7, 96, 106},    // :status=206
+	11: {734, true, 7, 106, 116},   // :status=304
+	12: {734, true, 7, 116, 126},   // :status=400
+	13: {734, true, 7, 126, 136},   // :status=404
+	14: {734, true, 7, 136, 146},   // :status=500
+	15: {1415, true, 14, 146, 160}, // accept-charset=
+	16: {1508, true, 15, 160, 188}, // accept-encoding=gzip, deflate
+	17: {1505, true, 15, 188, 203}, // accept-language=
+	18: {1309, true, 13, 203, 216}, // accept-ranges=
+	19: {624, true, 6, 216, 222},   // accept=
+	20: {2721, true, 27, 222, 249}, // access-control-allow-origin=
+	21: {301, true, 3, 249, 252},   // age=
+	22: {543, true, 5, 252, 257},   // allow=
+	23: {1425, true, 13, 257, 270}, // authorization=
+	24: {1314, true, 13, 270, 283}, // cache-control=
+	25: {2013, true, 19, 283, 302}, // content-disposition=
+	26: {1647, true, 16, 302, 318}, // content-encoding=
+	27: {1644, true, 16, 318, 334}, // content-language=
+	28: {1450, true, 14, 334, 348}, // content-length=
+	29: {1665, true, 16, 348, 364}, // content-location=
+	30: {1333, true, 13, 364, 377}, // content-range=
+	31: {1258, true, 12, 377, 389}, // content-type=
+	32: {634, true, 6, 389, 395},   // cookie=
+	33: {414, true, 4, 395, 399},   // date=
+	34: {417, true, 4, 399, 403},   // etag=
+	35: {649, true, 6, 403, 409},   // expect=
+	36: {768, true, 7, 409, 416},   // expires=
+	37: {436, true, 4, 416, 420},   // from=
+	38: {446, true, 4, 420, 424},   // host=
+	39: {777, true, 8, 424, 432},   // if-match=
+	40: {1660, true, 17, 432, 449}, // if-modified-since=
+	41: {1254, true, 13, 449, 462}, // if-none-match=
+	42: {777, true, 8, 462, 470},   // if-range=
+	43: {1887, true, 19, 470, 489}, // if-unmodified-since=
+	44: {1314, true, 13, 489, 502}, // last-modified=
+	45: {430, true, 4, 502, 506},   // link=
+	46: {857, true, 8, 506, 514},   // location=
+	47: {1243, true, 12, 514, 526}, // max-forwards=
+	48: {1902, true, 18, 526, 544}, // proxy-authenticate=
+	49: {2048, true, 19, 544, 563}, // proxy-authorization=
+	50: {525, true, 5, 563, 568},   // range=
+	51: {747, true, 7, 568, 575},   // referer=
+	52: {751, true, 7, 575, 582},   // refresh=
+	53: {1141, true, 11, 582, 593}, // retry-after=
+	54: {663, true, 6, 593, 599},   // server=
+	55: {1011, true, 10, 599, 609}, // set-cookie=
+	56: {2648, true, 25, 609, 634}, // strict-transport-security=
+	57: {1753, true, 17, 634, 651}, // transfer-encoding=
+	58: {1019, true, 10, 651, 661}, // user-agent=
+	59: {450, true, 4, 661, 665},   // vary=
+	60: {320, true, 3, 665, 668},   // via=
+	61: {1681, true, 16, 668, 684}, // www-authenticate=
 }
 
 func http2IsStaticIndex(index uint32) bool              { return index < 62 }
@@ -222,8 +222,8 @@ func (e *http2TableEntry) value() []byte {
 	return http2BytesStatic[e.nameFrom+uint16(e.nameSize) : e.valueEdge]
 }
 
-// http2DynamicTable
-type http2DynamicTable struct { // <= 5KiB
+// http2Table
+type http2Table struct { // <= 5KiB
 	maxSize    uint32                       // <= http2MaxTableSize
 	freeSize   uint32                       // <= maxSize
 	maxEntries uint32                       // cap(entries)
@@ -234,7 +234,7 @@ type http2DynamicTable struct { // <= 5KiB
 	content    [http2MaxTableSize - 32]byte // the buffer. this size is the upper limit that remote manipulator can occupy
 }
 
-func (t *http2DynamicTable) init() {
+func (t *http2Table) init() {
 	t.maxSize = http2MaxTableSize
 	t.freeSize = t.maxSize
 	t.maxEntries = uint32(cap(t.entries))
@@ -243,7 +243,7 @@ func (t *http2DynamicTable) init() {
 	t.newest = 0
 }
 
-func (t *http2DynamicTable) get(index uint32) (name []byte, value []byte, ok bool) {
+func (t *http2Table) get(index uint32) (name []byte, value []byte, ok bool) {
 	if index >= t.numEntries {
 		return nil, nil, false
 	}
@@ -257,7 +257,7 @@ func (t *http2DynamicTable) get(index uint32) (name []byte, value []byte, ok boo
 	nameEdge := entry.nameFrom + uint16(entry.nameSize)
 	return t.content[entry.nameFrom:nameEdge], t.content[nameEdge:entry.valueEdge], true
 }
-func (t *http2DynamicTable) add(name []byte, value []byte) bool { // name is not empty. sizes of name and value are limited
+func (t *http2Table) add(name []byte, value []byte) bool { // name is not empty. sizes of name and value are limited
 	if t.numEntries == t.maxEntries { // too many entries
 		return false
 	}
@@ -292,7 +292,6 @@ func (t *http2DynamicTable) add(name []byte, value []byte) bool { // name is not
 	} else { // empty table. starts from 0
 		entry.nameFrom = 0
 	}
-	//entry.nameEdge = entry.nameFrom + uint16(nameSize)
 	entry.nameSize = uint8(nameSize)
 	nameEdge := entry.nameFrom + uint16(entry.nameSize)
 	entry.valueEdge = nameEdge + uint16(valueSize)
@@ -304,7 +303,7 @@ func (t *http2DynamicTable) add(name []byte, value []byte) bool { // name is not
 	t.entries[t.newest] = entry
 	return true
 }
-func (t *http2DynamicTable) resize(newMaxSize uint32) { // newMaxSize must <= http2MaxTableSize
+func (t *http2Table) resize(newMaxSize uint32) { // newMaxSize must <= http2MaxTableSize
 	if newMaxSize > http2MaxTableSize {
 		BugExitln("newMaxSize out of range")
 	}
@@ -318,7 +317,7 @@ func (t *http2DynamicTable) resize(newMaxSize uint32) { // newMaxSize must <= ht
 	}
 	t.maxSize = newMaxSize
 }
-func (t *http2DynamicTable) _evictOne() {
+func (t *http2Table) _evictOne() {
 	if t.numEntries == 0 {
 		BugExitln("no entries to evict!")
 	}
@@ -332,7 +331,7 @@ func (t *http2DynamicTable) _evictOne() {
 	}
 }
 
-func http2DecodeInteger(src []byte, N byte, max uint32) (uint32, int, bool) {
+func http2DecodeInteger(src []byte, N int, max uint32) (uint32, int, bool) {
 	l := len(src)
 	if l == 0 {
 		return 0, 0, false
@@ -359,7 +358,7 @@ func http2DecodeInteger(src []byte, N byte, max uint32) (uint32, int, bool) {
 	}
 	return I, j, true
 }
-func http2EncodeInteger(I uint32, N byte, dst []byte) (int, bool) {
+func http2EncodeInteger(dst []byte, I uint32, N int) (int, bool) {
 	l := len(dst)
 	if l == 0 {
 		return 0, false
@@ -402,7 +401,7 @@ func http2DecodeString(src []byte) ([]byte, int, bool) {
 	}
 	return []byte("huffman"), j, true
 }
-func http2EncodeString(S string, huffman bool, dst []byte) (int, bool) {
+func http2EncodeString(dst []byte, S string, huffman bool) (int, bool) {
 	// TODO
 	return 0, false
 }
@@ -495,7 +494,7 @@ var http2InFrameCheckers = [http2NumFrameKinds]func(*http2InFrame) error{
 }
 
 func (f *http2InFrame) checkAsData() error {
-	var minLength uint16 = 1 // Data (..)
+	var minLength uint16 = 0 // Data (..)
 	if f.padded {
 		minLength += 1 // Pad Length (8)
 	}

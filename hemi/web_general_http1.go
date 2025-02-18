@@ -346,7 +346,7 @@ func (r *_http1In_) _readSizedContent() ([]byte, error) {
 	if r.bodyTime.IsZero() {
 		r.bodyTime = time.Now()
 	}
-	if err := r.stream.setReadDeadline(); err != nil { // may be called multiple times during the reception of content
+	if err := r.stream.setReadDeadline(); err != nil { // may be called multiple times during the reception of the sized content
 		return nil, err
 	}
 	size, err := r.stream.readFull(r.bodyWindow[:readSize])
@@ -649,7 +649,7 @@ func (r *_http1In_) growChunked() bool { // HTTP/1.x is not a binary protocol, w
 	if r.bodyTime.IsZero() {
 		r.bodyTime = time.Now()
 	}
-	err := r.stream.setReadDeadline() // may be called multiple times during the reception of content
+	err := r.stream.setReadDeadline() // may be called multiple times during the reception of the vague content
 	if err == nil {
 		n, e := r.stream.read(r.bodyWindow[r.chunkEdge:])
 		r.chunkEdge += int32(n)
@@ -1014,7 +1014,7 @@ func (r *_http1Out_) _writeFilePiece(piece *Piece, inChunked bool) error {
 		if r.sendTime.IsZero() {
 			r.sendTime = time.Now()
 		}
-		if err = r.stream.setWriteDeadline(); err != nil {
+		if err = r.stream.setWriteDeadline(); err != nil { // for _writeFilePiece
 			r.stream.markBroken()
 			return err
 		}
@@ -1047,7 +1047,7 @@ func (r *_http1Out_) writeVector() error {
 	if r.sendTime.IsZero() {
 		r.sendTime = time.Now()
 	}
-	if err := r.stream.setWriteDeadline(); err != nil {
+	if err := r.stream.setWriteDeadline(); err != nil { // for writeVector
 		r.stream.markBroken()
 		return err
 	}
@@ -1064,7 +1064,7 @@ func (r *_http1Out_) writeBytes(data []byte) error {
 	if r.sendTime.IsZero() {
 		r.sendTime = time.Now()
 	}
-	if err := r.stream.setWriteDeadline(); err != nil {
+	if err := r.stream.setWriteDeadline(); err != nil { // for writeBytes
 		r.stream.markBroken()
 		return err
 	}

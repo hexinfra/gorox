@@ -36,7 +36,7 @@ type http3TableEntry struct { // 8 bytes
 
 // http3Table
 type http3Table struct {
-	entries [124]http3TableEntry
+	entries [1]http3TableEntry // TODO: size
 	content [_4K]byte
 }
 

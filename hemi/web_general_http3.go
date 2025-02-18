@@ -151,6 +151,14 @@ func (r *_http3In_) readContent() (data []byte, err error) {
 	// TODO
 	return
 }
+func (r *_http3In_) _readSizedContent() ([]byte, error) {
+	// r.stream.setReadDeadline() // may be called multiple times during the reception of the sized content
+	return nil, nil
+}
+func (r *_http3In_) _readVagueContent() ([]byte, error) {
+	// r.stream.setReadDeadline() // may be called multiple times during the reception of the vague content
+	return nil, nil
+}
 
 // _http3Out_ is a mixin.
 type _http3Out_ struct { // for server3Response and backend3Request
@@ -249,14 +257,20 @@ func (r *_http3Out_) _writeTextPiece(piece *Piece) error {
 }
 func (r *_http3Out_) _writeFilePiece(piece *Piece) error {
 	// TODO
+	// r.stream.setWriteDeadline() // for _writeFilePiece
+	// r.stream.write() or r.stream.writev()
 	return nil
 }
 func (r *_http3Out_) writeVector() error {
 	// TODO
+	// r.stream.setWriteDeadline() // for writeVector
+	// r.stream.writev()
 	return nil
 }
 func (r *_http3Out_) writeBytes(data []byte) error {
 	// TODO
+	// r.stream.setWriteDeadline() // for writeBytes
+	// r.stream.write()
 	return nil
 }
 

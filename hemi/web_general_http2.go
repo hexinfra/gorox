@@ -132,6 +132,51 @@ func (c *http2Conn_[S]) receive() { // runner, employed by c.manage()
 	}
 }
 
+func (c *http2Conn_[S]) _getFreeSeat() uint8 {
+	c.freeSeatsTop++
+	return c.freeSeats[c.freeSeatsTop]
+}
+func (c *http2Conn_[S]) _putFreeSeat(seat uint8) {
+	c.freeSeats[c.freeSeatsTop] = seat
+	c.freeSeatsTop--
+}
+
+func (c *http2Conn_[S]) appendStream(stream S) { // O(1)
+	seat := c._getFreeSeat()
+	stream.setSeat(seat)
+	c.activeStreams[seat] = stream
+	c.activeStreamIDs[seat] = stream.nativeID()
+	if DebugLevel() >= 2 {
+		Printf("conn=%d appendStream=%d at %d\n", c.id, stream.nativeID(), seat)
+	}
+}
+func (c *http2Conn_[S]) searchStream(streamID uint32) S { // O(http2MaxConcurrentStreams), but in practice this linear search algorithm should be fast enough
+	c.activeStreamIDs[http2MaxConcurrentStreams] = streamID // the stream id to search for
+	seat := uint8(0)
+	for c.activeStreamIDs[seat] != streamID {
+		seat++
+	}
+	if seat != http2MaxConcurrentStreams { // found
+		if DebugLevel() >= 2 {
+			Printf("conn=%d searchStream=%d at %d\n", c.id, streamID, seat)
+		}
+		return c.activeStreams[seat]
+	} else { // not found
+		var null S // nil
+		return null
+	}
+}
+func (c *http2Conn_[S]) retireStream(stream S) { // O(1)
+	seat := stream.getSeat()
+	if DebugLevel() >= 2 {
+		Printf("conn=%d retireStream=%d at %d\n", c.id, stream.nativeID(), seat)
+	}
+	var null S // nil
+	c.activeStreams[seat] = null
+	c.activeStreamIDs[seat] = 0
+	c._putFreeSeat(seat)
+}
+
 func (c *http2Conn_[S]) recvInFrame() (*http2InFrame, error) { // excluding pushPromise, which is not supported, and continuation, which cannot arrive alone
 	// Receive frame header
 	c.sectBack = c.sectFore
@@ -288,12 +333,12 @@ func (c *http2Conn_[S]) _growContinuationFrame(size uint16, fieldsInFrame *http2
 	return c._fillInBuffer(c.contFore - c.inBufferEdge)
 }
 
-func (c *http2Conn_[S]) onDataInFrame(dataInFrame *http2InFrame) error {
+func (c *http2Conn_[S]) processDataInFrame(dataInFrame *http2InFrame) error {
 	// TODO
 	return nil
 }
-func (c *http2Conn_[S]) onPriorityInFrame(priorityInFrame *http2InFrame) error { return nil } // do nothing, priority frames are ignored
-func (c *http2Conn_[S]) onResetStreamInFrame(resetStreamInFrame *http2InFrame) error {
+func (c *http2Conn_[S]) processPriorityInFrame(priorityInFrame *http2InFrame) error { return nil } // do nothing, priority frames are ignored
+func (c *http2Conn_[S]) processResetStreamInFrame(resetStreamInFrame *http2InFrame) error {
 	streamID := resetStreamInFrame.streamID
 	if streamID > c.lastStreamID {
 		// RST_STREAM frames MUST NOT be sent for a stream in the "idle" state. If a RST_STREAM frame identifying an idle stream is received,
@@ -303,10 +348,10 @@ func (c *http2Conn_[S]) onResetStreamInFrame(resetStreamInFrame *http2InFrame) e
 	// TODO
 	return nil
 }
-func (c *http2Conn_[S]) onPushPromiseInFrame(pushPromiseInFrame *http2InFrame) error {
+func (c *http2Conn_[S]) processPushPromiseInFrame(pushPromiseInFrame *http2InFrame) error {
 	panic("pushPromise frames should be rejected priorly")
 }
-func (c *http2Conn_[S]) onPingInFrame(pingInFrame *http2InFrame) error {
+func (c *http2Conn_[S]) processPingInFrame(pingInFrame *http2InFrame) error {
 	if pingInFrame.ack { // pong
 		if !c.pingSent { // TODO: confirm this
 			return http2ErrorProtocol
@@ -328,10 +373,10 @@ func (c *http2Conn_[S]) onPingInFrame(pingInFrame *http2InFrame) error {
 	pongOutFrame.zero()
 	return err
 }
-func (c *http2Conn_[S]) onGoawayInFrame(goawayInFrame *http2InFrame) error {
+func (c *http2Conn_[S]) processGoawayInFrame(goawayInFrame *http2InFrame) error {
 	panic("goaway frames should be hijacked by c.receive()")
 }
-func (c *http2Conn_[S]) onWindowUpdateInFrame(windowUpdateInFrame *http2InFrame) error {
+func (c *http2Conn_[S]) processWindowUpdateInFrame(windowUpdateInFrame *http2InFrame) error {
 	windowSize := binary.BigEndian.Uint32(windowUpdateInFrame.effective())
 	if windowSize == 0 || windowSize > _2G1 {
 		// The legal range for the increment to the flow-control window is 1 to 2^31 - 1 (2,147,483,647) octets.
@@ -342,7 +387,7 @@ func (c *http2Conn_[S]) onWindowUpdateInFrame(windowUpdateInFrame *http2InFrame)
 	Printf("conn=%d stream=%d windowUpdate=%d\n", c.id, windowUpdateInFrame.streamID, windowSize)
 	return nil
 }
-func (c *http2Conn_[S]) onContinuationInFrame(continuationInFrame *http2InFrame) error {
+func (c *http2Conn_[S]) processContinuationInFrame(continuationInFrame *http2InFrame) error {
 	panic("lonely continuation frames should be rejected priorly")
 }
 
@@ -383,49 +428,83 @@ func (c *http2Conn_[S]) _updatePeerSettings(settingsInFrame *http2InFrame, asCli
 	}
 	if windowDelta != 0 {
 		c.peerSettings.initialWindowSize += windowDelta
-		c._adjustStreamWindows(windowDelta)
+		//c._adjustStreamWindows(windowDelta)
 	}
 	Printf("conn=%d peerSettings=%+v\n", c.id, c.peerSettings)
 	return nil
 }
-func (c *http2Conn_[S]) _adjustStreamWindows(delta int32) {
-	// TODO
-}
 
-func (c *http2Conn_[S]) appendStream(stream S) { // O(1)
-	seat := c._getFreeSeat()
-	stream.setSeat(seat)
-	c.activeStreams[seat] = stream
-	c.activeStreamIDs[seat] = stream.nativeID()
-	if DebugLevel() >= 2 {
-		Printf("conn=%d appendStream=%d at %d\n", c.id, stream.nativeID(), seat)
-	}
-}
-func (c *http2Conn_[S]) searchStream(streamID uint32) S { // O(http2MaxConcurrentStreams), but in practice this linear search algorithm should be fast enough
-	c.activeStreamIDs[http2MaxConcurrentStreams] = streamID // the stream id to search for
-	seat := uint8(0)
-	for c.activeStreamIDs[seat] != streamID {
-		seat++
-	}
-	if seat != http2MaxConcurrentStreams { // found
-		if DebugLevel() >= 2 {
-			Printf("conn=%d searchStream=%d at %d\n", c.id, streamID, seat)
+func (c *http2Conn_[S]) hpackDecode(fields []byte, join func(p []byte) bool) bool { // TODO: method value escapes to heap?
+	var fieldName, lineValue []byte
+	var (
+		I  uint32 // the decoded integer
+		j  int    // index of fields
+		ok bool   // decode succeeds or not
+	)
+	i, n := 0, len(fields)
+	for i < n {
+		b := fields[i]
+		if b >= 0b_1000_0000 { // 6.1. Indexed Header Field Representation
+			I, j, ok = http2DecodeInteger(fields[i:], 7, http2MaxTableIndex)
+			if !ok || I == 0 { // The index value of 0 is not used.  It MUST be treated as a decoding error if found in an indexed header field representation.
+				Println("decode error")
+				return false
+			}
+			fieldName, lineValue, ok = c.decodeTable.get(I)
+			if !ok { // Indices strictly greater than the sum of the lengths of both tables MUST be treated as a decoding error.
+				return false
+			}
+			i += j
+		} else if b >= 0b_0010_0000 && b < 0b_0100_0000 { // 6.3. Dynamic Table Size Update
+			I, j, ok = http2DecodeInteger(fields[i:], 5, http2MaxTableSize)
+			if !ok {
+				Println("decode error")
+				return false
+			}
+			i += j
+			Printf("update size=%d\n", I)
+		} else { // 0b_01xx_xxxx, 0b_0000_xxxx, 0b_0001_xxxx
+			var N int
+			if b >= 0b_0100_0000 { // 6.2.1. Literal Header Field with Incremental Indexing
+				N = 6
+			} else { // 0b_0000_xxxx (6.2.2. Literal Header Field without Indexing), 0b_0001_xxxx (6.2.3. Literal Header Field Never Indexed)
+				N = 4
+			}
+			I, j, ok = http2DecodeInteger(fields[i:], N, http2MaxTableIndex)
+			if !ok {
+				println("decode error")
+				return false
+			}
+			i += j
+			if I != 0 { // Indexed Name
+				fieldName, _, ok = c.decodeTable.get(I)
+				if !ok {
+					Println("decode error")
+					return false
+				}
+			} else { // New Name
+				fieldName, j, ok = http2DecodeString(fields[i:])
+				if !ok || len(fieldName) == 0 {
+					Println("decode error")
+					return false
+				}
+				i += j
+			}
+			lineValue, j, ok = http2DecodeString(fields[i:])
+			if !ok {
+				Println("decode error")
+				return false
+			}
+			i += j
+			if b >= 0b_0100_0000 {
+				c.decodeTable.add(fieldName, lineValue)
+			} else if b >= 0b_0001_0000 {
+				// TODO: never indexed
+			}
 		}
-		return c.activeStreams[seat]
-	} else { // not found
-		var null S // nil
-		return null
+		Printf("name=%s value=%s\n", fieldName, lineValue)
 	}
-}
-func (c *http2Conn_[S]) retireStream(stream S) { // O(1)
-	seat := stream.getSeat()
-	if DebugLevel() >= 2 {
-		Printf("conn=%d retireStream=%d at %d\n", c.id, stream.nativeID(), seat)
-	}
-	var null S // nil
-	c.activeStreams[seat] = null
-	c.activeStreamIDs[seat] = 0
-	c._putFreeSeat(seat)
+	return i == n
 }
 
 func (c *http2Conn_[S]) sendOutFrame(outFrame *http2OutFrame[S]) error {
@@ -448,78 +527,9 @@ func (c *http2Conn_[S]) sendOutFrame(outFrame *http2OutFrame[S]) error {
 	return err
 }
 
-func (c *http2Conn_[S]) hpackDecode(fields []byte, join func(p []byte) bool) bool { // TODO: method value escapes to heap?
-	var fieldName, lineValue []byte
-	var (
-		I  uint32 // the decoded integer
-		j  int    // index of fields
-		ok bool   // decode succeeds or not
-	)
-	i, n := 0, len(fields)
-	for i < n {
-		b := fields[i]
-		if b >= 0b_1000_0000 { // 6.1. Indexed Header Field Representation
-			I, j, ok = http2DecodeInteger(fields[i:], 7, 62+124)
-			if !ok || I == 0 {
-				Println("decode error")
-				return false
-			}
-			i += j
-			fieldName, lineValue, ok = c.decodeTable.get(I)
-		} else if b >= 0b_0010_0000 && b < 0b_0100_0000 { // 6.3. Dynamic Table Size Update
-			I, j, ok = http2DecodeInteger(fields[i:], 5, http2MaxTableSize)
-			if !ok {
-				Println("decode error")
-				return false
-			}
-			i += j
-			Printf("update size=%d\n", I)
-		} else { // 0b_01xx_xxxx, 0b_0000_xxxx, 0b_0001_xxxx
-			var N int
-			if b >= 0b_0100_0000 { // 6.2.1. Literal Header Field with Incremental Indexing
-				N = 6
-			} else { // 0b_0000_xxxx (6.2.2. Literal Header Field without Indexing), 0b_0001_xxxx (6.2.3. Literal Header Field Never Indexed)
-				N = 4
-			}
-			I, j, ok = http2DecodeInteger(fields[i:], N, 128)
-			if !ok {
-				println("decode error")
-				return false
-			}
-			i += j
-			if I != 0 {
-				fieldName, _, ok = c.decodeTable.get(I)
-				if !ok {
-					Println("decode error")
-					return false
-				}
-			} else {
-				fieldName, j, ok = http2DecodeString(fields[i:])
-				if !ok || len(fieldName) == 0 {
-					Println("decode error")
-					return false
-				}
-				i += j
-			}
-			lineValue, j, ok = http2DecodeString(fields[i:])
-			if !ok {
-				Println("decode error")
-				return false
-			}
-			i += j
-		}
-		Printf("name=%s value=%s\n", fieldName, lineValue)
-	}
-	return true
-}
-
-func (c *http2Conn_[S]) _getFreeSeat() uint8 {
-	c.freeSeatsTop++
-	return c.freeSeats[c.freeSeatsTop]
-}
-func (c *http2Conn_[S]) _putFreeSeat(seat uint8) {
-	c.freeSeats[c.freeSeatsTop] = seat
-	c.freeSeatsTop--
+func (c *http2Conn_[S]) hpackEncode() {
+	// TODO
+	// uses c.encodeTable
 }
 
 func (c *http2Conn_[S]) remoteAddr() net.Addr { return c.netConn.RemoteAddr() }
@@ -663,6 +673,14 @@ func (r *_http2In_) readContent() (data []byte, err error) {
 	// TODO
 	return
 }
+func (r *_http2In_) _readSizedContent() ([]byte, error) {
+	// r.stream.setReadDeadline() // may be called multiple times during the reception of the sized content
+	return nil, nil
+}
+func (r *_http2In_) _readVagueContent() ([]byte, error) {
+	// r.stream.setReadDeadline() // may be called multiple times during the reception of the vague content
+	return nil, nil
+}
 
 // _http2Out_ is a mixin.
 type _http2Out_ struct { // for server2Response and backend2Request
@@ -761,14 +779,20 @@ func (r *_http2Out_) _writeTextPiece(piece *Piece) error {
 }
 func (r *_http2Out_) _writeFilePiece(piece *Piece) error {
 	// TODO
+	// r.stream.setWriteDeadline() // for _writeFilePiece
+	// r.stream.write() or r.stream.writev()
 	return nil
 }
 func (r *_http2Out_) writeVector() error {
 	// TODO
+	// r.stream.setWriteDeadline() // for writeVector
+	// r.stream.writev()
 	return nil
 }
 func (r *_http2Out_) writeBytes(data []byte) error {
 	// TODO
+	// r.stream.setWriteDeadline() // for writeBytes
+	// r.stream.write()
 	return nil
 }
 

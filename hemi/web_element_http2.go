@@ -133,12 +133,21 @@ var http2CodeTexts = [...]string{
 	http2CodeHTTP11Required:     "HTTP_1_1_REQUIRED",
 }
 
+// http2TableEntry is an HPACK table entry.
+type http2TableEntry struct { // 8 bytes
+	nameHash  uint16 // name hash
+	isStatic  bool   // ...
+	nameSize  uint8  // must <= 255
+	nameFrom  uint16 // name edge at nameFrom+nameSize
+	valueEdge uint16 // value: [nameFrom+nameSize:valueEdge]
+}
+
 // DO NOT CHANGE THIS UNLESS YOU KNOW WHAT YOU ARE DOING
 var http2BytesStatic = []byte(":authority:methodGET:methodPOST:path/:path/index.html:schemehttp:schemehttps:status200:status204:status206:status304:status400:status404:status500accept-charsetaccept-encodinggzip, deflateaccept-languageaccept-rangesacceptaccess-control-allow-originageallowauthorizationcache-controlcontent-dispositioncontent-encodingcontent-languagecontent-lengthcontent-locationcontent-rangecontent-typecookiedateetagexpectexpiresfromhostif-matchif-modified-sinceif-none-matchif-rangeif-unmodified-sincelast-modifiedlinklocationmax-forwardsproxy-authenticateproxy-authorizationrangerefererrefreshretry-afterserverset-cookiestrict-transport-securitytransfer-encodinguser-agentvaryviawww-authenticate")
 
 // http2StaticTable is used by HPACK decoder.
-var http2StaticTable = [62]http2TableEntry{
-	0:  {0, true, 0, 0, 0},
+var http2StaticTable = [...]http2TableEntry{
+	0:  {0, true, 0, 0, 0},         // empty, never used
 	1:  {1059, true, 10, 0, 10},    // :authority=
 	2:  {699, true, 7, 10, 20},     // :method=GET
 	3:  {699, true, 7, 20, 31},     // :method=POST
@@ -202,25 +211,7 @@ var http2StaticTable = [62]http2TableEntry{
 	61: {1681, true, 16, 668, 684}, // www-authenticate=
 }
 
-func http2IsStaticIndex(index uint32) bool              { return index < 62 }
-func http2GetStaticEntry(index uint32) *http2TableEntry { return &http2StaticTable[index] }
-func http2DynamicIndex(index uint32) uint32             { return index - 62 }
-
-// http2TableEntry is an HPACK table entry.
-type http2TableEntry struct { // 8 bytes
-	nameHash  uint16 // name hash
-	isStatic  bool   // ...
-	nameSize  uint8  // must <= 255
-	nameFrom  uint16 // name edge at nameFrom+nameSize
-	valueEdge uint16 // value: [nameFrom+nameSize:valueEdge]
-}
-
-func (e *http2TableEntry) name() []byte {
-	return http2BytesStatic[e.nameFrom : e.nameFrom+uint16(e.nameSize)]
-}
-func (e *http2TableEntry) value() []byte {
-	return http2BytesStatic[e.nameFrom+uint16(e.nameSize) : e.valueEdge]
-}
+const http2MaxTableIndex = 61 + 124 // static[1-61] + dynamic[62-185]
 
 // http2Table
 type http2Table struct { // <= 5KiB
@@ -228,8 +219,8 @@ type http2Table struct { // <= 5KiB
 	freeSize   uint32                       // <= maxSize
 	maxEntries uint32                       // cap(entries)
 	numEntries uint32                       // num of current entries. max num = floor(http2MaxTableSize/(1+32)) = 124, where "1" is the size of a shortest field
-	oldest     uint32                       // evict from t.entries[t.oldest]
-	newest     uint32                       // append to t.entries[t.newest]
+	iOldest    uint32                       // evict from t.entries[t.iOldest]
+	iNewest    uint32                       // append to t.entries[t.iNewest]
 	entries    [124]http2TableEntry         // implemented as a circular buffer: https://en.wikipedia.org/wiki/Circular_buffer
 	content    [http2MaxTableSize - 32]byte // the buffer. this size is the upper limit that remote manipulator can occupy
 }
@@ -239,19 +230,19 @@ func (t *http2Table) init() {
 	t.freeSize = t.maxSize
 	t.maxEntries = uint32(cap(t.entries))
 	t.numEntries = 0
-	t.oldest = 0
-	t.newest = 0
+	t.iOldest = 0
+	t.iNewest = 0
 }
 
 func (t *http2Table) get(index uint32) (name []byte, value []byte, ok bool) {
 	if index >= t.numEntries {
 		return nil, nil, false
 	}
-	if t.newest <= t.oldest && index > t.newest {
-		index -= t.newest
+	if t.iNewest <= t.iOldest && index > t.iNewest {
+		index -= t.iNewest
 		index = t.maxEntries - index
 	} else {
-		index = t.newest - index
+		index = t.iNewest - index
 	}
 	entry := t.entries[index]
 	nameEdge := entry.nameFrom + uint16(entry.nameSize)
@@ -276,7 +267,7 @@ func (t *http2Table) add(name []byte, value []byte) bool { // name is not empty.
 	if wantSize > t.maxSize {
 		t.freeSize = t.maxSize
 		t.numEntries = 0
-		t.oldest = t.newest
+		t.iOldest = t.iNewest
 		return true
 	}
 	for t.freeSize < wantSize {
@@ -285,9 +276,9 @@ func (t *http2Table) add(name []byte, value []byte) bool { // name is not empty.
 	t.freeSize -= wantSize
 	var entry http2TableEntry
 	if t.numEntries > 0 {
-		entry.nameFrom = t.entries[t.newest].valueEdge
-		if t.newest++; t.newest == t.maxEntries {
-			t.newest = 0 // wrap around
+		entry.nameFrom = t.entries[t.iNewest].valueEdge
+		if t.iNewest++; t.iNewest == t.maxEntries {
+			t.iNewest = 0 // wrap around
 		}
 	} else { // empty table. starts from 0
 		entry.nameFrom = 0
@@ -300,7 +291,7 @@ func (t *http2Table) add(name []byte, value []byte) bool { // name is not empty.
 		copy(t.content[nameEdge:entry.valueEdge], value)
 	}
 	t.numEntries++
-	t.entries[t.newest] = entry
+	t.entries[t.iNewest] = entry
 	return true
 }
 func (t *http2Table) resize(newMaxSize uint32) { // newMaxSize must <= http2MaxTableSize
@@ -321,13 +312,13 @@ func (t *http2Table) _evictOne() {
 	if t.numEntries == 0 {
 		BugExitln("no entries to evict!")
 	}
-	evictee := &t.entries[t.oldest]
+	evictee := &t.entries[t.iOldest]
 	t.freeSize += uint32(evictee.valueEdge - evictee.nameFrom + 32)
-	if t.oldest++; t.oldest == t.maxEntries {
-		t.oldest = 0
+	if t.iOldest++; t.iOldest == t.maxEntries {
+		t.iOldest = 0
 	}
 	if t.numEntries--; t.numEntries == 0 {
-		t.newest = t.oldest
+		t.iNewest = t.iOldest
 	}
 }
 
@@ -480,7 +471,7 @@ func (f *http2InFrame) decodeHeader(inHeader []byte) error {
 func (f *http2InFrame) isUnknown() bool   { return f.kind >= http2NumFrameKinds }
 func (f *http2InFrame) effective() []byte { return f.inBuffer.buf[f.efctFrom:f.efctEdge] } // effective payload
 
-var http2InFrameCheckers = [http2NumFrameKinds]func(*http2InFrame) error{
+var http2InFrameCheckers = [http2NumFrameKinds]func(*http2InFrame) error{ // for known frames
 	(*http2InFrame).checkAsData,
 	(*http2InFrame).checkAsFields,
 	(*http2InFrame).checkAsPriority,

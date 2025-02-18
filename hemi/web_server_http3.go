@@ -251,9 +251,13 @@ func (s *server3Stream) execute() { // runner
 }
 func (s *server3Stream) _serveAbnormal(req *server3Request, resp *server3Response) { // 4xx & 5xx
 	// TODO
+	// s.setWriteDeadline() // for _serveAbnormal
+	// s.writev()
 }
 func (s *server3Stream) _writeContinue() bool { // 100 continue
 	// TODO
+	// s.setWriteDeadline() // for _writeContinue
+	// s.write()
 	return false
 }
 

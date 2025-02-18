@@ -574,13 +574,14 @@ func (s *server1Stream) _serveAbnormal(req *server1Request, resp *server1Respons
 	resp.vector[0] = resp.controlData()
 	resp.vector[1] = resp.addedHeaders()
 	resp.vector[2] = resp.fixedHeaders()
-	if s.setWriteDeadline() == nil { // ignore any error, as the connection will be closed anyway.
+	if s.setWriteDeadline() == nil { // for _serveAbnormal
+		// Ignore any error, as the connection will be closed anyway.
 		s.writev(&resp.vector)
 	}
 }
 func (s *server1Stream) _writeContinue() bool { // 100 continue
 	// This is an interim response, write directly.
-	if s.setWriteDeadline() == nil {
+	if s.setWriteDeadline() == nil { // for _writeContinue
 		if _, err := s.write(http1BytesContinue); err == nil {
 			return true
 		}
@@ -630,8 +631,7 @@ func (r *server1Request) onEnd() {
 }
 
 func (r *server1Request) recvHead() { // control data + header section
-	// The entire request head must be received in one read timeout
-	if err := r.stream.setReadDeadline(); err != nil {
+	if err := r.stream.setReadDeadline(); err != nil { // the entire request head must be received in one read timeout
 		r.headResult = -1
 		return
 	}

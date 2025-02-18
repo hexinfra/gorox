@@ -587,8 +587,7 @@ func (r *fcgiResponse) HeadResult() int16 { return r.headResult }
 func (r *fcgiResponse) BodyResult() int16 { return r.bodyResult }
 
 func (r *fcgiResponse) recvHead() { // header section
-	// The entire response head must be received in one read timeout
-	if err := r.exchan.setReadDeadline(); err != nil {
+	if err := r.exchan.setReadDeadline(); err != nil { // the entire response head must be received in one read timeout
 		r.headResult = -1
 		return
 	}
@@ -1143,7 +1142,7 @@ func (r *fcgiResponse) fcgiGrowRecords(size int) (int, error) { // r.records is 
 	if r.bodyTime.IsZero() {
 		r.bodyTime = time.Now()
 	}
-	if err := r.exchan.setReadDeadline(); err != nil {
+	if err := r.exchan.setReadDeadline(); err != nil { // for each records
 		return 0, err
 	}
 	n, err := r.exchan.readAtLeast(r.records[r.recordsEdge:], size)
@@ -1503,23 +1502,6 @@ func (r *fcgiRequest) _setBeginRequest(beginRequest *[]byte) {
 	}
 }
 
-func (r *fcgiRequest) _writeBytes(data []byte) error {
-	if r.exchan.isBroken() {
-		return fcgiWriteBroken
-	}
-	if len(data) == 0 {
-		return nil
-	}
-	if r.sendTime.IsZero() {
-		r.sendTime = time.Now()
-	}
-	if err := r.exchan.setWriteDeadline(); err != nil {
-		r.exchan.markBroken()
-		return err
-	}
-	_, err := r.exchan.write(data)
-	return r._longTimeCheck(err)
-}
 func (r *fcgiRequest) _writeVector() error {
 	if r.exchan.isBroken() {
 		return fcgiWriteBroken
@@ -1530,11 +1512,28 @@ func (r *fcgiRequest) _writeVector() error {
 	if r.sendTime.IsZero() {
 		r.sendTime = time.Now()
 	}
-	if err := r.exchan.setWriteDeadline(); err != nil {
+	if err := r.exchan.setWriteDeadline(); err != nil { // for _writeVector
 		r.exchan.markBroken()
 		return err
 	}
 	_, err := r.exchan.writev(&r.vector)
+	return r._longTimeCheck(err)
+}
+func (r *fcgiRequest) _writeBytes(data []byte) error {
+	if r.exchan.isBroken() {
+		return fcgiWriteBroken
+	}
+	if len(data) == 0 {
+		return nil
+	}
+	if r.sendTime.IsZero() {
+		r.sendTime = time.Now()
+	}
+	if err := r.exchan.setWriteDeadline(); err != nil { // for _writeBytes
+		r.exchan.markBroken()
+		return err
+	}
+	_, err := r.exchan.write(data)
 	return r._longTimeCheck(err)
 }
 func (r *fcgiRequest) _longTimeCheck(err error) error {

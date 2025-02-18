@@ -201,19 +201,19 @@ func (c *server2Conn) _handshake() error { // as server
 }
 
 var server2InFrameProcessors = [http2NumFrameKinds]func(*server2Conn, *http2InFrame) error{
-	(*server2Conn).onDataInFrame,
-	(*server2Conn).onFieldsInFrame,
-	(*server2Conn).onPriorityInFrame,
-	(*server2Conn).onResetStreamInFrame,
-	(*server2Conn).onSettingsInFrame,
-	(*server2Conn).onPushPromiseInFrame,
-	(*server2Conn).onPingInFrame,
-	(*server2Conn).onGoawayInFrame,
-	(*server2Conn).onWindowUpdateInFrame,
-	(*server2Conn).onContinuationInFrame,
+	(*server2Conn).processDataInFrame,
+	(*server2Conn).processFieldsInFrame,
+	(*server2Conn).processPriorityInFrame,
+	(*server2Conn).processResetStreamInFrame,
+	(*server2Conn).processSettingsInFrame,
+	(*server2Conn).processPushPromiseInFrame,
+	(*server2Conn).processPingInFrame,
+	(*server2Conn).processGoawayInFrame,
+	(*server2Conn).processWindowUpdateInFrame,
+	(*server2Conn).processContinuationInFrame,
 }
 
-func (c *server2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
+func (c *server2Conn) processFieldsInFrame(fieldsInFrame *http2InFrame) error {
 	var (
 		servStream *server2Stream
 		servReq    *server2Request
@@ -258,7 +258,7 @@ func (c *server2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
 	}
 	return nil
 }
-func (c *server2Conn) onSettingsInFrame(settingsInFrame *http2InFrame) error {
+func (c *server2Conn) processSettingsInFrame(settingsInFrame *http2InFrame) error {
 	if settingsInFrame.ack {
 		c.acknowledged = true
 		return nil
@@ -362,9 +362,13 @@ func (s *server2Stream) execute() { // runner
 }
 func (s *server2Stream) _serveAbnormal(req *server2Request, resp *server2Response) { // 4xx & 5xx
 	// TODO
+	// s.setWriteDeadline() // for _serveAbnormal
+	// s.writev()
 }
 func (s *server2Stream) _writeContinue() bool { // 100 continue
 	// TODO
+	// s.setWriteDeadline() // for _writeContinue
+	// s.write()
 	return false
 }
 

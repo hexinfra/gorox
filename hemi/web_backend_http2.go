@@ -206,29 +206,30 @@ func (c *backend2Conn) _handshake() error { // as client
 	// write client preface
 	// setReadDeadline()
 	// read server preface
+	// c._updatePeerSettings()
 	// setWriteDeadline()
 	// ack server preface?
 	return nil
 }
 
 var backend2InFrameProcessors = [http2NumFrameKinds]func(*backend2Conn, *http2InFrame) error{
-	(*backend2Conn).onDataInFrame,
-	(*backend2Conn).onFieldsInFrame,
-	(*backend2Conn).onPriorityInFrame,
-	(*backend2Conn).onResetStreamInFrame,
-	(*backend2Conn).onSettingsInFrame,
-	(*backend2Conn).onPushPromiseInFrame,
-	(*backend2Conn).onPingInFrame,
-	(*backend2Conn).onGoawayInFrame,
-	(*backend2Conn).onWindowUpdateInFrame,
-	(*backend2Conn).onContinuationInFrame,
+	(*backend2Conn).processDataInFrame,
+	(*backend2Conn).processFieldsInFrame,
+	(*backend2Conn).processPriorityInFrame,
+	(*backend2Conn).processResetStreamInFrame,
+	(*backend2Conn).processSettingsInFrame,
+	(*backend2Conn).processPushPromiseInFrame,
+	(*backend2Conn).processPingInFrame,
+	(*backend2Conn).processGoawayInFrame,
+	(*backend2Conn).processWindowUpdateInFrame,
+	(*backend2Conn).processContinuationInFrame,
 }
 
-func (c *backend2Conn) onFieldsInFrame(fieldsInFrame *http2InFrame) error {
+func (c *backend2Conn) processFieldsInFrame(fieldsInFrame *http2InFrame) error {
 	// TODO
 	return nil
 }
-func (c *backend2Conn) onSettingsInFrame(settingsInFrame *http2InFrame) error {
+func (c *backend2Conn) processSettingsInFrame(settingsInFrame *http2InFrame) error {
 	// TODO: server sent a new settings
 	return nil
 }

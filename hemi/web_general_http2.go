@@ -8,6 +8,7 @@
 package hemi
 
 import (
+	"bytes"
 	"encoding/binary"
 	"io"
 	"net"
@@ -114,9 +115,24 @@ func (c *http2Conn_[S]) onPut() {
 	c.httpConn_.onPut()
 }
 
-func (c *http2Conn_[S]) receive() { // runner, employed by c.manage()
+func (c *http2Conn_[S]) receive(asServer bool) { // runner, employed by c.manage()
 	if DebugLevel() >= 1 {
 		defer Printf("conn=%d c.receive() quit\n", c.id)
+	}
+	if asServer { // We must read the HTTP/2 PRISM at the very begining
+		if err := c.setReadDeadline(); err != nil {
+			c.incomingChan <- err
+			return
+		}
+		if err := c._growInFrame(24); err != nil { // HTTP/2 PRISM is exactly 24 bytes
+			c.incomingChan <- err
+			return
+		}
+		if !bytes.Equal(c.inBuffer.buf[:24], backend2PrefaceAndMore[:24]) {
+			c.incomingChan <- http2ErrorProtocol
+			return
+		}
+		c.incomingChan <- nil // notify c.manage() that we have successfully read the HTTP/2 PRISM
 	}
 	for { // each incoming frame
 		inFrame, err := c.recvInFrame()
@@ -257,6 +273,7 @@ func (c *http2Conn_[S]) _fillInBuffer(size uint16) error {
 	c.inBufferEdge += uint16(n)
 	return err
 }
+
 func (c *http2Conn_[S]) _coalesceContinuations(fieldsInFrame *http2InFrame) error { // into a single fields frame
 	fieldsInFrame.inBuffer = nil // unset temporarily, will be restored at the end of continuations
 	var continuationInFrame http2InFrame

@@ -81,9 +81,9 @@ func TCPXReverseProxy(servConn *TCPXConn, backend *TCPXBackend, proxyConfig *TCP
 			inData  []byte
 		)
 		for {
-			if servErr = servConn.SetReadDeadline(); servErr == nil {
+			if servErr = servConn.SetReadDeadline(); servErr == nil { // for server-side incoming increment
 				if inData, servErr = servConn.Recv(); len(inData) > 0 {
-					if backErr = backConn.SetWriteDeadline(); backErr == nil {
+					if backErr = backConn.SetWriteDeadline(); backErr == nil { // for backend-side outgoing increment
 						backErr = backConn.Send(inData)
 					}
 				}
@@ -103,9 +103,9 @@ func TCPXReverseProxy(servConn *TCPXConn, backend *TCPXBackend, proxyConfig *TCP
 		outData []byte
 	)
 	for {
-		if backErr = backConn.SetReadDeadline(); backErr == nil {
+		if backErr = backConn.SetReadDeadline(); backErr == nil { // for backend-side incoming increment
 			if outData, backErr = backConn.Recv(); len(outData) > 0 {
-				if servErr = servConn.SetWriteDeadline(); servErr == nil {
+				if servErr = servConn.SetWriteDeadline(); servErr == nil { // for server-side outgoing increment
 					servErr = servConn.Send(outData)
 				}
 			}

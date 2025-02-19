@@ -261,6 +261,7 @@ func (r *backend3Response) onEnd() {
 
 func (r *backend3Response) recvHead() { // control data + header section
 	// TODO
+	// r.stream.setReadDeadline() // the entire response head must be received in one read timeout
 }
 
 func (r *backend3Response) readContent() (data []byte, err error) { return r.in3.readContent() }

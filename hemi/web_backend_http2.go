@@ -173,10 +173,6 @@ func (c *backend2Conn) delStream(backStream *backend2Stream) { // used by http2N
 	//backStream.onEnd()
 }
 
-func (c *backend2Conn) manage() { // runner
-
-}
-
 var backend2PrefaceAndMore = []byte{
 	// prism
 	'P', 'R', 'I', ' ', '*', ' ', 'H', 'T', 'T', 'P', '/', '2', '.', '0', '\r', '\n', '\r', '\n', 'S', 'M', '\r', '\n', '\r', '\n',
@@ -201,15 +197,17 @@ var backend2PrefaceAndMore = []byte{
 	0x7f, 0xff, 0x00, 0x00, // windowSize=2G1-64K1
 }
 
-func (c *backend2Conn) _handshake() error { // as client
+func (c *backend2Conn) manage() { // runner
 	// setWriteDeadline()
 	// write client preface
-	// setReadDeadline()
+
+	// go c.receive(false)
+
 	// read server preface
-	// c._updatePeerSettings()
+	// c._updatePeerSettings(true)
+
 	// setWriteDeadline()
-	// ack server preface?
-	return nil
+	// ack server preface
 }
 
 var backend2InFrameProcessors = [http2NumFrameKinds]func(*backend2Conn, *http2InFrame) error{

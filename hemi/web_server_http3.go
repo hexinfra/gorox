@@ -290,6 +290,11 @@ func (r *server3Request) onEnd() {
 	r.in3.onEnd()
 }
 
+func (r *server3Request) recvHead() {
+	// TODO
+	// r.stream.setReadDeadline() // the entire request head must be received in one read timeout
+}
+
 func (r *server3Request) readContent() (data []byte, err error) { return r.in3.readContent() }
 
 // server3Response is the server-side HTTP/3 response.

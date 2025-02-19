@@ -1142,7 +1142,7 @@ func (r *fcgiResponse) fcgiGrowRecords(size int) (int, error) { // r.records is 
 	if r.bodyTime.IsZero() {
 		r.bodyTime = time.Now()
 	}
-	if err := r.exchan.setReadDeadline(); err != nil { // for each records
+	if err := r.exchan.setReadDeadline(); err != nil { // for each increment
 		return 0, err
 	}
 	n, err := r.exchan.readAtLeast(r.records[r.recordsEdge:], size)

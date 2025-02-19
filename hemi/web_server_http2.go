@@ -8,7 +8,6 @@
 package hemi
 
 import (
-	"bytes"
 	"encoding/binary"
 	"net"
 	"sync"
@@ -61,18 +60,71 @@ func (c *server2Conn) onPut() {
 	c.http2Conn_.onPut()
 }
 
+var server2PrefaceAndMore = []byte{
+	// server preface settings
+	0, 0, 30, // length=30
+	4,          // kind=http2FrameSettings
+	0,          // flags=
+	0, 0, 0, 0, // streamID=0
+	0, 1, 0x00, 0x00, 0x10, 0x00, // headerTableSize=4K
+	0, 3, 0x00, 0x00, 0x00, 0x7f, // maxConcurrentStreams=127
+	0, 4, 0x00, 0x00, 0xff, 0xff, // initialWindowSize=64K1
+	0, 5, 0x00, 0x00, 0x40, 0x00, // maxFrameSize=16K
+	0, 6, 0x00, 0x00, 0x40, 0x00, // maxHeaderListSize=16K
+
+	// window update for the entire connection
+	0, 0, 4, // length=4
+	8,          // kind=http2FrameWindowUpdate
+	0,          // flags=
+	0, 0, 0, 0, // streamID=0
+	0x7f, 0xff, 0x00, 0x00, // windowSize=2G1-64K1
+
+	// ack client settings
+	0, 0, 0, // length=0
+	4,          // kind=http2FrameSettings
+	1,          // flags=ack
+	0, 0, 0, 0, // streamID=0
+}
+
 func (c *server2Conn) manage() { // runner
 	Printf("========================== conn=%d start =========================\n", c.id)
 	defer func() {
 		Printf("========================== conn=%d exit =========================\n", c.id)
 		putServer2Conn(c)
 	}()
-	if err := c._handshake(); err != nil {
+	go c.receive(true)
+	if prism := <-c.incomingChan; prism != nil {
 		c.closeConn()
 		return
 	}
-	// Successfully handshake means we have acknowledged client settings and sent our settings. Still need to receive a settings ACK from client.
-	go c.receive()
+	preface := <-c.incomingChan
+	inFrame, ok := preface.(*http2InFrame)
+	if !ok {
+		c.closeConn()
+		return
+	}
+	if inFrame.kind != http2FrameSettings || inFrame.ack {
+		goto bad
+	}
+	if err := c._updatePeerSettings(inFrame, false); err != nil {
+		goto bad
+	}
+	// Send server connection preface
+	if err := c.setWriteDeadline(); err != nil {
+		goto bad
+	}
+	if n, err := c.write(server2PrefaceAndMore); err == nil {
+		Printf("--------------------- conn=%d CALL WRITE=%d -----------------------\n", c.id, n)
+		Printf("conn=%d ---> %v\n", c.id, server2PrefaceAndMore)
+		// Successfully handshake means we have acknowledged client settings and sent our settings. Still need to receive a settings ACK from client.
+		goto serve
+	} else {
+		Printf("conn=%d error=%s\n", c.id, err.Error())
+	}
+bad:
+	c.closeConn()
+	c.waitReceive = true
+	goto wait
 serve:
 	for { // each inFrame from c.receive() and outFrame from server streams
 		select {
@@ -92,7 +144,7 @@ serve:
 				}
 				// c.manage() was broken, but c.receive() was not. need wait
 				c.waitReceive = true
-			} else { // c.receive() was broken and quit.
+			} else { // got an error, c.receive() was broken and quit.
 				if h2e, ok := incoming.(http2Error); ok {
 					c.goawayCloseConn(h2e)
 				} else if netErr, ok := incoming.(net.Error); ok && netErr.Timeout() {
@@ -125,79 +177,17 @@ serve:
 			c.concurrentStreams--
 		}
 	}
+wait:
 	if c.waitReceive {
 		Printf("conn=%d waiting for c.receive() to quit\n", c.id)
 		for {
 			incoming := <-c.incomingChan
-			if _, ok := incoming.(*http2InFrame); !ok {
-				// An error from c.receive() means it's quit
+			if _, ok := incoming.(*http2InFrame); !ok { // an error from c.receive() means it's quit
 				break
 			}
 		}
 	}
 	Printf("conn=%d c.manage() quit\n", c.id)
-}
-
-var http2BytesPrism = []byte("PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
-var server2PrefaceAndMore = []byte{
-	// server preface settings
-	0, 0, 30, // length=30
-	4,          // kind=http2FrameSettings
-	0,          // flags=
-	0, 0, 0, 0, // streamID=0
-	0, 1, 0x00, 0x00, 0x10, 0x00, // headerTableSize=4K
-	0, 3, 0x00, 0x00, 0x00, 0x7f, // maxConcurrentStreams=127
-	0, 4, 0x00, 0x00, 0xff, 0xff, // initialWindowSize=64K1
-	0, 5, 0x00, 0x00, 0x40, 0x00, // maxFrameSize=16K
-	0, 6, 0x00, 0x00, 0x40, 0x00, // maxHeaderListSize=16K
-
-	// window update for the entire connection
-	0, 0, 4, // length=4
-	8,          // kind=http2FrameWindowUpdate
-	0,          // flags=
-	0, 0, 0, 0, // streamID=0
-	0x7f, 0xff, 0x00, 0x00, // windowSize=2G1-64K1
-
-	// ack client settings
-	0, 0, 0, // length=0
-	4,          // kind=http2FrameSettings
-	1,          // flags=ack
-	0, 0, 0, 0, // streamID=0
-}
-
-func (c *server2Conn) _handshake() error { // as server
-	// Set deadline for the first request fields frame
-	if err := c.setReadDeadline(); err != nil {
-		return err
-	}
-	if err := c._growInFrame(uint16(len(http2BytesPrism))); err != nil {
-		return err
-	}
-	// Check client connection preface = PRISM + SETTINGS
-	if !bytes.Equal(c.inBuffer.buf[0:len(http2BytesPrism)], http2BytesPrism) {
-		return http2ErrorProtocol
-	}
-	settingsInFrame, err := c.recvInFrame()
-	if err != nil {
-		return err
-	}
-	if settingsInFrame.kind != http2FrameSettings || settingsInFrame.ack {
-		return http2ErrorProtocol
-	}
-	if err := c._updatePeerSettings(settingsInFrame, false); err != nil {
-		return err
-	}
-	// Send server connection preface
-	if err := c.setWriteDeadline(); err != nil {
-		return err
-	}
-	n, err := c.write(server2PrefaceAndMore)
-	Printf("--------------------- conn=%d CALL WRITE=%d -----------------------\n", c.id, n)
-	Printf("conn=%d ---> %v\n", c.id, server2PrefaceAndMore)
-	if err != nil {
-		Printf("conn=%d error=%s\n", c.id, err.Error())
-	}
-	return err
 }
 
 var server2InFrameProcessors = [http2NumFrameKinds]func(*server2Conn, *http2InFrame) error{

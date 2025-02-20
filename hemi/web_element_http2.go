@@ -13,8 +13,6 @@ import (
 	"encoding/binary"
 	"sync"
 	"sync/atomic"
-
-	"github.com/hexinfra/gorox/hemi/library/huffman"
 )
 
 const ( // HTTP/2 sizes and limits for both of our HTTP/2 server and HTTP/2 backend
@@ -135,7 +133,7 @@ var http2CodeTexts = [...]string{
 	http2CodeHTTP11Required:     "HTTP_1_1_REQUIRED",
 }
 
-func http2DecodeInteger(src []byte, N int, max uint32) (I uint32, j int, ok bool) { // ok = false if src is malformed or result > max
+func http2DecodeVarint(src []byte, N int, max uint32) (I uint32, j int, ok bool) { // ok = false if src is malformed or result > max
 	l := len(src)
 	if l == 0 {
 		return 0, 0, false
@@ -159,7 +157,7 @@ func http2DecodeInteger(src []byte, N int, max uint32) (I uint32, j int, ok bool
 	}
 	return I, j, false
 }
-func http2EncodeInteger(dst []byte, I uint32, N int) (int, bool) { // ok = false if dst is not large enough
+func http2EncodeVarint(dst []byte, I uint32, N int) (int, bool) { // ok = false if dst is not large enough
 	l := len(dst)
 	if l == 0 {
 		return 0, false
@@ -183,7 +181,7 @@ func http2EncodeInteger(dst []byte, I uint32, N int) (int, bool) { // ok = false
 }
 
 func http2DecodeString(dst []byte, src []byte, max uint32) (i int, j int, ok bool) { // ok = false if src is malformed or length of result string > max
-	I, j, ok := http2DecodeInteger(src, 7, max)
+	I, j, ok := http2DecodeVarint(src, 7, max)
 	if !ok {
 		return 0, 0, false
 	}
@@ -194,7 +192,7 @@ func http2DecodeString(dst []byte, src []byte, max uint32) (i int, j int, ok boo
 	}
 	j += int(I)
 	if H {
-		i, ok := huffman.Decode(dst, src[:I])
+		i, ok := httpHuffmanDecode(dst, src[:I])
 		return i, j, ok
 	}
 	copy(dst, src[:I])
@@ -206,7 +204,7 @@ func http2EncodeString(dst []byte, src []byte) (int, bool) { // ok = false if ds
 		return 0, true
 	}
 	if I <= 8 { // src is short, we use raw bytes
-		j, ok := http2EncodeInteger(dst, uint32(I), 7)
+		j, ok := http2EncodeVarint(dst, uint32(I), 7)
 		if !ok {
 			return j, false
 		}
@@ -221,14 +219,14 @@ func http2EncodeString(dst []byte, src []byte) (int, bool) { // ok = false if ds
 	if len(dst) < 2 {
 		return 0, false
 	}
-	n := huffman.Encode(dst[1:], src)
+	n := httpHuffmanEncode(dst[1:], src)
 	if n < 127 {
 		dst[0] = byte(n) | 0x80
 		return 1 + n, true
 	}
 	// n >= 127 means we have to use >= 2 bytes for the string length.
 	h := make([]byte, 8) // enough, should not escape to heap
-	j, _ := http2EncodeInteger(h, uint32(I), 7)
+	j, _ := http2EncodeVarint(h, uint32(I), 7)
 	h[0] |= 0x80
 	copy(dst[:j], dst[1:1+n])
 	copy(dst, h[:j])

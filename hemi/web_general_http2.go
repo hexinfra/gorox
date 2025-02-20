@@ -465,7 +465,7 @@ func (c *http2Conn_[S]) hpackDecode(fields []byte, join func(p []byte) bool) boo
 		for i < n {
 			b := fields[i]
 			if b >= 0b_1000_0000 { // 6.1. Indexed Header Field Representation
-				I, j, ok = http2DecodeInteger(fields[i:], 7, http2MaxTableIndex)
+				I, j, ok = http2DecodeVarint(fields[i:], 7, http2MaxTableIndex)
 				if !ok || I == 0 { // The index value of 0 is not used.  It MUST be treated as a decoding error if found in an indexed header field representation.
 					Println("decode error")
 					return false
@@ -476,7 +476,7 @@ func (c *http2Conn_[S]) hpackDecode(fields []byte, join func(p []byte) bool) boo
 				}
 				i += j
 			} else if b >= 0b_0010_0000 && b < 0b_0100_0000 { // 6.3. Dynamic Table Size Update
-				I, j, ok = http2DecodeInteger(fields[i:], 5, http2MaxTableSize)
+				I, j, ok = http2DecodeVarint(fields[i:], 5, http2MaxTableSize)
 				if !ok {
 					Println("decode error")
 					return false
@@ -490,7 +490,7 @@ func (c *http2Conn_[S]) hpackDecode(fields []byte, join func(p []byte) bool) boo
 				} else { // 0b_0000_xxxx (6.2.2. Literal Header Field without Indexing), 0b_0001_xxxx (6.2.3. Literal Header Field Never Indexed)
 					N = 4
 				}
-				I, j, ok = http2DecodeInteger(fields[i:], N, http2MaxTableIndex)
+				I, j, ok = http2DecodeVarint(fields[i:], N, http2MaxTableIndex)
 				if !ok {
 					println("decode error")
 					return false

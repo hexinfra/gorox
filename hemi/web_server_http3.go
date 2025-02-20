@@ -377,7 +377,7 @@ func (r *server3Response) finalizeHeaders() { // add at most 256 bytes
 		// date: Sun, 06 Nov 1994 08:49:37 GMT
 		if r.iDate == 0 {
 			clock := r.stream.(*server3Stream).conn.gate.stage.clock
-			r.fieldsEdge += uint16(clock.writeDate3(r.fields[r.fieldsEdge:]))
+			r.outputEdge += uint16(clock.writeDate3(r.output[r.outputEdge:]))
 		}
 	*/
 }

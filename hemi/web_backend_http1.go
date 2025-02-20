@@ -551,22 +551,22 @@ func (r *backend1Request) proxyCopyCookies(servReq ServerRequest) bool { // NOTE
 		return true
 	})
 	if from, _, ok := r.growHeaders(headerSize); ok {
-		from += copy(r.fields[from:], bytesCookie)
-		r.fields[from] = ':'
-		r.fields[from+1] = ' '
+		from += copy(r.output[from:], bytesCookie)
+		r.output[from] = ':'
+		r.output[from+1] = ' '
 		from += 2
 		servReq.proxyWalkCookies(func(cookie *pair, cookieName []byte, cookieValue []byte) bool {
-			from += copy(r.fields[from:], cookieName)
-			r.fields[from] = '='
+			from += copy(r.output[from:], cookieName)
+			r.output[from] = '='
 			from++
-			from += copy(r.fields[from:], cookieValue)
-			r.fields[from] = ';'
-			r.fields[from+1] = ' '
+			from += copy(r.output[from:], cookieValue)
+			r.output[from] = ';'
+			r.output[from+1] = ' '
 			from += 2
 			return true
 		})
-		r.fields[from-2] = '\r'
-		r.fields[from-1] = '\n'
+		r.output[from-2] = '\r'
+		r.output[from-1] = '\n'
 		return true
 	} else {
 		return false
@@ -586,15 +586,15 @@ func (r *backend1Request) trailer(name []byte) (value []byte, ok bool) { return 
 func (r *backend1Request) proxySetMethodURI(method []byte, uri []byte, hasContent bool) bool { // METHOD uri HTTP/1.1\r\n
 	controlSize := len(method) + 1 + len(uri) + 1 + len(bytesHTTP1_1) + len(bytesCRLF)
 	if from, edge, ok := r._growFields(controlSize); ok {
-		from += copy(r.fields[from:], method)
-		r.fields[from] = ' '
+		from += copy(r.output[from:], method)
+		r.output[from] = ' '
 		from++
-		from += copy(r.fields[from:], uri)
-		r.fields[from] = ' '
+		from += copy(r.output[from:], uri)
+		r.output[from] = ' '
 		from++
-		from += copy(r.fields[from:], bytesHTTP1_1) // we always use HTTP/1.1
-		r.fields[from] = '\r'
-		r.fields[from+1] = '\n'
+		from += copy(r.output[from:], bytesHTTP1_1) // we always use HTTP/1.1
+		r.output[from] = '\r'
+		r.output[from+1] = '\n'
 		if !hasContent {
 			r.forbidContent = true
 			r.forbidFraming = true
@@ -615,12 +615,12 @@ func (r *backend1Request) proxySetAuthority(hostname []byte, colonport []byte) b
 	}
 	headerSize := len(bytesHost) + len(bytesColonSpace) + len(hostname) + len(colonport) + len(bytesCRLF) // host: xxx\r\n
 	if from, _, ok := r._growFields(headerSize); ok {
-		from += copy(r.fields[from:], bytesHost)
-		r.fields[from] = ':'
-		r.fields[from+1] = ' '
+		from += copy(r.output[from:], bytesHost)
+		r.output[from] = ':'
+		r.output[from+1] = ' '
 		from += 2
-		from += copy(r.fields[from:], hostname)
-		from += copy(r.fields[from:], colonport)
+		from += copy(r.output[from:], hostname)
+		from += copy(r.output[from:], colonport)
 		r.out1._addCRLFHeader(from)
 		return true
 	} else {
@@ -634,16 +634,16 @@ func (r *backend1Request) proxyPassBytes(data []byte) error { return r.out1.prox
 func (r *backend1Request) finalizeHeaders() { // add at most 256 bytes
 	// if-modified-since: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.unixTimes.ifModifiedSince >= 0 {
-		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesIfModifiedSince, r.unixTimes.ifModifiedSince))
+		r.outputEdge += uint16(clockWriteHTTPDate1(r.output[r.outputEdge:], bytesIfModifiedSince, r.unixTimes.ifModifiedSince))
 	}
 	// if-unmodified-since: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.unixTimes.ifUnmodifiedSince >= 0 {
-		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesIfUnmodifiedSince, r.unixTimes.ifUnmodifiedSince))
+		r.outputEdge += uint16(clockWriteHTTPDate1(r.output[r.outputEdge:], bytesIfUnmodifiedSince, r.unixTimes.ifUnmodifiedSince))
 	}
 	if r.contentSize != -1 { // with content
 		if !r.forbidFraming {
 			if r.isVague() { // transfer-encoding: chunked\r\n
-				r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
+				r.outputEdge += uint16(copy(r.output[r.outputEdge:], http1BytesTransferChunked))
 			} else { // content-length: >=0\r\n
 				sizeBuffer := r.stream.buffer256() // enough for content-length
 				n := i64ToDec(r.contentSize, sizeBuffer)
@@ -652,20 +652,20 @@ func (r *backend1Request) finalizeHeaders() { // add at most 256 bytes
 		}
 		// content-type: application/octet-stream\r\n
 		if r.iContentType == 0 {
-			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeStream))
+			r.outputEdge += uint16(copy(r.output[r.outputEdge:], http1BytesContentTypeStream))
 		}
 	}
 	if r.addTETrailers {
-		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTETrailers))
-		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionAliveTE))
+		r.outputEdge += uint16(copy(r.output[r.outputEdge:], http1BytesTETrailers))
+		r.outputEdge += uint16(copy(r.output[r.outputEdge:], http1BytesConnectionAliveTE))
 	} else {
 		// connection: keep-alive\r\n
-		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
+		r.outputEdge += uint16(copy(r.output[r.outputEdge:], http1BytesConnectionKeepAlive))
 	}
 }
 func (r *backend1Request) finalizeVague() error { return r.out1.finalizeVague() } // we always use http/1.1 in the backend side.
 
-func (r *backend1Request) addedHeaders() []byte { return r.fields[r.controlEdge:r.fieldsEdge] }
+func (r *backend1Request) addedHeaders() []byte { return r.output[r.controlEdge:r.outputEdge] }
 func (r *backend1Request) fixedHeaders() []byte { return http1BytesFixedRequestHeaders }
 
 // backend1Socket is the backend-side HTTP/1.x webSocket.

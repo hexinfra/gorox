@@ -688,11 +688,11 @@ func (r *_http1Out_) addHeader(name []byte, value []byte) bool {
 	}
 	headerSize := len(name) + len(bytesColonSpace) + len(value) + len(bytesCRLF) // name: value\r\n
 	if from, _, ok := r.growHeaders(headerSize); ok {
-		from += copy(r.fields[from:], name)
-		r.fields[from] = ':'
-		r.fields[from+1] = ' '
+		from += copy(r.output[from:], name)
+		r.output[from] = ':'
+		r.output[from+1] = ' '
 		from += 2
-		from += copy(r.fields[from:], value)
+		from += copy(r.output[from:], value)
 		r._addCRLFHeader(from)
 		return true
 	} else {
@@ -704,7 +704,7 @@ func (r *_http1Out_) header(name []byte) (value []byte, ok bool) {
 		from := uint16(0)
 		for i := uint8(1); i < r.numHeaderFields; i++ {
 			edge := r.edges[i]
-			header := r.fields[from:edge]
+			header := r.output[from:edge]
 			if p := bytes.IndexByte(header, ':'); p != -1 && bytes.Equal(header[0:p], name) {
 				return header[p+len(bytesColonSpace) : len(header)-len(bytesCRLF)], true
 			}
@@ -718,7 +718,7 @@ func (r *_http1Out_) hasHeader(name []byte) bool {
 		from := uint16(0)
 		for i := uint8(1); i < r.numHeaderFields; i++ {
 			edge := r.edges[i]
-			header := r.fields[from:edge]
+			header := r.output[from:edge]
 			if p := bytes.IndexByte(header, ':'); p != -1 && bytes.Equal(header[0:p], name) {
 				return true
 			}
@@ -731,13 +731,13 @@ func (r *_http1Out_) delHeader(name []byte) (deleted bool) {
 	from := uint16(0)
 	for i := uint8(1); i < r.numHeaderFields; {
 		edge := r.edges[i]
-		if p := bytes.IndexByte(r.fields[from:edge], ':'); bytes.Equal(r.fields[from:from+uint16(p)], name) {
+		if p := bytes.IndexByte(r.output[from:edge], ':'); bytes.Equal(r.output[from:from+uint16(p)], name) {
 			size := edge - from
-			copy(r.fields[from:], r.fields[edge:])
+			copy(r.output[from:], r.output[edge:])
 			for j := i + 1; j < r.numHeaderFields; j++ {
 				r.edges[j] -= size
 			}
-			r.fieldsEdge -= size
+			r.outputEdge -= size
 			r.numHeaderFields--
 			deleted = true
 		} else {
@@ -754,28 +754,28 @@ func (r *_http1Out_) delHeaderAt(i uint8) {
 	from := r.edges[i-1]
 	edge := r.edges[i]
 	size := edge - from
-	copy(r.fields[from:], r.fields[edge:])
+	copy(r.output[from:], r.output[edge:])
 	for j := i + 1; j < r.numHeaderFields; j++ {
 		r.edges[j] -= size
 	}
-	r.fieldsEdge -= size
+	r.outputEdge -= size
 	r.numHeaderFields--
 }
 func (r *_http1Out_) _addCRLFHeader(from int) {
-	r.fields[from] = '\r'
-	r.fields[from+1] = '\n'
+	r.output[from] = '\r'
+	r.output[from+1] = '\n'
 	r.edges[r.numHeaderFields] = uint16(from + 2)
 	r.numHeaderFields++
 }
 func (r *_http1Out_) _addFixedHeader(name []byte, value []byte) { // used by finalizeHeaders
-	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], name))
-	r.fields[r.fieldsEdge] = ':'
-	r.fields[r.fieldsEdge+1] = ' '
-	r.fieldsEdge += 2
-	r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], value))
-	r.fields[r.fieldsEdge] = '\r'
-	r.fields[r.fieldsEdge+1] = '\n'
-	r.fieldsEdge += 2
+	r.outputEdge += uint16(copy(r.output[r.outputEdge:], name))
+	r.output[r.outputEdge] = ':'
+	r.output[r.outputEdge+1] = ' '
+	r.outputEdge += 2
+	r.outputEdge += uint16(copy(r.output[r.outputEdge:], value))
+	r.output[r.outputEdge] = '\r'
+	r.output[r.outputEdge+1] = '\n'
+	r.outputEdge += 2
 }
 
 func (r *_http1Out_) sendChain() error { // TODO: if conn is TLS, don't use writev as it uses many Write() which might be slower than make+copy+write.
@@ -903,13 +903,13 @@ func (r *_http1Out_) addTrailer(name []byte, value []byte) bool {
 	}
 	trailerSize := len(name) + len(bytesColonSpace) + len(value) + len(bytesCRLF) // name: value\r\n
 	if from, _, ok := r.growTrailers(trailerSize); ok {
-		from += copy(r.fields[from:], name)
-		r.fields[from] = ':'
-		r.fields[from+1] = ' '
+		from += copy(r.output[from:], name)
+		r.output[from] = ':'
+		r.output[from+1] = ' '
 		from += 2
-		from += copy(r.fields[from:], value)
-		r.fields[from] = '\r'
-		r.fields[from+1] = '\n'
+		from += copy(r.output[from:], value)
+		r.output[from] = '\r'
+		r.output[from+1] = '\n'
 		r.edges[r.numTrailerFields] = uint16(from + 2)
 		r.numTrailerFields++
 		return true
@@ -922,7 +922,7 @@ func (r *_http1Out_) trailer(name []byte) (value []byte, ok bool) {
 		from := uint16(0)
 		for i := uint8(1); i < r.numTrailerFields; i++ {
 			edge := r.edges[i]
-			trailer := r.fields[from:edge]
+			trailer := r.output[from:edge]
 			if p := bytes.IndexByte(trailer, ':'); p != -1 && bytes.Equal(trailer[0:p], name) {
 				return trailer[p+len(bytesColonSpace) : len(trailer)-len(bytesCRLF)], true
 			}
@@ -931,7 +931,7 @@ func (r *_http1Out_) trailer(name []byte) (value []byte, ok bool) {
 	}
 	return
 }
-func (r *_http1Out_) trailers() []byte { return r.fields[0:r.fieldsEdge] } // Header fields and trailer fields are not manipulated at the same time, so after header fields is sent, r.fields is used by trailer fields.
+func (r *_http1Out_) trailers() []byte { return r.output[0:r.outputEdge] } // Header fields and trailer fields are not manipulated at the same time, so after header fields is sent, r.output is used by trailer fields.
 
 func (r *_http1Out_) proxyPassBytes(data []byte) error { return r.writeBytes(data) }
 
@@ -963,7 +963,7 @@ func (r *_http1Out_) writeHeaders() error { // used by echo and pass
 	if err := r.writeVector(); err != nil {
 		return err
 	}
-	r.fieldsEdge = 0 // now that header fields are all sent, r.fields will be used by trailer fields (if any), so reset it.
+	r.outputEdge = 0 // now that header fields are all sent, r.output will be used by trailer fields (if any), so reset it.
 	return nil
 }
 func (r *_http1Out_) writePiece(piece *Piece, inChunked bool) error {

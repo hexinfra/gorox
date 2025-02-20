@@ -658,10 +658,10 @@ func (r *backendRequest_) onEnd() { // for zeros
 func (r *backendRequest_) Response() BackendResponse { return r.response }
 
 func (r *backendRequest_) setScheme(scheme []byte) bool { // used by http/2 and http/3 only. http/1.x doesn't use this!
-	// TODO: copy `:scheme $scheme` to r.fields
+	// TODO: copy `:scheme $scheme` to r.output
 	return false
 }
-func (r *backendRequest_) controlData() []byte { return r.fields[0:r.controlEdge] } // TODO: maybe we need a struct type to represent pseudo header fields?
+func (r *backendRequest_) controlData() []byte { return r.output[0:r.controlEdge] } // TODO: maybe we need a struct type to represent pseudo header fields?
 
 func (r *backendRequest_) SetIfModifiedSince(since int64) bool {
 	return r._setUnixTime(&r.unixTimes.ifModifiedSince, &r.indexes.ifModifiedSince, since)

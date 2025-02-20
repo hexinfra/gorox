@@ -133,19 +133,31 @@ var http2CodeTexts = [...]string{
 	http2CodeHTTP11Required:     "HTTP_1_1_REQUIRED",
 }
 
-func http2DecodeVarint(src []byte, N int, max uint32) (I uint32, j int, ok bool) { // ok = false if src is malformed or result > max
-	l := len(src)
+func hpackDecodeVarint(fields []byte, N int, max uint32) (I uint32, j int, ok bool) { // ok = false if fields is malformed or result > max
+	// Pseudocode to decode an integer I is as follows:
+	//
+	// decode I from the next N bits
+	// if I < 2^N - 1, return I
+	// else
+	//     M = 0
+	//     repeat
+	//         B = next octet
+	//         I = I + (B & 127) * 2^M
+	//         M = M + 7
+	//     while B & 128 == 128
+	//     return I
+	l := len(fields)
 	if l == 0 {
 		return 0, 0, false
 	}
 	K := uint32(1<<N) - 1
-	I = uint32(src[0]) & K
+	I = uint32(fields[0]) & K
 	if I < K {
 		return I, 1, I <= max
 	}
 	j = 1
 	for M := 0; j < l; M += 7 { // M -> 7,14,21,28
-		B := src[j]
+		B := fields[j]
 		j++
 		I += uint32(B&0x7F) << M // M = 0,7,14,21,28
 		if I > max {
@@ -157,84 +169,94 @@ func http2DecodeVarint(src []byte, N int, max uint32) (I uint32, j int, ok bool)
 	}
 	return I, j, false
 }
-func http2EncodeVarint(dst []byte, I uint32, N int) (int, bool) { // ok = false if dst is not large enough
-	l := len(dst)
+func hpackDecodeString(input []byte, fields []byte, max uint32) (i int, j int, ok bool) { // ok = false if fields is malformed or length of result string > max
+	I, j, ok := hpackDecodeVarint(fields, 7, max)
+	if !ok {
+		return 0, j, false
+	}
+	H := fields[0] >= 0x80
+	fields = fields[j:]
+	if I > uint32(len(fields)) {
+		return 0, j, false
+	}
+	j += int(I)
+	if H { // the string is huffman encoded, needs decoding
+		i, ok := httpHuffmanDecode(input, fields[:I])
+		return i, j, ok
+	}
+	copy(input, fields[:I])
+	return j, j, true
+}
+
+func hpackEncodeVarint(fields []byte, I uint32, N int) (int, bool) { // ok = false if fields is not large enough
+	// Pseudocode to encode an integer I is as follows:
+	//
+	// if I < 2^N - 1, encode I on N bits
+	// else
+	//     encode (2^N - 1) on N bits
+	//     I = I - (2^N - 1)
+	//     while I >= 128
+	//          encode (I % 128 + 128) on 8 bits
+	//          I = I / 128
+	//     encode I on 8 bits
+	l := len(fields)
 	if l == 0 {
 		return 0, false
 	}
 	K := uint32(1<<N) - 1
 	if I < K {
-		dst[0] = byte(I)
+		fields[0] = byte(I)
 		return 1, true
 	}
-	dst[0] = byte(K)
+	fields[0] = byte(K)
 	j := 1
 	for I -= K; I >= 0x80 && j < l; I /= 0x80 {
-		dst[j] = byte(I) | 0x80
+		fields[j] = byte(I) | 0x80
 		j++
 	}
 	if j == l {
 		return j, false
 	}
-	dst[j] = byte(I)
+	fields[j] = byte(I)
 	return j + 1, true
 }
-
-func http2DecodeString(dst []byte, src []byte, max uint32) (i int, j int, ok bool) { // ok = false if src is malformed or length of result string > max
-	I, j, ok := http2DecodeVarint(src, 7, max)
-	if !ok {
-		return 0, 0, false
-	}
-	H := src[0] >= 0x80
-	src = src[j:]
-	if I > uint32(len(src)) {
-		return 0, j, false
-	}
-	j += int(I)
-	if H {
-		i, ok := httpHuffmanDecode(dst, src[:I])
-		return i, j, ok
-	}
-	copy(dst, src[:I])
-	return j, j, true
-}
-func http2EncodeString(dst []byte, src []byte) (int, bool) { // ok = false if dst is not large enough
-	I := len(src)
+func hpackEncodeString(fields []byte, output []byte) (int, bool) { // ok = false if fields is not large enough
+	I := len(output)
 	if I == 0 {
 		return 0, true
 	}
-	if I <= 8 { // src is short, we use raw bytes
-		j, ok := http2EncodeVarint(dst, uint32(I), 7)
+	if I <= 8 { // the string is too short to use huffman encoding, so we use raw bytes
+		j, ok := hpackEncodeVarint(fields, uint32(I), 7)
 		if !ok {
 			return j, false
 		}
-		dst = dst[j:]
-		if len(dst) < I {
+		fields = fields[j:]
+		if len(fields) < I {
 			return j, false
 		}
-		copy(dst, src)
+		copy(fields, output)
 		return j + I, true
 	}
-	// Use huffman encoding
-	if len(dst) < 2 {
+	// Use huffman encoding.
+	if len(fields) < 2 {
 		return 0, false
 	}
-	n := httpHuffmanEncode(dst[1:], src)
-	if n < 127 {
-		dst[0] = byte(n) | 0x80
+	n := httpHuffmanEncode(fields[1:], output)
+	if n < 127 { // this is the usual case
+		fields[0] = byte(n) | 0x80
 		return 1 + n, true
 	}
 	// n >= 127 means we have to use >= 2 bytes for the string length.
 	h := make([]byte, 8) // enough, should not escape to heap
-	j, _ := http2EncodeVarint(h, uint32(I), 7)
+	j, _ := hpackEncodeVarint(h, uint32(I), 7)
 	h[0] |= 0x80
-	copy(dst[:j], dst[1:1+n])
-	copy(dst, h[:j])
+	copy(fields[j:], fields[1:1+n]) // this is memmove
+	copy(fields, h[:j])
 	return j + n, true
 }
 
-// http2TableEntry is an HPACK table entry.
-type http2TableEntry struct { // 8 bytes
+// hpackTableEntry is an HPACK table entry.
+type hpackTableEntry struct { // 8 bytes
 	nameHash  uint16 // name hash
 	nameFrom  uint16 // name edge at nameFrom+nameSize
 	nameSize  uint8  // must <= 255
@@ -242,10 +264,10 @@ type http2TableEntry struct { // 8 bytes
 	valueEdge uint16 // value: [nameFrom+nameSize:valueEdge]
 }
 
-var http2BytesStatic = []byte(":authority:methodGET:methodPOST:path/:path/index.html:schemehttp:schemehttps:status200:status204:status206:status304:status400:status404:status500accept-charsetaccept-encodinggzip, deflateaccept-languageaccept-rangesacceptaccess-control-allow-originageallowauthorizationcache-controlcontent-dispositioncontent-encodingcontent-languagecontent-lengthcontent-locationcontent-rangecontent-typecookiedateetagexpectexpiresfromhostif-matchif-modified-sinceif-none-matchif-rangeif-unmodified-sincelast-modifiedlinklocationmax-forwardsproxy-authenticateproxy-authorizationrangerefererrefreshretry-afterserverset-cookiestrict-transport-securitytransfer-encodinguser-agentvaryviawww-authenticate")
+var hpackStaticBytes = []byte(":authority:methodGET:methodPOST:path/:path/index.html:schemehttp:schemehttps:status200:status204:status206:status304:status400:status404:status500accept-charsetaccept-encodinggzip, deflateaccept-languageaccept-rangesacceptaccess-control-allow-originageallowauthorizationcache-controlcontent-dispositioncontent-encodingcontent-languagecontent-lengthcontent-locationcontent-rangecontent-typecookiedateetagexpectexpiresfromhostif-matchif-modified-sinceif-none-matchif-rangeif-unmodified-sincelast-modifiedlinklocationmax-forwardsproxy-authenticateproxy-authorizationrangerefererrefreshretry-afterserverset-cookiestrict-transport-securitytransfer-encodinguser-agentvaryviawww-authenticate")
 
-// http2StaticTable is used by HPACK decoder.
-var http2StaticTable = [...]http2TableEntry{
+// hpackStaticTable is the HPACK static table.
+var hpackStaticTable = [...]hpackTableEntry{
 	0:  {0, 0, 0, true, 0},         // empty, never used
 	1:  {1059, 0, 10, true, 10},    // :authority=
 	2:  {699, 10, 7, true, 20},     // :method=GET
@@ -310,21 +332,21 @@ var http2StaticTable = [...]http2TableEntry{
 	61: {1681, 668, 16, true, 684}, // www-authenticate=
 }
 
-const http2MaxTableIndex = 61 + 124 // static[1-61] + dynamic[62-185]
+const hpackMaxTableIndex = 61 + 124 // static[1-61] + dynamic[62-185]
 
-// http2Table
-type http2Table struct { // <= 5KiB
+// hpackTable
+type hpackTable struct { // <= 5KiB
 	maxSize    uint32                       // <= http2MaxTableSize
 	freeSize   uint32                       // <= maxSize
 	maxEntries uint32                       // cap(entries)
 	numEntries uint32                       // num of current entries. max num = floor(http2MaxTableSize/(1+32)) = 124, where "1" is the size of a shortest field
 	iOldest    uint32                       // evict from t.entries[t.iOldest]
 	iNewest    uint32                       // append to t.entries[t.iNewest]
-	entries    [124]http2TableEntry         // implemented as a circular buffer: https://en.wikipedia.org/wiki/Circular_buffer
+	entries    [124]hpackTableEntry         // implemented as a circular buffer: https://en.wikipedia.org/wiki/Circular_buffer
 	content    [http2MaxTableSize - 32]byte // the buffer. this size is the upper limit that remote manipulator can occupy
 }
 
-func (t *http2Table) init() {
+func (t *hpackTable) init() {
 	t.maxSize = http2MaxTableSize
 	t.freeSize = t.maxSize
 	t.maxEntries = uint32(cap(t.entries))
@@ -333,7 +355,7 @@ func (t *http2Table) init() {
 	t.iNewest = 0
 }
 
-func (t *http2Table) get(index uint32) (name []byte, value []byte, ok bool) {
+func (t *hpackTable) get(index uint32) (name []byte, value []byte, ok bool) {
 	if index >= t.numEntries {
 		return nil, nil, false
 	}
@@ -347,7 +369,7 @@ func (t *http2Table) get(index uint32) (name []byte, value []byte, ok bool) {
 	nameEdge := entry.nameFrom + uint16(entry.nameSize)
 	return t.content[entry.nameFrom:nameEdge], t.content[nameEdge:entry.valueEdge], true
 }
-func (t *http2Table) add(name []byte, value []byte) bool { // name is not empty. sizes of name and value are limited
+func (t *hpackTable) add(name []byte, value []byte) bool { // name is not empty. sizes of name and value are limited
 	if t.numEntries == t.maxEntries { // too many entries
 		return false
 	}
@@ -373,7 +395,7 @@ func (t *http2Table) add(name []byte, value []byte) bool { // name is not empty.
 		t._evictOne()
 	}
 	t.freeSize -= wantSize
-	var entry http2TableEntry
+	var entry hpackTableEntry
 	if t.numEntries > 0 {
 		entry.nameFrom = t.entries[t.iNewest].valueEdge
 		if t.iNewest++; t.iNewest == t.maxEntries {
@@ -393,7 +415,7 @@ func (t *http2Table) add(name []byte, value []byte) bool { // name is not empty.
 	t.entries[t.iNewest] = entry
 	return true
 }
-func (t *http2Table) resize(newMaxSize uint32) { // newMaxSize must <= http2MaxTableSize
+func (t *hpackTable) resize(newMaxSize uint32) { // newMaxSize must <= http2MaxTableSize
 	if newMaxSize > http2MaxTableSize {
 		BugExitln("newMaxSize out of range")
 	}
@@ -407,7 +429,7 @@ func (t *http2Table) resize(newMaxSize uint32) { // newMaxSize must <= http2MaxT
 	}
 	t.maxSize = newMaxSize
 }
-func (t *http2Table) _evictOne() {
+func (t *hpackTable) _evictOne() {
 	if t.numEntries == 0 {
 		BugExitln("no entries to evict!")
 	}

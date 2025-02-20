@@ -204,7 +204,7 @@ type _httpIn_ struct { // for serverRequest_ and backendResponse_. incoming, nee
 	acceptCodings  [4]uint8 // known accept-encoding flags, controlled by r.numAcceptCodings. see httpCodingXXX for values
 	// Stream states (non-zeros)
 	input                []byte        // bytes of raw incoming message heads. [<r.stockInput>/4K/16K]
-	array                []byte        // store parsed, dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
+	array                []byte        // store parsed input and dynamic incoming data. [<r.stockArray>/4K/16K/64K1/(make <= 1G)]
 	primes               []pair        // hold prime queries, headerLines(main+subs), cookies, forms, and trailerLines(main+subs). [<r.stockPrimes>/max]
 	extras               []pair        // hold extra queries, headerLines(main+subs), cookies, forms, trailerLines(main+subs), and params. [<r.stockExtras>/max]
 	recvTimeout          time.Duration // timeout to recv the whole message content. zero means no timeout
@@ -1382,9 +1382,9 @@ func (r *_httpIn_) _placeOf(pair *pair) []byte {
 	case placeArray:
 		place = r.array
 	case placeStatic2:
-		place = http2BytesStatic
+		place = hpackStaticBytes
 	case placeStatic3:
-		place = http3BytesStatic
+		place = qpackBytesStatic
 	default:
 		BugExitln("unknown pair.place")
 	}
@@ -1631,13 +1631,13 @@ type _httpOut_ struct { // for serverResponse_ and backendRequest_. outgoing, ne
 	stream httpStream // *backend[1-3]Stream, *server[1-3]Stream
 	out    httpOut    // *backend[1-3]Request, *server[1-3]Response
 	// Stream states (stocks)
-	stockFields [1536]byte // for r.fields
+	stockOutput [1536]byte // for r.output
 	// Stream states (controlled)
-	edges [128]uint16 // edges of header fields or trailer fields in r.fields, but not used at the same time. controlled by r.numHeaderFields or r.numTrailerFields. edges[0] is not used!
+	edges [128]uint16 // edges of header fields or trailer fields in r.output, but not used at the same time. controlled by r.numHeaderFields or r.numTrailerFields. edges[0] is not used!
 	piece Piece       // for r.chain. used when sending content or echoing chunks
 	chain Chain       // outgoing piece chain. used when sending content or echoing chunks
 	// Stream states (non-zeros)
-	fields           []byte        // bytes of the header fields or trailer fields which are not manipulated at the same time. [<r.stockFields>/4K/16K]
+	output           []byte        // bytes of the outgoing header fields or trailer fields which are not manipulated at the same time. [<r.stockOutput>/4K/16K]
 	sendTimeout      time.Duration // timeout to send the whole message. zero means no timeout
 	contentSize      int64         // info of outgoing content. -1: not set, -2: vague, >=0: size
 	httpVersion      uint8         // Version1_1, Version2, Version3
@@ -1653,8 +1653,8 @@ type _httpOut_ struct { // for serverResponse_ and backendRequest_. outgoing, ne
 	_httpOut0                 // all values in this struct must be zero by default!
 }
 type _httpOut0 struct { // for fast reset, entirely
-	controlEdge   uint16 // edge of control in r.fields. only used by request to mark the method and request-target
-	fieldsEdge    uint16 // edge of r.fields. max size of r.fields must be <= 16K. used by both header fields and trailer fields because they are not manipulated at the same time
+	controlEdge   uint16 // edge of control in r.output. only used by request to mark the method and request-target
+	outputEdge    uint16 // edge of r.output. max size of r.output must be <= 16K. used by both header fields and trailer fields because they are not manipulated at the same time
 	hasRevisers   bool   // are there any outgoing revisers hooked on this outgoing message?
 	isSent        bool   // whether the message is sent
 	forbidContent bool   // forbid content?
@@ -1664,7 +1664,7 @@ type _httpOut0 struct { // for fast reset, entirely
 }
 
 func (r *_httpOut_) onUse(httpVersion uint8, asRequest bool) { // for non-zeros
-	r.fields = r.stockFields[:]
+	r.output = r.stockOutput[:]
 	httpHolder := r.stream.Holder()
 	r.sendTimeout = httpHolder.SendTimeout()
 	r.contentSize = -1 // not set
@@ -1673,9 +1673,9 @@ func (r *_httpOut_) onUse(httpVersion uint8, asRequest bool) { // for non-zeros
 	r.numHeaderFields, r.numTrailerFields = 1, 1 // r.edges[0] is not used
 }
 func (r *_httpOut_) onEnd() { // for zeros
-	if cap(r.fields) != cap(r.stockFields) {
-		PutNK(r.fields)
-		r.fields = nil
+	if cap(r.output) != cap(r.stockOutput) {
+		PutNK(r.output)
+		r.output = nil
 	}
 	// r.piece was reset in echo(), and will be reset here if send() was used. double free doesn't matter
 	r.chain.free()
@@ -1873,7 +1873,7 @@ func (r *_httpOut_) AddTrailer(name string, value string) bool {
 	return r.AddTrailerBytes(ConstBytes(name), ConstBytes(value))
 }
 func (r *_httpOut_) AddTrailerBytes(name []byte, value []byte) bool {
-	if !r.isSent { // trailer fields must be added after header fields & content was sent, otherwise r.fields will be messed up
+	if !r.isSent { // trailer fields must be added after header fields & content was sent, otherwise r.output will be messed up
 		return false
 	}
 	return r.out.addTrailer(name, value)
@@ -2033,23 +2033,23 @@ func (r *_httpOut_) _growFields(size int) (from int, edge int, ok bool) { // use
 	if size <= 0 || size > _16K { // size allowed: (0, 16K]
 		BugExitln("invalid size in _growFields")
 	}
-	from = int(r.fieldsEdge)
-	ceil := r.fieldsEdge + uint16(size)
-	last := ceil + 256 // we reserve 256 bytes at the end of r.fields for finalizeHeaders()
-	if ceil < r.fieldsEdge || last > _16K || last < ceil {
+	from = int(r.outputEdge)
+	ceil := r.outputEdge + uint16(size)
+	last := ceil + 256 // we reserve 256 bytes at the end of r.output for finalizeHeaders()
+	if ceil < r.outputEdge || last > _16K || last < ceil {
 		// Overflow
 		return
 	}
-	if last > uint16(cap(r.fields)) { // cap < last <= _16K
-		fields := GetNK(int64(last)) // 4K/16K
-		copy(fields, r.fields[0:r.fieldsEdge])
-		if cap(r.fields) != cap(r.stockFields) {
-			PutNK(r.fields)
+	if last > uint16(cap(r.output)) { // cap < last <= _16K
+		output := GetNK(int64(last)) // 4K/16K
+		copy(output, r.output[0:r.outputEdge])
+		if cap(r.output) != cap(r.stockOutput) {
+			PutNK(r.output)
 		}
-		r.fields = fields
+		r.output = output
 	}
-	r.fieldsEdge = ceil
-	edge, ok = int(r.fieldsEdge), true
+	r.outputEdge = ceil
+	edge, ok = int(r.outputEdge), true
 	return
 }
 

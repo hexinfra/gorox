@@ -1110,13 +1110,13 @@ func (r *server1Response) AddHTTPSRedirection(authority string) bool {
 	}
 	headerSize += len(r.request.UnsafeURI()) + len(bytesCRLF)
 	if from, _, ok := r.growHeaders(headerSize); ok {
-		from += copy(r.fields[from:], http1BytesLocationHTTPS)
+		from += copy(r.output[from:], http1BytesLocationHTTPS)
 		if authority == "" {
-			from += copy(r.fields[from:], r.request.UnsafeAuthority())
+			from += copy(r.output[from:], r.request.UnsafeAuthority())
 		} else {
-			from += copy(r.fields[from:], authority)
+			from += copy(r.output[from:], authority)
 		}
-		from += copy(r.fields[from:], r.request.UnsafeURI())
+		from += copy(r.output[from:], r.request.UnsafeURI())
 		r.out1._addCRLFHeader(from)
 		return true
 	} else {
@@ -1135,10 +1135,10 @@ func (r *server1Response) AddHostnameRedirection(hostname string) bool {
 	colonport := r.request.UnsafeColonport()
 	headerSize += len(hostname) + len(colonport) + len(r.request.UnsafeURI()) + len(bytesCRLF)
 	if from, _, ok := r.growHeaders(headerSize); ok {
-		from += copy(r.fields[from:], prefix)
-		from += copy(r.fields[from:], hostname) // this is almost always configured, not client provided
-		from += copy(r.fields[from:], colonport)
-		from += copy(r.fields[from:], r.request.UnsafeURI()) // original uri, won't split the response
+		from += copy(r.output[from:], prefix)
+		from += copy(r.output[from:], hostname) // this is almost always configured, not client provided
+		from += copy(r.output[from:], colonport)
+		from += copy(r.output[from:], r.request.UnsafeURI()) // original uri, won't split the response
 		r.out1._addCRLFHeader(from)
 		return true
 	} else {
@@ -1156,13 +1156,13 @@ func (r *server1Response) AddDirectoryRedirection() bool {
 	headerSize := len(prefix)
 	headerSize += len(req.UnsafeAuthority()) + len(req.UnsafeURI()) + 1 + len(bytesCRLF)
 	if from, _, ok := r.growHeaders(headerSize); ok {
-		from += copy(r.fields[from:], prefix)
-		from += copy(r.fields[from:], req.UnsafeAuthority())
-		from += copy(r.fields[from:], req.UnsafeEncodedPath())
-		r.fields[from] = '/'
+		from += copy(r.output[from:], prefix)
+		from += copy(r.output[from:], req.UnsafeAuthority())
+		from += copy(r.output[from:], req.UnsafeEncodedPath())
+		r.output[from] = '/'
 		from++
 		if len(req.UnsafeQueryString()) > 0 {
-			from += copy(r.fields[from:], req.UnsafeQueryString())
+			from += copy(r.output[from:], req.UnsafeQueryString())
 		}
 		r.out1._addCRLFHeader(from)
 		return true
@@ -1177,11 +1177,11 @@ func (r *server1Response) AddCookie(cookie *Cookie) bool {
 	}
 	headerSize := len(bytesSetCookie) + len(bytesColonSpace) + cookie.size() + len(bytesCRLF) // set-cookie: cookie\r\n
 	if from, _, ok := r.growHeaders(headerSize); ok {
-		from += copy(r.fields[from:], bytesSetCookie)
-		r.fields[from] = ':'
-		r.fields[from+1] = ' '
+		from += copy(r.output[from:], bytesSetCookie)
+		r.output[from] = ':'
+		r.output[from+1] = ' '
 		from += 2
-		from += cookie.writeTo(r.fields[from:])
+		from += cookie.writeTo(r.output[from:])
 		r.out1._addCRLFHeader(from)
 		return true
 	} else {
@@ -1230,15 +1230,15 @@ func (r *server1Response) finalizeHeaders() { // add at most 256 bytes
 	// date: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.iDate == 0 {
 		clock := r.stream.(*server1Stream).conn.gate.stage.clock
-		r.fieldsEdge += uint16(clock.writeDate1(r.fields[r.fieldsEdge:]))
+		r.outputEdge += uint16(clock.writeDate1(r.output[r.outputEdge:]))
 	}
 	// expires: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.unixTimes.expires >= 0 {
-		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesExpires, r.unixTimes.expires))
+		r.outputEdge += uint16(clockWriteHTTPDate1(r.output[r.outputEdge:], bytesExpires, r.unixTimes.expires))
 	}
 	// last-modified: Sun, 06 Nov 1994 08:49:37 GMT\r\n
 	if r.unixTimes.lastModified >= 0 {
-		r.fieldsEdge += uint16(clockWriteHTTPDate1(r.fields[r.fieldsEdge:], bytesLastModified, r.unixTimes.lastModified))
+		r.outputEdge += uint16(clockWriteHTTPDate1(r.output[r.outputEdge:], bytesLastModified, r.unixTimes.lastModified))
 	}
 	conn := r.stream.(*server1Stream).conn
 	if r.contentSize != -1 { // with content
@@ -1248,7 +1248,7 @@ func (r *server1Response) finalizeHeaders() { // add at most 256 bytes
 				n := i64ToDec(r.contentSize, sizeBuffer)
 				r.out1._addFixedHeader(bytesContentLength, sizeBuffer[:n])
 			} else if r.request.VersionCode() == Version1_1 { // transfer-encoding: chunked\r\n
-				r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesTransferChunked))
+				r.outputEdge += uint16(copy(r.output[r.outputEdge:], http1BytesTransferChunked))
 			} else {
 				// RFC 9112 (section 6.1):
 				// A server MUST NOT send a response containing Transfer-Encoding unless
@@ -1258,13 +1258,13 @@ func (r *server1Response) finalizeHeaders() { // add at most 256 bytes
 		}
 		// content-type: text/html\r\n
 		if r.iContentType == 0 {
-			r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesContentTypeHTML))
+			r.outputEdge += uint16(copy(r.output[r.outputEdge:], http1BytesContentTypeHTML))
 		}
 	}
 	if conn.persistent { // connection: keep-alive\r\n
-		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionKeepAlive))
+		r.outputEdge += uint16(copy(r.output[r.outputEdge:], http1BytesConnectionKeepAlive))
 	} else { // connection: close\r\n
-		r.fieldsEdge += uint16(copy(r.fields[r.fieldsEdge:], http1BytesConnectionClose))
+		r.outputEdge += uint16(copy(r.output[r.outputEdge:], http1BytesConnectionClose))
 	}
 }
 func (r *server1Response) finalizeVague() error {
@@ -1274,7 +1274,7 @@ func (r *server1Response) finalizeVague() error {
 	return nil // HTTP/1.0 does nothing.
 }
 
-func (r *server1Response) addedHeaders() []byte { return r.fields[0:r.fieldsEdge] }
+func (r *server1Response) addedHeaders() []byte { return r.output[0:r.outputEdge] }
 func (r *server1Response) fixedHeaders() []byte { return http1BytesFixedResponseHeaders }
 
 // server1Socket is the server-side HTTP/1.x webSocket.

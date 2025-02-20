@@ -29,8 +29,8 @@ type http3Conn_ struct { // for server3Conn and backend3Conn
 	// Conn states (non-zeros)
 	quicConn    *gotcp2.Conn // the quic connection
 	inBuffer    *http3Buffer // ...
-	decodeTable http3Table   // ...
-	encodeTable http3Table   // ...
+	decodeTable qpackTable   // ...
+	encodeTable qpackTable   // ...
 	// Conn states (zeros)
 	_http3Conn0 // all values in this struct must be zero by default!
 }
@@ -244,7 +244,7 @@ func (r *_http3Out_) finalizeVague() error {
 
 func (r *_http3Out_) writeHeaders() error { // used by echo and pass
 	// TODO
-	r.fieldsEdge = 0 // now that header fields are all sent, r.fields will be used by trailer fields (if any), so reset it.
+	r.outputEdge = 0 // now that header output are all sent, r.output will be used by trailer fields (if any), so reset it.
 	return nil
 }
 func (r *_http3Out_) writePiece(piece *Piece, vague bool) error {

@@ -144,7 +144,7 @@ serve:
 				}
 				// c.manage() was broken, but c.receive() was not. need wait
 				c.waitReceive = true
-			} else { // got an error, c.receive() was broken and quit.
+			} else { // got an error from c.receive(), it must be broken and quit.
 				if h2e, ok := incoming.(http2Error); ok {
 					c.goawayCloseConn(h2e)
 				} else if netErr, ok := incoming.(net.Error); ok && netErr.Timeout() {
@@ -217,10 +217,13 @@ func (c *server2Conn) processFieldsInFrame(fieldsInFrame *http2InFrame) error {
 		c.cumulativeStreams.Add(1)
 		servStream = getServer2Stream(c, streamID, c.peerSettings.initialWindowSize)
 		servReq = &servStream.request
+		Println("xxxxxxxxxxx")
 		if !c.hpackDecode(fieldsInFrame.effective(), servReq.joinHeaders) {
+			Println("yyyyyyyyyyy")
 			putServer2Stream(servStream)
 			return http2ErrorCompression
 		}
+		Println("zzzzzzzz")
 		if fieldsInFrame.endStream {
 			servStream.state = http2StateRemoteClosed
 		} else {
@@ -272,7 +275,7 @@ func (c *server2Conn) goawayCloseConn(h2e http2Error) {
 
 func (c *server2Conn) closeConn() {
 	if DebugLevel() >= 2 {
-		Printf("conn=%d connClosed by manage()\n", c.id)
+		Printf("conn=%d closed by manage()\n", c.id)
 	}
 	c.netConn.Close()
 	c.gate.DecConcurrentConns()

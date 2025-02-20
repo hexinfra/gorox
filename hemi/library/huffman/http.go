@@ -7,6 +7,15 @@
 
 package huffman
 
+func Encode(dst []byte, src []byte) int {
+	// TODO
+	return 0
+}
+func Decode(dst []byte, src []byte) (int, bool) {
+	// TODO
+	return 0, false
+}
+
 var HTTPCodes = [256]uint32{ // 1K, for huffman encoding
 	0x00001ff8, 0x007fffd8, 0x0fffffe2, 0x0fffffe3, 0x0fffffe4, 0x0fffffe5, 0x0fffffe6, 0x0fffffe7,
 	0x0fffffe8, 0x00ffffea, 0x3ffffffc, 0x0fffffe9, 0x0fffffea, 0x3ffffffd, 0x0fffffeb, 0x0fffffec,

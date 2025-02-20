@@ -452,76 +452,80 @@ func (c *http2Conn_[S]) _updatePeerSettings(settingsInFrame *http2InFrame, asCli
 }
 
 func (c *http2Conn_[S]) hpackDecode(fields []byte, join func(p []byte) bool) bool { // TODO: method value escapes to heap?
-	var fieldName, lineValue []byte
-	var (
-		I  uint32 // the decoded integer
-		j  int    // index of fields
-		ok bool   // decode succeeds or not
-	)
-	i, n := 0, len(fields)
-	for i < n {
-		b := fields[i]
-		if b >= 0b_1000_0000 { // 6.1. Indexed Header Field Representation
-			I, j, ok = http2DecodeInteger(fields[i:], 7, http2MaxTableIndex)
-			if !ok || I == 0 { // The index value of 0 is not used.  It MUST be treated as a decoding error if found in an indexed header field representation.
-				Println("decode error")
-				return false
-			}
-			fieldName, lineValue, ok = c.decodeTable.get(I)
-			if !ok { // Indices strictly greater than the sum of the lengths of both tables MUST be treated as a decoding error.
-				return false
-			}
-			i += j
-		} else if b >= 0b_0010_0000 && b < 0b_0100_0000 { // 6.3. Dynamic Table Size Update
-			I, j, ok = http2DecodeInteger(fields[i:], 5, http2MaxTableSize)
-			if !ok {
-				Println("decode error")
-				return false
-			}
-			i += j
-			Printf("update size=%d\n", I)
-		} else { // 0b_01xx_xxxx, 0b_0000_xxxx, 0b_0001_xxxx
-			var N int
-			if b >= 0b_0100_0000 { // 6.2.1. Literal Header Field with Incremental Indexing
-				N = 6
-			} else { // 0b_0000_xxxx (6.2.2. Literal Header Field without Indexing), 0b_0001_xxxx (6.2.3. Literal Header Field Never Indexed)
-				N = 4
-			}
-			I, j, ok = http2DecodeInteger(fields[i:], N, http2MaxTableIndex)
-			if !ok {
-				println("decode error")
-				return false
-			}
-			i += j
-			if I != 0 { // Indexed Name
-				fieldName, _, ok = c.decodeTable.get(I)
+	// TODO
+	return false
+	/*
+		var fieldName, lineValue []byte
+		var (
+			I  uint32 // the decoded integer
+			j  int    // index of fields
+			ok bool   // decode succeeds or not
+		)
+		i, n := 0, len(fields)
+		for i < n {
+			b := fields[i]
+			if b >= 0b_1000_0000 { // 6.1. Indexed Header Field Representation
+				I, j, ok = http2DecodeInteger(fields[i:], 7, http2MaxTableIndex)
+				if !ok || I == 0 { // The index value of 0 is not used.  It MUST be treated as a decoding error if found in an indexed header field representation.
+					Println("decode error")
+					return false
+				}
+				fieldName, lineValue, ok = c.decodeTable.get(I)
+				if !ok { // Indices strictly greater than the sum of the lengths of both tables MUST be treated as a decoding error.
+					return false
+				}
+				i += j
+			} else if b >= 0b_0010_0000 && b < 0b_0100_0000 { // 6.3. Dynamic Table Size Update
+				I, j, ok = http2DecodeInteger(fields[i:], 5, http2MaxTableSize)
 				if !ok {
 					Println("decode error")
 					return false
 				}
-			} else { // New Name
-				fieldName, j, ok = http2DecodeString(fields[i:])
-				if !ok || len(fieldName) == 0 {
+				i += j
+				Printf("update size=%d\n", I)
+			} else { // 0b_01xx_xxxx, 0b_0000_xxxx, 0b_0001_xxxx
+				var N int
+				if b >= 0b_0100_0000 { // 6.2.1. Literal Header Field with Incremental Indexing
+					N = 6
+				} else { // 0b_0000_xxxx (6.2.2. Literal Header Field without Indexing), 0b_0001_xxxx (6.2.3. Literal Header Field Never Indexed)
+					N = 4
+				}
+				I, j, ok = http2DecodeInteger(fields[i:], N, http2MaxTableIndex)
+				if !ok {
+					println("decode error")
+					return false
+				}
+				i += j
+				if I != 0 { // Indexed Name
+					fieldName, _, ok = c.decodeTable.get(I)
+					if !ok {
+						Println("decode error")
+						return false
+					}
+				} else { // New Name
+					fieldName, j, ok = http2DecodeString(fields[i:], 255)
+					if !ok || len(fieldName) == 0 {
+						Println("decode error")
+						return false
+					}
+					i += j
+				}
+				lineValue, j, ok = http2DecodeString(fields[i:], _16K)
+				if !ok {
 					Println("decode error")
 					return false
 				}
 				i += j
+				if b >= 0b_0100_0000 {
+					c.decodeTable.add(fieldName, lineValue)
+				} else if b >= 0b_0001_0000 {
+					// TODO: never indexed
+				}
 			}
-			lineValue, j, ok = http2DecodeString(fields[i:])
-			if !ok {
-				Println("decode error")
-				return false
-			}
-			i += j
-			if b >= 0b_0100_0000 {
-				c.decodeTable.add(fieldName, lineValue)
-			} else if b >= 0b_0001_0000 {
-				// TODO: never indexed
-			}
+			Printf("name=%s value=%s\n", fieldName, lineValue)
 		}
-		Printf("name=%s value=%s\n", fieldName, lineValue)
-	}
-	return i == n
+		return i == n
+	*/
 }
 
 func (c *http2Conn_[S]) sendOutFrame(outFrame *http2OutFrame[S]) error {

@@ -13,6 +13,8 @@ import (
 	"encoding/binary"
 	"sync"
 	"sync/atomic"
+
+	"github.com/hexinfra/gorox/hemi/library/huffman"
 )
 
 const ( // HTTP/2 sizes and limits for both of our HTTP/2 server and HTTP/2 backend
@@ -62,13 +64,13 @@ type http2Settings struct {
 	maxHeaderListSize    uint32 // 0x6
 }
 
-var http2InitialSettings = http2Settings{ // default settings for both server and backend
-	headerTableSize:      _4K,
+var http2InitialSettings = http2Settings{ // default settings for both backend2Conn and server2Conn
+	headerTableSize:      _4K,   // the table size that we allow the remote peer to use
 	enablePush:           false, // we don't support server push
-	maxConcurrentStreams: 127,
+	maxConcurrentStreams: 127,   // the number that we allow the remote peer to initiate
 	initialWindowSize:    _64K1, // this requires the size of content buffer must up to 64K1
-	maxFrameSize:         _16K,
-	maxHeaderListSize:    _16K,
+	maxFrameSize:         _16K,  // the size that we allow the remote peer to use
+	maxHeaderListSize:    _16K,  // the size that we allow the remote peer to use
 }
 
 const ( // HTTP/2 error codes
@@ -133,82 +135,181 @@ var http2CodeTexts = [...]string{
 	http2CodeHTTP11Required:     "HTTP_1_1_REQUIRED",
 }
 
+func http2DecodeInteger(src []byte, N int, max uint32) (I uint32, j int, ok bool) { // ok = false if src is malformed or result > max
+	l := len(src)
+	if l == 0 {
+		return 0, 0, false
+	}
+	K := uint32(1<<N) - 1
+	I = uint32(src[0]) & K
+	if I < K {
+		return I, 1, I <= max
+	}
+	j = 1
+	for M := 0; j < l; M += 7 { // M -> 7,14,21,28
+		B := src[j]
+		j++
+		I += uint32(B&0x7F) << M // M = 0,7,14,21,28
+		if I > max {
+			break
+		}
+		if B < 0x80 {
+			return I, j, true
+		}
+	}
+	return I, j, false
+}
+func http2EncodeInteger(dst []byte, I uint32, N int) (int, bool) { // ok = false if dst is not large enough
+	l := len(dst)
+	if l == 0 {
+		return 0, false
+	}
+	K := uint32(1<<N) - 1
+	if I < K {
+		dst[0] = byte(I)
+		return 1, true
+	}
+	dst[0] = byte(K)
+	j := 1
+	for I -= K; I >= 0x80 && j < l; I /= 0x80 {
+		dst[j] = byte(I) | 0x80
+		j++
+	}
+	if j == l {
+		return j, false
+	}
+	dst[j] = byte(I)
+	return j + 1, true
+}
+
+func http2DecodeString(dst []byte, src []byte, max uint32) (i int, j int, ok bool) { // ok = false if src is malformed or length of result string > max
+	I, j, ok := http2DecodeInteger(src, 7, max)
+	if !ok {
+		return 0, 0, false
+	}
+	H := src[0] >= 0x80
+	src = src[j:]
+	if I > uint32(len(src)) {
+		return 0, j, false
+	}
+	j += int(I)
+	if H {
+		i, ok := huffman.Decode(dst, src[:I])
+		return i, j, ok
+	}
+	copy(dst, src[:I])
+	return j, j, true
+}
+func http2EncodeString(dst []byte, src []byte) (int, bool) { // ok = false if dst is not large enough
+	I := len(src)
+	if I == 0 {
+		return 0, true
+	}
+	if I <= 8 { // src is short, we use raw bytes
+		j, ok := http2EncodeInteger(dst, uint32(I), 7)
+		if !ok {
+			return j, false
+		}
+		dst = dst[j:]
+		if len(dst) < I {
+			return j, false
+		}
+		copy(dst, src)
+		return j + I, true
+	}
+	// Use huffman encoding
+	if len(dst) < 2 {
+		return 0, false
+	}
+	n := huffman.Encode(dst[1:], src)
+	if n < 127 {
+		dst[0] = byte(n) | 0x80
+		return 1 + n, true
+	}
+	// n >= 127 means we have to use >= 2 bytes for the string length.
+	h := make([]byte, 8) // enough, should not escape to heap
+	j, _ := http2EncodeInteger(h, uint32(I), 7)
+	h[0] |= 0x80
+	copy(dst[:j], dst[1:1+n])
+	copy(dst, h[:j])
+	return j + n, true
+}
+
 // http2TableEntry is an HPACK table entry.
 type http2TableEntry struct { // 8 bytes
 	nameHash  uint16 // name hash
-	isStatic  bool   // ...
-	nameSize  uint8  // must <= 255
 	nameFrom  uint16 // name edge at nameFrom+nameSize
+	nameSize  uint8  // must <= 255
+	isStatic  bool   // ...
 	valueEdge uint16 // value: [nameFrom+nameSize:valueEdge]
 }
 
-// DO NOT CHANGE THIS UNLESS YOU KNOW WHAT YOU ARE DOING
 var http2BytesStatic = []byte(":authority:methodGET:methodPOST:path/:path/index.html:schemehttp:schemehttps:status200:status204:status206:status304:status400:status404:status500accept-charsetaccept-encodinggzip, deflateaccept-languageaccept-rangesacceptaccess-control-allow-originageallowauthorizationcache-controlcontent-dispositioncontent-encodingcontent-languagecontent-lengthcontent-locationcontent-rangecontent-typecookiedateetagexpectexpiresfromhostif-matchif-modified-sinceif-none-matchif-rangeif-unmodified-sincelast-modifiedlinklocationmax-forwardsproxy-authenticateproxy-authorizationrangerefererrefreshretry-afterserverset-cookiestrict-transport-securitytransfer-encodinguser-agentvaryviawww-authenticate")
 
 // http2StaticTable is used by HPACK decoder.
 var http2StaticTable = [...]http2TableEntry{
-	0:  {0, true, 0, 0, 0},         // empty, never used
-	1:  {1059, true, 10, 0, 10},    // :authority=
-	2:  {699, true, 7, 10, 20},     // :method=GET
-	3:  {699, true, 7, 20, 31},     // :method=POST
-	4:  {487, true, 5, 31, 37},     // :path=/
-	5:  {487, true, 5, 37, 53},     // :path=/index.html
-	6:  {687, true, 7, 53, 64},     // :scheme=http
-	7:  {687, true, 7, 64, 76},     // :scheme=https
-	8:  {734, true, 7, 76, 86},     // :status=200
-	9:  {734, true, 7, 86, 96},     // :status=204
-	10: {734, true, 7, 96, 106},    // :status=206
-	11: {734, true, 7, 106, 116},   // :status=304
-	12: {734, true, 7, 116, 126},   // :status=400
-	13: {734, true, 7, 126, 136},   // :status=404
-	14: {734, true, 7, 136, 146},   // :status=500
-	15: {1415, true, 14, 146, 160}, // accept-charset=
-	16: {1508, true, 15, 160, 188}, // accept-encoding=gzip, deflate
-	17: {1505, true, 15, 188, 203}, // accept-language=
-	18: {1309, true, 13, 203, 216}, // accept-ranges=
-	19: {624, true, 6, 216, 222},   // accept=
-	20: {2721, true, 27, 222, 249}, // access-control-allow-origin=
-	21: {301, true, 3, 249, 252},   // age=
-	22: {543, true, 5, 252, 257},   // allow=
-	23: {1425, true, 13, 257, 270}, // authorization=
-	24: {1314, true, 13, 270, 283}, // cache-control=
-	25: {2013, true, 19, 283, 302}, // content-disposition=
-	26: {1647, true, 16, 302, 318}, // content-encoding=
-	27: {1644, true, 16, 318, 334}, // content-language=
-	28: {1450, true, 14, 334, 348}, // content-length=
-	29: {1665, true, 16, 348, 364}, // content-location=
-	30: {1333, true, 13, 364, 377}, // content-range=
-	31: {1258, true, 12, 377, 389}, // content-type=
-	32: {634, true, 6, 389, 395},   // cookie=
-	33: {414, true, 4, 395, 399},   // date=
-	34: {417, true, 4, 399, 403},   // etag=
-	35: {649, true, 6, 403, 409},   // expect=
-	36: {768, true, 7, 409, 416},   // expires=
-	37: {436, true, 4, 416, 420},   // from=
-	38: {446, true, 4, 420, 424},   // host=
-	39: {777, true, 8, 424, 432},   // if-match=
-	40: {1660, true, 17, 432, 449}, // if-modified-since=
-	41: {1254, true, 13, 449, 462}, // if-none-match=
-	42: {777, true, 8, 462, 470},   // if-range=
-	43: {1887, true, 19, 470, 489}, // if-unmodified-since=
-	44: {1314, true, 13, 489, 502}, // last-modified=
-	45: {430, true, 4, 502, 506},   // link=
-	46: {857, true, 8, 506, 514},   // location=
-	47: {1243, true, 12, 514, 526}, // max-forwards=
-	48: {1902, true, 18, 526, 544}, // proxy-authenticate=
-	49: {2048, true, 19, 544, 563}, // proxy-authorization=
-	50: {525, true, 5, 563, 568},   // range=
-	51: {747, true, 7, 568, 575},   // referer=
-	52: {751, true, 7, 575, 582},   // refresh=
-	53: {1141, true, 11, 582, 593}, // retry-after=
-	54: {663, true, 6, 593, 599},   // server=
-	55: {1011, true, 10, 599, 609}, // set-cookie=
-	56: {2648, true, 25, 609, 634}, // strict-transport-security=
-	57: {1753, true, 17, 634, 651}, // transfer-encoding=
-	58: {1019, true, 10, 651, 661}, // user-agent=
-	59: {450, true, 4, 661, 665},   // vary=
-	60: {320, true, 3, 665, 668},   // via=
-	61: {1681, true, 16, 668, 684}, // www-authenticate=
+	0:  {0, 0, 0, true, 0},         // empty, never used
+	1:  {1059, 0, 10, true, 10},    // :authority=
+	2:  {699, 10, 7, true, 20},     // :method=GET
+	3:  {699, 20, 7, true, 31},     // :method=POST
+	4:  {487, 31, 5, true, 37},     // :path=/
+	5:  {487, 37, 5, true, 53},     // :path=/index.html
+	6:  {687, 53, 7, true, 64},     // :scheme=http
+	7:  {687, 64, 7, true, 76},     // :scheme=https
+	8:  {734, 76, 7, true, 86},     // :status=200
+	9:  {734, 86, 7, true, 96},     // :status=204
+	10: {734, 96, 7, true, 106},    // :status=206
+	11: {734, 106, 7, true, 116},   // :status=304
+	12: {734, 116, 7, true, 126},   // :status=400
+	13: {734, 126, 7, true, 136},   // :status=404
+	14: {734, 136, 7, true, 146},   // :status=500
+	15: {1415, 146, 14, true, 160}, // accept-charset=
+	16: {1508, 160, 15, true, 188}, // accept-encoding=gzip, deflate
+	17: {1505, 188, 15, true, 203}, // accept-language=
+	18: {1309, 203, 13, true, 216}, // accept-ranges=
+	19: {624, 216, 6, true, 222},   // accept=
+	20: {2721, 222, 27, true, 249}, // access-control-allow-origin=
+	21: {301, 249, 3, true, 252},   // age=
+	22: {543, 252, 5, true, 257},   // allow=
+	23: {1425, 257, 13, true, 270}, // authorization=
+	24: {1314, 270, 13, true, 283}, // cache-control=
+	25: {2013, 283, 19, true, 302}, // content-disposition=
+	26: {1647, 302, 16, true, 318}, // content-encoding=
+	27: {1644, 318, 16, true, 334}, // content-language=
+	28: {1450, 334, 14, true, 348}, // content-length=
+	29: {1665, 348, 16, true, 364}, // content-location=
+	30: {1333, 364, 13, true, 377}, // content-range=
+	31: {1258, 377, 12, true, 389}, // content-type=
+	32: {634, 389, 6, true, 395},   // cookie=
+	33: {414, 395, 4, true, 399},   // date=
+	34: {417, 399, 4, true, 403},   // etag=
+	35: {649, 403, 6, true, 409},   // expect=
+	36: {768, 409, 7, true, 416},   // expires=
+	37: {436, 416, 4, true, 420},   // from=
+	38: {446, 420, 4, true, 424},   // host=
+	39: {777, 424, 8, true, 432},   // if-match=
+	40: {1660, 432, 17, true, 449}, // if-modified-since=
+	41: {1254, 449, 13, true, 462}, // if-none-match=
+	42: {777, 462, 8, true, 470},   // if-range=
+	43: {1887, 470, 19, true, 489}, // if-unmodified-since=
+	44: {1314, 489, 13, true, 502}, // last-modified=
+	45: {430, 502, 4, true, 506},   // link=
+	46: {857, 506, 8, true, 514},   // location=
+	47: {1243, 514, 12, true, 526}, // max-forwards=
+	48: {1902, 526, 18, true, 544}, // proxy-authenticate=
+	49: {2048, 544, 19, true, 563}, // proxy-authorization=
+	50: {525, 563, 5, true, 568},   // range=
+	51: {747, 568, 7, true, 575},   // referer=
+	52: {751, 575, 7, true, 582},   // refresh=
+	53: {1141, 582, 11, true, 593}, // retry-after=
+	54: {663, 593, 6, true, 599},   // server=
+	55: {1011, 599, 10, true, 609}, // set-cookie=
+	56: {2648, 609, 25, true, 634}, // strict-transport-security=
+	57: {1753, 634, 17, true, 651}, // transfer-encoding=
+	58: {1019, 651, 10, true, 661}, // user-agent=
+	59: {450, 661, 4, true, 665},   // vary=
+	60: {320, 665, 3, true, 668},   // via=
+	61: {1681, 668, 16, true, 684}, // www-authenticate=
 }
 
 const http2MaxTableIndex = 61 + 124 // static[1-61] + dynamic[62-185]
@@ -320,81 +421,6 @@ func (t *http2Table) _evictOne() {
 	if t.numEntries--; t.numEntries == 0 {
 		t.iNewest = t.iOldest
 	}
-}
-
-func http2DecodeInteger(src []byte, N int, max uint32) (uint32, int, bool) {
-	l := len(src)
-	if l == 0 {
-		return 0, 0, false
-	}
-	K := uint32(1<<N) - 1
-	I := uint32(src[0])
-	if N < 8 {
-		I &= K
-	}
-	if I < K {
-		return I, 1, I <= max
-	}
-	j := 1
-	for M := 0; j < l; M += 7 { // M: 7,14,21,28
-		B := src[j]
-		j++
-		I += uint32(B&0x7F) << M // M: 0,7,14,21,28
-		if I > max {
-			return I, j, false
-		}
-		if B < 0x80 {
-			break
-		}
-	}
-	return I, j, true
-}
-func http2EncodeInteger(dst []byte, I uint32, N int) (int, bool) {
-	l := len(dst)
-	if l == 0 {
-		return 0, false
-	}
-	K := uint32(1<<N) - 1
-	if I < K {
-		dst[0] = byte(I)
-		return 1, true
-	}
-	dst[0] = byte(K)
-	j := 1
-	for I -= K; I >= 0x80; I >>= 7 {
-		if j == l {
-			return j, false
-		}
-		dst[j] = byte(I) | 0x80
-		j++
-	}
-	if j >= l {
-		return j, false
-	}
-	dst[j] = byte(I)
-	return j + 1, true
-}
-
-func http2DecodeString(src []byte) ([]byte, int, bool) {
-	I, j, ok := http2DecodeInteger(src, 7, _16K)
-	if !ok {
-		return nil, 0, false
-	}
-	H := src[0] >= 0x80
-	src = src[j:]
-	if I > uint32(len(src)) {
-		return nil, j, false
-	}
-	src = src[0:I]
-	j += int(I)
-	if !H {
-		return src, j, true
-	}
-	return []byte("huffman"), j, true
-}
-func http2EncodeString(dst []byte, S string, huffman bool) (int, bool) {
-	// TODO
-	return 0, false
 }
 
 // http2Buffer is the HTTP/2 incoming buffer.

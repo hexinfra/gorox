@@ -451,7 +451,7 @@ func (c *http2Conn_[S]) _updatePeerSettings(settingsInFrame *http2InFrame, asCli
 	return nil
 }
 
-func (c *http2Conn_[S]) hpackDecode(fields []byte, join func(p []byte) bool) bool { // TODO: method value escapes to heap?
+func (c *http2Conn_[S]) decodeFields(fields []byte, input *[]byte) bool {
 	// TODO
 	return false
 	/*
@@ -548,7 +548,7 @@ func (c *http2Conn_[S]) sendOutFrame(outFrame *http2OutFrame[S]) error {
 	return err
 }
 
-func (c *http2Conn_[S]) hpackEncode() { // TODO
+func (c *http2Conn_[S]) encodeFields(fields []byte, output *[]byte) { // TODO
 	// uses c.encodeTable
 }
 

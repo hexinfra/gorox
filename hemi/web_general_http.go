@@ -1384,7 +1384,7 @@ func (r *_httpIn_) _placeOf(pair *pair) []byte {
 	case placeStatic2:
 		place = hpackStaticBytes
 	case placeStatic3:
-		place = qpackBytesStatic
+		place = qpackStaticBytes
 	default:
 		BugExitln("unknown pair.place")
 	}

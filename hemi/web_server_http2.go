@@ -218,7 +218,7 @@ func (c *server2Conn) processFieldsInFrame(fieldsInFrame *http2InFrame) error {
 		servStream = getServer2Stream(c, streamID, c.peerSettings.initialWindowSize)
 		servReq = &servStream.request
 		Println("xxxxxxxxxxx")
-		if !c.hpackDecode(fieldsInFrame.effective(), servReq.joinHeaders) {
+		if !c.decodeFields(fieldsInFrame.effective(), &servReq.input) {
 			Println("yyyyyyyyyyy")
 			putServer2Stream(servStream)
 			return http2ErrorCompression
@@ -245,7 +245,7 @@ func (c *server2Conn) processFieldsInFrame(fieldsInFrame *http2InFrame) error {
 		}
 		servReq = &servStream.request
 		servReq.receiving = httpSectionTrailers
-		if !c.hpackDecode(fieldsInFrame.effective(), servReq.joinTrailers) {
+		if !c.decodeFields(fieldsInFrame.effective(), &servReq.array) { // TODO: determine from index in array
 			return http2ErrorCompression
 		}
 	}

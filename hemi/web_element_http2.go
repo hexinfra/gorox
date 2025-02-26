@@ -225,33 +225,27 @@ func hpackEncodeString(fields []byte, output []byte) (int, bool) { // ok = false
 	if I == 0 {
 		return 0, true
 	}
-	if I <= 8 { // the string is too short to use huffman encoding, so we use raw bytes
-		j, ok := hpackEncodeVarint(fields, uint32(I), 7)
-		if !ok {
-			return j, false
-		}
-		fields = fields[j:]
-		if len(fields) < I {
-			return j, false
-		}
+	n := httpHuffmanLength(output)
+	H := n < I
+	if !H {
+		n = I
+	}
+	j, ok := hpackEncodeVarint(fields, uint32(n), 7)
+	if !ok {
+		return j, false
+	}
+	if H {
+		fields[0] |= 0x80
+	}
+	fields = fields[j:]
+	if len(fields) < n {
+		return j, false
+	}
+	if H {
+		httpHuffmanEncode(fields, output)
+	} else {
 		copy(fields, output)
-		return j + I, true
 	}
-	// Use huffman encoding.
-	if len(fields) < 2 {
-		return 0, false
-	}
-	n := httpHuffmanEncode(fields[1:], output)
-	if n < 127 { // this is the usual case
-		fields[0] = byte(n) | 0x80
-		return 1 + n, true
-	}
-	// n >= 127 means we have to use >= 2 bytes for the string length.
-	h := make([]byte, 8) // enough, should not escape to heap
-	j, _ := hpackEncodeVarint(h, uint32(I), 7)
-	h[0] |= 0x80
-	copy(fields[j:], fields[1:1+n]) // this is memmove
-	copy(fields, h[:j])
 	return j + n, true
 }
 
@@ -441,6 +435,17 @@ func (t *hpackTable) _evictOne() {
 	if t.numEntries--; t.numEntries == 0 {
 		t.iNewest = t.iOldest
 	}
+}
+
+var http2FreeSeats = [http2MaxConcurrentStreams]uint8{
+	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+	17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+	33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+	49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64,
+	65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80,
+	81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96,
+	97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112,
+	113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126,
 }
 
 // http2Buffer is the HTTP/2 incoming buffer.
@@ -694,15 +699,4 @@ func (f *http2OutFrame[S]) encodeHeader() (outHeader []byte) { // caller must en
 	outHeader[4] = flags
 	binary.BigEndian.PutUint32(outHeader[5:9], f.streamID)
 	return
-}
-
-var http2FreeSeats = [http2MaxConcurrentStreams]uint8{
-	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-	17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-	33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
-	49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64,
-	65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80,
-	81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96,
-	97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112,
-	113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126,
 }

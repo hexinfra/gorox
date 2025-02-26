@@ -32,6 +32,6 @@ func (h *cgiHandlet) OnPrepare()   {}
 
 func (h *cgiHandlet) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
 	// TODO
-	resp.Send("cgi")
+	resp.Send("cgi handlet is currently not implemented")
 	return true
 }

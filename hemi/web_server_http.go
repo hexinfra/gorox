@@ -2007,7 +2007,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 			} else {
 				r.formWindow = Get16K()
 			}
-			defer func() { // TODO: closure escapes to heap
+			defer func() { // TODO: closure escapes to heap?
 				PutNK(r.formWindow)
 				r.formWindow = nil
 			}()

@@ -5,8 +5,6 @@
 
 // Rewriters rewrite request path.
 
-// This handlet is currently under design.
-
 package hemi
 
 func init() {
@@ -37,6 +35,6 @@ func (h *rewriterChecker) OnPrepare() {
 }
 
 func (h *rewriterChecker) Handle(req ServerRequest, resp ServerResponse) (handled bool) {
-	// TODO
+	// TODO: This handlet is currently under design.
 	return false
 }

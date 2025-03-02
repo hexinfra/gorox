@@ -35,7 +35,7 @@ const ( // HTTP/2 frame kinds
 	http2NumFrameKinds     = 10
 )
 
-const ( // HTTP/2 stream states
+const ( // HTTP/2 stream states. Server Push related states are not supported
 	http2StateIdle         = 0 // must be 0, default value
 	http2StateOpen         = 1
 	http2StateRemoteClosed = 2
@@ -44,7 +44,7 @@ const ( // HTTP/2 stream states
 )
 
 const ( // HTTP/2 settings
-	http2SettingHeaderTableSize      = 0x1
+	http2SettingMaxHeaderTableSize   = 0x1
 	http2SettingEnablePush           = 0x2
 	http2SettingMaxConcurrentStreams = 0x3
 	http2SettingInitialWindowSize    = 0x4
@@ -54,7 +54,7 @@ const ( // HTTP/2 settings
 
 // http2Settings
 type http2Settings struct {
-	headerTableSize      uint32 // 0x1
+	maxHeaderTableSize   uint32 // 0x1
 	enablePush           bool   // 0x2, always false as we don't support server push
 	maxConcurrentStreams uint32 // 0x3
 	initialWindowSize    int32  // 0x4
@@ -63,7 +63,7 @@ type http2Settings struct {
 }
 
 var http2InitialSettings = http2Settings{ // default settings for both backend2Conn and server2Conn
-	headerTableSize:      _4K,   // the table size that we allow the remote peer to use
+	maxHeaderTableSize:   _4K,   // the table size that we allow the remote peer to use
 	enablePush:           false, // we don't support server push
 	maxConcurrentStreams: 127,   // the number that we allow the remote peer to initiate
 	initialWindowSize:    _64K1, // this requires the size of content buffer must up to 64K1
@@ -330,25 +330,71 @@ const hpackMaxTableIndex = 61 + 124 // static[1-61] + dynamic[62-185]
 
 // hpackTable
 type hpackTable struct { // <= 5KiB
-	maxSize    uint32                       // <= http2MaxTableSize
-	freeSize   uint32                       // <= maxSize
-	maxEntries uint32                       // cap(entries)
-	numEntries uint32                       // num of current entries. max num = floor(http2MaxTableSize/(1+32)) = 124, where "1" is the size of a shortest field
-	iOldest    uint32                       // evict from t.entries[t.iOldest]
+	tableSize  uint32                       // <= http2MaxTableSize
+	freeSize   uint32                       // <= tableSize
 	iNewest    uint32                       // append to t.entries[t.iNewest]
+	iOldest    uint32                       // evict from t.entries[t.iOldest]
+	numEntries uint32                       // num of current entries
+	maxEntries uint32                       // cap(entries). max num = floor(http2MaxTableSize/(1+32)) = 124, where 1 is the size of a shortest field
 	entries    [124]hpackTableEntry         // implemented as a circular buffer: https://en.wikipedia.org/wiki/Circular_buffer
-	content    [http2MaxTableSize - 32]byte // the buffer. this size is the upper limit that remote manipulator can occupy
+	content    [http2MaxTableSize - 32]byte // the content buffer. http2MaxTableSize-32 is the upper limit size that the remote encoder can occupy
 }
 
 func (t *hpackTable) init() {
-	t.maxSize = http2MaxTableSize
-	t.freeSize = t.maxSize
-	t.maxEntries = uint32(cap(t.entries))
-	t.numEntries = 0
-	t.iOldest = 0
+	t.tableSize = http2MaxTableSize
+	t.freeSize = t.tableSize
 	t.iNewest = 0
+	t.iOldest = 0
+	t.numEntries = 0
+	t.maxEntries = uint32(cap(t.entries))
 }
 
+func (t *hpackTable) add(name []byte, value []byte) bool { // name is not empty. sizes of name and value are limited
+	if t.numEntries == t.maxEntries { // too many entries
+		return false
+	}
+	nameSize, valueSize := uint32(len(name)), uint32(len(value))
+	entrySize := nameSize + valueSize + 32 // won't overflow
+	// Before a new entry is added to the dynamic table, entries are evicted
+	// from the end of the dynamic table until the size of the dynamic table
+	// is less than or equal to (maximum size - new entry size) or until the
+	// table is empty.
+	//
+	// If the size of the new entry is less than or equal to the maximum
+	// size, that entry is added to the table.  It is not an error to
+	// attempt to add an entry that is larger than the maximum size; an
+	// attempt to add an entry larger than the maximum size causes the table
+	// to be emptied of all existing entries and results in an empty table.
+	if entrySize > t.tableSize {
+		t.freeSize = t.tableSize
+		t.numEntries = 0
+		t.iOldest = t.iNewest
+		return true
+	}
+	for t.freeSize < entrySize {
+		t._evictOne()
+	}
+	t.freeSize -= entrySize
+	var newEntry hpackTableEntry
+	if t.numEntries > 0 {
+		newEntry.nameFrom = t.entries[t.iNewest].valueEdge
+		if t.iNewest++; t.iNewest == t.maxEntries {
+			t.iNewest = 0 // wrap around
+		}
+	} else { // empty table. starts from 0
+		newEntry.nameFrom = 0
+	}
+	newEntry.nameSize = uint8(nameSize)
+	nameEdge := newEntry.nameFrom + uint16(newEntry.nameSize)
+	newEntry.valueEdge = nameEdge + uint16(valueSize)
+	copy(t.content[newEntry.nameFrom:nameEdge], name)
+	if valueSize > 0 {
+		copy(t.content[nameEdge:newEntry.valueEdge], value)
+	}
+	t.numEntries++
+	t.entries[t.iNewest] = newEntry
+	return true
+}
 func (t *hpackTable) get(index uint32) (name []byte, value []byte, ok bool) {
 	if index >= t.numEntries {
 		return nil, nil, false
@@ -363,65 +409,19 @@ func (t *hpackTable) get(index uint32) (name []byte, value []byte, ok bool) {
 	nameEdge := entry.nameFrom + uint16(entry.nameSize)
 	return t.content[entry.nameFrom:nameEdge], t.content[nameEdge:entry.valueEdge], true
 }
-func (t *hpackTable) add(name []byte, value []byte) bool { // name is not empty. sizes of name and value are limited
-	if t.numEntries == t.maxEntries { // too many entries
-		return false
-	}
-	nameSize, valueSize := uint32(len(name)), uint32(len(value))
-	wantSize := nameSize + valueSize + 32 // won't overflow
-	// Before a new entry is added to the dynamic table, entries are evicted
-	// from the end of the dynamic table until the size of the dynamic table
-	// is less than or equal to (maximum size - new entry size) or until the
-	// table is empty.
-	//
-	// If the size of the new entry is less than or equal to the maximum
-	// size, that entry is added to the table.  It is not an error to
-	// attempt to add an entry that is larger than the maximum size; an
-	// attempt to add an entry larger than the maximum size causes the table
-	// to be emptied of all existing entries and results in an empty table.
-	if wantSize > t.maxSize {
-		t.freeSize = t.maxSize
-		t.numEntries = 0
-		t.iOldest = t.iNewest
-		return true
-	}
-	for t.freeSize < wantSize {
-		t._evictOne()
-	}
-	t.freeSize -= wantSize
-	var entry hpackTableEntry
-	if t.numEntries > 0 {
-		entry.nameFrom = t.entries[t.iNewest].valueEdge
-		if t.iNewest++; t.iNewest == t.maxEntries {
-			t.iNewest = 0 // wrap around
-		}
-	} else { // empty table. starts from 0
-		entry.nameFrom = 0
-	}
-	entry.nameSize = uint8(nameSize)
-	nameEdge := entry.nameFrom + uint16(entry.nameSize)
-	entry.valueEdge = nameEdge + uint16(valueSize)
-	copy(t.content[entry.nameFrom:nameEdge], name)
-	if valueSize > 0 {
-		copy(t.content[nameEdge:entry.valueEdge], value)
-	}
-	t.numEntries++
-	t.entries[t.iNewest] = entry
-	return true
-}
 func (t *hpackTable) resize(newMaxSize uint32) { // newMaxSize must <= http2MaxTableSize
 	if newMaxSize > http2MaxTableSize {
 		BugExitln("newMaxSize out of range")
 	}
-	if newMaxSize >= t.maxSize {
-		t.freeSize += newMaxSize - t.maxSize
+	if newMaxSize >= t.tableSize {
+		t.freeSize += newMaxSize - t.tableSize
 	} else {
-		for usedSize := t.maxSize - t.freeSize; usedSize > newMaxSize; usedSize = t.maxSize - t.freeSize {
+		for usedSize := t.tableSize - t.freeSize; usedSize > newMaxSize; usedSize = t.tableSize - t.freeSize {
 			t._evictOne()
 		}
-		t.freeSize -= t.maxSize - newMaxSize
+		t.freeSize -= t.tableSize - newMaxSize
 	}
-	t.maxSize = newMaxSize
+	t.tableSize = newMaxSize
 }
 func (t *hpackTable) _evictOne() {
 	if t.numEntries == 0 {

@@ -16,6 +16,12 @@ import (
 
 const Version = "0.2.4-dev"
 
+// devel mode
+var _develMode atomic.Bool
+
+func DevelMode() bool         { return _develMode.Load() }
+func SetDevelMode(devel bool) { _develMode.Store(devel) }
+
 // debug level
 var _debugLevel atomic.Int32
 

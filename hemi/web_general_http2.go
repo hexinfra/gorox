@@ -415,8 +415,8 @@ func (c *http2Conn_[S]) _updatePeerSettings(settingsInFrame *http2InFrame, asCli
 		ident := binary.BigEndian.Uint16(settings[j : j+2])
 		value := binary.BigEndian.Uint32(settings[j+2 : j+6])
 		switch ident {
-		case http2SettingHeaderTableSize:
-			c.peerSettings.headerTableSize = value
+		case http2SettingMaxHeaderTableSize:
+			c.peerSettings.maxHeaderTableSize = value
 			// TODO: immediate Dynamic Table Size Update
 		case http2SettingEnablePush:
 			if value > 1 || (value == 1 && asClient) {

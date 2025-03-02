@@ -119,6 +119,7 @@ func Main(opts *Opts) {
 	flag.StringVar(&common.VarDir, "varDir", "", "")
 	flag.StringVar(&common.Stdout, "stdout", "", "")
 	flag.StringVar(&common.Stderr, "stderr", "", "")
+
 	action := "serve"
 	if len(os.Args) > 1 && os.Args[1][0] != '-' {
 		action = os.Args[1]
@@ -135,6 +136,11 @@ func Main(opts *Opts) {
 	case "advise":
 		system.Advise()
 	case "serve", "check":
+		if _, ok := os.LookupEnv("_GOROX_DEVEL_"); ok {
+			hemi.SetDevelMode(true)
+		}
+		hemi.SetDebugLevel(int32(common.DebugLevel))
+
 		if common.TopDir == "" { // topDir is not specified
 			common.TopDir = system.ExeDir
 		} else { // topDir is specified
@@ -160,29 +166,27 @@ func Main(opts *Opts) {
 		setDir(&common.TmpDir, "tmp", hemi.SetTmpDir)
 		setDir(&common.VarDir, "var", hemi.SetVarDir)
 
-		hemi.SetDebugLevel(int32(common.DebugLevel))
-
 		if action == "check" { // dry run
 			if _, err := hemi.StageFromFile(common.GetConfig()); err != nil {
 				fmt.Fprintln(os.Stderr, err.Error())
 			} else {
 				fmt.Println("PASS")
 			}
-		} else if common.SingleMode { // run as single foreground process. for single mode
+		} else if token, ok := os.LookupEnv("_GOROX_DAEMON_"); ok { // run as a daemon
+			if token == "leader" { // as a leader daemon
+				system.DaemonInit()
+				leader.Main()
+			} else { // as a worker daemon
+				worker.Main(token)
+			}
+		} else if common.SingleMode { // run as a single foreground worker process. for single mode
 			if stage, err := hemi.StageFromFile(common.GetConfig()); err == nil {
 				stage.Start(0)
 				select {} // waiting forever
 			} else {
 				fmt.Fprintln(os.Stderr, err.Error())
 			}
-		} else if token, ok := os.LookupEnv("_GOROX_DAEMON_"); ok { // run leader or worker as a daemon
-			if token == "leader" { // leader daemon
-				system.DaemonInit()
-				leader.Main()
-			} else { // worker daemon
-				worker.Main(token)
-			}
-		} else if common.DaemonMode { // start leader daemon and exit
+		} else if common.DaemonMode { // run as a starter which starts a leader daemon then exit
 			newFile := func(file string, ext string, osFile *os.File) *os.File {
 				if file == "" {
 					file = common.LogDir + "/" + common.ProgramName + ext
@@ -219,7 +223,7 @@ func Main(opts *Opts) {
 			} else {
 				common.Crash(err.Error())
 			}
-		} else { // run as foreground leader. default case
+		} else { // run as a foreground leader process. default case
 			leader.Main()
 		}
 	default: // as control client

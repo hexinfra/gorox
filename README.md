@@ -8,7 +8,7 @@ used as a:
 
   * Web Server (HTTP, TLS, WebSocket, static, CGI, FCGI, SCGI)
   * Go Web Application Server (Frameworks, Applications)
-  * RPC Framework for Go (gRPC, HRPC)
+  * RPC Framework for Go (HRPC)
   * Web Reverse Proxy (HTTP, TLS, WebSocket, Caching, Load Balancing)
   * Layer 7 Reverse Proxy (Various Protocols, with or without Load Balancing)
   * Layer 4 Reverse Proxy (TCP, TLS, UDP, QUIC, UDS, Load Balancing)

@@ -16,7 +16,7 @@ used as a:
   * ... and more through its highly extensible compoments design!
 
 Gorox is under heavy development, *CURRENTLY ALL FEATURES ARE EXPERIMENTAL!* For
-more details about Gorox, please see our project site: https://gorox.org/.
+more details about Gorox, please see our project site: https://gorox.io/.
 
 
 Platforms
@@ -144,8 +144,8 @@ Documentation
 
 View Gorox documentation online:
 
-  * English version: https://gorox.org/docs
-  * Chinese version: https://www.gorox.org/docs
+  * English version: https://gorox.io/docs
+  * Chinese version: https://www.gorox.io/docs
 
 Or view locally (ensure your local goroxio program is started):
 
@@ -254,8 +254,8 @@ contact him through Twitter: @diogin.
 
 The official website of the Gorox project is at:
 
-  * English version: https://gorox.org/
-  * Chinese version: https://www.gorox.org/
+  * English version: https://gorox.io/
+  * Chinese version: https://www.gorox.io/
 
 
 License

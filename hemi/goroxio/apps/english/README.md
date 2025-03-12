@@ -2,7 +2,7 @@ The Gorox website in English.
 
 Visit online:
 
-    https://gorox.org/
+    https://gorox.io/
 
 Visit locally (ensure your local goroxio program is started):
 

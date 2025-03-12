@@ -2,7 +2,7 @@ The Gorox website in Chinese.
 
 Visit online:
 
-    https://www.gorox.org/
+    https://www.gorox.io/
 
 Visit locally (ensure your local goroxio program is started):
 

@@ -1038,7 +1038,7 @@ func (r *fcgiResponse) _newTempFile() (tempFile, error) { // to save content to
 	filePath := r.exchan.riskyMake(len(filesDir) + 19) // 19 bytes is enough for an int64
 	n := copy(filePath, filesDir)
 	n += r.exchan.MakeTempName(filePath[n:], time.Now().Unix())
-	return os.OpenFile(WeakString(filePath[:n]), os.O_RDWR|os.O_CREATE, 0644)
+	return os.OpenFile(string(filePath[:n]), os.O_RDWR|os.O_CREATE, 0644)
 }
 
 func (r *fcgiResponse) _isLongTime() bool {

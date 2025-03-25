@@ -1583,7 +1583,7 @@ func (r *_httpIn_) _newTempFile(retain bool) (tempFile, error) { // to save cont
 		pathBuffer := r.RiskyMake(len(filesDir) + 19) // 19 bytes is enough for an int64
 		n := copy(pathBuffer, filesDir)
 		n += r.stream.MakeTempName(pathBuffer[n:], time.Now().Unix())
-		return os.OpenFile(WeakString(pathBuffer[:n]), os.O_RDWR|os.O_CREATE, 0644)
+		return os.OpenFile(string(pathBuffer[:n]), os.O_RDWR|os.O_CREATE, 0644)
 	} else { // since data is not used by upper caller, we don't need to actually write data to file.
 		return fakeFile, nil
 	}

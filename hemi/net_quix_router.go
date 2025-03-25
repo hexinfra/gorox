@@ -242,7 +242,7 @@ func (c *QUIXConn) closeConn() error {
 	return nil
 }
 
-func (c *QUIXConn) unsafeVariable(varCode int16, varName string) (varValue []byte) {
+func (c *QUIXConn) riskyVariable(varCode int16, varName string) (varValue []byte) {
 	return quixConnVariables[varCode](c)
 }
 
@@ -353,7 +353,7 @@ func (c *quixCase) isMatch(conn *QUIXConn) bool {
 	if c.general {
 		return true
 	}
-	value := conn.unsafeVariable(c.varCode, c.varName)
+	value := conn.riskyVariable(c.varCode, c.varName)
 	return c.matcher(c, conn, value)
 }
 

@@ -1221,8 +1221,8 @@ func (v *Value) StringDict() (dict map[string]string, ok bool) {
 }
 
 func (v *Value) BytesVar(keeper varKeeper) []byte {
-	return keeper.unsafeVariable(v.code, v.name)
+	return keeper.riskyVariable(v.code, v.name)
 }
 func (v *Value) StringVar(keeper varKeeper) string {
-	return string(keeper.unsafeVariable(v.code, v.name))
+	return string(keeper.riskyVariable(v.code, v.name))
 }

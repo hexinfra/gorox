@@ -2,7 +2,7 @@ Hemi
 ====
 
 Hemi is the engine of Gorox. It's a plain Go module that only depends on Go's
-standard library. It can be used as a module by your programs.
+standard library. It can be used as a Go module by your programs.
 
 
 How to use

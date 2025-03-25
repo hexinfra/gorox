@@ -130,7 +130,7 @@ type httpStream interface {
 	MakeTempName(dst []byte, unixTime int64) int
 	remoteAddr() net.Addr
 	buffer256() []byte
-	unsafeMake(size int) []byte
+	riskyMake(size int) []byte
 	isBroken() bool // returns true if either side of the stream is broken
 	markBroken()    // mark stream as broken
 	setReadDeadline() error
@@ -171,8 +171,8 @@ func (s *httpStream_[C]) MakeTempName(dst []byte, unixTime int64) int {
 }
 func (s *httpStream_[C]) remoteAddr() net.Addr { return s.conn.remoteAddr() }
 
-func (s *httpStream_[C]) buffer256() []byte          { return s.stockBuffer[:] }
-func (s *httpStream_[C]) unsafeMake(size int) []byte { return s.region.Make(size) }
+func (s *httpStream_[C]) buffer256() []byte         { return s.stockBuffer[:] }
+func (s *httpStream_[C]) riskyMake(size int) []byte { return s.region.Make(size) }
 
 // httpIn
 type httpIn interface {
@@ -356,17 +356,17 @@ func (r *_httpIn_) onEnd() { // for zeros
 	r._httpIn0 = _httpIn0{}
 }
 
-func (r *_httpIn_) UnsafeMake(size int) []byte { return r.stream.unsafeMake(size) }
-func (r *_httpIn_) RemoteAddr() net.Addr       { return r.stream.remoteAddr() }
+func (r *_httpIn_) RiskyMake(size int) []byte { return r.stream.riskyMake(size) }
+func (r *_httpIn_) RemoteAddr() net.Addr      { return r.stream.remoteAddr() }
 
-func (r *_httpIn_) VersionCode() uint8    { return r.httpVersion }
-func (r *_httpIn_) IsHTTP1() bool         { return r.httpVersion <= Version1_1 }
-func (r *_httpIn_) IsHTTP1_0() bool       { return r.httpVersion == Version1_0 }
-func (r *_httpIn_) IsHTTP1_1() bool       { return r.httpVersion == Version1_1 }
-func (r *_httpIn_) IsHTTP2() bool         { return r.httpVersion == Version2 }
-func (r *_httpIn_) IsHTTP3() bool         { return r.httpVersion == Version3 }
-func (r *_httpIn_) Version() string       { return httpVersionStrings[r.httpVersion] }
-func (r *_httpIn_) UnsafeVersion() []byte { return httpVersionByteses[r.httpVersion] }
+func (r *_httpIn_) VersionCode() uint8   { return r.httpVersion }
+func (r *_httpIn_) IsHTTP1() bool        { return r.httpVersion <= Version1_1 }
+func (r *_httpIn_) IsHTTP1_0() bool      { return r.httpVersion == Version1_0 }
+func (r *_httpIn_) IsHTTP1_1() bool      { return r.httpVersion == Version1_1 }
+func (r *_httpIn_) IsHTTP2() bool        { return r.httpVersion == Version2 }
+func (r *_httpIn_) IsHTTP3() bool        { return r.httpVersion == Version3 }
+func (r *_httpIn_) Version() string      { return httpVersionStrings[r.httpVersion] }
+func (r *_httpIn_) RiskyVersion() []byte { return httpVersionByteses[r.httpVersion] }
 
 func (r *_httpIn_) KeepAlive() bool   { return r.keepAlive == 1 } // -1 was excluded priorly. either 0 or 1 here
 func (r *_httpIn_) HeadResult() int16 { return r.headResult }
@@ -408,7 +408,7 @@ func (r *_httpIn_) Header(name string) (value string, ok bool) {
 	v, ok := r.getPair(name, 0, r.headerLines, pairHeader)
 	return string(v), ok
 }
-func (r *_httpIn_) UnsafeHeader(name string) (value []byte, ok bool) {
+func (r *_httpIn_) RiskyHeader(name string) (value []byte, ok bool) {
 	return r.getPair(name, 0, r.headerLines, pairHeader)
 }
 func (r *_httpIn_) Headers(name string) (values []string, ok bool) {
@@ -968,14 +968,14 @@ func (r *_httpIn_) IsVague() bool { return r.contentSize == -2 }
 
 func (r *_httpIn_) ContentIsEncoded() bool { return r.zContentEncoding.notEmpty() }
 func (r *_httpIn_) ContentSize() int64     { return r.contentSize }
-func (r *_httpIn_) ContentType() string    { return string(r.UnsafeContentType()) }
-func (r *_httpIn_) UnsafeContentLength() []byte {
+func (r *_httpIn_) ContentType() string    { return string(r.RiskyContentType()) }
+func (r *_httpIn_) RiskyContentLength() []byte {
 	if r.iContentLength == 0 {
 		return nil
 	}
 	return r.primes[r.iContentLength].valueAt(r.input)
 }
-func (r *_httpIn_) UnsafeContentType() []byte {
+func (r *_httpIn_) RiskyContentType() []byte {
 	if r.iContentType == 0 {
 		return nil
 	}
@@ -983,7 +983,7 @@ func (r *_httpIn_) UnsafeContentType() []byte {
 }
 
 func (r *_httpIn_) SetRecvTimeout(timeout time.Duration) { r.recvTimeout = timeout }
-func (r *_httpIn_) unsafeContent() []byte { // load message content into memory
+func (r *_httpIn_) riskyContent() []byte { // load message content into memory
 	r._loadContent()
 	if r.stream.isBroken() {
 		return nil
@@ -1129,7 +1129,7 @@ func (r *_httpIn_) Trailer(name string) (value string, ok bool) {
 	v, ok := r.getPair(name, 0, r.trailerLines, pairTrailer)
 	return string(v), ok
 }
-func (r *_httpIn_) UnsafeTrailer(name string) (value []byte, ok bool) {
+func (r *_httpIn_) RiskyTrailer(name string) (value []byte, ok bool) {
 	return r.getPair(name, 0, r.trailerLines, pairTrailer)
 }
 func (r *_httpIn_) Trailers(name string) (values []string, ok bool) {
@@ -1580,7 +1580,7 @@ func (r *_httpIn_) saveContentFilesDir() string { return r.stream.Holder().SaveC
 func (r *_httpIn_) _newTempFile(retain bool) (tempFile, error) { // to save content to
 	if retain {
 		filesDir := r.saveContentFilesDir()
-		pathBuffer := r.UnsafeMake(len(filesDir) + 19) // 19 bytes is enough for an int64
+		pathBuffer := r.RiskyMake(len(filesDir) + 19) // 19 bytes is enough for an int64
 		n := copy(pathBuffer, filesDir)
 		n += r.stream.MakeTempName(pathBuffer[n:], time.Now().Unix())
 		return os.OpenFile(WeakString(pathBuffer[:n]), os.O_RDWR|os.O_CREATE, 0644)
@@ -1688,7 +1688,7 @@ func (r *_httpOut_) onEnd() { // for zeros
 	r._httpOut0 = _httpOut0{}
 }
 
-func (r *_httpOut_) unsafeMake(size int) []byte { return r.stream.unsafeMake(size) }
+func (r *_httpOut_) riskyMake(size int) []byte { return r.stream.riskyMake(size) }
 
 func (r *_httpOut_) AddContentType(contentType string) bool {
 	return r.AddHeaderBytes(bytesContentType, ConstBytes(contentType))

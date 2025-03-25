@@ -434,8 +434,8 @@ func (x *fcgiExchan) MakeTempName(dst []byte, unixTime int64) int {
 	return x.conn.MakeTempName(dst, unixTime)
 }
 
-func (x *fcgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
-func (x *fcgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }
+func (x *fcgiExchan) buffer256() []byte         { return x.stockBuffer[:] }
+func (x *fcgiExchan) riskyMake(size int) []byte { return x.region.Make(size) }
 
 func (x *fcgiExchan) markBroken()    { x.conn.markBroken() }
 func (x *fcgiExchan) isBroken() bool { return x.conn.isBroken() }
@@ -1035,7 +1035,7 @@ func (r *fcgiResponse) saveContentFilesDir() string {
 
 func (r *fcgiResponse) _newTempFile() (tempFile, error) { // to save content to
 	filesDir := r.saveContentFilesDir()
-	filePath := r.exchan.unsafeMake(len(filesDir) + 19) // 19 bytes is enough for an int64
+	filePath := r.exchan.riskyMake(len(filesDir) + 19) // 19 bytes is enough for an int64
 	n := copy(filePath, filesDir)
 	n += r.exchan.MakeTempName(filePath[n:], time.Now().Unix())
 	return os.OpenFile(WeakString(filePath[:n]), os.O_RDWR|os.O_CREATE, 0644)
@@ -1219,19 +1219,19 @@ func (r *fcgiRequest) proxyCopyHeaderLines(httpReq ServerRequest, proxyConfig *F
 	if !r._addMetaParam(fcgiBytesServerSoftware, bytesGorox) { // SERVER_SOFTWARE
 		return false
 	}
-	if !r._addMetaParam(fcgiBytesServerProtocol, httpReq.UnsafeVersion()) { // SERVER_PROTOCOL
+	if !r._addMetaParam(fcgiBytesServerProtocol, httpReq.RiskyVersion()) { // SERVER_PROTOCOL
 		return false
 	}
-	if !r._addMetaParam(fcgiBytesRequestMethod, httpReq.UnsafeMethod()) { // REQUEST_METHOD
+	if !r._addMetaParam(fcgiBytesRequestMethod, httpReq.RiskyMethod()) { // REQUEST_METHOD
 		return false
 	}
-	if !r._addMetaParam(fcgiBytesRequestScheme, httpReq.UnsafeScheme()) { // REQUEST_SCHEME
+	if !r._addMetaParam(fcgiBytesRequestScheme, httpReq.RiskyScheme()) { // REQUEST_SCHEME
 		return false
 	}
-	if !r._addMetaParam(fcgiBytesRequestURI, httpReq.UnsafeURI()) { // REQUEST_URI
+	if !r._addMetaParam(fcgiBytesRequestURI, httpReq.RiskyURI()) { // REQUEST_URI
 		return false
 	}
-	if !r._addMetaParam(fcgiBytesServerName, httpReq.UnsafeHostname()) { // SERVER_NAME
+	if !r._addMetaParam(fcgiBytesServerName, httpReq.RiskyHostname()) { // SERVER_NAME
 		return false
 	}
 	if !r._addMetaParam(fcgiBytesRedirectStatus, fcgiBytes200) { // REDIRECT_STATUS
@@ -1242,10 +1242,10 @@ func (r *fcgiRequest) proxyCopyHeaderLines(httpReq ServerRequest, proxyConfig *F
 	}
 	scriptFilename := proxyConfig.ScriptFilename
 	if len(scriptFilename) == 0 {
-		absPath := httpReq.unsafeAbsPath()
+		absPath := httpReq.riskyAbsPath()
 		indexFile := proxyConfig.IndexFile
 		if absPath[len(absPath)-1] == '/' && len(indexFile) > 0 {
-			scriptFilename = httpReq.UnsafeMake(len(absPath) + len(indexFile))
+			scriptFilename = httpReq.RiskyMake(len(absPath) + len(indexFile))
 			copy(scriptFilename, absPath)
 			copy(scriptFilename[len(absPath):], indexFile)
 		} else {
@@ -1255,11 +1255,11 @@ func (r *fcgiRequest) proxyCopyHeaderLines(httpReq ServerRequest, proxyConfig *F
 	if !r._addMetaParam(fcgiBytesScriptFilename, scriptFilename) { // SCRIPT_FILENAME
 		return false
 	}
-	if !r._addMetaParam(fcgiBytesScriptName, httpReq.UnsafePath()) { // SCRIPT_NAME
+	if !r._addMetaParam(fcgiBytesScriptName, httpReq.RiskyPath()) { // SCRIPT_NAME
 		return false
 	}
 	var value []byte
-	if value = httpReq.UnsafeQueryString(); len(value) > 1 {
+	if value = httpReq.RiskyQueryString(); len(value) > 1 {
 		value = value[1:] // excluding '?'
 	} else {
 		value = nil
@@ -1267,10 +1267,10 @@ func (r *fcgiRequest) proxyCopyHeaderLines(httpReq ServerRequest, proxyConfig *F
 	if !r._addMetaParam(fcgiBytesQueryString, value) { // QUERY_STRING
 		return false
 	}
-	if value = httpReq.UnsafeContentLength(); value != nil && !r._addMetaParam(fcgiBytesContentLength, value) { // CONTENT_LENGTH
+	if value = httpReq.RiskyContentLength(); value != nil && !r._addMetaParam(fcgiBytesContentLength, value) { // CONTENT_LENGTH
 		return false
 	}
-	if value = httpReq.UnsafeContentType(); value != nil && !r._addMetaParam(fcgiBytesContentType, value) { // CONTENT_TYPE
+	if value = httpReq.RiskyContentType(); value != nil && !r._addMetaParam(fcgiBytesContentType, value) { // CONTENT_TYPE
 		return false
 	}
 

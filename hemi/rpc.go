@@ -13,7 +13,7 @@ import (
 )
 
 // RPCServer
-type RPCServer interface { // for *hrpcServer
+type RPCServer interface {
 	// Imports
 	Server
 	// Methods

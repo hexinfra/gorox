@@ -381,7 +381,7 @@ func (c *TCPXConn) Close() {
 	c.gate.justClose(c.netConn)
 }
 
-func (c *TCPXConn) unsafeVariable(varCode int16, varName string) (varValue []byte) {
+func (c *TCPXConn) riskyVariable(varCode int16, varName string) (varValue []byte) {
 	return tcpxConnVariables[varCode](c)
 }
 
@@ -449,7 +449,7 @@ func (c *tcpxCase) isMatch(conn *TCPXConn) bool {
 	if c.general {
 		return true
 	}
-	value := conn.unsafeVariable(c.varCode, c.varName)
+	value := conn.riskyVariable(c.varCode, c.varName)
 	return c.matcher(c, conn, value)
 }
 

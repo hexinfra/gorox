@@ -96,7 +96,7 @@ func (h *referer1Checker) Handle(req ServerRequest, resp ServerResponse) (handle
 		index          = -1
 		schemeLen      = 0
 	)
-	refererURL, ok := req.UnsafeHeader("referer")
+	refererURL, ok := req.RiskyHeader("referer")
 	if !ok {
 		if h.NoneReferer {
 			return false

@@ -66,9 +66,9 @@ func (m *simpleMapper) FindHandle(req ServerRequest) Handle {
 	}
 }
 func (m *simpleMapper) HandleName(req ServerRequest) string {
-	method := req.UnsafeMethod()
-	path := req.UnsafePath() // always starts with '/'
-	name := req.UnsafeMake(len(method) + len(path))
+	method := req.RiskyMethod()
+	path := req.RiskyPath() // always starts with '/'
+	name := req.RiskyMake(len(method) + len(path))
 	n := copy(name, method)
 	copy(name[n:], path)
 	for i := n; i < len(name); i++ {

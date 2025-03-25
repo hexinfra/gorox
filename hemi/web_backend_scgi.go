@@ -203,8 +203,8 @@ func (x *scgiExchan) onEnd() {
 	x.rawConn = nil
 }
 
-func (x *scgiExchan) buffer256() []byte          { return x.stockBuffer[:] }
-func (x *scgiExchan) unsafeMake(size int) []byte { return x.region.Make(size) }
+func (x *scgiExchan) buffer256() []byte         { return x.stockBuffer[:] }
+func (x *scgiExchan) riskyMake(size int) []byte { return x.region.Make(size) }
 
 func (x *scgiExchan) MakeTempName(dst []byte, unixTime int64) int {
 	return makeTempName(dst, x.node.Stage().ID(), unixTime, x.id, 0)

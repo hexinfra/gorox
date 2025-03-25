@@ -124,11 +124,11 @@ func (h *staticHandlet) Handle(req ServerRequest, resp ServerResponse) (handled 
 	var fullPath []byte
 	var pathSize int
 	if h.useWebappWebRoot {
-		fullPath = req.unsafeAbsPath()
+		fullPath = req.riskyAbsPath()
 		pathSize = len(fullPath)
 	} else { // custom web root
-		userPath := req.UnsafePath()
-		fullPath = req.UnsafeMake(len(h.webRoot) + len(userPath) + len(h.indexFile))
+		userPath := req.RiskyPath()
+		fullPath = req.RiskyMake(len(h.webRoot) + len(userPath) + len(h.indexFile))
 		pathSize = copy(fullPath, h.webRoot)
 		pathSize += copy(fullPath[pathSize:], userPath)
 	}
@@ -138,7 +138,7 @@ func (h *staticHandlet) Handle(req ServerRequest, resp ServerResponse) (handled 
 		openPath = fullPath[:pathSize]
 	} else { // is directory, add indexFile to openPath
 		if h.useWebappWebRoot {
-			openPath = req.UnsafeMake(len(fullPath) + len(h.indexFile))
+			openPath = req.RiskyMake(len(fullPath) + len(h.indexFile))
 			copy(openPath, fullPath)
 			copy(openPath[pathSize:], h.indexFile)
 			fullPath = openPath

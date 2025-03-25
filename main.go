@@ -10,9 +10,9 @@ package main
 import (
 	"github.com/hexinfra/gorox/hemi/procman"
 
-	_ "github.com/hexinfra/gorox/apps" // all webapps
+	_ "github.com/hexinfra/gorox/apps" // all web applications
 	_ "github.com/hexinfra/gorox/exts" // all extensions
-	_ "github.com/hexinfra/gorox/svcs" // all services
+	_ "github.com/hexinfra/gorox/svcs" // all rpc services
 )
 
 func main() {

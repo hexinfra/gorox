@@ -242,13 +242,13 @@ type ServerRequest interface { // for *server[1-3]Request
 	IsHTTP2() bool
 	IsHTTP3() bool
 	Version() string // HTTP/1.0, HTTP/1.1, HTTP/2, HTTP/3
-	UnsafeVersion() []byte
+	RiskyVersion() []byte
 
 	SchemeCode() uint8 // SchemeHTTP, SchemeHTTPS
 	IsHTTP() bool
 	IsHTTPS() bool
 	Scheme() string // http, https
-	UnsafeScheme() []byte
+	RiskyScheme() []byte
 
 	IsGET() bool
 	IsHEAD() bool
@@ -259,23 +259,23 @@ type ServerRequest interface { // for *server[1-3]Request
 	IsOPTIONS() bool
 	IsTRACE() bool
 	Method() string // GET, POST, ...
-	UnsafeMethod() []byte
+	RiskyMethod() []byte
 
-	Authority() string       // hostname[:port]
-	UnsafeAuthority() []byte // hostname[:port]
-	Hostname() string        // hostname
-	UnsafeHostname() []byte  // hostname
-	Colonport() string       // :port
-	UnsafeColonport() []byte // :port
+	Authority() string      // hostname[:port]
+	RiskyAuthority() []byte // hostname[:port]
+	Hostname() string       // hostname
+	RiskyHostname() []byte  // hostname
+	Colonport() string      // :port
+	RiskyColonport() []byte // :port
 
-	URI() string               // /encodedPath?queryString
-	UnsafeURI() []byte         // /encodedPath?queryString
-	Path() string              // /decodedPath
-	UnsafePath() []byte        // /decodedPath
-	EncodedPath() string       // /encodedPath
-	UnsafeEncodedPath() []byte // /encodedPath
-	QueryString() string       // including '?' if query string exists, otherwise empty
-	UnsafeQueryString() []byte // including '?' if query string exists, otherwise empty
+	URI() string              // /encodedPath?queryString
+	RiskyURI() []byte         // /encodedPath?queryString
+	Path() string             // /decodedPath
+	RiskyPath() []byte        // /decodedPath
+	EncodedPath() string      // /encodedPath
+	RiskyEncodedPath() []byte // /encodedPath
+	QueryString() string      // including '?' if query string exists, otherwise empty
+	RiskyQueryString() []byte // including '?' if query string exists, otherwise empty
 
 	HasQueries() bool
 	AllQueries() (queries [][2]string)
@@ -283,7 +283,7 @@ type ServerRequest interface { // for *server[1-3]Request
 	Qstr(name string, defaultValue string) string
 	Qint(name string, defaultValue int) int
 	Query(name string) (value string, ok bool)
-	UnsafeQuery(name string) (value []byte, ok bool)
+	RiskyQuery(name string) (value []byte, ok bool)
 	Queries(name string) (values []string, ok bool)
 	HasQuery(name string) bool
 	DelQuery(name string) (deleted bool)
@@ -295,22 +295,22 @@ type ServerRequest interface { // for *server[1-3]Request
 	Hstr(name string, defaultValue string) string
 	Hint(name string, defaultValue int) int
 	Header(name string) (value string, ok bool)
-	UnsafeHeader(name string) (value []byte, ok bool)
+	RiskyHeader(name string) (value []byte, ok bool)
 	Headers(name string) (values []string, ok bool)
 	HasHeader(name string) bool
 	DelHeader(name string) (deleted bool)
 	AddHeader(name string, value string) bool
 
 	UserAgent() string
-	UnsafeUserAgent() []byte
+	RiskyUserAgent() []byte
 
 	ContentType() string
-	UnsafeContentType() []byte
+	RiskyContentType() []byte
 
 	ContentIsEncoded() bool
 
 	ContentSize() int64
-	UnsafeContentLength() []byte
+	RiskyContentLength() []byte
 
 	AcceptTrailers() bool
 
@@ -328,7 +328,7 @@ type ServerRequest interface { // for *server[1-3]Request
 	Cstr(name string, defaultValue string) string
 	Cint(name string, defaultValue int) int
 	Cookie(name string) (value string, ok bool)
-	UnsafeCookie(name string) (value []byte, ok bool)
+	RiskyCookie(name string) (value []byte, ok bool)
 	Cookies(name string) (values []string, ok bool)
 	HasCookie(name string) bool
 	DelCookie(name string) (deleted bool)
@@ -338,7 +338,7 @@ type ServerRequest interface { // for *server[1-3]Request
 	HasContent() bool                     // true if content exists
 	IsVague() bool                        // true if content exists and is not sized
 	Content() string
-	UnsafeContent() []byte
+	RiskyContent() []byte
 
 	HasForms() bool
 	AllForms() (forms [][2]string)
@@ -346,7 +346,7 @@ type ServerRequest interface { // for *server[1-3]Request
 	Fstr(name string, defaultValue string) string
 	Fint(name string, defaultValue int) int
 	Form(name string) (value string, ok bool)
-	UnsafeForm(name string) (value []byte, ok bool)
+	RiskyForm(name string) (value []byte, ok bool)
 	Forms(name string) (values []string, ok bool)
 	HasForm(name string) bool
 	AddForm(name string, value string) bool
@@ -364,17 +364,17 @@ type ServerRequest interface { // for *server[1-3]Request
 	Tstr(name string, defaultValue string) string
 	Tint(name string, defaultValue int) int
 	Trailer(name string) (value string, ok bool)
-	UnsafeTrailer(name string) (value []byte, ok bool)
+	RiskyTrailer(name string) (value []byte, ok bool)
 	Trailers(name string) (values []string, ok bool)
 	HasTrailer(name string) bool
 	DelTrailer(name string) (deleted bool)
 	AddTrailer(name string, value string) bool
 
-	UnsafeMake(size int) []byte
+	RiskyMake(size int) []byte
 
 	// Internal only
 	getPathInfo() os.FileInfo
-	unsafeAbsPath() []byte
+	riskyAbsPath() []byte
 	makeAbsPath()
 	contentIsForm() bool
 	proxyDelHopHeaderFields()
@@ -389,7 +389,7 @@ type ServerRequest interface { // for *server[1-3]Request
 	readContent() (data []byte, err error)
 	examineTail() bool
 	hookReviser(reviser Reviser)
-	unsafeVariable(varCode int16, varName string) (varValue []byte)
+	riskyVariable(varCode int16, varName string) (varValue []byte)
 }
 
 // serverRequest_ is a parent.
@@ -405,7 +405,7 @@ type serverRequest_ struct { // for server[1-3]Request. incoming, needs parsing
 	// Stream states (zeros)
 	webapp          *Webapp     // target webapp of this request. set before executing the stream
 	path            []byte      // decoded path. only a reference. refers to r.array or region if rewrited, so can't be a span
-	absPath         []byte      // webapp.webRoot + r.UnsafePath(). if webapp.webRoot is not set then this is nil. set when dispatching to handlets. only a reference
+	absPath         []byte      // webapp.webRoot + r.RiskyPath(). if webapp.webRoot is not set then this is nil. set when dispatching to handlets. only a reference
 	pathInfo        os.FileInfo // cached result of os.Stat(r.absPath) if r.absPath is not nil
 	formWindow      []byte      // a window used for reading and parsing content as multipart/form-data. [<none>/r.contentText/4K/16K]
 	_serverRequest0             // all values in this struct must be zero by default!
@@ -519,22 +519,22 @@ func (r *serverRequest_) Webapp() *Webapp { return r.webapp }
 
 func (r *serverRequest_) IsAsteriskOptions() bool { return r.asteriskOptions }
 
-func (r *serverRequest_) SchemeCode() uint8    { return r.schemeCode }
-func (r *serverRequest_) IsHTTP() bool         { return r.schemeCode == SchemeHTTP }
-func (r *serverRequest_) IsHTTPS() bool        { return r.schemeCode == SchemeHTTPS }
-func (r *serverRequest_) Scheme() string       { return httpSchemeStrings[r.schemeCode] }
-func (r *serverRequest_) UnsafeScheme() []byte { return httpSchemeByteses[r.schemeCode] }
+func (r *serverRequest_) SchemeCode() uint8   { return r.schemeCode }
+func (r *serverRequest_) IsHTTP() bool        { return r.schemeCode == SchemeHTTP }
+func (r *serverRequest_) IsHTTPS() bool       { return r.schemeCode == SchemeHTTPS }
+func (r *serverRequest_) Scheme() string      { return httpSchemeStrings[r.schemeCode] }
+func (r *serverRequest_) RiskyScheme() []byte { return httpSchemeByteses[r.schemeCode] }
 
-func (r *serverRequest_) IsGET() bool          { return r.methodCode == MethodGET }
-func (r *serverRequest_) IsHEAD() bool         { return r.methodCode == MethodHEAD }
-func (r *serverRequest_) IsPOST() bool         { return r.methodCode == MethodPOST }
-func (r *serverRequest_) IsPUT() bool          { return r.methodCode == MethodPUT }
-func (r *serverRequest_) IsDELETE() bool       { return r.methodCode == MethodDELETE }
-func (r *serverRequest_) IsCONNECT() bool      { return r.methodCode == MethodCONNECT }
-func (r *serverRequest_) IsOPTIONS() bool      { return r.methodCode == MethodOPTIONS }
-func (r *serverRequest_) IsTRACE() bool        { return r.methodCode == MethodTRACE }
-func (r *serverRequest_) Method() string       { return string(r.UnsafeMethod()) }
-func (r *serverRequest_) UnsafeMethod() []byte { return r.input[r.method.from:r.method.edge] }
+func (r *serverRequest_) IsGET() bool         { return r.methodCode == MethodGET }
+func (r *serverRequest_) IsHEAD() bool        { return r.methodCode == MethodHEAD }
+func (r *serverRequest_) IsPOST() bool        { return r.methodCode == MethodPOST }
+func (r *serverRequest_) IsPUT() bool         { return r.methodCode == MethodPUT }
+func (r *serverRequest_) IsDELETE() bool      { return r.methodCode == MethodDELETE }
+func (r *serverRequest_) IsCONNECT() bool     { return r.methodCode == MethodCONNECT }
+func (r *serverRequest_) IsOPTIONS() bool     { return r.methodCode == MethodOPTIONS }
+func (r *serverRequest_) IsTRACE() bool       { return r.methodCode == MethodTRACE }
+func (r *serverRequest_) Method() string      { return string(r.RiskyMethod()) }
+func (r *serverRequest_) RiskyMethod() []byte { return r.input[r.method.from:r.method.edge] }
 func (r *serverRequest_) recognizeMethod(method []byte, methodHash uint16) {
 	if m := serverMethodTable[serverMethodFind(methodHash)]; m.hash == methodHash && bytes.Equal(serverMethodBytes[m.from:m.edge], method) {
 		r.methodCode = m.code
@@ -561,12 +561,12 @@ var ( // minimal perfect hash table for best known http methods
 	serverMethodFind = func(methodHash uint16) int { return (2610 / int(methodHash)) % len(serverMethodTable) }
 )
 
-func (r *serverRequest_) Authority() string { return string(r.UnsafeAuthority()) }
-func (r *serverRequest_) UnsafeAuthority() []byte {
+func (r *serverRequest_) Authority() string { return string(r.RiskyAuthority()) }
+func (r *serverRequest_) RiskyAuthority() []byte {
 	return r.input[r.authority.from:r.authority.edge]
 }
-func (r *serverRequest_) Hostname() string       { return string(r.UnsafeHostname()) }
-func (r *serverRequest_) UnsafeHostname() []byte { return r.input[r.hostname.from:r.hostname.edge] }
+func (r *serverRequest_) Hostname() string      { return string(r.RiskyHostname()) }
+func (r *serverRequest_) RiskyHostname() []byte { return r.input[r.hostname.from:r.hostname.edge] }
 func (r *serverRequest_) Colonport() string {
 	if r.colonport.notEmpty() {
 		return string(r.input[r.colonport.from:r.colonport.edge])
@@ -577,7 +577,7 @@ func (r *serverRequest_) Colonport() string {
 		return stringColonport80
 	}
 }
-func (r *serverRequest_) UnsafeColonport() []byte {
+func (r *serverRequest_) RiskyColonport() []byte {
 	if r.colonport.notEmpty() {
 		return r.input[r.colonport.from:r.colonport.edge]
 	}
@@ -595,7 +595,7 @@ func (r *serverRequest_) URI() string {
 		return stringSlash
 	}
 }
-func (r *serverRequest_) UnsafeURI() []byte {
+func (r *serverRequest_) RiskyURI() []byte {
 	if r.uri.notEmpty() {
 		return r.input[r.uri.from:r.uri.edge]
 	} else { // use "/"
@@ -609,7 +609,7 @@ func (r *serverRequest_) EncodedPath() string {
 		return stringSlash
 	}
 }
-func (r *serverRequest_) UnsafeEncodedPath() []byte {
+func (r *serverRequest_) RiskyEncodedPath() []byte {
 	if r.encodedPath.notEmpty() {
 		return r.input[r.encodedPath.from:r.encodedPath.edge]
 	} else { // use "/"
@@ -623,7 +623,7 @@ func (r *serverRequest_) Path() string {
 		return stringSlash
 	}
 }
-func (r *serverRequest_) UnsafePath() []byte {
+func (r *serverRequest_) RiskyPath() []byte {
 	if len(r.path) != 0 {
 		return r.path
 	} else { // use "/"
@@ -671,15 +671,15 @@ func (r *serverRequest_) cleanPath() {
 		r.path = r.path[:pReal]
 	}
 }
-func (r *serverRequest_) unsafeAbsPath() []byte { return r.absPath }
+func (r *serverRequest_) riskyAbsPath() []byte { return r.absPath }
 func (r *serverRequest_) makeAbsPath() {
 	if r.webapp.webRoot == "" { // if webapp's webRoot is empty, r.absPath is not used either. so it's safe to do nothing
 		return
 	}
 	webRoot := r.webapp.webRoot
-	r.absPath = r.UnsafeMake(len(webRoot) + len(r.UnsafePath()))
+	r.absPath = r.RiskyMake(len(webRoot) + len(r.RiskyPath()))
 	n := copy(r.absPath, webRoot)
-	copy(r.absPath[n:], r.UnsafePath())
+	copy(r.absPath[n:], r.RiskyPath())
 }
 func (r *serverRequest_) getPathInfo() os.FileInfo {
 	if !r.pathInfoGot {
@@ -690,8 +690,8 @@ func (r *serverRequest_) getPathInfo() os.FileInfo {
 	}
 	return r.pathInfo
 }
-func (r *serverRequest_) QueryString() string { return string(r.UnsafeQueryString()) }
-func (r *serverRequest_) UnsafeQueryString() []byte {
+func (r *serverRequest_) QueryString() string { return string(r.RiskyQueryString()) }
+func (r *serverRequest_) RiskyQueryString() []byte {
 	return r.input[r.queryString.from:r.queryString.edge]
 }
 
@@ -729,7 +729,7 @@ func (r *serverRequest_) Query(name string) (value string, ok bool) {
 	v, ok := r.getPair(name, 0, r.queries, pairQuery)
 	return string(v), ok
 }
-func (r *serverRequest_) UnsafeQuery(name string) (value []byte, ok bool) {
+func (r *serverRequest_) RiskyQuery(name string) (value []byte, ok bool) {
 	return r.getPair(name, 0, r.queries, pairQuery)
 }
 func (r *serverRequest_) Queries(name string) (values []string, ok bool) {
@@ -1632,8 +1632,8 @@ func (r *serverRequest_) parseCookie(cookieString span) bool { // cookie-string 
 func (r *serverRequest_) AcceptTrailers() bool { return r.acceptTrailers }
 func (r *serverRequest_) HasRanges() bool      { return r.numRanges > 0 }
 func (r *serverRequest_) HasIfRange() bool     { return r.indexes.ifRange != 0 }
-func (r *serverRequest_) UserAgent() string    { return string(r.UnsafeUserAgent()) }
-func (r *serverRequest_) UnsafeUserAgent() []byte {
+func (r *serverRequest_) UserAgent() string    { return string(r.RiskyUserAgent()) }
+func (r *serverRequest_) RiskyUserAgent() []byte {
 	if r.indexes.userAgent == 0 {
 		return nil
 	}
@@ -1674,7 +1674,7 @@ func (r *serverRequest_) Cookie(name string) (value string, ok bool) {
 	v, ok := r.getPair(name, 0, r.cookies, pairCookie)
 	return string(v), ok
 }
-func (r *serverRequest_) UnsafeCookie(name string) (value []byte, ok bool) {
+func (r *serverRequest_) RiskyCookie(name string) (value []byte, ok bool) {
 	return r.getPair(name, 0, r.cookies, pairCookie)
 }
 func (r *serverRequest_) Cookies(name string) (values []string, ok bool) {
@@ -1871,12 +1871,12 @@ func (r *serverRequest_) proxyWalkCookies(callback func(cookie *pair, cookieName
 }
 
 func (r *serverRequest_) HasContent() bool { return r.contentSize >= 0 || r.IsVague() }
-func (r *serverRequest_) Content() string  { return string(r.UnsafeContent()) }
-func (r *serverRequest_) UnsafeContent() []byte {
+func (r *serverRequest_) Content() string  { return string(r.RiskyContent()) }
+func (r *serverRequest_) RiskyContent() []byte {
 	if r.formKind == httpFormMultipart { // loading multipart form into memory is not allowed!
 		return nil
 	}
-	return r.unsafeContent()
+	return r.riskyContent()
 }
 
 func (r *serverRequest_) contentIsForm() bool { return r.formKind != httpFormNotForm }
@@ -2022,7 +2022,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 			return
 		}
 	}
-	template := r.UnsafeMake(3 + r.boundary.size() + 2) // \n--boundary--
+	template := r.RiskyMake(3 + r.boundary.size() + 2) // \n--boundary--
 	template[0], template[1], template[2] = '\n', '-', '-'
 	n := 3 + copy(template[3:], r.input[r.boundary.from:r.boundary.edge])
 	separator := template[0:n] // \n--boundary
@@ -2465,7 +2465,7 @@ func (r *serverRequest_) Form(name string) (value string, ok bool) {
 	v, ok := r.getPair(name, 0, r.forms, pairForm)
 	return string(v), ok
 }
-func (r *serverRequest_) UnsafeForm(name string) (value []byte, ok bool) {
+func (r *serverRequest_) RiskyForm(name string) (value []byte, ok bool) {
 	r.parseHTMLForm()
 	return r.getPair(name, 0, r.forms, pairForm)
 }
@@ -2573,23 +2573,23 @@ func (r *serverRequest_) hookReviser(reviser Reviser) { // to revise input conte
 	r.revisers[reviser.Rank()] = reviser.ID() // revisers are placed to fixed position, by their ranks.
 }
 
-func (r *serverRequest_) unsafeVariable(varCode int16, varName string) (varValue []byte) {
+func (r *serverRequest_) riskyVariable(varCode int16, varName string) (varValue []byte) {
 	if varCode != -1 {
 		return serverRequestVariables[varCode](r)
 	}
 	if strings.HasPrefix(varName, "header_") {
 		varName = varName[len("header_"):]
-		if v, ok := r.UnsafeHeader(varName); ok {
+		if v, ok := r.RiskyHeader(varName); ok {
 			return v
 		}
 	} else if strings.HasPrefix(varName, "cookie_") {
 		varName = varName[len("cookie_"):]
-		if v, ok := r.UnsafeCookie(varName); ok {
+		if v, ok := r.RiskyCookie(varName); ok {
 			return v
 		}
 	} else if strings.HasPrefix(varName, "query_") {
 		varName = varName[len("query_"):]
-		if v, ok := r.UnsafeQuery(varName); ok {
+		if v, ok := r.RiskyQuery(varName); ok {
 			return v
 		}
 	}
@@ -2597,16 +2597,16 @@ func (r *serverRequest_) unsafeVariable(varCode int16, varName string) (varValue
 }
 
 var serverRequestVariables = [...]func(*serverRequest_) []byte{ // keep sync with varCodes
-	0: (*serverRequest_).UnsafeMethod,      // method
-	1: (*serverRequest_).UnsafeScheme,      // scheme
-	2: (*serverRequest_).UnsafeAuthority,   // authority
-	3: (*serverRequest_).UnsafeHostname,    // hostname
-	4: (*serverRequest_).UnsafeColonport,   // colonport
-	5: (*serverRequest_).UnsafePath,        // path
-	6: (*serverRequest_).UnsafeURI,         // uri
-	7: (*serverRequest_).UnsafeEncodedPath, // encodedPath
-	8: (*serverRequest_).UnsafeQueryString, // queryString
-	9: (*serverRequest_).UnsafeContentType, // contentType
+	0: (*serverRequest_).RiskyMethod,      // method
+	1: (*serverRequest_).RiskyScheme,      // scheme
+	2: (*serverRequest_).RiskyAuthority,   // authority
+	3: (*serverRequest_).RiskyHostname,    // hostname
+	4: (*serverRequest_).RiskyColonport,   // colonport
+	5: (*serverRequest_).RiskyPath,        // path
+	6: (*serverRequest_).RiskyURI,         // uri
+	7: (*serverRequest_).RiskyEncodedPath, // encodedPath
+	8: (*serverRequest_).RiskyQueryString, // queryString
+	9: (*serverRequest_).RiskyContentType, // contentType
 }
 
 // ServerResponse is the server-side http response.
@@ -2678,7 +2678,7 @@ type ServerResponse interface { // for *server[1-3]Response
 	proxyCopyHeaderLines(backResp BackendResponse, proxyConfig *HTTPProxyConfig) bool
 	proxyCopyTrailerLines(backResp BackendResponse, proxyConfig *HTTPProxyConfig) bool
 	hookReviser(reviser Reviser)
-	unsafeMake(size int) []byte
+	riskyMake(size int) []byte
 }
 
 // serverResponse_ is a parent.
@@ -2763,7 +2763,7 @@ func (r *serverResponse_) MakeETagFrom(date int64, size int64) ([]byte, bool) { 
 	if date < 0 || size < 0 {
 		return nil, false
 	}
-	p := r.unsafeMake(32)
+	p := r.riskyMake(32)
 	p[0] = '"'
 	etag := p[1:]
 	n := i64ToHex(date, etag)

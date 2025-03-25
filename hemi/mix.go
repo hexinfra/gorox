@@ -194,7 +194,7 @@ type hostnameTo[T Component] struct {
 
 // varKeeper holdes values of variables.
 type varKeeper interface {
-	unsafeVariable(varCode int16, varName string) (varValue []byte)
+	riskyVariable(varCode int16, varName string) (varValue []byte)
 }
 
 var varCodes = map[string]int16{ // TODO

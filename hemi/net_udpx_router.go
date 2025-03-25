@@ -218,7 +218,7 @@ func (c *UDPXConn) Close() error {
 	return pktConn.Close()
 }
 
-func (c *UDPXConn) unsafeVariable(varCode int16, varName string) (varValue []byte) {
+func (c *UDPXConn) riskyVariable(varCode int16, varName string) (varValue []byte) {
 	return udpxConnVariables[varCode](c)
 }
 
@@ -283,7 +283,7 @@ func (c *udpxCase) isMatch(conn *UDPXConn) bool {
 	if c.general {
 		return true
 	}
-	value := conn.unsafeVariable(c.varCode, c.varName)
+	value := conn.riskyVariable(c.varCode, c.varName)
 	return c.matcher(c, conn, value)
 }
 

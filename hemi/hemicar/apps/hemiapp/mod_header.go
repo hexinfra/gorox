@@ -13,7 +13,7 @@ func (h *hemiappHandlet) GET_useragent(req ServerRequest, resp ServerResponse) {
 	resp.Send(req.UserAgent())
 }
 func (h *hemiappHandlet) GET_authority(req ServerRequest, resp ServerResponse) {
-	resp.SendBytes(req.UnsafeAuthority())
+	resp.SendBytes(req.RiskyAuthority())
 }
 func (h *hemiappHandlet) GET_single(req ServerRequest, resp ServerResponse) {
 	accept, ok := req.Header("accept")

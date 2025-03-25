@@ -471,14 +471,14 @@ func (s *server1Stream) execute() {
 		}
 	}
 
-	webapp := server.findWebapp(req.UnsafeHostname())
+	webapp := server.findWebapp(req.RiskyHostname())
 
 	if webapp == nil {
 		req.headResult, req.failReason = StatusNotFound, "target webapp is not found in this server"
 		s._serveAbnormal(req, resp)
 		return
 	}
-	if !webapp.isDefault && !bytes.Equal(req.UnsafeColonport(), server.ColonportBytes()) {
+	if !webapp.isDefault && !bytes.Equal(req.RiskyColonport(), server.ColonportBytes()) {
 		req.headResult, req.failReason = StatusNotFound, "authoritative webapp is not found in this server"
 		s._serveAbnormal(req, resp)
 		return
@@ -1104,19 +1104,19 @@ func (r *server1Response) delHeaderAt(i uint8)                        { r.out1.d
 func (r *server1Response) AddHTTPSRedirection(authority string) bool {
 	headerSize := len(http1BytesLocationHTTPS)
 	if authority == "" {
-		headerSize += len(r.request.UnsafeAuthority())
+		headerSize += len(r.request.RiskyAuthority())
 	} else {
 		headerSize += len(authority)
 	}
-	headerSize += len(r.request.UnsafeURI()) + len(bytesCRLF)
+	headerSize += len(r.request.RiskyURI()) + len(bytesCRLF)
 	if from, _, ok := r.growHeaders(headerSize); ok {
 		from += copy(r.output[from:], http1BytesLocationHTTPS)
 		if authority == "" {
-			from += copy(r.output[from:], r.request.UnsafeAuthority())
+			from += copy(r.output[from:], r.request.RiskyAuthority())
 		} else {
 			from += copy(r.output[from:], authority)
 		}
-		from += copy(r.output[from:], r.request.UnsafeURI())
+		from += copy(r.output[from:], r.request.RiskyURI())
 		r.out1._addCRLFHeader(from)
 		return true
 	} else {
@@ -1132,13 +1132,13 @@ func (r *server1Response) AddHostnameRedirection(hostname string) bool {
 	}
 	headerSize := len(prefix)
 	// TODO: remove colonport if colonport is default?
-	colonport := r.request.UnsafeColonport()
-	headerSize += len(hostname) + len(colonport) + len(r.request.UnsafeURI()) + len(bytesCRLF)
+	colonport := r.request.RiskyColonport()
+	headerSize += len(hostname) + len(colonport) + len(r.request.RiskyURI()) + len(bytesCRLF)
 	if from, _, ok := r.growHeaders(headerSize); ok {
 		from += copy(r.output[from:], prefix)
 		from += copy(r.output[from:], hostname) // this is almost always configured, not client provided
 		from += copy(r.output[from:], colonport)
-		from += copy(r.output[from:], r.request.UnsafeURI()) // original uri, won't split the response
+		from += copy(r.output[from:], r.request.RiskyURI()) // original uri, won't split the response
 		r.out1._addCRLFHeader(from)
 		return true
 	} else {
@@ -1154,15 +1154,15 @@ func (r *server1Response) AddDirectoryRedirection() bool {
 	}
 	req := r.request
 	headerSize := len(prefix)
-	headerSize += len(req.UnsafeAuthority()) + len(req.UnsafeURI()) + 1 + len(bytesCRLF)
+	headerSize += len(req.RiskyAuthority()) + len(req.RiskyURI()) + 1 + len(bytesCRLF)
 	if from, _, ok := r.growHeaders(headerSize); ok {
 		from += copy(r.output[from:], prefix)
-		from += copy(r.output[from:], req.UnsafeAuthority())
-		from += copy(r.output[from:], req.UnsafeEncodedPath())
+		from += copy(r.output[from:], req.RiskyAuthority())
+		from += copy(r.output[from:], req.RiskyEncodedPath())
 		r.output[from] = '/'
 		from++
-		if len(req.UnsafeQueryString()) > 0 {
-			from += copy(r.output[from:], req.UnsafeQueryString())
+		if len(req.RiskyQueryString()) > 0 {
+			from += copy(r.output[from:], req.RiskyQueryString())
 		}
 		r.out1._addCRLFHeader(from)
 		return true

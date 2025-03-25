@@ -558,13 +558,13 @@ func (r *backendResponse_) parseSetCookie() bool {
 	return false
 }
 
-func (r *backendResponse_) unsafeDate() []byte {
+func (r *backendResponse_) riskyDate() []byte {
 	if r.iDate == 0 {
 		return nil
 	}
 	return r.primes[r.iDate].valueAt(r.input)
 }
-func (r *backendResponse_) unsafeLastModified() []byte {
+func (r *backendResponse_) riskyLastModified() []byte {
 	if r.indexes.lastModified == 0 {
 		return nil
 	}
@@ -586,8 +586,8 @@ func (r *backendResponse_) HasContent() bool {
 	// All other responses do include content, although that content might be of zero length.
 	return r.contentSize >= 0 || r.IsVague()
 }
-func (r *backendResponse_) Content() string       { return string(r.unsafeContent()) }
-func (r *backendResponse_) UnsafeContent() []byte { return r.unsafeContent() }
+func (r *backendResponse_) Content() string      { return string(r.riskyContent()) }
+func (r *backendResponse_) RiskyContent() []byte { return r.riskyContent() }
 
 func (r *backendResponse_) examineTail() bool {
 	for i := r.trailerLines.from; i < r.trailerLines.edge; i++ {
@@ -769,14 +769,14 @@ func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfi
 	servReq.proxyDelHopHeaderFields()
 
 	// Copy control (:method, :path, :authority, :scheme)
-	uri := servReq.UnsafeURI()
+	uri := servReq.RiskyURI()
 	if servReq.IsAsteriskOptions() { // OPTIONS *
 		// RFC 9112 (3.2.4):
 		// If a proxy receives an OPTIONS request with an absolute-form of request-target in which the URI has an empty path and no query component,
 		// then the last proxy on the request chain MUST send a request-target of "*" when it forwards the request to the indicated origin server.
 		uri = bytesAsterisk
 	}
-	if !r.out.(BackendRequest).proxySetMethodURI(servReq.UnsafeMethod(), uri, servReq.HasContent()) {
+	if !r.out.(BackendRequest).proxySetMethodURI(servReq.RiskyMethod(), uri, servReq.HasContent()) {
 		return false
 	}
 	if len(proxyConfig.Hostname) != 0 || len(proxyConfig.Colonport) != 0 { // custom authority (hostname or colonport)
@@ -786,12 +786,12 @@ func (r *backendRequest_) proxyCopyHeaderLines(servReq ServerRequest, proxyConfi
 			colonport []byte
 		)
 		if len(proxyConfig.Hostname) == 0 { // no custom hostname
-			hostname = servReq.UnsafeHostname()
+			hostname = servReq.RiskyHostname()
 		} else {
 			hostname = proxyConfig.Hostname
 		}
 		if len(proxyConfig.Colonport) == 0 { // no custom colonport
-			colonport = servReq.UnsafeColonport()
+			colonport = servReq.RiskyColonport()
 		} else {
 			colonport = proxyConfig.Colonport
 		}

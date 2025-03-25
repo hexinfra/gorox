@@ -324,7 +324,7 @@ func (a *Webapp) dispatchExchan(req ServerRequest, resp ServerResponse) {
 		}
 		if handled := rule.executeExchan(req, resp); handled {
 			if rule.logAccess {
-				a.Logf("status=%d %s %s\n", resp.Status(), req.Method(), req.UnsafeURI())
+				a.Logf("status=%d %s %s\n", resp.Status(), req.Method(), req.RiskyURI())
 			}
 			return
 		}
@@ -491,7 +491,7 @@ func (r *Rule) isMatch(req ServerRequest) bool {
 	if r.general {
 		return true
 	}
-	varValue := req.unsafeVariable(r.varCode, r.varName)
+	varValue := req.riskyVariable(r.varCode, r.varName)
 	return r.matcher(r, req, varValue)
 }
 

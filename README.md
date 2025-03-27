@@ -53,7 +53,7 @@ Using Gorox as a Webapp Server or RPC Framework
 -----------------------------------------------
 
 When using Gorox as a Webapp Server or RPC Framework, you have to build it from
-source. Before building, please ensure you have Go >= 1.20 installed:
+source. Before building, please ensure you have Go >= 1.22 installed:
 
     shell> go version
 

@@ -79,7 +79,7 @@ func (a *Webapp) OnConfigure() {
 			h := []byte(hostname)
 			a.hostnames = append(a.hostnames, h)
 			n, p := len(h), -1
-			for i := 0; i < n; i++ {
+			for i := range n {
 				if h[i] != '*' {
 					continue
 				}

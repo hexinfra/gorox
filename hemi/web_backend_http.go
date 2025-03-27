@@ -241,12 +241,12 @@ func (r *backendResponse_) examineHead() bool {
 	}
 	if DebugLevel() >= 3 {
 		Println("======primes======")
-		for i := 0; i < len(r.primes); i++ {
+		for i := range len(r.primes) {
 			prime := &r.primes[i]
 			prime.show(r._placeOf(prime))
 		}
 		Println("======extras======")
-		for i := 0; i < len(r.extras); i++ {
+		for i := range len(r.extras) {
 			extra := &r.extras[i]
 			extra.show(r._placeOf(extra))
 		}

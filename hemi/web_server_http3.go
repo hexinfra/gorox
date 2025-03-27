@@ -42,7 +42,7 @@ func (s *http3Server) OnPrepare() {
 }
 
 func (s *http3Server) Serve() { // runner
-	for id := int32(0); id < s.numGates; id++ {
+	for id := range s.numGates {
 		gate := new(http3Gate)
 		gate.onNew(s, id)
 		if err := gate.Open(); err != nil {

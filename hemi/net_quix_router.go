@@ -101,7 +101,7 @@ func (r *QUIXRouter) hasCase(compName string) bool {
 }
 
 func (r *QUIXRouter) Serve() { // runner
-	for id := int32(0); id < r.numGates; id++ {
+	for id := range r.numGates {
 		gate := new(quixGate)
 		gate.onNew(r, id)
 		if err := gate.Open(); err != nil {

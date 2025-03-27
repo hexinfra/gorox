@@ -768,12 +768,12 @@ func (r *serverRequest_) examineHead() bool {
 	}
 	if DebugLevel() >= 3 {
 		Println("======primes======")
-		for i := 0; i < len(r.primes); i++ {
+		for i := range len(r.primes) {
 			prime := &r.primes[i]
 			prime.show(r._placeOf(prime))
 		}
 		Println("======extras======")
-		for i := 0; i < len(r.extras); i++ {
+		for i := range len(r.extras) {
 			extra := &r.extras[i]
 			extra.show(r._placeOf(extra))
 		}
@@ -1796,7 +1796,7 @@ func (r *serverRequest_) _evalIfRangeDate(date int64) (pass bool) {
 
 func (r *serverRequest_) EvalRanges(contentSize int64) []Range { // returned ranges are converted from [from:last] to the format of [from:edge)
 	rangedSize := int64(0)
-	for i := int8(0); i < r.numRanges; i++ {
+	for i := range r.numRanges {
 		rang := &r.ranges[i]
 		if rang.From == -1 { // "-" suffix-length, means the last `suffix-length` bytes
 			if rang.Last == 0 {
@@ -1859,7 +1859,7 @@ func (r *serverRequest_) proxyWalkCookies(callback func(cookie *pair, cookieName
 		}
 	}
 	if r.hasExtra[pairCookie] {
-		for i := 0; i < len(r.extras); i++ {
+		for i := range len(r.extras) {
 			if extra := &r.extras[i]; extra.nameHash != 0 && extra.kind == pairCookie {
 				if !callback(extra, extra.nameAt(r.array), extra.valueAt(r.array)) {
 					return false
@@ -1907,7 +1907,7 @@ func (r *serverRequest_) _loadURLEncodedForm() { // into memory entirely
 	form.kind = pairForm
 	form.place = placeArray // all received forms are placed in r.array
 	form.nameFrom = r.arrayEdge
-	for i := int64(0); i < r.receivedSize; i++ { // TODO: use a better algorithm to improve performance
+	for i := range r.receivedSize { // TODO: use a better algorithm to improve performance
 		b := r.contentText[i]
 		switch state {
 		case 2: // expecting '=' to get a name
@@ -2152,7 +2152,7 @@ func (r *serverRequest_) _recvMultipartForm() { // into memory or tempFile. see 
 					r.stream.markBroken()
 					return
 				}
-				for i := 0; i < n; i++ { // each para in field (; name="avatar"; filename="michael.jpg")
+				for i := range n { // each para in field (; name="avatar"; filename="michael.jpg")
 					para := &paras[i]
 					if paraName := r.formWindow[para.name.from:para.name.edge]; bytes.Equal(paraName, bytesName) { // name="avatar"
 						if m := para.value.size(); m == 0 || m > 255 {
@@ -2507,7 +2507,7 @@ func (r *serverRequest_) HasUpfiles() bool {
 }
 func (r *serverRequest_) AllUpfiles() (upfiles []*Upfile) {
 	r.parseHTMLForm()
-	for i := 0; i < len(r.upfiles); i++ {
+	for i := range len(r.upfiles) {
 		upfile := &r.upfiles[i]
 		upfile.setMeta(r.array)
 		upfiles = append(upfiles, upfile)
@@ -2522,7 +2522,7 @@ func (r *serverRequest_) Upfile(name string) (upfile *Upfile, ok bool) {
 	r.parseHTMLForm()
 	if n := len(r.upfiles); n > 0 && name != "" {
 		nameHash := stringHash(name)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			if upfile := &r.upfiles[i]; upfile.nameHash == nameHash && upfile.nameEqualString(r.array, name) {
 				upfile.setMeta(r.array)
 				return upfile, true
@@ -2535,7 +2535,7 @@ func (r *serverRequest_) Upfiles(name string) (upfiles []*Upfile, ok bool) {
 	r.parseHTMLForm()
 	if n := len(r.upfiles); n > 0 && name != "" {
 		nameHash := stringHash(name)
-		for i := 0; i < n; i++ {
+		for i := range n {
 			if upfile := &r.upfiles[i]; upfile.nameHash == nameHash && upfile.nameEqualString(r.array, name) {
 				upfile.setMeta(r.array)
 				upfiles = append(upfiles, upfile)

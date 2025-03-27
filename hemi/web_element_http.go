@@ -2068,7 +2068,7 @@ func (c *Cookie) Set(name string, value string) bool {
 		c.invalid = true
 		return false
 	}
-	for i := 0; i < len(name); i++ {
+	for i := range len(name) {
 		if b := name[i]; httpKchar[b] == 0 {
 			c.invalid = true
 			return false
@@ -2076,7 +2076,7 @@ func (c *Cookie) Set(name string, value string) bool {
 	}
 	c.name = name
 	// cookie-value = *cookie-octet / ( DQUOTE *cookie-octet DQUOTE )
-	for i := 0; i < len(value); i++ {
+	for i := range len(value) {
 		b := value[i]
 		if httpKchar[b] == 1 {
 			continue
@@ -2100,7 +2100,7 @@ func (c *Cookie) SetDomain(domain string) bool {
 func (c *Cookie) SetPath(path string) bool {
 	// path-value = *av-octet
 	// av-octet = %x20-3A / %x3C-7E
-	for i := 0; i < len(path); i++ {
+	for i := range len(path) {
 		if b := path[i]; b < 0x20 || b > 0x7E || b == 0x3B {
 			c.invalid = true
 			return false

@@ -47,7 +47,7 @@ func (s *echoServer) OnPrepare() {
 }
 
 func (s *echoServer) Serve() { // runner
-	for id := int32(0); id < s.NumGates(); id++ {
+	for id := range s.NumGates() {
 		gate := new(echoGate)
 		gate.onNew(s, id)
 		if err := gate.Open(); err != nil {

@@ -21,14 +21,14 @@ func TestSpan(t *testing.T) {
 func BenchmarkStringHash(b *testing.B) {
 	s := "hello-world"
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for _ = range b.N {
 		stringHash(s)
 	}
 }
 func BenchmarkBytesHash(b *testing.B) {
 	p := []byte("hello-world")
 	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+	for _ = range b.N {
 		bytesHash(p)
 	}
 }

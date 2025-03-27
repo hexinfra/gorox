@@ -88,7 +88,7 @@ func (r *UDPXRouter) hasCase(compName string) bool {
 }
 
 func (r *UDPXRouter) Serve() { // runner
-	for id := int32(0); id < r.numGates; id++ {
+	for id := range r.numGates {
 		gate := new(udpxGate)
 		gate.onNew(r, id)
 		if err := gate.Open(); err != nil {

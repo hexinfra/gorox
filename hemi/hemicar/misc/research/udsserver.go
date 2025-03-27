@@ -10,7 +10,7 @@ func main() {
 	l, e := net.Listen("unix", "a.sock")
 	must(e)
 	begin := time.Now()
-	for i := 0; i < 10000; i++ {
+	for _ = range 10000 {
 		c, e := l.Accept()
 		must(e)
 		go serve(c)

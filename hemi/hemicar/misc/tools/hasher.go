@@ -22,7 +22,7 @@ type Word struct {
 
 func sum(s string) int {
 	n := 0
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		n += int(s[i])
 	}
 	return n
@@ -32,7 +32,7 @@ func calc(s []byte) {
 	var words []Word
 
 	hash, from := 0, 0
-	for edge := 0; edge < len(s); edge++ {
+	for edge := range len(s) {
 		b := s[edge]
 		if b == ' ' {
 			words = append(words, Word{hash, from, edge})
@@ -64,8 +64,8 @@ search:
 	}
 
 	fmt.Printf("good=%d size=%d\n", good, size)
-	for i := 0; i < len(words); i++ {
-		for j := 0; j < len(words); j++ {
+	for i := range len(words) {
+		for j := range len(words) {
 			word := words[j]
 			if i == good/word.hash%size {
 				name := showName(string(s[word.from:word.edge]))
@@ -79,7 +79,7 @@ search:
 func showName(name string) string {
 	s := ""
 	upper := true
-	for i := 0; i < len(name); i++ {
+	for i := range len(name) {
 		c := name[i]
 		if c == '-' {
 			upper = true

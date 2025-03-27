@@ -46,7 +46,7 @@ func (s *socksServer) OnPrepare() {
 }
 
 func (s *socksServer) Serve() { // runner
-	for id := int32(0); id < s.NumGates(); id++ {
+	for id := range s.NumGates() {
 		gate := new(socksGate)
 		gate.onNew(s, id)
 		if err := gate.Open(); err != nil {

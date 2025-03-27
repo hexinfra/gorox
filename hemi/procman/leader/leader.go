@@ -53,7 +53,7 @@ func workerKeeper(configBase string, configFile string) { // runner
 	rand.Seed(time.Now().UnixNano())
 	const chars = "0123456789"
 	keyBuffer := make([]byte, 32)
-	for i := 0; i < len(keyBuffer); i++ {
+	for i := range len(keyBuffer) {
 		keyBuffer[i] = chars[rand.Intn(10)]
 	}
 	connKey := string(keyBuffer)

@@ -116,7 +116,7 @@ func Recv(reader io.Reader, maxSize int32) (*Message, error) {
 	}
 	msg.Args = make(map[string]string, nArgs)
 	from := 0
-	for i := int32(0); i < nArgs; i++ {
+	for _ = range nArgs {
 		nameSize := int32(body[from])
 		valueSize := int32(body[from+1])<<24 | int32(body[from+2])<<16 | int32(body[from+3])<<8 | int32(body[from+4])
 		from += 5

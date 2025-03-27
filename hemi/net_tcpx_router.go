@@ -106,7 +106,7 @@ func (r *TCPXRouter) hasCase(compName string) bool {
 }
 
 func (r *TCPXRouter) Serve() { // runner
-	for id := int32(0); id < r.numGates; id++ {
+	for id := range r.numGates {
 		gate := new(tcpxGate)
 		gate.onNew(r, id)
 		if err := gate.Open(); err != nil {

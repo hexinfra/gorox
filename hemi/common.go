@@ -185,14 +185,14 @@ func byteFromHex(b byte) (n byte, ok bool) {
 }
 
 func bytesToLower(p []byte) {
-	for i := 0; i < len(p); i++ {
+	for i := range len(p) {
 		if b := p[i]; b >= 'A' && b <= 'Z' {
 			p[i] = b + 0x20 // to lower
 		}
 	}
 }
 func bytesToUpper(p []byte) {
-	for i := 0; i < len(p); i++ {
+	for i := range len(p) {
 		if b := p[i]; b >= 'a' && b <= 'z' {
 			p[i] = b - 0x20 // to upper
 		}
@@ -208,7 +208,7 @@ func bytesHash(p []byte) uint16 {
 
 func stringHash(s string) uint16 {
 	hash := uint16(0)
-	for i := 0; i < len(s); i++ {
+	for i := range len(s) {
 		hash += uint16(s[i])
 	}
 	return hash

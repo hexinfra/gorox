@@ -1229,7 +1229,7 @@ func (r *_httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 			}
 		}
 		if r.hasExtra[extraKind] {
-			for i := 0; i < len(r.extras); i++ {
+			for i := range len(r.extras) {
 				if extra := &r.extras[i]; extra.nameHash != 0 && extra.kind == extraKind && !extra.isSubField() {
 					pairs = append(pairs, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
 				}
@@ -1243,7 +1243,7 @@ func (r *_httpIn_) allPairs(primes zone, extraKind int8) [][2]string {
 			}
 		}
 		if r.hasExtra[extraKind] {
-			for i := 0; i < len(r.extras); i++ {
+			for i := range len(r.extras) {
 				if extra := &r.extras[i]; extra.nameHash != 0 && extra.kind == extraKind {
 					pairs = append(pairs, [2]string{string(extra.nameAt(r.array)), string(extra.valueAt(r.array))})
 				}
@@ -1273,7 +1273,7 @@ func (r *_httpIn_) getPair(name string, nameHash uint16, primes zone, extraKind 
 			}
 		}
 		if r.hasExtra[extraKind] {
-			for i := 0; i < len(r.extras); i++ {
+			for i := range len(r.extras) {
 				if extra := &r.extras[i]; extra.nameHash == nameHash && extra.kind == extraKind && !extra.isCommaValue() { // not a comma field, collect it
 					if p := r._placeOf(extra); extra.nameEqualString(p, name) {
 						return extra.dataAt(p), true
@@ -1290,7 +1290,7 @@ func (r *_httpIn_) getPair(name string, nameHash uint16, primes zone, extraKind 
 			}
 		}
 		if r.hasExtra[extraKind] {
-			for i := 0; i < len(r.extras); i++ {
+			for i := range len(r.extras) {
 				if extra := &r.extras[i]; extra.nameHash == nameHash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 					return extra.valueAt(r.array), true
 				}
@@ -1320,7 +1320,7 @@ func (r *_httpIn_) getPairs(name string, nameHash uint16, primes zone, extraKind
 			}
 		}
 		if r.hasExtra[extraKind] {
-			for i := 0; i < len(r.extras); i++ {
+			for i := range len(r.extras) {
 				if extra := &r.extras[i]; extra.nameHash == nameHash && extra.kind == extraKind && !extra.isCommaValue() { // not a comma field, collect it
 					if p := r._placeOf(extra); extra.nameEqualString(p, name) {
 						values = append(values, string(extra.dataAt(p)))
@@ -1337,7 +1337,7 @@ func (r *_httpIn_) getPairs(name string, nameHash uint16, primes zone, extraKind
 			}
 		}
 		if r.hasExtra[extraKind] {
-			for i := 0; i < len(r.extras); i++ {
+			for i := range len(r.extras) {
 				if extra := &r.extras[i]; extra.nameHash == nameHash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 					values = append(values, string(extra.valueAt(r.array)))
 				}
@@ -1365,7 +1365,7 @@ func (r *_httpIn_) delPair(name string, nameHash uint16, primes zone, extraKind 
 		}
 	}
 	if r.hasExtra[extraKind] {
-		for i := 0; i < len(r.extras); i++ {
+		for i := range len(r.extras) {
 			if extra := &r.extras[i]; extra.nameHash == nameHash && extra.kind == extraKind && extra.nameEqualString(r.array, name) {
 				extra.zero()
 				deleted = true
@@ -1462,7 +1462,7 @@ func (r *_httpIn_) _proxyDelHopFieldLines(fieldLines zone, extraKind int8) { // 
 			}
 		}
 		if r.hasExtra[extraKind] {
-			for j := 0; j < len(r.extras); j++ {
+			for j := range len(r.extras) {
 				if extra := &r.extras[j]; extra.nameHash == optionHash && extra.kind == extraKind {
 					if p := r._placeOf(extra); extra.nameEqualBytes(p, optionName) {
 						extra.zero()
@@ -1489,7 +1489,7 @@ func (r *_httpIn_) _proxyWalkMainFields(fieldLines zone, extraKind int8, out htt
 		}
 	}
 	if r.hasExtra[extraKind] {
-		for i := 0; i < len(r.extras); i++ {
+		for i := range len(r.extras) {
 			if field := &r.extras[i]; field.nameHash != 0 && field.kind == extraKind && !field.isSubField() {
 				if !callback(out, field, field.nameAt(r.array), field.valueAt(r.array)) {
 					return false
@@ -1735,7 +1735,7 @@ func (r *_httpOut_) _nameCheck(fieldName []byte) (nameHash uint16, valid bool, l
 		return 0, false, nil
 	}
 	allLower := true
-	for i := 0; i < nameSize; i++ {
+	for i := range nameSize {
 		if b := fieldName[i]; b >= 'a' && b <= 'z' || b == '-' {
 			nameHash += uint16(b)
 		} else {
@@ -1748,7 +1748,7 @@ func (r *_httpOut_) _nameCheck(fieldName []byte) (nameHash uint16, valid bool, l
 		return nameHash, true, fieldName
 	}
 	nameBuffer := r.stream.buffer256() // enough for name
-	for i := 0; i < nameSize; i++ {
+	for i := range nameSize {
 		b := fieldName[i]
 		if b >= 'A' && b <= 'Z' {
 			b += 0x20 // to lower

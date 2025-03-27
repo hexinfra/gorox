@@ -5,7 +5,7 @@ import (
 )
 
 func main() {
-	for i := 0; i < 10000; i++ {
+	for _ = range 10000 {
 		//c, e := net.Dial("tcp", "127.0.0.1:9889")
 		c, e := net.Dial("unix", "a.sock")
 		must(e)

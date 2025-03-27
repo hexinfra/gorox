@@ -63,7 +63,7 @@ func (c *configurator) stageFromFile(configBase string, configFile string) (stag
 }
 
 func (c *configurator) showTokens() {
-	for i := 0; i < len(c.tokens); i++ {
+	for i := range len(c.tokens) {
 		token := &c.tokens[i]
 		fmt.Printf("kind=%16s code=%2d line=%4d file=%s    %s\n", token.name(), token.info, token.line, token.file, token.text)
 	}

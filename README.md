@@ -102,6 +102,13 @@ For more actions and options:
 
     shell> ./gorox help
 
+If you are running Gorox on Linux and need to listen on ports < 1024 without
+root privilege, you can run the linux "setcap" command with "sudo" to grant suid
+option to your gorox binary (make sure your filesystem was mounted with "suid"
+option for this command to work):
+
+    shell> sudo setcap cap_net_bind_service=+ep ./gorox
+
 To install Gorox, simply move the whole Gorox directory to where you like. You
 may also add the directory to your $PATH so you can run "gorox" without "./".
 

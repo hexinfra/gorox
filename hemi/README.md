@@ -20,8 +20,8 @@ If you would like to use the standard components too, import them with:
 
     import _ "github.com/hexinfra/gorox/hemi/builtin"
 
-For examples showing how to use the Hemi Engine in your programs, please see our
-examples in the "example/" sub directory.
+For source code showing how to call the Hemi Engine in your programs, please see
+our examples in the "example/" sub directory.
 
 
 Layout

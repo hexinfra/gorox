@@ -8,15 +8,15 @@
 package main
 
 import (
-	"github.com/hexinfra/gorox/hemi/procman"
+	"github.com/hexinfra/gorox/hemi/control"
 
 	_ "github.com/hexinfra/gorox/apps" // all web applications
-	_ "github.com/hexinfra/gorox/exts" // all extensions
+	_ "github.com/hexinfra/gorox/exts" // all hemi extensions
 	_ "github.com/hexinfra/gorox/svcs" // all rpc services
 )
 
 func main() {
-	procman.Main(&procman.Opts{
+	control.Start(&control.Options{
 		ProgramName:  "gorox",
 		ProgramTitle: "Gorox",
 		DebugLevel:   0,

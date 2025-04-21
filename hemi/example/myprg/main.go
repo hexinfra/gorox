@@ -1,15 +1,15 @@
 package main
 
 import (
-	"github.com/hexinfra/gorox/hemi/procman"
+	"github.com/hexinfra/gorox/hemi/control"
 
-	_ "myprg/apps"
-	_ "myprg/exts"
-	_ "myprg/svcs"
+	_ "myprg/apps" // all web applications
+	_ "myprg/exts" // all hemi extensions
+	_ "myprg/svcs" // all rpc services
 )
 
 func main() {
-	procman.Main(&procman.Opts{
+	control.Start(&control.Options{
 		ProgramName:  "myprg",
 		ProgramTitle: "MyProgram",
 		DebugLevel:   0,

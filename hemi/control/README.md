@@ -1,7 +1,7 @@
-Procman
+Control
 =======
 
-Procman implements a leader-worker process model and its control client.
+Control implements a leader-worker process model and its control client.
 
 A control client process connects to a leader process, tells or calls its cmdui
 APIs. The leader process starts and monitors its worker process. It uses a TCP
@@ -15,7 +15,7 @@ be opened. In this case, it is managed by Rockman.
 Layout
 ======
 
-Procman uses these directories:
+Control uses these directories:
 
   * client/  - As client process,
   * common/  - Shared elements between client, leader, and worker,

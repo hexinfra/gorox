@@ -15,9 +15,9 @@ import (
 	"time"
 
 	"github.com/hexinfra/gorox/hemi"
+	"github.com/hexinfra/gorox/hemi/control/common"
 	"github.com/hexinfra/gorox/hemi/library/msgx"
 	"github.com/hexinfra/gorox/hemi/library/system"
-	"github.com/hexinfra/gorox/hemi/procman/common"
 )
 
 func Main() {

@@ -12,8 +12,8 @@ import (
 	"net"
 	"os"
 
-	"github.com/hexinfra/gorox/hemi/control/common"
 	"github.com/hexinfra/gorox/hemi/library/msgx"
+	"github.com/hexinfra/gorox/hemi/process/common"
 )
 
 func Main(action string) {

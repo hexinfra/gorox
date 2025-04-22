@@ -8,14 +8,14 @@
 package main
 
 import (
-	"github.com/hexinfra/gorox/hemi/control"
+	"github.com/hexinfra/gorox/hemi/process"
 
 	_ "github.com/hexinfra/gorox/hemi/goroxio/apps"
 	_ "github.com/hexinfra/gorox/hemi/goroxio/exts"
 )
 
 func main() {
-	control.Start(&control.Options{
+	process.Main(&process.Opts{
 		ProgramName:  "goroxio",
 		ProgramTitle: "GoroxIO",
 		DebugLevel:   1,

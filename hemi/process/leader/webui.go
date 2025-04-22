@@ -9,10 +9,10 @@ package leader
 
 import (
 	"github.com/hexinfra/gorox/hemi"
-	"github.com/hexinfra/gorox/hemi/control/common"
 	"github.com/hexinfra/gorox/hemi/library/msgx"
+	"github.com/hexinfra/gorox/hemi/process/common"
 
-	_ "github.com/hexinfra/gorox/hemi/control/leader/webui"
+	_ "github.com/hexinfra/gorox/hemi/process/leader/webui"
 )
 
 var webChan = make(chan *msgx.Message) // used to send messages to workerKeeper

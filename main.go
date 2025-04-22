@@ -8,7 +8,7 @@
 package main
 
 import (
-	"github.com/hexinfra/gorox/hemi/control"
+	"github.com/hexinfra/gorox/hemi/process"
 
 	_ "github.com/hexinfra/gorox/apps" // all web applications
 	_ "github.com/hexinfra/gorox/exts" // all hemi extensions
@@ -16,7 +16,7 @@ import (
 )
 
 func main() {
-	control.Start(&control.Options{
+	process.Main(&process.Opts{
 		ProgramName:  "gorox",
 		ProgramTitle: "Gorox",
 		DebugLevel:   0,

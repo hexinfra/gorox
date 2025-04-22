@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// Common elements for control, client, leader, and worker.
+// Common elements for process, client, leader, and worker.
 
 package common
 

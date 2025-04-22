@@ -3,9 +3,9 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// Control package implements a leader-worker process model and its control client.
+// Package process implements a leader-worker process model and its control client.
 
-package control
+package process
 
 import (
 	"flag"
@@ -16,10 +16,10 @@ import (
 	"github.com/hexinfra/gorox/hemi"
 	"github.com/hexinfra/gorox/hemi/library/system"
 
-	"github.com/hexinfra/gorox/hemi/control/client"
-	"github.com/hexinfra/gorox/hemi/control/common"
-	"github.com/hexinfra/gorox/hemi/control/leader"
-	"github.com/hexinfra/gorox/hemi/control/worker"
+	"github.com/hexinfra/gorox/hemi/process/client"
+	"github.com/hexinfra/gorox/hemi/process/common"
+	"github.com/hexinfra/gorox/hemi/process/leader"
+	"github.com/hexinfra/gorox/hemi/process/worker"
 )
 
 const usage = `
@@ -80,8 +80,8 @@ OPTIONS
 
 `
 
-// Options is the options passed to Start() to control its behavior.
-type Options struct {
+// Opts is the options passed to Main() to customize its behavior.
+type Opts struct {
 	ProgramName  string
 	ProgramTitle string
 	ProgramUsage string
@@ -90,8 +90,8 @@ type Options struct {
 	WebUIAddr    string
 }
 
-// Start is the main() for client process, leader process, and worker process.
-func Start(opts *Options) {
+// Main is the main() for client process, leader process, and worker process.
+func Main(opts *Opts) {
 	if !system.Check() {
 		common.Crash("current platform (os + arch) is not supported.")
 	}

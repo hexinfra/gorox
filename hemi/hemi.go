@@ -14,7 +14,7 @@ import (
 	"sync/atomic"
 )
 
-const Version = "0.2.4-dev"
+const Version = "0.2.4"
 
 // devel mode
 var _develMode atomic.Bool

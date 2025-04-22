@@ -44,9 +44,7 @@ func (f *fixture_) onCreate(compName string, stage *Stage) {
 
 const signClock = "clock"
 
-func init() {
-	registerFixture(signClock)
-}
+func init() { registerFixture(signClock) }
 
 func createClock(stage *Stage) *clockFixture {
 	clock := new(clockFixture)
@@ -371,9 +369,7 @@ var ( // minimal perfect hash table for months
 
 const signFcache = "fcache"
 
-func init() {
-	registerFixture(signFcache)
-}
+func init() { registerFixture(signFcache) }
 
 func createFcache(stage *Stage) *fcacheFixture {
 	fcache := new(fcacheFixture)
@@ -565,9 +561,7 @@ func (e *fcacheEntry) decRef() {
 
 const signResolv = "resolv"
 
-func init() {
-	registerFixture(signResolv)
-}
+func init() { registerFixture(signResolv) }
 
 func createResolv(stage *Stage) *resolvFixture {
 	resolv := new(resolvFixture)

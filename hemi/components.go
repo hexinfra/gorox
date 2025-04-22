@@ -315,11 +315,10 @@ func (d compDict[T]) goWalk(method func(T)) {
 	}
 }
 
-// Stage represents a running stage in the worker process.
+// Stage represents a running stage in the engine.
 //
-// A worker process may have many stages in its lifetime, especially
-// when new configuration is applied, a new stage is created, or the
-// old one is told to quit.
+// The engine may have many stages during its lifetime, especially when new
+// configuration is applied, a new stage is created, or the old one is told to quit.
 type Stage struct {
 	// Parent
 	Component_

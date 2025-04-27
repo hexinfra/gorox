@@ -19,8 +19,8 @@ import (
 	"time"
 )
 
-// httpHolder is the interface for _httpHolder_.
-type httpHolder interface {
+// httpHolder
+type httpHolder interface { // for _httpHolder_
 	// Imports
 	contentSaver
 	// Methods
@@ -62,7 +62,7 @@ func (h *_httpHolder_) onPrepare(comp Component, perm os.FileMode) {
 func (h *_httpHolder_) MaxMemoryContentSize() int32 { return h.maxMemoryContentSize }
 
 // httpConn
-type httpConn interface {
+type httpConn interface { // for http[1-3]Conn
 	Holder() httpHolder
 	ID() int64
 	UDSMode() bool
@@ -122,7 +122,7 @@ func (c *httpConn_) markBroken()    { c.broken.Store(true) }
 func (c *httpConn_) isBroken() bool { return c.broken.Load() }
 
 // httpStream
-type httpStream interface {
+type httpStream interface { // for http[1-3]Stream
 	Holder() httpHolder
 	ID() int64
 	UDSMode() bool
@@ -187,7 +187,7 @@ type httpIn interface {
 }
 
 // _httpIn_ is a mixin.
-type _httpIn_ struct { // for serverRequest_ and backendResponse_. incoming, needs parsing
+type _httpIn_ struct { // for backendResponse_ and serverRequest_. incoming, needs parsing
 	// Assocs
 	stream httpStream // *backend[1-3]Stream, *server[1-3]Stream
 	in     httpIn     // *backend[1-3]Response, *server[1-3]Request
@@ -1626,7 +1626,7 @@ type httpOut interface {
 }
 
 // _httpOut_ is a mixin.
-type _httpOut_ struct { // for serverResponse_ and backendRequest_. outgoing, needs building
+type _httpOut_ struct { // for backendRequest_ and serverResponse_. outgoing, needs building
 	// Assocs
 	stream httpStream // *backend[1-3]Stream, *server[1-3]Stream
 	out    httpOut    // *backend[1-3]Request, *server[1-3]Response
@@ -2084,7 +2084,7 @@ type httpSocket interface {
 }
 
 // _httpSocket_ is a mixin.
-type _httpSocket_ struct { // for serverSocket_ and backendSocket_. incoming and outgoing
+type _httpSocket_ struct { // for backendSocket_ and serverSocket_. incoming and outgoing
 	// Assocs
 	stream httpStream // *backend[1-3]Stream, *server[1-3]Stream
 	socket httpSocket // *backend[1-3]Socket, *server[1-3]Socket

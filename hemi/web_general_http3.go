@@ -21,7 +21,7 @@ type http3Conn interface {
 }
 
 // http3Conn_ is a parent.
-type http3Conn_ struct { // for server3Conn and backend3Conn
+type http3Conn_ struct { // for backend3Conn and server3Conn
 	// Parent
 	httpConn_
 	// Conn states (stocks)
@@ -68,7 +68,7 @@ type http3Stream interface {
 }
 
 // http3Stream_ is a parent.
-type http3Stream_[C http3Conn] struct { // for server3Stream and backend3Stream
+type http3Stream_[C http3Conn] struct { // for backend3Stream and server3Stream
 	// Parent
 	httpStream_[C]
 	// Stream states (stocks)
@@ -125,7 +125,7 @@ func (s *http3Stream_[C]) writev(srcVec *net.Buffers) (int64, error) {
 }
 
 // _http3In_ is a mixin.
-type _http3In_ struct { // for server3Request and backend3Response
+type _http3In_ struct { // for backend3Response and server3Request
 	// Parent
 	*_httpIn_
 	// Stream states (stocks)
@@ -161,7 +161,7 @@ func (r *_http3In_) _readVagueContent() ([]byte, error) {
 }
 
 // _http3Out_ is a mixin.
-type _http3Out_ struct { // for server3Response and backend3Request
+type _http3Out_ struct { // for backend3Request and server3Response
 	// Parent
 	*_httpOut_
 	// Stream states (stocks)
@@ -275,7 +275,7 @@ func (r *_http3Out_) writeBytes(data []byte) error {
 }
 
 // _http3Socket_ is a mixin.
-type _http3Socket_ struct { // for server3Socket and backend3Socket
+type _http3Socket_ struct { // for backend3Socket and server3Socket
 	// Parent
 	*_httpSocket_
 	// Stream states (stocks)

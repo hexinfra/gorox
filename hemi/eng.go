@@ -19,64 +19,47 @@ import (
 	"time"
 )
 
-const Version = "0.2.4"
+const Version = "0.2.5"
 
-// devel mode
-var _develMode atomic.Bool
-
-func DevelMode() bool         { return _develMode.Load() }
-func SetDevelMode(devel bool) { _develMode.Store(devel) }
-
-// debug level
-var _debugLevel atomic.Int32
-
-func DebugLevel() int32         { return _debugLevel.Load() }
-func SetDebugLevel(level int32) { _debugLevel.Store(level) }
-
-var ( // topDir
-	_topDir  atomic.Value // directory of the executable
-	_topOnce sync.Once    // protects _topDir
+var (
+	_develMode  atomic.Bool
+	_debugLevel atomic.Int32
+	_topDir     atomic.Value // directory of the executable
+	_topOnce    sync.Once    // protects _topDir
+	_logDir     atomic.Value // directory of the log files
+	_logOnce    sync.Once    // protects _logDir
+	_tmpDir     atomic.Value // directory of the temp files
+	_tmpOnce    sync.Once    // protects _tmpDir
+	_varDir     atomic.Value // directory of the run-time data
+	_varOnce    sync.Once    // protects _varDir
 )
 
-func TopDir() string { return _topDir.Load().(string) }
+func DevelMode() bool   { return _develMode.Load() }
+func DebugLevel() int32 { return _debugLevel.Load() }
+func TopDir() string    { return _topDir.Load().(string) }
+func LogDir() string    { return _logDir.Load().(string) }
+func TmpDir() string    { return _tmpDir.Load().(string) }
+func VarDir() string    { return _varDir.Load().(string) }
+
+func SetDevelMode(devel bool)   { _develMode.Store(devel) }
+func SetDebugLevel(level int32) { _debugLevel.Store(level) }
 func SetTopDir(dir string) { // only once!
 	_topOnce.Do(func() {
 		_topDir.Store(dir)
 	})
 }
-
-var ( // logDir
-	_logDir  atomic.Value // directory of the log files
-	_logOnce sync.Once    // protects _logDir
-)
-
-func LogDir() string { return _logDir.Load().(string) }
 func SetLogDir(dir string) { // only once!
 	_logOnce.Do(func() {
 		_logDir.Store(dir)
 		_mustMkdir(dir)
 	})
 }
-
-var ( // tmpDir
-	_tmpDir  atomic.Value // directory of the temp files
-	_tmpOnce sync.Once    // protects _tmpDir
-)
-
-func TmpDir() string { return _tmpDir.Load().(string) }
 func SetTmpDir(dir string) { // only once!
 	_tmpOnce.Do(func() {
 		_tmpDir.Store(dir)
 		_mustMkdir(dir)
 	})
 }
-
-var ( // varDir
-	_varDir  atomic.Value // directory of the run-time data
-	_varOnce sync.Once    // protects _varDir
-)
-
-func VarDir() string { return _varDir.Load().(string) }
 func SetVarDir(dir string) { // only once!
 	_varOnce.Do(func() {
 		_varDir.Store(dir)
@@ -108,20 +91,154 @@ func _checkDirs() {
 	}
 }
 
-// caseCond is the case condition.
-type caseCond struct {
-	varCode  int16    // see varCodes. set as -1 if not available
-	varName  string   // used if varCode is not available
-	compare  string   // ==, ^=, $=, *=, ~=, !=, !^, !$, !*, !~
-	patterns []string // ...
+const ( // exit codes
+	CodeBug = 20
+	CodeUse = 21
+	CodeEnv = 22
+)
+
+func BugExitln(v ...any)          { _exitln(CodeBug, "[BUG] ", v...) }
+func BugExitf(f string, v ...any) { _exitf(CodeBug, "[BUG] ", f, v...) }
+
+func UseExitln(v ...any)          { _exitln(CodeUse, "[USE] ", v...) }
+func UseExitf(f string, v ...any) { _exitf(CodeUse, "[USE] ", f, v...) }
+
+func EnvExitln(v ...any)          { _exitln(CodeEnv, "[ENV] ", v...) }
+func EnvExitf(f string, v ...any) { _exitf(CodeEnv, "[ENV] ", f, v...) }
+
+func _exitln(exitCode int, prefix string, v ...any) {
+	fmt.Fprint(os.Stderr, prefix)
+	fmt.Fprintln(os.Stderr, v...)
+	os.Exit(exitCode)
+}
+func _exitf(exitCode int, prefix, f string, v ...any) {
+	fmt.Fprintf(os.Stderr, prefix+f, v...)
+	os.Exit(exitCode)
 }
 
-// ruleCond is the rule condition.
-type ruleCond struct {
-	varCode  int16    // see varCodes. set as -1 if not available
-	varName  string   // used if varCode is not available
-	compare  string   // ==, ^=, $=, *=, ~=, !=, !^, !$, !*, !~, -f, -d, -e, -D, -E, !f, !d, !e
-	patterns []string // ("GET", "POST"), ("https"), ("abc.com"), ("/hello", "/world")
+// Value is a value in config file.
+type Value struct {
+	kind  int16  // tokenXXX in values
+	code  int16  // variable code if kind is tokenVariable
+	name  string // variable name if kind is tokenVariable
+	value any    // bools, integers, strings, durations, lists, and dicts
+	bytes []byte // []byte of string value, to avoid the cost of []byte(s)
+}
+
+func (v *Value) IsBool() bool     { return v.kind == tokenBool }
+func (v *Value) IsInteger() bool  { return v.kind == tokenInteger }
+func (v *Value) IsString() bool   { return v.kind == tokenString }
+func (v *Value) IsDuration() bool { return v.kind == tokenDuration }
+func (v *Value) IsList() bool     { return v.kind == tokenList }
+func (v *Value) IsDict() bool     { return v.kind == tokenDict }
+func (v *Value) IsVariable() bool { return v.kind == tokenVariable }
+
+func (v *Value) Bool() (b bool, ok bool) {
+	b, ok = v.value.(bool)
+	return
+}
+func (v *Value) Int64() (i64 int64, ok bool) {
+	i64, ok = v.value.(int64)
+	return
+}
+func (v *Value) Uint32() (u32 uint32, ok bool) { return toInt[uint32](v) }
+func (v *Value) Int32() (i32 int32, ok bool)   { return toInt[int32](v) }
+func (v *Value) Int16() (i16 int16, ok bool)   { return toInt[int16](v) }
+func (v *Value) Int8() (i8 int8, ok bool)      { return toInt[int8](v) }
+func (v *Value) Int() (i int, ok bool)         { return toInt[int](v) }
+func toInt[T ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64](v *Value) (i T, ok bool) {
+	i64, ok := v.Int64()
+	i = T(i64)
+	if ok && int64(i) != i64 {
+		ok = false
+	}
+	return
+}
+func (v *Value) String() (s string, ok bool) {
+	s, ok = v.value.(string)
+	return
+}
+func (v *Value) Bytes() (p []byte, ok bool) {
+	if v.kind == tokenString {
+		p, ok = v.bytes, true
+	}
+	return
+}
+func (v *Value) Duration() (d time.Duration, ok bool) {
+	d, ok = v.value.(time.Duration)
+	return
+}
+func (v *Value) List() (list []Value, ok bool) {
+	list, ok = v.value.([]Value)
+	return
+}
+func (v *Value) ListN(n int) (list []Value, ok bool) {
+	list, ok = v.value.([]Value)
+	if ok && n >= 0 && len(list) != n {
+		ok = false
+	}
+	return
+}
+func (v *Value) StringList() (list []string, ok bool) {
+	l, ok := v.value.([]Value)
+	if ok {
+		for _, value := range l {
+			if s, isString := value.String(); isString {
+				list = append(list, s)
+			}
+		}
+	}
+	return
+}
+func (v *Value) BytesList() (list [][]byte, ok bool) {
+	l, ok := v.value.([]Value)
+	if ok {
+		for _, value := range l {
+			if value.kind == tokenString {
+				list = append(list, value.bytes)
+			}
+		}
+	}
+	return
+}
+func (v *Value) StringListN(n int) (list []string, ok bool) {
+	l, ok := v.value.([]Value)
+	if !ok {
+		return
+	}
+	if n >= 0 && len(l) != n {
+		ok = false
+		return
+	}
+	for _, value := range l {
+		if s, ok := value.String(); ok {
+			list = append(list, s)
+		}
+	}
+	return
+}
+func (v *Value) Dict() (dict map[string]Value, ok bool) {
+	dict, ok = v.value.(map[string]Value)
+	return
+}
+func (v *Value) StringDict() (dict map[string]string, ok bool) {
+	d, ok := v.value.(map[string]Value)
+	if ok {
+		dict = make(map[string]string)
+		for name, value := range d {
+			if s, ok := value.String(); ok {
+				dict[name] = s
+			}
+		}
+	}
+	return
+}
+
+func (v *Value) BytesVar(keeper varKeeper) []byte {
+	return keeper.riskyVariable(v.code, v.name)
+}
+func (v *Value) StringVar(keeper varKeeper) string {
+	return string(keeper.riskyVariable(v.code, v.name))
 }
 
 // configurator applies configuration and creates a new stage.
@@ -160,17 +277,17 @@ func (c *configurator) showTokens() {
 	}
 }
 
-func (c *configurator) currentToken() *token { return &c.tokens[c.index] }
-func (c *configurator) forwardToken() *token {
-	c._forwardCheckEOF()
-	return &c.tokens[c.index]
-}
+func (c *configurator) currentToken() *token           { return &c.tokens[c.index] }
 func (c *configurator) currentTokenIs(kind int16) bool { return c.tokens[c.index].kind == kind }
 func (c *configurator) nextTokenIs(kind int16) bool {
 	if c.index == len(c.tokens) {
 		return false
 	}
 	return c.tokens[c.index+1].kind == kind
+}
+func (c *configurator) forwardToken() *token {
+	c._forwardCheckEOF()
+	return &c.tokens[c.index]
 }
 func (c *configurator) expectToken(kind int16) *token {
 	current := &c.tokens[c.index]
@@ -843,6 +960,22 @@ func parseComponent0[T Component](c *configurator, compSign *token, stage *Stage
 	c._parseLeaf(component)
 }
 
+// caseCond is the case condition.
+type caseCond struct {
+	varCode  int16    // see varCodes. set as -1 if not available
+	varName  string   // used if varCode is not available
+	compare  string   // ==, ^=, $=, *=, ~=, !=, !^, !$, !*, !~
+	patterns []string // ...
+}
+
+// ruleCond is the rule condition.
+type ruleCond struct {
+	varCode  int16    // see varCodes. set as -1 if not available
+	varName  string   // used if varCode is not available
+	compare  string   // ==, ^=, $=, *=, ~=, !=, !^, !$, !*, !~, -f, -d, -e, -D, -E, !f, !d, !e
+	patterns []string // ("GET", "POST"), ("https"), ("abc.com"), ("/hello", "/world")
+}
+
 const ( // list of tokens. if you change this list, change tokenNames too.
 	// Components
 	tokenComponent = 1 + iota // stage, webapp, ...
@@ -1191,129 +1324,4 @@ func (l *lexer) _loadURL(base string, file string) string {
 	} else {
 		return data
 	}
-}
-
-// Value is a value in config file.
-type Value struct {
-	kind  int16  // tokenXXX in values
-	code  int16  // variable code if kind is tokenVariable
-	name  string // variable name if kind is tokenVariable
-	value any    // bools, integers, strings, durations, lists, and dicts
-	bytes []byte // []byte of string value, to avoid the cost of []byte(s)
-}
-
-func (v *Value) IsBool() bool     { return v.kind == tokenBool }
-func (v *Value) IsInteger() bool  { return v.kind == tokenInteger }
-func (v *Value) IsString() bool   { return v.kind == tokenString }
-func (v *Value) IsDuration() bool { return v.kind == tokenDuration }
-func (v *Value) IsList() bool     { return v.kind == tokenList }
-func (v *Value) IsDict() bool     { return v.kind == tokenDict }
-func (v *Value) IsVariable() bool { return v.kind == tokenVariable }
-
-func (v *Value) Bool() (b bool, ok bool) {
-	b, ok = v.value.(bool)
-	return
-}
-func (v *Value) Int64() (i64 int64, ok bool) {
-	i64, ok = v.value.(int64)
-	return
-}
-func (v *Value) Uint32() (u32 uint32, ok bool) { return toInt[uint32](v) }
-func (v *Value) Int32() (i32 int32, ok bool)   { return toInt[int32](v) }
-func (v *Value) Int16() (i16 int16, ok bool)   { return toInt[int16](v) }
-func (v *Value) Int8() (i8 int8, ok bool)      { return toInt[int8](v) }
-func (v *Value) Int() (i int, ok bool)         { return toInt[int](v) }
-func toInt[T ~int | ~int8 | ~int16 | ~int32 | ~int64 | ~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64](v *Value) (i T, ok bool) {
-	i64, ok := v.Int64()
-	i = T(i64)
-	if ok && int64(i) != i64 {
-		ok = false
-	}
-	return
-}
-func (v *Value) String() (s string, ok bool) {
-	s, ok = v.value.(string)
-	return
-}
-func (v *Value) Bytes() (p []byte, ok bool) {
-	if v.kind == tokenString {
-		p, ok = v.bytes, true
-	}
-	return
-}
-func (v *Value) Duration() (d time.Duration, ok bool) {
-	d, ok = v.value.(time.Duration)
-	return
-}
-func (v *Value) List() (list []Value, ok bool) {
-	list, ok = v.value.([]Value)
-	return
-}
-func (v *Value) ListN(n int) (list []Value, ok bool) {
-	list, ok = v.value.([]Value)
-	if ok && n >= 0 && len(list) != n {
-		ok = false
-	}
-	return
-}
-func (v *Value) StringList() (list []string, ok bool) {
-	l, ok := v.value.([]Value)
-	if ok {
-		for _, value := range l {
-			if s, isString := value.String(); isString {
-				list = append(list, s)
-			}
-		}
-	}
-	return
-}
-func (v *Value) BytesList() (list [][]byte, ok bool) {
-	l, ok := v.value.([]Value)
-	if ok {
-		for _, value := range l {
-			if value.kind == tokenString {
-				list = append(list, value.bytes)
-			}
-		}
-	}
-	return
-}
-func (v *Value) StringListN(n int) (list []string, ok bool) {
-	l, ok := v.value.([]Value)
-	if !ok {
-		return
-	}
-	if n >= 0 && len(l) != n {
-		ok = false
-		return
-	}
-	for _, value := range l {
-		if s, ok := value.String(); ok {
-			list = append(list, s)
-		}
-	}
-	return
-}
-func (v *Value) Dict() (dict map[string]Value, ok bool) {
-	dict, ok = v.value.(map[string]Value)
-	return
-}
-func (v *Value) StringDict() (dict map[string]string, ok bool) {
-	d, ok := v.value.(map[string]Value)
-	if ok {
-		dict = make(map[string]string)
-		for name, value := range d {
-			if s, ok := value.String(); ok {
-				dict[name] = s
-			}
-		}
-	}
-	return
-}
-
-func (v *Value) BytesVar(keeper varKeeper) []byte {
-	return keeper.riskyVariable(v.code, v.name)
-}
-func (v *Value) StringVar(keeper varKeeper) string {
-	return string(keeper.riskyVariable(v.code, v.name))
 }

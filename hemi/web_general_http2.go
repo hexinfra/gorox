@@ -24,7 +24,7 @@ type http2Conn interface {
 }
 
 // http2Conn_ is a parent.
-type http2Conn_[S http2Stream] struct { // for server2Conn and backend2Conn
+type http2Conn_[S http2Stream] struct { // for backend2Conn and server2Conn
 	// Parent
 	httpConn_
 	// Conn states (stocks)
@@ -592,7 +592,7 @@ type http2Stream interface {
 }
 
 // http2Stream_ is a parent.
-type http2Stream_[C http2Conn] struct { // for server2Stream and backend2Stream
+type http2Stream_[C http2Conn] struct { // for backend2Stream and server2Stream
 	// Parent
 	httpStream_[C]
 	// Stream states (stocks)
@@ -656,7 +656,7 @@ func (s *http2Stream_[C]) writev(srcVec *net.Buffers) (int64, error) {
 }
 
 // _http2In_ is a mixin.
-type _http2In_ struct { // for server2Request and backend2Response
+type _http2In_ struct { // for backend2Response and server2Request
 	// Parent
 	*_httpIn_
 	// Stream states (stocks)
@@ -703,7 +703,7 @@ func (r *_http2In_) _readVagueContent() ([]byte, error) {
 }
 
 // _http2Out_ is a mixin.
-type _http2Out_ struct { // for server2Response and backend2Request
+type _http2Out_ struct { // for backend2Request and server2Response
 	// Parent
 	*_httpOut_
 	// Stream states (stocks)
@@ -817,7 +817,7 @@ func (r *_http2Out_) writeBytes(data []byte) error {
 }
 
 // _http2Socket_ is a mixin.
-type _http2Socket_ struct { // for server2Socket and backend2Socket
+type _http2Socket_ struct { // for backend2Socket and server2Socket
 	// Parent
 	*_httpSocket_
 	// Stream states (stocks)

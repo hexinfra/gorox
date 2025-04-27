@@ -42,31 +42,6 @@ func _printTime(file *os.File) {
 	fmt.Fprintf(file, "[%s] ", time.Now().Format("2006-01-02 15:04:05 MST"))
 }
 
-const ( // exit codes
-	CodeBug = 20
-	CodeUse = 21
-	CodeEnv = 22
-)
-
-func BugExitln(v ...any)          { _exitln(CodeBug, "[BUG] ", v...) }
-func BugExitf(f string, v ...any) { _exitf(CodeBug, "[BUG] ", f, v...) }
-
-func UseExitln(v ...any)          { _exitln(CodeUse, "[USE] ", v...) }
-func UseExitf(f string, v ...any) { _exitf(CodeUse, "[USE] ", f, v...) }
-
-func EnvExitln(v ...any)          { _exitln(CodeEnv, "[ENV] ", v...) }
-func EnvExitf(f string, v ...any) { _exitf(CodeEnv, "[ENV] ", f, v...) }
-
-func _exitln(exitCode int, prefix string, v ...any) {
-	fmt.Fprint(os.Stderr, prefix)
-	fmt.Fprintln(os.Stderr, v...)
-	os.Exit(exitCode)
-}
-func _exitf(exitCode int, prefix, f string, v ...any) {
-	fmt.Fprintf(os.Stderr, prefix+f, v...)
-	os.Exit(exitCode)
-}
-
 func ConstBytes(s string) (p []byte) { // WARNING: *DO NOT* mutate s through p!
 	return unsafe.Slice(unsafe.StringData(s), len(s))
 }

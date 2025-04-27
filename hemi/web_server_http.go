@@ -157,7 +157,7 @@ func (s *httpServer_[G]) findWebapp(hostname []byte) *Webapp {
 func (s *httpServer_[G]) httpHolder() _httpHolder_ { return s._httpHolder_ } // for copying configs
 
 // httpGate is the http gate.
-type httpGate interface {
+type httpGate interface { // for *http[x3]Gate
 	// Imports
 	Gate
 	httpHolder
@@ -189,7 +189,7 @@ func (g *httpGate_[S]) ReachLimit(concurrentConns int32) bool {
 }
 
 // serverConn is the server-side http connection.
-type serverConn interface {
+type serverConn interface { // for *server[1-3]Conn
 }
 
 // _serverConn_ is a mixin.
@@ -212,7 +212,7 @@ func (c *_serverConn_[G]) onPut() {
 func (c *_serverConn_[G]) Holder() httpHolder { return c.gate }
 
 // serverStream is the server-side http stream.
-type serverStream interface {
+type serverStream interface { // for *server[1-3]Stream
 }
 
 // _serverStream_ is a mixin.

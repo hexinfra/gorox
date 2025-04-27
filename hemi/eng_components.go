@@ -3,7 +3,7 @@
 // All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be found in the LICENSE file.
 
-// Component is the configurable component.
+// Configurable components.
 
 package hemi
 
@@ -347,7 +347,7 @@ type Stage struct {
 	blkFile string
 }
 
-// createStage creates a new stage which runs alongside existing stage.
+// createStage creates a new stage which runs alongside existing stages.
 func createStage() *Stage {
 	stage := new(Stage)
 	stage.onCreate()
@@ -739,11 +739,11 @@ func (s *Stage) configure() (err error) {
 		if x := recover(); x != nil {
 			err = x.(error)
 		}
-		if DebugLevel() >= 1 {
-			Println("stage configured")
-		}
 	}()
 	s.OnConfigure()
+	if DebugLevel() >= 1 {
+		Println("stage configured")
+	}
 	return nil
 }
 func (s *Stage) prepare() (err error) {
@@ -754,11 +754,11 @@ func (s *Stage) prepare() (err error) {
 		if x := recover(); x != nil {
 			err = x.(error)
 		}
-		if DebugLevel() >= 1 {
-			Println("stage prepared")
-		}
 	}()
 	s.OnPrepare()
+	if DebugLevel() >= 1 {
+		Println("stage prepared")
+	}
 	return nil
 }
 

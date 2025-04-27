@@ -22,7 +22,7 @@ type HTTPBackend interface { // for *HTTP[1-3]Backend
 	ReleaseStream(backStream BackendStream)
 }
 
-// httpBackend_
+// httpBackend_ is a parent.
 type httpBackend_[N HTTPNode] struct { // for HTTP[1-3]Backend
 	// Parent
 	Backend_[N]
@@ -39,7 +39,7 @@ func (b *httpBackend_[N]) OnPrepare() {
 }
 
 // HTTPNode is the http node.
-type HTTPNode interface {
+type HTTPNode interface { // for *http[1-3]Node
 	// Imports
 	Node
 	httpHolder
@@ -87,7 +87,7 @@ func (n *httpNode_[B]) onPrepare() {
 }
 
 // backendConn is the backend-side http connection.
-type backendConn interface {
+type backendConn interface { // for *backend[1-3]Conn
 }
 
 // _backendConn_ is a mixin.

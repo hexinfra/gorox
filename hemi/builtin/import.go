@@ -22,6 +22,7 @@ import (
 	_ "github.com/hexinfra/gorox/hemi/builtin/handlets/https"
 	_ "github.com/hexinfra/gorox/hemi/builtin/handlets/limit"
 	_ "github.com/hexinfra/gorox/hemi/builtin/handlets/mp4"
+	_ "github.com/hexinfra/gorox/hemi/builtin/handlets/rewriter"
 	_ "github.com/hexinfra/gorox/hemi/builtin/handlets/sitex"
 	_ "github.com/hexinfra/gorox/hemi/builtin/handlets/webdav"
 	_ "github.com/hexinfra/gorox/hemi/builtin/hcaches/filesys"

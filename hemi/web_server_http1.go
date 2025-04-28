@@ -43,13 +43,13 @@ type httpxServer struct {
 func (s *httpxServer) onCreate(compName string, stage *Stage) {
 	s.httpServer_.onCreate(compName, stage)
 
-	s.httpMode = 1 // http/1.x by default. change to adaptive mode after http/2 server has been fully implemented
+	s.httpMode = 1 // http/1.x by default. TODO(diogin): change to adaptive mode after http/2 server has been fully implemented
 }
 
 func (s *httpxServer) OnConfigure() {
 	s.httpServer_.onConfigure()
 
-	if DebugLevel() >= 2 { // remove this condition after http/2 server has been fully implemented
+	if DebugLevel() >= 2 { // TODO(diogin): remove this condition after http/2 server has been fully implemented
 		// .httpMode
 		var mode string
 		s.ConfigureString("httpMode", &mode, func(value string) error {

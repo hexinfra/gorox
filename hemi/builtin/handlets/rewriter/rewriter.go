@@ -5,7 +5,11 @@
 
 // Rewriters rewrite request path.
 
-package hemi
+package rewriter
+
+import (
+	. "github.com/hexinfra/gorox/hemi"
+)
 
 func init() {
 	RegisterHandlet("rewriter", func(compName string, stage *Stage, webapp *Webapp) Handlet {
@@ -25,7 +29,7 @@ type rewriterChecker struct {
 func (h *rewriterChecker) onCreate(compName string, stage *Stage, webapp *Webapp) {
 	h.Handlet_.OnCreate(compName, stage, webapp)
 }
-func (h *rewriterChecker) OnShutdown() { h.webapp.DecHandlet() }
+func (h *rewriterChecker) OnShutdown() { h.Webapp().DecHandlet() }
 
 func (h *rewriterChecker) OnConfigure() {
 	// TODO

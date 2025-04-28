@@ -11,7 +11,7 @@ import (
 	"regexp"
 )
 
-// router_
+// router_ is a parent.
 type router_[G Gate] struct { // for QUIXRouter, TCPXRouter, and UDPXRouter
 	// Parent
 	Server_[G]

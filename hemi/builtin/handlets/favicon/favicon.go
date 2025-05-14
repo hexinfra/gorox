@@ -5,7 +5,11 @@
 
 // Favicon handlets print the Gorox logo as favicon.
 
-package hemi
+package favicon
+
+import (
+	. "github.com/hexinfra/gorox/hemi"
+)
 
 func init() {
 	RegisterHandlet("favicon", func(compName string, stage *Stage, webapp *Webapp) Handlet {
@@ -25,7 +29,7 @@ type faviconHandlet struct {
 func (h *faviconHandlet) onCreate(compName string, stage *Stage, webapp *Webapp) {
 	h.Handlet_.OnCreate(compName, stage, webapp)
 }
-func (h *faviconHandlet) OnShutdown() { h.webapp.DecHandlet() }
+func (h *faviconHandlet) OnShutdown() { h.Webapp().DecHandlet() }
 
 func (h *faviconHandlet) OnConfigure() {}
 func (h *faviconHandlet) OnPrepare()   {}

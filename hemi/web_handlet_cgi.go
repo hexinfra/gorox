@@ -9,7 +9,7 @@ package hemi
 
 func init() {
 	RegisterHandlet("cgi", func(compName string, stage *Stage, webapp *Webapp) Handlet {
-		h := new(faviconHandlet)
+		h := new(cgiHandlet)
 		h.onCreate(compName, stage, webapp)
 		return h
 	})

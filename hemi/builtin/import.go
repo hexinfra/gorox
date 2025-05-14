@@ -18,6 +18,7 @@ import (
 	_ "github.com/hexinfra/gorox/hemi/builtin/dealets/tcpx/pgsql"
 	_ "github.com/hexinfra/gorox/hemi/builtin/dealets/tcpx/redis"
 	_ "github.com/hexinfra/gorox/hemi/builtin/dealets/udpx/dns"
+	_ "github.com/hexinfra/gorox/hemi/builtin/handlets/favicon"
 	_ "github.com/hexinfra/gorox/hemi/builtin/handlets/hostname"
 	_ "github.com/hexinfra/gorox/hemi/builtin/handlets/https"
 	_ "github.com/hexinfra/gorox/hemi/builtin/handlets/limit"

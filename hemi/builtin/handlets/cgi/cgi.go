@@ -5,7 +5,11 @@
 
 // CGI handlets starts a CGI program to handle the request and gives a response. See RFC 3875.
 
-package hemi
+package cgi
+
+import (
+	. "github.com/hexinfra/gorox/hemi"
+)
 
 func init() {
 	RegisterHandlet("cgi", func(compName string, stage *Stage, webapp *Webapp) Handlet {
@@ -25,7 +29,7 @@ type cgiHandlet struct {
 func (h *cgiHandlet) onCreate(compName string, stage *Stage, webapp *Webapp) {
 	h.Handlet_.OnCreate(compName, stage, webapp)
 }
-func (h *cgiHandlet) OnShutdown() { h.webapp.DecHandlet() }
+func (h *cgiHandlet) OnShutdown() { h.Webapp().DecHandlet() }
 
 func (h *cgiHandlet) OnConfigure() {}
 func (h *cgiHandlet) OnPrepare()   {}

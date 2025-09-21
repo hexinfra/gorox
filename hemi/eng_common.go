@@ -28,7 +28,6 @@ func Printf(f string, v ...any) {
 	_printTime(os.Stdout)
 	fmt.Fprintf(os.Stdout, f, v...)
 }
-
 func Errorln(v ...any) {
 	_printTime(os.Stderr)
 	fmt.Fprintln(os.Stderr, v...)
@@ -37,7 +36,6 @@ func Errorf(f string, v ...any) {
 	_printTime(os.Stderr)
 	fmt.Fprintf(os.Stderr, f, v...)
 }
-
 func _printTime(file *os.File) {
 	fmt.Fprintf(file, "[%s] ", time.Now().Format("2006-01-02 15:04:05 MST"))
 }
@@ -92,9 +90,9 @@ func decToI64(dec []byte) (int64, bool) {
 
 const hexDigits = "0123456789abcdef"
 
-func i64ToHex(i64 int64, hex []byte) int { return intToHex(i64, hex, 16) }
-func i32ToHex(i32 int32, hex []byte) int { return intToHex(i32, hex, 8) }
-func intToHex[T int32 | int64](ixx T, hex []byte, bufSize int) int {
+func i64ToHex(i64 int64, hex []byte) int { return _intToHex(i64, hex, 16) }
+func i32ToHex(i32 int32, hex []byte) int { return _intToHex(i32, hex, 8) }
+func _intToHex[T int32 | int64](ixx T, hex []byte, bufSize int) int {
 	if len(hex) < bufSize {
 		BugExitln("hex is too small")
 	}
@@ -116,9 +114,9 @@ func intToHex[T int32 | int64](ixx T, hex []byte, bufSize int) int {
 	return n
 }
 
-func i64ToDec(i64 int64, dec []byte) int { return intToDec(i64, dec, 19) } // 19 bytes are enough to hold a positive int64
-func i32ToDec(i32 int32, dec []byte) int { return intToDec(i32, dec, 10) } // 10 bytes are enough to hold a positive int32
-func intToDec[T int32 | int64](ixx T, dec []byte, bufSize int) int {
+func i64ToDec(i64 int64, dec []byte) int { return _intToDec(i64, dec, 19) } // 19 bytes are enough to hold a positive int64
+func i32ToDec(i32 int32, dec []byte) int { return _intToDec(i32, dec, 10) } // 10 bytes are enough to hold a positive int32
+func _intToDec[T int32 | int64](ixx T, dec []byte, bufSize int) int {
 	if len(dec) < bufSize {
 		BugExitln("dec is too small")
 	}

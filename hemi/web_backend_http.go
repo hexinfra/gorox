@@ -163,7 +163,7 @@ type BackendResponse interface { // for *backend[1-3]Response
 }
 
 // backendResponse_ is a parent.
-type backendResponse_ struct { // for backend[1-3]Response. incoming, needs parsing
+type backendResponse_ struct { // for backend[1-3]Response. incoming response, needs parsing
 	// Mixins
 	_httpIn_ // incoming http response
 	// Stream states (stocks)
@@ -618,7 +618,7 @@ type BackendRequest interface { // for *backend[1-3]Request
 }
 
 // backendRequest_ is a parent.
-type backendRequest_ struct { // for backend[1-3]Request. outgoing, needs building
+type backendRequest_ struct { // for backend[1-3]Request. outgoing request, needs building
 	// Mixins
 	_httpOut_ // outgoing http request
 	// Assocs

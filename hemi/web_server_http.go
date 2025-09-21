@@ -393,7 +393,7 @@ type ServerRequest interface { // for *server[1-3]Request
 }
 
 // serverRequest_ is a parent.
-type serverRequest_ struct { // for server[1-3]Request. incoming, needs parsing
+type serverRequest_ struct { // for server[1-3]Request. incoming request, needs parsing
 	// Mixins
 	_httpIn_ // incoming http request
 	// Stream states (stocks)
@@ -2682,7 +2682,7 @@ type ServerResponse interface { // for *server[1-3]Response
 }
 
 // serverResponse_ is a parent.
-type serverResponse_ struct { // for server[1-3]Response. outgoing, needs building
+type serverResponse_ struct { // for server[1-3]Response. outgoing response, needs building
 	// Mixins
 	_httpOut_ // outgoing http response
 	// Assocs

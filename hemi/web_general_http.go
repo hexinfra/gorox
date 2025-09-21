@@ -187,7 +187,7 @@ type httpIn interface {
 }
 
 // _httpIn_ is a mixin.
-type _httpIn_ struct { // for backendResponse_ and serverRequest_. incoming, needs parsing
+type _httpIn_ struct { // for backendResponse_ and serverRequest_. incoming message, needs parsing
 	// Assocs
 	stream httpStream // *backend[1-3]Stream, *server[1-3]Stream
 	in     httpIn     // *backend[1-3]Response, *server[1-3]Request
@@ -1626,7 +1626,7 @@ type httpOut interface {
 }
 
 // _httpOut_ is a mixin.
-type _httpOut_ struct { // for backendRequest_ and serverResponse_. outgoing, needs building
+type _httpOut_ struct { // for backendRequest_ and serverResponse_. outgoing message, needs building
 	// Assocs
 	stream httpStream // *backend[1-3]Stream, *server[1-3]Stream
 	out    httpOut    // *backend[1-3]Request, *server[1-3]Response

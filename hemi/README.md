@@ -16,7 +16,7 @@ Where x.y.z is the version of Hemi. Then import it in your "main.go":
 
     import "github.com/hexinfra/gorox/hemi"
 
-If you would like to use the standard components too, import them with:
+If you'd like to use the standard Hemi components, import them alongside with:
 
     import _ "github.com/hexinfra/gorox/hemi/builtin"
 

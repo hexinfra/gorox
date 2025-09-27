@@ -27,10 +27,10 @@ type LogConfig struct {
 
 var (
 	loggersLock    sync.RWMutex
-	loggerCreators = make(map[string]func(config *LogConfig) Logger) // indexed by loggerSign
+	loggerCreators = make(map[string]func(logConfig *LogConfig) Logger) // indexed by loggerSign
 )
 
-func RegisterLogger(loggerSign string, create func(config *LogConfig) Logger) {
+func RegisterLogger(loggerSign string, create func(logConfig *LogConfig) Logger) {
 	loggersLock.Lock()
 	defer loggersLock.Unlock()
 
@@ -45,18 +45,18 @@ func loggerRegistered(loggerSign string) bool {
 	loggersLock.Unlock()
 	return ok
 }
-func createLogger(loggerSign string, config *LogConfig) Logger {
+func createLogger(loggerSign string, logConfig *LogConfig) Logger {
 	loggersLock.Lock()
 	defer loggersLock.Unlock()
 
 	if create := loggerCreators[loggerSign]; create != nil {
-		return create(config)
+		return create(logConfig)
 	}
 	return nil
 }
 
 func init() {
-	RegisterLogger("noop", func(config *LogConfig) Logger {
+	RegisterLogger("noop", func(logConfig *LogConfig) Logger {
 		return noopLogger{}
 	})
 }

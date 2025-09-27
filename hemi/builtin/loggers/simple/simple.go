@@ -15,16 +15,16 @@ import (
 )
 
 func init() {
-	RegisterLogger("simple", func(config *LogConfig) Logger {
-		file, err := os.OpenFile(config.Target, os.O_WRONLY|os.O_CREATE, 0700)
+	RegisterLogger("simple", func(logConfig *LogConfig) Logger {
+		logFile, err := os.OpenFile(logConfig.Target, os.O_WRONLY|os.O_CREATE, 0700)
 		if err != nil {
 			return nil
 		}
 		l := new(simpleLogger)
-		l.config = config
-		l.file = file
+		l.config = logConfig
+		l.file = logFile
 		l.queue = make(chan string)
-		l.buffer = make([]byte, config.BufSize)
+		l.buffer = make([]byte, logConfig.BufSize)
 		l.size = len(l.buffer)
 		l.used = 0
 		go l.saver()
